@@ -2,7 +2,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Barcode, Building2, Download, PackageSearch, Pencil, Plus, RotateCcw, Search, Tags, Trash2, Upload } from 'lucide-react';
 import { useProducts } from '../store/useProducts';
 import { Product } from '../types';
-import { formatEUR } from '../utils/money';
+import { centsToDecimalString, formatEUR, parseDecimalToCents } from '../utils/money';
+import { parseProductsCsv, serializeProductsCsv, slugifyId } from '../utils/productCsv';
+import { isSupportedVatRate, SUPPORTED_VAT_RATES } from '../utils/vat';
+import { FEATURES } from '../config/features';
 import { Modal } from './Modal';
 import { useCategories } from '../store/useCategories';
 import { BELGIAN_RETAIL_VAT_RATE } from '../data/categories';
@@ -23,41 +26,13 @@ const COLOR_PRESETS: { label: string; cls: string }[] = [
   { label: 'Licht', cls: 'bg-zinc-200 text-black' },
 ];
 
-const csvHeaders = [
-  'id',
-  'name',
-  'category',
-  'subCategory',
-  'brand',
-  'supplier',
-  'variant',
-  'sku',
-  'barcode',
-  'costPrice',
-  'sellingPrice',
-  'vatRate',
-  'stockQty',
-  'minStockQty',
-  'isActive',
-];
-
-const slugify = (s: string) =>
-  s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 40);
-
+/** Editor inputs are nl-BE (`12,50`); invalid text yields 0 and is caught by validation. */
 const parseCents = (txt: string): number => {
-  const norm = txt.replace(/\./g, '').replace(',', '.').trim();
-  const n = parseFloat(norm);
-  if (!Number.isFinite(n) || n < 0) return 0;
-  return Math.round(n * 100);
+  const parsed = parseDecimalToCents(txt);
+  return parsed.ok ? parsed.cents : 0;
 };
 
-const centsToInput = (cents?: number): string => ((cents ?? 0) / 100).toFixed(2).replace('.', ',');
+const centsToInput = (cents?: number): string => centsToDecimalString(cents ?? 0).replace('.', ',');
 
 const parseWhole = (txt: string): number | undefined => {
   const trimmed = txt.trim();
@@ -72,39 +47,11 @@ const marginPercent = (priceCents: number, costPriceCents?: number): number => {
   return ((priceCents - costPriceCents) / priceCents) * 100;
 };
 
-const escapeCsv = (value: unknown): string => {
-  const s = String(value ?? '');
-  return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-};
-
-const splitCsvLine = (line: string): string[] => {
-  const out: string[] = [];
-  let cur = '';
-  let quoted = false;
-  for (let i = 0; i < line.length; i += 1) {
-    const ch = line[i];
-    if (ch === '"') {
-      if (quoted && line[i + 1] === '"') {
-        cur += '"';
-        i += 1;
-      } else {
-        quoted = !quoted;
-      }
-    } else if ((ch === ',' || ch === ';') && !quoted) {
-      out.push(cur.trim());
-      cur = '';
-    } else {
-      cur += ch;
-    }
-  }
-  out.push(cur.trim());
-  return out;
-};
-
 export const ProductAdmin: React.FC = () => {
   const list = useProducts((s) => s.list);
   const hydrateProducts = useProducts((s) => s.hydrate);
   const upsert = useProducts((s) => s.upsert);
+  const bulkUpsert = useProducts((s) => s.bulkUpsert);
   const remove = useProducts((s) => s.remove);
   const restore = useProducts((s) => s.restore);
 
@@ -235,10 +182,24 @@ export const ProductAdmin: React.FC = () => {
       return;
     }
 
-    const priceCents = parseCents(priceText);
-    const costPriceCents = parseCents(costText);
-    if (priceCents <= 0) {
-      alert('Verkoopprijs moet groter zijn dan EUR 0,00.');
+    const price = parseDecimalToCents(priceText);
+    if (!price.ok || price.cents <= 0) {
+      alert('Verkoopprijs is ongeldig. Gebruik bv. 12,50 en meer dan EUR 0,00.');
+      return;
+    }
+    const cost = parseDecimalToCents(costText || '0');
+    if (!cost.ok) {
+      alert('Aankoopprijs is ongeldig. Gebruik bv. 6,25.');
+      return;
+    }
+    const priceCents = price.cents;
+    const costPriceCents = cost.cents;
+
+    const vatRate = categoryVatById.get(editing.category);
+    if (!isSupportedVatRate(vatRate)) {
+      alert(
+        `De categorie heeft BTW-tarief ${String(vatRate)}%. Enkel ${SUPPORTED_VAT_RATES.join('% en ')}% zijn ondersteund.`,
+      );
       return;
     }
 
@@ -261,7 +222,7 @@ export const ProductAdmin: React.FC = () => {
 
     let id = editing.id.trim();
     if (isNew) {
-      const base = slugify(`${brand || 'item'}-${name}`) || 'product';
+      const base = slugifyId(`${brand || 'item'}-${name}`) || 'product';
       let candidate = base;
       let i = 2;
       while (list.some((p) => p.id === candidate)) candidate = `${base}-${i++}`;
@@ -280,7 +241,7 @@ export const ProductAdmin: React.FC = () => {
       subCategory: subCategory || undefined,
       costPriceCents,
       priceCents,
-      vatRate: categoryVatById.get(editing.category) ?? BELGIAN_RETAIL_VAT_RATE,
+      vatRate,
       stockQty,
       minStockQty,
       isActive: editing.isActive ?? true,
@@ -308,24 +269,7 @@ export const ProductAdmin: React.FC = () => {
   };
 
   const exportProducts = () => {
-    const rows = list.map((p) => [
-      p.id,
-      p.name,
-      p.category,
-      p.subCategory ?? '',
-      p.brand ?? '',
-      p.supplier ?? '',
-      p.variant ?? '',
-      p.sku ?? '',
-      p.barcode ?? '',
-      ((p.costPriceCents ?? 0) / 100).toFixed(2),
-      (p.priceCents / 100).toFixed(2),
-      p.vatRate,
-      p.stockQty ?? '',
-      p.minStockQty ?? '',
-      p.isActive !== false ? 'true' : 'false',
-    ]);
-    const csv = [csvHeaders.join(','), ...rows.map((row) => row.map(escapeCsv).join(','))].join('\n');
+    const csv = serializeProductsCsv(list);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -334,49 +278,35 @@ export const ProductAdmin: React.FC = () => {
   };
 
   const importProducts = async (file: File) => {
-    const text = await file.text();
-    const lines = text.split(/\r?\n/).filter((line) => line.trim());
-    if (lines.length < 2) return;
-    const headers = splitCsvLine(lines[0]).map((h) => h.trim());
-    const index = (name: string) => headers.findIndex((h) => h === name);
-    const required = ['name', 'category', 'sellingPrice'];
-    if (required.some((h) => index(h) === -1)) {
-      alert('CSV mist verplichte kolommen: name, category, sellingPrice.');
+    if (!FEATURES.csvImport) {
+      alert('CSV-import is uitgeschakeld.');
+      return;
+    }
+    const { products, issues } = parseProductsCsv(await file.text(), {
+      existing: list,
+      categoryVatById,
+    });
+
+    // All-or-nothing: one bad row aborts the whole import, nothing is written.
+    if (issues.length > 0) {
+      const shown = issues.slice(0, 15).map((i) => `Regel ${i.line}: ${i.message}`).join('\n');
+      alert(
+        `Import geannuleerd — ${issues.length} fout(en) gevonden. Er is niets gewijzigd.\n\n${shown}` +
+          (issues.length > 15 ? `\n… en ${issues.length - 15} meer.` : ''),
+      );
+      return;
+    }
+    if (products.length === 0) {
+      alert('Geen rijen gevonden om te importeren.');
       return;
     }
 
-    let imported = 0;
-    for (const line of lines.slice(1)) {
-      const cells = splitCsvLine(line);
-      const get = (name: string) => {
-        const i = index(name);
-        return i >= 0 ? cells[i] ?? '' : '';
-      };
-      const name = get('name').trim();
-      const category = get('category').trim();
-      if (!name || !category) continue;
-      const id = get('id').trim() || slugify(`${get('brand') || 'item'}-${name}`) || crypto.randomUUID();
-      await upsert({
-        id,
-        name,
-        category,
-        subCategory: get('subCategory').trim() || undefined,
-        brand: get('brand').trim() || undefined,
-        supplier: get('supplier').trim() || undefined,
-        variant: get('variant').trim() || undefined,
-        sku: get('sku').trim() || undefined,
-        barcode: get('barcode').trim() || undefined,
-        costPriceCents: parseCents(get('costPrice')),
-        priceCents: parseCents(get('sellingPrice')),
-        vatRate: Number(get('vatRate')) || categoryVatById.get(category) || BELGIAN_RETAIL_VAT_RATE,
-        stockQty: parseWhole(get('stockQty')),
-        minStockQty: parseWhole(get('minStockQty')),
-        isActive: get('isActive') !== 'false',
-        color: 'bg-sky-700',
-      });
-      imported += 1;
+    try {
+      await bulkUpsert(products);
+      alert(`${products.length} producten geimporteerd.`);
+    } catch (err) {
+      alert(`Import mislukt, niets gewijzigd: ${err instanceof Error ? err.message : String(err)}`);
     }
-    alert(`${imported} producten geimporteerd.`);
   };
 
   const editingMargin = marginPercent(parseCents(priceText), parseCents(costText));
@@ -406,7 +336,12 @@ export const ProductAdmin: React.FC = () => {
               <button onClick={exportProducts} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 font-semibold">
                 <Download size={18} /> Export
               </button>
-              <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 font-semibold">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={!FEATURES.csvImport}
+                title={FEATURES.csvImport ? undefined : 'CSV-import is uitgeschakeld'}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+              >
                 <Upload size={18} /> Import
               </button>
               <button onClick={openNew} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-semibold">

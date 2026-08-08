@@ -12,12 +12,12 @@ interface CustomersState {
   upsertCustomer: (c: Customer) => Promise<void>;
   removeCustomer: (id: string) => Promise<void>;
   restoreCustomer: (id: string) => Promise<void>;
-  recordVisit: (customerId: string, spentCents: number) => Promise<void>;
+  /** Mirror rows already committed to Dexie (e.g. by the checkout service). */
+  syncPersisted: (rows: { customer?: Customer; giftCards?: GiftCard[] }) => void;
 
   findGiftCardByCode: (code: string) => GiftCard | null;
   addGiftCard: (card: GiftCard) => Promise<void>;
   rechargeGiftCard: (id: string, amountCents: number) => Promise<void>;
-  deductGiftCard: (id: string, amountCents: number) => Promise<void>;
   deactivateGiftCard: (id: string) => Promise<void>;
   activateGiftCard: (id: string) => Promise<void>;
 }
@@ -91,17 +91,13 @@ export const useCustomers = create<CustomersState>((set, get) => ({
     void audit('customer.restore', { customerId: id, name: cur.name });
   },
 
-  recordVisit: async (customerId, spentCents) => {
-    const cur = await db.customers.get(customerId);
-    if (!cur) return;
-    const next: Customer = {
-      ...cur,
-      visitCount: cur.visitCount + 1,
-      totalSpentCents: cur.totalSpentCents + spentCents,
-      lastVisitAt: new Date().toISOString(),
-    };
-    await db.customers.put(next);
-    set((s) => ({ customers: s.customers.map((x) => (x.id === customerId ? next : x)) }));
+  syncPersisted: ({ customer, giftCards }) => {
+    set((s) => ({
+      customers: customer ? s.customers.map((x) => (x.id === customer.id ? customer : x)) : s.customers,
+      giftCards: giftCards?.length
+        ? s.giftCards.map((x) => giftCards.find((g) => g.id === x.id) ?? x)
+        : s.giftCards,
+    }));
   },
 
   findGiftCardByCode: (code) => {
@@ -136,23 +132,6 @@ export const useCustomers = create<CustomersState>((set, get) => ({
     await db.gift_cards.put(next);
     set((s) => ({ giftCards: s.giftCards.map((x) => (x.id === id ? next : x)) }));
     void audit('giftcard.recharge', {
-      giftCardId: id,
-      code: cur.code,
-      amountCents,
-      newBalance: next.balanceCents,
-    });
-  },
-
-  deductGiftCard: async (id, amountCents) => {
-    const cur = await db.gift_cards.get(id);
-    if (!cur) return;
-    const next: GiftCard = {
-      ...cur,
-      balanceCents: Math.max(0, cur.balanceCents - amountCents),
-    };
-    await db.gift_cards.put(next);
-    set((s) => ({ giftCards: s.giftCards.map((x) => (x.id === id ? next : x)) }));
-    void audit('giftcard.deduct', {
       giftCardId: id,
       code: cur.code,
       amountCents,

@@ -8,13 +8,24 @@ interface Props {
   open: boolean;
   onClose: () => void;
   totalCents: number;
+  /** Amounts of each card already applied to the current cart. */
+  appliedCentsByCardId?: Record<string, number>;
   onConfirm: (giftCardId: string, amountCents: number, code: string) => void;
 }
 
-export const GiftCardPaymentModal: React.FC<Props> = ({ open, onClose, totalCents, onConfirm }) => {
+export const GiftCardPaymentModal: React.FC<Props> = ({
+  open,
+  onClose,
+  totalCents,
+  appliedCentsByCardId = {},
+  onConfirm,
+}) => {
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const { customers, giftCards, findGiftCardByCode } = useCustomers();
+
+  const availableCents = (cardId: string, balanceCents: number) =>
+    Math.max(0, balanceCents - (appliedCentsByCardId[cardId] ?? 0));
 
   const customerMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -24,9 +35,10 @@ export const GiftCardPaymentModal: React.FC<Props> = ({ open, onClose, totalCent
 
   const validGiftCards = useMemo(() => {
     return giftCards
-      .filter(gc => gc.isActive && gc.balanceCents > 0)
+      .filter(gc => gc.isActive && availableCents(gc.id, gc.balanceCents) > 0)
       .map(gc => ({
         ...gc,
+        availableCents: availableCents(gc.id, gc.balanceCents),
         customerName: gc.customerId ? customerMap.get(gc.customerId) || 'Onbekend' : 'Anoniem'
       }))
       .sort((a, b) => {
@@ -34,7 +46,7 @@ export const GiftCardPaymentModal: React.FC<Props> = ({ open, onClose, totalCent
         if (b.customerName === 'Anoniem' && a.customerName !== 'Anoniem') return -1;
         return a.customerName.localeCompare(b.customerName);
       });
-  }, [giftCards, customerMap]);
+  }, [giftCards, customerMap, appliedCentsByCardId]);
 
   const handleVerifyAndPay = () => {
     setError(null);
@@ -53,13 +65,19 @@ export const GiftCardPaymentModal: React.FC<Props> = ({ open, onClose, totalCent
       setError('Deze cadeaubon is geblokkeerd of ongeldig.');
       return;
     }
-    
-    if (card.balanceCents <= 0) {
-      setError('Deze cadeaubon heeft geen saldo meer.');
+
+    const available = availableCents(card.id, card.balanceCents);
+    if (available <= 0) {
+      setError('Deze cadeaubon heeft geen saldo meer (of is al volledig toegepast).');
       return;
     }
-    
-    const deductAmount = Math.min(totalCents, card.balanceCents);
+
+    if (totalCents <= 0) {
+      setError('Er is niets meer te betalen.');
+      return;
+    }
+
+    const deductAmount = Math.min(totalCents, available);
     onConfirm(card.id, deductAmount, card.code);
     setCode('');
   };
@@ -88,7 +106,7 @@ export const GiftCardPaymentModal: React.FC<Props> = ({ open, onClose, totalCent
                 <option value="">-- Kies een klant of anonieme bon --</option>
                 {validGiftCards.map(gc => (
                   <option key={gc.id} value={gc.code}>
-                    {gc.customerName} - Saldo: {formatEUR(gc.balanceCents)}
+                    {gc.customerName} - Saldo: {formatEUR(gc.availableCents)}
                   </option>
                 ))}
               </select>

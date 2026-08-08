@@ -58,7 +58,7 @@ graph LR
 
 ## PHASE 2A — Financial & transactional correctness
 
-### - [ ] A1 · CONFIRMED · CRITICAL — Paying in full with a gift card never debits the card
+### - [x] A1 · FIXED · CRITICAL — Paying in full with a gift card never debits the card
 
 [src/components/Cart.tsx](src/components/Cart.tsx#L470-L480) calls `addCartGiftCard(...)` and then, **in the same event handler**, `finalizeCheckout('Cadeaubon')`. `finalizeCheckout` closes over the `cartGiftCards` value from the *previous* render, which is still `[]`. Consequently, at [src/components/Cart.tsx](src/components/Cart.tsx#L166):
 
@@ -67,11 +67,11 @@ graph LR
 
 A €100 card pays a €100 basket an unlimited number of times. The partial-payment path (add card, then press Cash/PIN) is unaffected because it spans two renders — which is exactly why this is invisible in casual testing.
 
-### - [ ] A2 · CONFIRMED · CRITICAL — Redemption is not capped by the real balance
+### - [x] A2 · FIXED · CRITICAL — Redemption is not capped by the real balance
 
 `addCartGiftCard` appends with no de-duplication, and `GiftCardPaymentModal` computes `Math.min(totalCents, card.balanceCents)` against an in-memory copy that is only written at checkout. The same card can therefore be added twice for a combined amount exceeding its balance. `deductGiftCard` then absorbs the overdraft silently via `Math.max(0, cur.balanceCents - amountCents)` ([src/store/useCustomers.ts](src/store/useCustomers.ts#L146-L155)) — the shop eats the difference with no trace.
 
-### - [ ] A3 · CONFIRMED · HIGH — Manual discount is computed on an inflated base
+### - [x] A3 · FIXED · HIGH — Manual discount is computed on an inflated base
 
 [src/components/Cart.tsx](src/components/Cart.tsx#L444) passes `subtotalCents={totals.subtotal + manualDiscountCents}`. But `calculateTotals().subtotal` is *already* the undiscounted gross. Reproduced:
 
@@ -82,11 +82,11 @@ a 10% discount then computes 1050c instead of 1000c
 
 Every discount applied on top of an existing discount is too large, and it compounds on each re-open.
 
-### - [ ] A4 · CONFIRMED · HIGH — No idempotency; double-submit produces duplicate sales
+### - [x] A4 · FIXED · HIGH — No idempotency; double-submit produces duplicate sales
 
 `isProcessing` gates only the three buttons in the Cart footer. The confirm buttons inside `CashPaymentModal` and `GiftCardPaymentModal` are not gated, and `finalizeCheckout` itself never checks `isProcessing`. `Transaction` carries no idempotency key and `db.transactions.add` unconditionally creates a new row.
 
-### - [ ] A5 · CONFIRMED · HIGH — Checkout is not atomic and fails open
+### - [x] A5 · FIXED · HIGH — Checkout is not atomic and fails open
 
 [src/components/Cart.tsx](src/components/Cart.tsx#L200-L232) performs seven independent IndexedDB writes in sequence: transaction → print → audit → stock → outbox → gift-card debit → customer visit. There is no `db.transaction('rw', ...)` wrapper. Any failure after the first write leaves money booked with stock not decremented and the card not debited. The `catch` shows `alert('Er ging iets mis bij het afrekenen.')`, does **not** roll back, and does **not** clear the cart — so the cashier retries, which combined with A4 produces a duplicate sale.
 
@@ -148,7 +148,7 @@ A repository-wide search for refund/return/credit-note logic returns only unrela
 
 `seedDemoRetailData` bulk-adds ~2 years of `source: 'demo'` rows into `db.transactions`. `Insights`, `buildRetailIntelligence`, `buildCategoryPerformance`, `buildPaymentMix`, `buildSalesHistory`, `buildInventoryForecast`, `buildOwnerInsights` and `AuditLog` all read the full table with **no** `source` filter — only a count is shown. Revenue, margin, employee ranking, reorder proposals and purchase-order quantities are all computed on mixed real+fake data. (Demo rows carry `isFinalized: 1`, so Z-reports stay clean — meaning the Z-report and Insights are guaranteed to disagree.)
 
-### - [ ] A19 · CONFIRMED · HIGH — CSV export → import multiplies every price by 100
+### - [x] A19 · FIXED · HIGH — CSV export → import multiplies every price by 100
 
 `exportProducts` writes dot decimals via `.toFixed(2)`; `parseCents` strips **all** dots before parsing ([src/components/ProductAdmin.tsx](src/components/ProductAdmin.tsx#L54-L59)). Round-tripping the app's own export file is catastrophic. Reproduced:
 
@@ -183,7 +183,7 @@ The import runs row-by-row with no transaction, no dry-run, no confirmation, and
 
 ## PHASE 2B — Tax, receipt, invoice & fiscal behaviour
 
-### - [ ] B1 · CONFIRMED · CRITICAL — The VAT engine supports exactly two rates; everything else is silently taxed at 21%
+### - [x] B1 · FIXED · CRITICAL — The VAT engine supports exactly two rates; everything else is silently taxed at 21%
 
 [src/utils/vat.ts](src/utils/vat.ts#L34-L36) buckets with `if (getVatRate(order) === 12) subtotal12 else subtotal21`, and the extraction divisors `1.12` / `1.21` are hard-coded. Any other rate is booked at 21%. Reproduced:
 
@@ -254,9 +254,30 @@ All 47 tests pass, but coverage is concentrated in the pure helpers and misses e
 
 | Priority | Findings |
 |---|---|
-| **Fix before any real money** | A1, A2, B1, A19 |
-| **Fix before pilot** | A3, A4, A5, A6, A7, A8, A9, A12, B2, B3, B4 |
+| **Fix before any real money** | ~~A1, A2, B1, A19~~ — all fixed |
+| **Fix before pilot** | ~~A3, A4, A5~~, A6, A7, A8, A9, A12, B2, B3, B4 |
 | **Fix before scale** | A10, A11, A13–A18, A20, A21, B5–B12 |
+
+---
+
+## Remediation round 1 — 2026-08-08
+
+Baseline: git history initialised and pushed to `kevinb42O/PWAYMENT_RETAIL`; the
+pre-fix `dist` build is archived under `baseline/` (gitignored). The browser
+IndexedDB snapshot must still be exported manually from DevTools → Application.
+
+| Finding | Change |
+|---|---|
+| A1, A2, A5 | New [src/services/checkout.ts](src/services/checkout.ts) commits transaction, stock, gift-card debits, customer visit, audit and outbox inside **one** `db.transaction('rw', …)`. Gift-card allocations are passed in explicitly (no stale closure), de-duplicated per card, and re-validated against the **live** balance inside the transaction. Printing happens only after the commit. |
+| A4 | `Transaction.clientRequestId` + unique index (DB v10) + a module-level in-flight guard. A repeated confirmation resolves to the already-committed sale; a concurrent checkout with a different key is refused. |
+| A3 | `DiscountModal` now receives the true undiscounted `totals.subtotal`. |
+| B1 | `calculateTotals` throws `UnsupportedVatRateError` instead of falling back to 21%. Rates are validated on product upsert, bulk upsert and CSV import; the Cart blocks checkout and names the offending lines. |
+| A19 | `parseDecimalToCents` in [src/utils/money.ts](src/utils/money.ts) parses `12.50`, `12,50`, `1.234,56` and `1,234.56` with integer arithmetic and **rejects** ambiguous input such as `1.234`. CSV logic moved to [src/utils/productCsv.ts](src/utils/productCsv.ts); import validates every row first and writes nothing unless all rows pass, then persists via a single `bulkUpsert` transaction. |
+| Containment | `FEATURES.giftCardPayment` and `FEATURES.csvImport` kill switches (`VITE_ENABLE_GIFT_CARD_PAYMENT`, `VITE_ENABLE_CSV_IMPORT`). |
+
+**Regression tests added:** [src/services/checkout.test.ts](src/services/checkout.test.ts) (9 cases, Dexie on `fake-indexeddb`), [src/utils/productCsv.test.ts](src/utils/productCsv.test.ts), plus new cases in [src/utils/money.test.ts](src/utils/money.test.ts) and [src/utils/vat.test.ts](src/utils/vat.test.ts).
+
+**Gate run:** `npm run lint` clean · `npm test` 69/69 pass (13 files) · `npm run build` succeeds. Manual money-equality checks on device are still outstanding — treat the build as **NO-GO** until they pass.
 
 ---
 

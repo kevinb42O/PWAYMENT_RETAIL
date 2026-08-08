@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateTotals } from './vat';
+import { calculateTotals, findUnsupportedVatItems, UnsupportedVatRateError } from './vat';
 import { OrderItem } from '../types';
 
 const item = (
@@ -57,10 +57,18 @@ describe('calculateTotals', () => {
     expect(t.discounted21).toBe(900);
   });
 
-  it('defaults missing rates to the Belgian retail rate', () => {
-    const order = item(1210, 1);
-    order.product.vatRate = 0;
-    const t = calculateTotals([order]);
-    expect(t.vat21).toBe(210);
+  it('rejects rates the engine cannot book instead of silently taxing at 21%', () => {
+    for (const rate of [0, 6, 9, 25, Number.NaN]) {
+      const order = item(1060, 1);
+      order.product.vatRate = rate;
+      expect(() => calculateTotals([order])).toThrow(UnsupportedVatRateError);
+    }
+  });
+
+  it('reports which lines block checkout', () => {
+    const bad = item(1060, 1);
+    bad.product.vatRate = 6;
+    expect(findUnsupportedVatItems([item(1210, 1), bad])).toEqual([bad]);
+    expect(findUnsupportedVatItems([item(1210, 1), item(1120, 1, 12)])).toEqual([]);
   });
 });

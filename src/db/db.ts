@@ -26,6 +26,7 @@ import {
  *  v4 - add shifts + voids tables, link transactions/reports to a shift,
  *       add tip + tendered cents on transactions, add totalTipsCents on reports.
  *  v5 - persisted products table (admin CRUD).
+ *  v10 - unique clientRequestId on transactions (checkout idempotency).
  */
 export class POSDatabase extends Dexie {
   transactions!: Table<Transaction, number>;
@@ -224,6 +225,24 @@ export class POSDatabase extends Dexie {
     this.version(9).stores({
       transactions:
         '++id, tableId, paymentMethod, timestamp, isFinalized, userId, shiftId',
+      daily_reports: '++id, reportNumber, timestamp, shiftId',
+      audit: '++id, timestamp, userId, action',
+      users: 'id, role',
+      outbox: '++id, timestamp, kind',
+      shifts: '++id, shiftNumber, openedAt, closedAt',
+      voids: '++id, timestamp, tableId, productId, byUserId',
+      products: 'id, category, isActive',
+      categories: 'id, name, isActive',
+      customers: 'id, email, phone, isActive',
+      gift_cards: 'id, customerId, code, isActive',
+      business_actions: 'id, type, status, createdAt, updatedAt, dueAt, ownerUserId',
+      purchase_orders: 'id, supplier, status, createdAt, updatedAt, expectedDeliveryAt',
+      stock_movements: '++id, productId, reason, timestamp, purchaseOrderId',
+    });
+
+    this.version(10).stores({
+      transactions:
+        '++id, tableId, paymentMethod, timestamp, isFinalized, userId, shiftId, &clientRequestId',
       daily_reports: '++id, reportNumber, timestamp, shiftId',
       audit: '++id, timestamp, userId, action',
       users: 'id, role',

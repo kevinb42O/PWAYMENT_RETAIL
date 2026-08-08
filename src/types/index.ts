@@ -92,6 +92,11 @@ export type PaymentMethod = 'Cash' | 'PIN' | 'Cadeaubon' | 'Split';
 
 export interface Transaction {
   id?: number;
+  /**
+   * Client-generated idempotency key. Unique per checkout attempt, so a retry
+   * or double-submit resolves to the already-persisted sale instead of a new one.
+   */
+  clientRequestId?: string;
   tableId: number;
   items: OrderItem[];
   subtotalCents: number;

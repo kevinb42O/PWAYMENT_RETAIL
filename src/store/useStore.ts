@@ -266,7 +266,14 @@ export const useStore = create<POSState>()(
           cartGiftCards: [],
         }),
 
-      addCartGiftCard: (gc) => set((s) => ({ cartGiftCards: [...s.cartGiftCards, gc] })),
+      addCartGiftCard: (gc) =>
+        set((s) => ({
+          cartGiftCards: s.cartGiftCards.some((g) => g.id === gc.id)
+            ? s.cartGiftCards.map((g) =>
+                g.id === gc.id ? { ...g, amountCents: g.amountCents + gc.amountCents } : g,
+              )
+            : [...s.cartGiftCards, gc],
+        })),
       removeCartGiftCard: (id) => set((s) => ({ cartGiftCards: s.cartGiftCards.filter((g) => g.id !== id) })),
 
       linkCustomer: (customerId) => set({ linkedCustomerId: customerId }),

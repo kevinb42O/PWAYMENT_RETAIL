@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
+  AlertTriangle,
   Banknote,
   CheckCircle,
   CreditCard,
@@ -14,11 +15,16 @@ import {
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { useProducts } from '../store/useProducts';
-import { useAuth, audit } from '../auth/useAuth';
-import { calculateTotals } from '../utils/vat';
+import { useAuth } from '../auth/useAuth';
+import { calculateTotals, findUnsupportedVatItems, SUPPORTED_VAT_RATES } from '../utils/vat';
 import { formatEUR } from '../utils/money';
-import { db } from '../db/db';
-import { enqueueOutbox } from '../db/outbox';
+import { FEATURES } from '../config/features';
+import {
+  CheckoutError,
+  dedupeGiftCards,
+  finalizeCheckout,
+  type GiftCardAllocation,
+} from '../services/checkout';
 import { OrderItem, PaymentMethod, Transaction } from '../types';
 import { ItemEditModal } from './ItemEditModal';
 import { DiscountModal } from './DiscountModal';
@@ -43,14 +49,14 @@ export const Cart: React.FC = () => {
   const cartGiftCards = useStore((s) => s.cartGiftCards);
   const addCartGiftCard = useStore((s) => s.addCartGiftCard);
   const removeCartGiftCard = useStore((s) => s.removeCartGiftCard);
-  const applySale = useProducts((s) => s.applySale);
+  const syncPersistedProducts = useProducts((s) => s.syncPersisted);
   const auth = useAuth();
 
   const linkedCustomerId = useStore((s) => s.linkedCustomerId);
   const linkCustomer = useStore((s) => s.linkCustomer);
   const unlinkCustomer = useStore((s) => s.unlinkCustomer);
 
-  const { customers, recordVisit, deductGiftCard } = useCustomers();
+  const { customers, syncPersisted: syncPersistedCustomers } = useCustomers();
   const linkedCustomer = useMemo(() => customers.find(c => c.id === linkedCustomerId), [customers, linkedCustomerId]);
 
   const [isProcessing, setIsProcessing] = useState(false);
@@ -60,6 +66,8 @@ export const Cart: React.FC = () => {
   const [cashOpen, setCashOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const [giftOpen, setGiftOpen] = useState(false);
+  // Kept across retries so a retried checkout can never create a second sale.
+  const requestIdRef = useRef<string | null>(null);
 
   // ── Thermal printer (WebUSB) ───────────────────────────────────────────
   // The hook manages the USB device lifecycle. `connect()` must be called
@@ -72,14 +80,24 @@ export const Cart: React.FC = () => {
   const hasItemsToCheckout = itemsToCheckout.length > 0;
   const manualDiscountCents = cartDiscount?.amountCents ?? 0;
   const totalDiscountCents = manualDiscountCents;
+  const vatBlockers = useMemo(() => findUnsupportedVatItems(itemsToCheckout), [itemsToCheckout]);
   const totals = useMemo(
-    () => calculateTotals(itemsToCheckout, totalDiscountCents),
-    [itemsToCheckout, totalDiscountCents],
+    () =>
+      vatBlockers.length > 0
+        ? calculateTotals([], 0)
+        : calculateTotals(itemsToCheckout, totalDiscountCents),
+    [itemsToCheckout, totalDiscountCents, vatBlockers],
   );
   const grandTotal = totals.total;
 
   const giftCardsTotal = cartGiftCards.reduce((s, gc) => s + gc.amountCents, 0);
   const remainingTotal = Math.max(0, grandTotal - giftCardsTotal);
+  const checkoutBlocked = !hasItemsToCheckout || isProcessing || vatBlockers.length > 0;
+  const appliedGiftCardCents = useMemo(() => {
+    const applied: Record<string, number> = {};
+    for (const gc of cartGiftCards) applied[gc.id] = (applied[gc.id] ?? 0) + gc.amountCents;
+    return applied;
+  }, [cartGiftCards]);
 
   if (receipt) {
     return (
@@ -159,86 +177,57 @@ export const Cart: React.FC = () => {
     );
   }
 
-  const finalizeCheckout = async (
+  const runCheckout = async (
     method: PaymentMethod,
-    extras: { tenderedCents?: number } = {},
+    extras: { tenderedCents?: number; giftCards?: GiftCardAllocation[] } = {},
   ) => {
-    if (!hasItemsToCheckout) return;
+    if (checkoutBlocked) return;
     setIsProcessing(true);
-
-    let finalMethod: PaymentMethod = method;
-    let splitTenders = undefined;
-
-    if (cartGiftCards.length > 0) {
-      finalMethod = 'Split';
-      splitTenders = cartGiftCards.map(gc => ({ method: 'Cadeaubon' as const, amountCents: gc.amountCents }));
-      if (remainingTotal > 0 && (method === 'Cash' || method === 'PIN')) {
-        splitTenders.push({ method: method as 'Cash' | 'PIN', amountCents: remainingTotal });
-      }
-    }
-
-    const tx: Transaction = {
-      tableId: cart.id,
-      items: itemsToCheckout,
-      subtotalCents: totals.subtotal,
-      vat12Cents: totals.vat12,
-      vat21Cents: totals.vat21,
-      totalCents: grandTotal,
-      discountCents: totals.discount,
-      discountReason: cartDiscount?.reason,
-      discountApprovedByUserId: cartDiscount?.approvedByUserId,
-      tenderedCents: extras.tenderedCents,
-      paymentMethod: finalMethod,
-      splitTenders,
-      timestamp: Date.now(),
-      isFinalized: 0,
-      userId: auth.currentUserId ?? undefined,
-      userName: auth.currentUserName ?? undefined,
-      customerId: linkedCustomerId ?? undefined,
-    };
+    requestIdRef.current ??= crypto.randomUUID();
 
     try {
-      const id = await db.transactions.add(tx);
-      const persisted: Transaction = { ...tx, id: id as number };
+      const result = await finalizeCheckout({
+        clientRequestId: requestIdRef.current,
+        cartId: cart.id,
+        items: itemsToCheckout,
+        discountCents: totalDiscountCents,
+        discountReason: cartDiscount?.reason,
+        discountApprovedByUserId: cartDiscount?.approvedByUserId,
+        giftCards: extras.giftCards ?? cartGiftCards,
+        method,
+        tenderedCents: extras.tenderedCents,
+        customerId: linkedCustomerId ?? undefined,
+        userId: auth.currentUserId ?? undefined,
+        userName: auth.currentUserName ?? undefined,
+      });
 
-      // Send ESC/POS bytes directly to the thermal printer over WebUSB.
-      // Falls back silently if the printer is not connected (cashier can
-      // always reprint manually via the "Herdruk" button on the receipt screen).
+      syncPersistedProducts(result.updatedProducts);
+      syncPersistedCustomers({
+        customer: result.updatedCustomer,
+        giftCards: result.updatedGiftCards,
+      });
+
+      requestIdRef.current = null;
+      clearCart();
+      setReceipt(result.transaction);
+
+      // Printing happens only after the commit, so a printer failure can never
+      // leave a half-booked sale behind.
       if (printerConnected) {
         try {
           const adapter = new EscPosPrintAdapter(sendRaw);
-          await adapter.printReceipt(persisted);
+          await adapter.printReceipt(result.transaction);
         } catch (printErr) {
-          // Don't fail the whole checkout over a print error — the transaction
-          // is already persisted in IndexedDB.
           console.error('Thermal print failed (transaction saved):', printErr);
         }
       }
-
-      await audit('checkout', {
-        cartId: cart.id,
-        totalCents: grandTotal,
-        method,
-        discountCents: tx.discountCents,
-      });
-      await applySale(itemsToCheckout);
-      await enqueueOutbox('transaction', persisted);
-
-      for (const gc of cartGiftCards) {
-        await deductGiftCard(gc.id, gc.amountCents);
-      }
-
-      if (linkedCustomerId) {
-        await recordVisit(linkedCustomerId, grandTotal);
-      }
-
-      resetCartExtras();
-      clearCart();
-
-      setReceipt(persisted);
     } catch (error) {
       console.error('Checkout failed:', error);
-      alert('Er ging iets mis bij het afrekenen.');
+      alert(
+        error instanceof CheckoutError
+          ? error.message
+          : 'Er ging iets mis bij het afrekenen. Er is niets geboekt — probeer opnieuw.',
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -249,7 +238,7 @@ export const Cart: React.FC = () => {
       setCashOpen(true);
       return;
     }
-    void finalizeCheckout(method);
+    void runCheckout(method);
   };
 
   return (
@@ -369,6 +358,18 @@ export const Cart: React.FC = () => {
       </div>
 
       <div className="pos-checkout border-t border-zinc-200 bg-white p-4">
+        {vatBlockers.length > 0 && (
+          <div className="mb-3 flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-800">
+            <AlertTriangle size={16} className="mt-px flex-shrink-0" />
+            <div>
+              <div className="font-semibold">Afrekenen geblokkeerd — niet-ondersteund BTW-tarief</div>
+              <div className="mt-1">
+                Enkel {SUPPORTED_VAT_RATES.join('% en ')}% zijn ondersteund. Corrigeer:{' '}
+                {vatBlockers.map((o) => `${o.product.name} (${String(o.product.vatRate)}%)`).join(', ')}
+              </div>
+            </div>
+          </div>
+        )}
         <div className="space-y-1.5 mb-4 text-sm">
           <div className="flex justify-between text-zinc-400">
             <span>Subtotaal</span>
@@ -423,7 +424,7 @@ export const Cart: React.FC = () => {
         <div className="grid grid-cols-3 gap-2">
           <button
             onClick={() => handleCheckout('Cash')}
-            disabled={isProcessing || !hasItemsToCheckout}
+            disabled={checkoutBlocked}
             className="pos-payment-secondary flex flex-col items-center justify-center gap-1.5 py-3 border border-zinc-200 bg-white text-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-semibold transition-colors"
           >
             <Banknote size={24} />
@@ -431,15 +432,16 @@ export const Cart: React.FC = () => {
           </button>
           <button
             onClick={() => handleCheckout('PIN')}
-            disabled={isProcessing || !hasItemsToCheckout}
+            disabled={checkoutBlocked}
             className="pos-primary-action flex flex-col items-center justify-center gap-1.5 py-3 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-semibold shadow-sm transition-colors"
           >
             <CreditCard size={24} />
             <span className="text-sm">PIN</span>
           </button>
           <button
-            onClick={() => { if (hasItemsToCheckout) setGiftOpen(true); }}
-            disabled={isProcessing || !hasItemsToCheckout}
+            onClick={() => { if (!checkoutBlocked) setGiftOpen(true); }}
+            disabled={checkoutBlocked || !FEATURES.giftCardPayment}
+            title={FEATURES.giftCardPayment ? undefined : 'Cadeaubon betaling is uitgeschakeld'}
             className="pos-payment-secondary flex flex-col items-center justify-center gap-1.5 py-3 border border-zinc-200 bg-white text-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-semibold transition-colors"
           >
             <Gift size={24} />
@@ -456,7 +458,7 @@ export const Cart: React.FC = () => {
       <DiscountModal
         open={discountOpen}
         onClose={() => setDiscountOpen(false)}
-        subtotalCents={totals.subtotal + manualDiscountCents}
+        subtotalCents={totals.subtotal}
         onApply={(d) => setCartDiscount(d)}
       />
       <CashPaymentModal
@@ -465,7 +467,7 @@ export const Cart: React.FC = () => {
         totalCents={remainingTotal}
         onConfirm={(t) => {
           setCashOpen(false);
-          void finalizeCheckout('Cash', { tenderedCents: t });
+          void runCheckout('Cash', { tenderedCents: t });
         }}
       />
       <CustomerLinkModal
@@ -480,11 +482,18 @@ export const Cart: React.FC = () => {
         open={giftOpen}
         onClose={() => setGiftOpen(false)}
         totalCents={remainingTotal}
+        appliedCentsByCardId={appliedGiftCardCents}
         onConfirm={(giftCardId, amountCents, code) => {
           setGiftOpen(false);
+          const allocations = dedupeGiftCards([
+            ...cartGiftCards,
+            { id: giftCardId, amountCents, code },
+          ]);
           addCartGiftCard({ id: giftCardId, amountCents, code });
-          if (remainingTotal - amountCents <= 0) {
-            void finalizeCheckout('Cadeaubon');
+          const allocated = allocations.reduce((s, a) => s + a.amountCents, 0);
+          if (grandTotal - allocated <= 0) {
+            // Pass the allocation explicitly: the store value is one render stale.
+            void runCheckout('Cadeaubon', { giftCards: allocations });
           }
         }}
       />

@@ -3,9 +3,8 @@ import { Product } from '../types';
 import { db } from '../db/db';
 import { products as seedProducts } from '../data/products';
 import { audit } from '../auth/useAuth';
-import { OrderItem } from '../types';
 import { FEATURES } from '../config/features';
-import { BELGIAN_RETAIL_VAT_RATE } from '../data/categories';
+import { isSupportedVatRate, UnsupportedVatRateError } from '../utils/vat';
 import { findProductByScanCode, ProductScanMatch } from '../utils/productLookup';
 
 interface ProductsState {
@@ -14,9 +13,11 @@ interface ProductsState {
   hydrate: () => Promise<void>;
   findByScanCode: (code: string) => ProductScanMatch | null;
   upsert: (p: Product) => Promise<void>;
+  bulkUpsert: (products: Product[]) => Promise<void>;
   remove: (id: string) => Promise<void>;
   restore: (id: string) => Promise<void>;
-  applySale: (items: OrderItem[]) => Promise<void>;
+  /** Mirror rows already committed to Dexie (e.g. by the checkout service). */
+  syncPersisted: (products: Product[]) => void;
 }
 
 const normalizeProduct = (p: Product): Product => {
@@ -48,7 +49,7 @@ const normalizeProduct = (p: Product): Product => {
     variant: variant ? variant : undefined,
     subCategory: subCategory ? subCategory : undefined,
     costPriceCents,
-    vatRate: Number.isFinite(p.vatRate) && p.vatRate > 0 ? p.vatRate : BELGIAN_RETAIL_VAT_RATE,
+    vatRate: p.vatRate,
     stockQty,
     minStockQty,
   };
@@ -110,6 +111,7 @@ export const useProducts = create<ProductsState>((set, get) => ({
   },
 
   upsert: async (p) => {
+    if (!isSupportedVatRate(p.vatRate)) throw new UnsupportedVatRateError(p.vatRate, p.name);
     const existing = await db.products.get(p.id);
     const next: Product = normalizeProduct({ ...p, isActive: p.isActive ?? true });
     await db.products.put(next);
@@ -125,6 +127,24 @@ export const useProducts = create<ProductsState>((set, get) => ({
       priceCents: p.priceCents,
       vatRate: next.vatRate,
     });
+  },
+
+  bulkUpsert: async (products) => {
+    for (const p of products) {
+      if (!isSupportedVatRate(p.vatRate)) throw new UnsupportedVatRateError(p.vatRate, p.name);
+    }
+    const next = products.map((p) => normalizeProduct({ ...p, isActive: p.isActive ?? true }));
+    await db.transaction('rw', db.products, async () => {
+      await db.products.bulkPut(next);
+    });
+    set((s) => {
+      const byId = new Map(next.map((p) => [p.id, p]));
+      const merged = s.list.map((p) => byId.get(p.id) ?? p);
+      const known = new Set(s.list.map((p) => p.id));
+      for (const p of next) if (!known.has(p.id)) merged.push(p);
+      return { list: merged };
+    });
+    void audit('product.update', { bulk: true, count: next.length });
   },
 
   remove: async (id) => {
@@ -145,31 +165,10 @@ export const useProducts = create<ProductsState>((set, get) => ({
     void audit('product.restore', { productId: id, name: cur.name });
   },
 
-  applySale: async (items) => {
-    if (items.length === 0) return;
-
-    const soldByProductId = new Map<string, number>();
-    for (const item of items) {
-      const prev = soldByProductId.get(item.product.id) ?? 0;
-      soldByProductId.set(item.product.id, prev + item.quantity);
-    }
-
-    const updates: Product[] = [];
-    for (const [productId, soldQty] of soldByProductId) {
-      const cur = await db.products.get(productId);
-      if (!cur || cur.stockQty == null) continue;
-      updates.push(
-        normalizeProduct({
-          ...cur,
-          stockQty: Math.max(0, cur.stockQty - soldQty),
-        }),
-      );
-    }
-
-    if (updates.length === 0) return;
-    await db.products.bulkPut(updates);
+  syncPersisted: (products) => {
+    if (products.length === 0) return;
     set((s) => ({
-      list: s.list.map((p) => updates.find((u) => u.id === p.id) ?? p),
+      list: s.list.map((p) => products.find((u) => u.id === p.id) ?? p),
     }));
   },
 }));
