@@ -1,0 +1,664 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/2a6dgi",
+    "id": "2a6dgi",
+    "slide": 9,
+    "layoutId": "d48498a1-83c3-4d12-b038-2630a2b23092",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "eced218c-b497-4051-b8ab-73c5c16d2298",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#FFFFFF",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "Helvetica Neue"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "d48498a1-83c3-4d12-b038-2630a2b23092",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "eced218c-b497-4051-b8ab-73c5c16d2298",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "eced218c-b497-4051-b8ab-73c5c16d2298",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/36hsfulo",
+      "id": "1",
+      "bbox": [
+        52,
+        42,
+        300,
+        28
+      ],
+      "geometry": "rect",
+      "text": "PWAYMENT",
+      "textPreview": "PWAYMENT",
+      "resolvedFontSize": 15,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 15,
+        "typeface": "Helvetica Neue",
+        "color": "#287EF0",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "PWAYMENT"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "PWAYMENT",
+          "resolvedTextStyle": {
+            "fontSize": 15,
+            "typeface": "Helvetica Neue",
+            "color": "#287EF0",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "PWAYMENT",
+              "fontSize": 15,
+              "typeface": "Helvetica Neue",
+              "color": "#287EF0",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/47qt8zm9",
+      "id": "2",
+      "bbox": [
+        52,
+        170,
+        680,
+        120
+      ],
+      "geometry": "rect",
+      "text": "De winkel genereert\nelke dag signalen.",
+      "textPreview": "De winkel genereert | elke dag signalen.",
+      "resolvedFontSize": 50,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 50,
+        "typeface": "Helvetica Neue",
+        "color": "#101216",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "De winkel genereert"
+          },
+          {
+            "index": 2,
+            "text": "elke dag signalen."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "De winkel genereert",
+          "resolvedTextStyle": {
+            "fontSize": 50,
+            "typeface": "Helvetica Neue",
+            "color": "#101216",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "De winkel genereert",
+              "fontSize": 50,
+              "typeface": "Helvetica Neue",
+              "color": "#101216",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "elke dag signalen.",
+          "resolvedTextStyle": {
+            "fontSize": 50,
+            "typeface": "Helvetica Neue",
+            "color": "#101216",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "elke dag signalen.",
+              "fontSize": 50,
+              "typeface": "Helvetica Neue",
+              "color": "#101216",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/p8zah43e",
+      "id": "3",
+      "bbox": [
+        56,
+        350,
+        760,
+        82
+      ],
+      "geometry": "rect",
+      "text": "Pwayment maakt ze begrijpelijk.\nTalemate helpt ze uitvoerbaar maken.",
+      "textPreview": "Pwayment maakt ze begrijpelijk. | Talemate helpt ze uitvoerbaar maken.",
+      "resolvedFontSize": 27,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 27,
+        "typeface": "Helvetica Neue",
+        "color": "#5F6875",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Pwayment maakt ze begrijpelijk."
+          },
+          {
+            "index": 2,
+            "text": "Talemate helpt ze uitvoerbaar maken."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Pwayment maakt ze begrijpelijk.",
+          "resolvedTextStyle": {
+            "fontSize": 27,
+            "typeface": "Helvetica Neue",
+            "color": "#5F6875",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Pwayment maakt ze begrijpelijk.",
+              "fontSize": 27,
+              "typeface": "Helvetica Neue",
+              "color": "#5F6875",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "Talemate helpt ze uitvoerbaar maken.",
+          "resolvedTextStyle": {
+            "fontSize": 27,
+            "typeface": "Helvetica Neue",
+            "color": "#5F6875",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Talemate helpt ze uitvoerbaar maken.",
+              "fontSize": 27,
+              "typeface": "Helvetica Neue",
+              "color": "#5F6875",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/uhob254r",
+      "id": "4",
+      "bbox": [
+        858,
+        178,
+        316,
+        246
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#101216",
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/fixsbalc",
+      "id": "5",
+      "bbox": [
+        892,
+        214,
+        260,
+        20
+      ],
+      "geometry": "rect",
+      "text": "DE GEZAMENLIJKE KANS",
+      "textPreview": "DE GEZAMENLIJKE KANS",
+      "resolvedFontSize": 12,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 12,
+        "typeface": "Helvetica Neue",
+        "color": "#6CC8EF",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "DE GEZAMENLIJKE KANS"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "DE GEZAMENLIJKE KANS",
+          "resolvedTextStyle": {
+            "fontSize": 12,
+            "typeface": "Helvetica Neue",
+            "color": "#6CC8EF",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "DE GEZAMENLIJKE KANS",
+              "fontSize": 12,
+              "typeface": "Helvetica Neue",
+              "color": "#6CC8EF",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/gj6t4fmx",
+      "id": "6",
+      "bbox": [
+        892,
+        268,
+        240,
+        124
+      ],
+      "geometry": "rect",
+      "text": "Retaildata\n→ actie\n→ resultaat",
+      "textPreview": "Retaildata | → actie | → resultaat",
+      "resolvedFontSize": 32,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 32,
+        "typeface": "Helvetica Neue",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Retaildata"
+          },
+          {
+            "index": 2,
+            "text": "→ actie"
+          },
+          {
+            "index": 3,
+            "text": "→ resultaat"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Retaildata",
+          "resolvedTextStyle": {
+            "fontSize": 32,
+            "typeface": "Helvetica Neue",
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Retaildata",
+              "fontSize": 32,
+              "typeface": "Helvetica Neue",
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "→ actie",
+          "resolvedTextStyle": {
+            "fontSize": 32,
+            "typeface": "Helvetica Neue",
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "→ actie",
+              "fontSize": 32,
+              "typeface": "Helvetica Neue",
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 3,
+          "text": "→ resultaat",
+          "resolvedTextStyle": {
+            "fontSize": 32,
+            "typeface": "Helvetica Neue",
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "→ resultaat",
+              "fontSize": 32,
+              "typeface": "Helvetica Neue",
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/hkfadk3i",
+      "id": "7",
+      "bbox": [
+        56,
+        570,
+        850,
+        38
+      ],
+      "geometry": "rect",
+      "text": "Welke use-case bouwen we als eerste?",
+      "textPreview": "Welke use-case bouwen we als eerste?",
+      "resolvedFontSize": 27,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 27,
+        "typeface": "Helvetica Neue",
+        "color": "#101216",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Welke use-case bouwen we als eerste?"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Welke use-case bouwen we als eerste?",
+          "resolvedTextStyle": {
+            "fontSize": 27,
+            "typeface": "Helvetica Neue",
+            "color": "#101216",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Welke use-case bouwen we als eerste?",
+              "fontSize": 27,
+              "typeface": "Helvetica Neue",
+              "color": "#101216",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6d4ry54v",
+      "id": "8",
+      "bbox": [
+        56,
+        646,
+        700,
+        24
+      ],
+      "geometry": "rect",
+      "text": "Pwayment × Talemate · Oostende · 06.08.2026",
+      "textPreview": "Pwayment × Talemate · Oostende · 06.08.2026",
+      "resolvedFontSize": 15,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 15,
+        "typeface": "Helvetica Neue",
+        "color": "#5F6875",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Pwayment × Talemate · Oostende · 06.08.2026"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Pwayment × Talemate · Oostende · 06.08.2026",
+          "resolvedTextStyle": {
+            "fontSize": 15,
+            "typeface": "Helvetica Neue",
+            "color": "#5F6875",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Pwayment × Talemate · Oostende · 06.08.2026",
+              "fontSize": 15,
+              "typeface": "Helvetica Neue",
+              "color": "#5F6875",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}

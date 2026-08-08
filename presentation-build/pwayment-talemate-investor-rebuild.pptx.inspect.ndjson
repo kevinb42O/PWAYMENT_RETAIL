@@ -1,0 +1,179 @@
+{"kind":"deck","id":"pr/a10t83","name":"Deck"}
+{"kind":"layout","layoutId":"eced218c-b497-4051-b8ab-73c5c16d2298","name":"Master","type":"master"}
+{"kind":"layout","layoutId":"d48498a1-83c3-4d12-b038-2630a2b23092","name":"Title Slide","type":"title"}
+{"kind":"slide","id":"sl/awor49","slide":1,"title":"PWAYMENT","textShapes":7}
+{"kind":"textbox","id":"sh/gf694b2x","slide":1,"text":"PWAYMENT","textPreview":"PWAYMENT","textChars":8,"textLines":1,"bbox":[52,42,300,28]}
+{"kind":"textbox","id":"sh/fexsb6lc","slide":1,"text":"Van kassa\nnaar beslissing.","textPreview":"Van kassa | naar beslissing.","textChars":26,"textLines":2,"bbox":[52,156,760,160]}
+{"kind":"textbox","id":"sh/udor21kr","slide":1,"text":"Een concrete retailpilot voor Oostende —\ngebouwd met Talemate.","textPreview":"Een concrete retailpilot voor Oostende — | gebouwd met Talemate.","textChars":62,"textLines":2,"bbox":[56,350,700,72]}
+{"kind":"shape","id":"sh/tcfa9g36","slide":1,"bbox":[858,148,316,316]}
+{"kind":"textbox","id":"sh/srm90b2l","slide":1,"text":"DONDERDAG WIL IK BESLISSEN","textPreview":"DONDERDAG WIL IK BESLISSEN","textChars":26,"textLines":1,"bbox":[894,188,260,20]}
+{"kind":"textbox","id":"sh/7qds76l0","slide":1,"text":"Pwayment\n×\nTALEMATE","textPreview":"Pwayment | × | TALEMATE","textChars":19,"textLines":3,"bbox":[894,238,242,150]}
+{"kind":"textbox","id":"sh/6p4ry1kv","slide":1,"text":"van retaildata naar\nactie in de fysieke winkel","textPreview":"van retaildata naar | actie in de fysieke winkel","textChars":46,"textLines":2,"bbox":[894,406,242,48]}
+{"kind":"textbox","id":"sh/d8zal03a","slide":1,"text":"Investor / strategic partner discussion\nTALEMATE · Oostende · 06.08.2026","textPreview":"Investor / strategic partner discussion | TALEMATE · Oostende · 06.08.2026","textChars":72,"textLines":2,"bbox":[56,646,500,40]}
+{"kind":"notes","id":"nt/awor49","slide":1,"text":"Open met de concrete bedoeling van het gesprek. Geen claim dat Pwayment vandaag al een volledig intelligence-platform is; de deck maakt het verschil tussen bestaand product en voorgestelde pilot expliciet."}
+{"kind":"slide","id":"sl/qn44mm","slide":2,"title":"01  /  UITGANGSPOSITIE","textShapes":11}
+{"kind":"textbox","id":"sh/tsvydkfq","slide":2,"text":"01  /  UITGANGSPOSITIE","textPreview":"01  /  UITGANGSPOSITIE","textChars":22,"textLines":1,"bbox":[52,42,650,22]}
+{"kind":"textbox","id":"sh/6p4f25gz","slide":2,"text":"De eerlijke startpositie maakt de kans groter.","textPreview":"De eerlijke startpositie maakt de kans groter.","textChars":46,"textLines":1,"bbox":[52,78,1140,84]}
+{"kind":"textbox","id":"sh/rqdgbahk","slide":2,"text":"PWAYMENT  /  TALEMATE RETAIL PILOT","textPreview":"PWAYMENT  /  TALEMATE RETAIL PILOT","textChars":34,"textLines":1,"bbox":[52,681,620,18]}
+{"kind":"textbox","id":"sh/4nmx0vyt","slide":2,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[1176,681,52,18]}
+{"kind":"textbox","id":"sh/5ove90ze","slide":2,"text":"Pwayment is vandaag geen universeel AI-platform.\nHet is een werkende POS-basis met een duidelijke volgende laag.","textPreview":"Pwayment is vandaag geen universeel AI-platform. | Het is een werkende POS-basis met een duidelijke volgende laag.","textChars":112,"textLines":2,"bbox":[52,166,850,80]}
+{"kind":"shape","id":"sh/i1kfylg3","slide":2,"bbox":[52,282,1176,1]}
+{"kind":"shape","id":"sh/jmdw7qh8","slide":2,"bbox":[52,326,512,238]}
+{"kind":"textbox","id":"sh/oj6xczyd","slide":2,"text":"WAT ER VANDAAG LIGT","textPreview":"WAT ER VANDAAG LIGT","textChars":19,"textLines":1,"bbox":[82,356,260,20]}
+{"kind":"textbox","id":"sh/pkfyl4fi","slide":2,"text":"Offline-first POS\nvoor Belgische retail","textPreview":"Offline-first POS | voor Belgische retail","textChars":39,"textLines":2,"bbox":[82,398,390,64]}
+{"kind":"textbox","id":"sh/dgn2p8vy","slide":2,"text":"Kassa · catalogus · voorraad · aankoopprijs\nverkoopprijs · Belgische btw · klanten · rapporten","textPreview":"Kassa · catalogus · voorraad · aankoopprijs | verkoopprijs · Belgische btw · klanten · rapporten","textChars":94,"textLines":2,"bbox":[82,488,412,54]}
+{"kind":"shape","id":"sh/cfu1w3ud","slide":2,"bbox":[664,326,564,238]}
+{"kind":"textbox","id":"sh/belknids","slide":2,"text":"WAT WE SAMEN BEWIJZEN","textPreview":"WAT WE SAMEN BEWIJZEN","textChars":21,"textLines":1,"bbox":[694,356,260,20]}
+{"kind":"textbox","id":"sh/qdcjudc7","slide":2,"text":"Retaildata wordt\nbruikbare actie.","textPreview":"Retaildata wordt | bruikbare actie.","textChars":33,"textLines":2,"bbox":[694,398,430,64]}
+{"kind":"textbox","id":"sh/pc3il8vm","slide":2,"text":"Niet méér schermen. Wel betere beslissingen\nover voorraad, marge en klantmomenten.","textPreview":"Niet méér schermen. Wel betere beslissingen | over voorraad, marge en klantmomenten.","textChars":82,"textLines":2,"bbox":[694,488,440,54]}
+{"kind":"notes","id":"nt/qn44mm","slide":2,"text":"Deze slide bouwt vertrouwen op. De huidige productstatus is gebaseerd op de aanwezige Pwayment-codebase: offline-first POS, productbeheer, voorraad, Belgische btw, klanten, rapportage, audit en rollen. De intelligence-laag is een voorgestelde volgende fase."}
+{"kind":"slide","id":"sl/htrnkd","slide":3,"title":"02  /  BEWIJS VANDAAG","textShapes":18}
+{"kind":"textbox","id":"sh/rapkr6dw","slide":3,"text":"02  /  BEWIJS VANDAAG","textPreview":"02  /  BEWIJS VANDAAG","textChars":21,"textLines":1,"bbox":[52,42,650,22]}
+{"kind":"textbox","id":"sh/sbylkbeh","slide":3,"text":"Er staat al een bruikbare retailbasis.","textPreview":"Er staat al een bruikbare retailbasis.","textChars":38,"textLines":1,"bbox":[52,78,1140,84]}
+{"kind":"textbox","id":"sh/tc72tgv2","slide":3,"text":"PWAYMENT  /  TALEMATE RETAIL PILOT","textPreview":"PWAYMENT  /  TALEMATE RETAIL PILOT","textChars":34,"textLines":1,"bbox":[52,681,620,18]}
+{"kind":"textbox","id":"sh/ilw3e1wf","slide":3,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[1176,681,52,18]}
+{"kind":"textbox","id":"sh/jm5knmdk","slide":3,"text":"De eerste versie lost het transactionele stuk op. Dat is de ingang naar intelligence.","textPreview":"De eerste versie lost het transactionele stuk op. Dat is de ingang naar intelligence.","textChars":85,"textLines":1,"bbox":[52,160,900,34]}
+{"kind":"shape","id":"sh/4nelgre5","slide":3,"bbox":[52,246,260,248]}
+{"kind":"textbox","id":"sh/5o72pwvq","slide":3,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[76,272,80,28]}
+{"kind":"textbox","id":"sh/uhw3ahw3","slide":3,"text":"Verkopen","textPreview":"Verkopen","textChars":8,"textLines":1,"bbox":[76,326,210,34]}
+{"kind":"textbox","id":"sh/vi5kjmdo","slide":3,"text":"Barcode / SKU, winkelmand, kortingen, betaalmethodes","textPreview":"Barcode / SKU, winkelmand, kortingen, betaalmethodes","textChars":52,"textLines":1,"bbox":[76,382,210,80]}
+{"kind":"shape","id":"sh/r61g321s","slide":3,"bbox":[348,246,260,248]}
+{"kind":"textbox","id":"sh/q5szuxkn","slide":3,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[372,272,80,28]}
+{"kind":"textbox","id":"sh/d8ji5cjy","slide":3,"text":"Beheren","textPreview":"Beheren","textChars":7,"textLines":1,"bbox":[372,326,210,34]}
+{"kind":"textbox","id":"sh/s7ahw72d","slide":3,"text":"Producten, categorieën, aankoopprijs, verkoopprijs, voorraad","textPreview":"Producten, categorieën, aankoopprijs, verkoopprijs, voorraad","textChars":60,"textLines":1,"bbox":[372,382,210,80]}
+{"kind":"shape","id":"sh/fa107m14","slide":3,"bbox":[644,246,260,248]}
+{"kind":"textbox","id":"sh/e9szyhkj","slide":3,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[668,272,80,28]}
+{"kind":"textbox","id":"sh/1c3i9cja","slide":3,"text":"Verantwoorden","textPreview":"Verantwoorden","textChars":13,"textLines":1,"bbox":[668,326,210,34]}
+{"kind":"textbox","id":"sh/0buh0r2p","slide":3,"text":"Belgische btw, dagrapport, hash-keten, auditlog","textPreview":"Belgische btw, dagrapport, hash-keten, auditlog","textChars":47,"textLines":1,"bbox":[668,382,210,80]}
+{"kind":"shape","id":"sh/vehgvi10","slide":3,"bbox":[940,246,260,248]}
+{"kind":"textbox","id":"sh/ud8zmdkf","slide":3,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[964,272,80,28]}
+{"kind":"textbox","id":"sh/ytwjul4n","slide":3,"text":"Relatie bouwen","textPreview":"Relatie bouwen","textChars":14,"textLines":1,"bbox":[964,326,210,34]}
+{"kind":"textbox","id":"sh/zupk3ql8","slide":3,"text":"Klantenkaart, winkelhistoriek, cadeaubonnen, rollen","textPreview":"Klantenkaart, winkelhistoriek, cadeaubonnen, rollen","textChars":51,"textLines":1,"bbox":[964,382,210,80]}
+{"kind":"textbox","id":"sh/kvylwvmt","slide":3,"text":"De ontbrekende stap: van “wat verkocht?” naar “wat moet de eigenaar nu doen?”","textPreview":"De ontbrekende stap: van “wat verkocht?” naar “wat moet de eigenaar nu doen?”","textChars":77,"textLines":1,"bbox":[52,570,1060,36]}
+{"kind":"notes","id":"nt/htrnkd","slide":3,"text":"Product-capabilities zijn afgeleid uit de bestaande codebase en README. Geen externe marktclaims. Gebruik dit moment om kort een live demo of productvideo te tonen als die beschikbaar is."}
+{"kind":"slide","id":"sl/9cnzfd","slide":4,"title":"03  /  DE CONCRETE JOB","textShapes":14}
+{"kind":"textbox","id":"sh/83e1gryx","slide":4,"text":"03  /  DE CONCRETE JOB","textPreview":"03  /  DE CONCRETE JOB","textChars":22,"textLines":1,"bbox":[52,42,650,22]}
+{"kind":"textbox","id":"sh/n2507mhc","slide":4,"text":"De winkelier heeft geen dataprobleem. Hij heeft een beslisprobleem.","textPreview":"De winkelier heeft geen dataprobleem. Hij heeft een beslisprobleem.","textChars":67,"textLines":1,"bbox":[52,78,1140,84]}
+{"kind":"textbox","id":"sh/m1wzehgr","slide":4,"text":"PWAYMENT  /  TALEMATE RETAIL PILOT","textPreview":"PWAYMENT  /  TALEMATE RETAIL PILOT","textChars":34,"textLines":1,"bbox":[52,681,620,18]}
+{"kind":"textbox","id":"sh/l0ni5cz6","slide":4,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[1176,681,52,18]}
+{"kind":"shape","id":"sh/0zuhc7yl","slide":4,"bbox":[52,176,414,342]}
+{"kind":"textbox","id":"sh/zyl032h0","slide":4,"text":"DE VRAAG ACHTER DE KASSA","textPreview":"DE VRAAG ACHTER DE KASSA","textChars":24,"textLines":1,"bbox":[82,210,260,20]}
+{"kind":"textbox","id":"sh/yxczaxgv","slide":4,"text":"“Ik zie wat er\ngebeurde.\nMaar waarom —\nen wat nu?”","textPreview":"“Ik zie wat er | gebeurde. | Maar waarom — | en wat nu?”","textChars":50,"textLines":4,"bbox":[82,258,330,160]}
+{"kind":"textbox","id":"sh/dw3i1sza","slide":4,"text":"Elke week opnieuw: marge, voorraad, timing, klant en medewerker beïnvloeden elkaar.","textPreview":"Elke week opnieuw: marge, voorraad, timing, klant en medewerker beïnvloeden elkaar.","textChars":83,"textLines":1,"bbox":[82,452,320,46]}
+{"kind":"shape","id":"sh/cvuh87yp","slide":4,"bbox":[466,342,54,3]}
+{"kind":"shape","id":"sh/alcja143","slide":4,"bbox":[748,342,4,3]}
+{"kind":"shape","id":"sh/bmlk3mlo","slide":4,"bbox":[980,342,4,3]}
+{"kind":"shape","id":"sh/cnu1crm9","slide":4,"bbox":[520,248,228,188]}
+{"kind":"textbox","id":"sh/xon25w3u","slide":4,"text":"Signaal","textPreview":"Signaal","textChars":7,"textLines":1,"bbox":[544,278,180,30]}
+{"kind":"textbox","id":"sh/2hcj6h47","slide":4,"text":"Verkoop, retour, voorraad, korting","textPreview":"Verkoop, retour, voorraad, korting","textChars":34,"textLines":1,"bbox":[544,338,178,68]}
+{"kind":"shape","id":"sh/nilkzmls","slide":4,"bbox":[752,248,228,188]}
+{"kind":"textbox","id":"sh/oju18rmx","slide":4,"text":"Inzicht","textPreview":"Inzicht","textChars":7,"textLines":1,"bbox":[776,278,180,30]}
+{"kind":"textbox","id":"sh/pk321w3i","slide":4,"text":"Oorzaak, prioriteit, kans","textPreview":"Oorzaak, prioriteit, kans","textChars":25,"textLines":1,"bbox":[776,338,178,68]}
+{"kind":"shape","id":"sh/etsj2h4v","slide":4,"bbox":[984,248,228,188]}
+{"kind":"textbox","id":"sh/fu10v2lg","slide":4,"text":"Actie","textPreview":"Actie","textChars":5,"textLines":1,"bbox":[1008,278,180,30]}
+{"kind":"textbox","id":"sh/jmx8nexw","slide":4,"text":"Bestel, prijs aan, stop, contacteer","textPreview":"Bestel, prijs aan, stop, contacteer","textChars":35,"textLines":1,"bbox":[1008,338,178,68]}
+{"kind":"textbox","id":"sh/ilo7e9gr","slide":4,"text":"Dat is de wedge: de dagelijkse beslissing, niet het zoveelste dashboard.","textPreview":"Dat is de wedge: de dagelijkse beslissing, niet het zoveelste dashboard.","textChars":72,"textLines":1,"bbox":[520,494,620,58]}
+{"kind":"notes","id":"nt/9cnzfd","slide":4,"text":"Gebruik één herkenbaar winkelverhaal. De formuleringen zijn producthypotheses, geen bewezen klantresultaten."}
+{"kind":"slide","id":"sl/pmdghe","slide":5,"title":"04  /  WAAROM TALEMATE","textShapes":12}
+{"kind":"textbox","id":"sh/t8rqxsbm","slide":5,"text":"04  /  WAAROM TALEMATE","textPreview":"04  /  WAAROM TALEMATE","textChars":22,"textLines":1,"bbox":[52,42,650,22]}
+{"kind":"textbox","id":"sh/65g7mdsv","slide":5,"text":"Talemate maakt retaildata uitvoerbaar.","textPreview":"Talemate maakt retaildata uitvoerbaar.","textChars":38,"textLines":1,"bbox":[52,78,1140,84]}
+{"kind":"textbox","id":"sh/76p8vitg","slide":5,"text":"PWAYMENT  /  TALEMATE RETAIL PILOT","textPreview":"PWAYMENT  /  TALEMATE RETAIL PILOT","textChars":34,"textLines":1,"bbox":[52,681,620,18]}
+{"kind":"textbox","id":"sh/k3ypk3ap","slide":5,"text":"05","textPreview":"05","textChars":2,"textLines":1,"bbox":[1176,681,52,18]}
+{"kind":"textbox","id":"sh/547qt8ba","slide":5,"text":"Pwayment brengt de retailcontext. Talemate kan die context verbinden met de fysieke wereld.","textPreview":"Pwayment brengt de retailcontext. Talemate kan die context verbinden met de fysieke wereld.","textChars":91,"textLines":1,"bbox":[52,160,1000,34]}
+{"kind":"shape","id":"sh/i1g7idsj","slide":5,"bbox":[372,350,108,3]}
+{"kind":"shape","id":"sh/j2p8rit4","slide":5,"bbox":[800,350,108,3]}
+{"kind":"shape","id":"sh/wfepg3at","slide":5,"bbox":[52,250,320,210]}
+{"kind":"textbox","id":"sh/xg7qp8be","slide":5,"text":"PWAYMENT","textPreview":"PWAYMENT","textChars":8,"textLines":1,"bbox":[82,284,260,20]}
+{"kind":"textbox","id":"sh/5wfi9wz2","slide":5,"text":"Retail events\nMetrics\nContext","textPreview":"Retail events | Metrics | Context","textChars":29,"textLines":3,"bbox":[82,332,230,110]}
+{"kind":"shape","id":"sh/4v6h0rih","slide":5,"bbox":[480,250,320,210]}
+{"kind":"textbox","id":"sh/jax076hw","slide":5,"text":"DE CONNECTOR","textPreview":"DE CONNECTOR","textChars":12,"textLines":1,"bbox":[510,284,260,20]}
+{"kind":"textbox","id":"sh/i9ozy10b","slide":5,"text":"API\nNo-code workflow\nCloud sync","textPreview":"API | No-code workflow | Cloud sync","textChars":31,"textLines":3,"bbox":[510,332,240,110]}
+{"kind":"shape","id":"sh/h8fi5wjq","slide":5,"bbox":[908,250,320,210]}
+{"kind":"textbox","id":"sh/w76hwri5","slide":5,"text":"TALEMATE","textPreview":"TALEMATE","textChars":8,"textLines":1,"bbox":[938,284,260,20]}
+{"kind":"textbox","id":"sh/v6d03m1k","slide":5,"text":"Trigger\nWorkflow\nFysieke actie","textPreview":"Trigger | Workflow | Fysieke actie","textChars":30,"textLines":3,"bbox":[938,332,240,110]}
+{"kind":"shape","id":"sh/u54zuh0z","slide":5,"bbox":[52,540,1176,72]}
+{"kind":"textbox","id":"sh/94vy1cju","slide":5,"text":"Voorbeeld: slow mover gedetecteerd  →  taak naar medewerker  →  actie in de winkel  →  resultaat terug naar Pwayment.","textPreview":"Voorbeeld: slow mover gedetecteerd  →  taak naar medewerker  →  actie in de winkel  →  resultaat terug naar Pwayment.","textChars":117,"textLines":1,"bbox":[78,564,1124,30]}
+{"kind":"notes","id":"nt/pmdghe","slide":5,"text":"[Sources]\nTALEMATE platform one-pager: https://www.talemate.co/web/content/83385?unique=ff28d6f34da4da333f5fb15bacd61f7b7c1884a06\nTALEMATE contact/product overview: https://www.talemate.co/contact\nDe voorgestelde actiekring en retail-use-case zijn een interpretatie en voorstel, geen bestaande Talemate-integratie."}
+{"kind":"slide","id":"sl/ow2fxk","slide":6,"title":"05  /  HET VOORSTEL","textShapes":18}
+{"kind":"textbox","id":"sh/nyp8f614","slide":6,"text":"05  /  HET VOORSTEL","textPreview":"05  /  HET VOORSTEL","textChars":19,"textLines":1,"bbox":[52,42,650,22]}
+{"kind":"textbox","id":"sh/8zy98r2p","slide":6,"text":"Mijn voorstel: bewijs één retail-use-case in zes weken.","textPreview":"Mijn voorstel: bewijs één retail-use-case in zes weken.","textChars":55,"textLines":1,"bbox":[52,78,1140,84]}
+{"kind":"textbox","id":"sh/907qhwja","slide":6,"text":"PWAYMENT  /  TALEMATE RETAIL PILOT","textPreview":"PWAYMENT  /  TALEMATE RETAIL PILOT","textChars":34,"textLines":1,"bbox":[52,681,620,18]}
+{"kind":"textbox","id":"sh/y9wr2hkn","slide":6,"text":"06","textPreview":"06","textChars":2,"textLines":1,"bbox":[1176,681,52,18]}
+{"kind":"textbox","id":"sh/zap8bm18","slide":6,"text":"Geen brede platformbelofte. Eén winkelprobleem, één connector, één meetbaar resultaat.","textPreview":"Geen brede platformbelofte. Eén winkelprobleem, één connector, één meetbaar resultaat.","textChars":86,"textLines":1,"bbox":[52,160,1000,34]}
+{"kind":"shape","id":"sh/0vy94r2t","slide":6,"bbox":[52,252,360,260]}
+{"kind":"shape","id":"sh/lw7qdwje","slide":6,"bbox":[80,282,48,48]}
+{"kind":"textbox","id":"sh/i50relkr","slide":6,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[91,295,26,20]}
+{"kind":"textbox","id":"sh/j69snq1c","slide":6,"text":"Week 1–2","textPreview":"Week 1–2","textChars":8,"textLines":1,"bbox":[148,294,180,24]}
+{"kind":"textbox","id":"sh/ba5gji5k","slide":6,"text":"Kiezen","textPreview":"Kiezen","textChars":6,"textLines":1,"bbox":[80,356,280,34]}
+{"kind":"textbox","id":"sh/q9wzad4f","slide":6,"text":"Selecteer één Oostendse retailcase en definieer de succesmaatstaf.","textPreview":"Selecteer één Oostendse retailcase en definieer de succesmaatstaf.","textChars":66,"textLines":1,"bbox":[80,414,290,62]}
+{"kind":"shape","id":"sh/dwnylsnq","slide":6,"bbox":[444,252,360,260]}
+{"kind":"shape","id":"sh/cvehcnm5","slide":6,"bbox":[472,282,48,48]}
+{"kind":"textbox","id":"sh/zy5gn25w","slide":6,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[483,295,26,20]}
+{"kind":"textbox","id":"sh/yxwzex4b","slide":6,"text":"Week 3–4","textPreview":"Week 3–4","textChars":8,"textLines":1,"bbox":[540,294,180,24]}
+{"kind":"textbox","id":"sh/l07ipsn2","slide":6,"text":"Verbinden","textPreview":"Verbinden","textChars":9,"textLines":1,"bbox":[472,356,280,34]}
+{"kind":"textbox","id":"sh/0zehg7mh","slide":6,"text":"Koppel Pwayment-events aan één Talemate-workflow.","textPreview":"Koppel Pwayment-events aan één Talemate-workflow.","textChars":49,"textLines":1,"bbox":[472,414,290,62]}
+{"kind":"shape","id":"sh/n2p0r25s","slide":6,"bbox":[836,252,360,260]}
+{"kind":"shape","id":"sh/m1gzix47","slide":6,"bbox":[864,282,48,48]}
+{"kind":"textbox","id":"sh/ix0ja1of","slide":6,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[875,295,26,20]}
+{"kind":"textbox","id":"sh/jy9kj6p0","slide":6,"text":"Week 5–6","textPreview":"Week 5–6","textChars":8,"textLines":1,"bbox":[932,294,180,24]}
+{"kind":"textbox","id":"sh/kz21cb6l","slide":6,"text":"Bewijzen","textPreview":"Bewijzen","textChars":8,"textLines":1,"bbox":[864,356,280,34]}
+{"kind":"textbox","id":"sh/5kb2lg76","slide":6,"text":"Test met echte winkelhandelingen en leg de impact vast.","textPreview":"Test met echte winkelhandelingen en leg de impact vast.","textChars":55,"textLines":1,"bbox":[864,414,290,62]}
+{"kind":"textbox","id":"sh/at0j61oj","slide":6,"text":"Succes = een aantoonbaar betere beslissing, niet een mooiere demo.","textPreview":"Succes = een aantoonbaar betere beslissing, niet een mooiere demo.","textChars":66,"textLines":1,"bbox":[52,568,1000,34]}
+{"kind":"notes","id":"nt/ow2fxk","slide":6,"text":"De zes weken zijn een voorstel voor scoping, geen belofte op basis van reeds afgesproken planning. Vraag in de meeting welke pilotomgeving en succesmaatstaf haalbaar zijn."}
+{"kind":"slide","id":"sl/15nz3t","slide":7,"title":"06  /  HET BEDRIJF","textShapes":19}
+{"kind":"textbox","id":"sh/dszy58rq","slide":7,"text":"06  /  HET BEDRIJF","textPreview":"06  /  HET BEDRIJF","textChars":18,"textLines":1,"bbox":[52,42,650,22]}
+{"kind":"textbox","id":"sh/qpofut8z","slide":7,"text":"De commerciële logica begint smal — en kan daarna verbreden.","textPreview":"De commerciële logica begint smal — en kan daarna verbreden.","textChars":60,"textLines":1,"bbox":[52,78,1140,84]}
+{"kind":"textbox","id":"sh/rqhg3y9k","slide":7,"text":"PWAYMENT  /  TALEMATE RETAIL PILOT","textPreview":"PWAYMENT  /  TALEMATE RETAIL PILOT","textChars":34,"textLines":1,"bbox":[52,681,620,18]}
+{"kind":"textbox","id":"sh/0vqh0nq1","slide":7,"text":"07","textPreview":"07","textChars":2,"textLines":1,"bbox":[1176,681,52,18]}
+{"kind":"textbox","id":"sh/1wzy9srm","slide":7,"text":"Wat we al weten","textPreview":"Wat we al weten","textChars":15,"textLines":1,"bbox":[52,196,300,28]}
+{"kind":"textbox","id":"sh/et8zyd8b","slide":7,"text":"Wat we moeten bewijzen","textPreview":"Wat we moeten bewijzen","textChars":22,"textLines":1,"bbox":[664,196,360,28]}
+{"kind":"shape","id":"sh/fuhg7i9g","slide":7,"bbox":[52,310,1176,1]}
+{"kind":"textbox","id":"sh/ozah4nqd","slide":7,"text":"Startpunt","textPreview":"Startpunt","textChars":9,"textLines":1,"bbox":[52,246,170,30]}
+{"kind":"textbox","id":"sh/pkjydsry","slide":7,"text":"Skateshops en gespecialiseerde retail","textPreview":"Skateshops en gespecialiseerde retail","textChars":37,"textLines":1,"bbox":[244,246,350,30]}
+{"kind":"textbox","id":"sh/10fm14vy","slide":7,"text":"Sterke product/voorraad-context; Pwayment is daar al op gericht.","textPreview":"Sterke product/voorraad-context; Pwayment is daar al op gericht.","textChars":64,"textLines":1,"bbox":[664,246,520,44]}
+{"kind":"shape","id":"sh/0z6lszud","slide":7,"bbox":[52,392,1176,1]}
+{"kind":"textbox","id":"sh/fyx4zuds","slide":7,"text":"Product","textPreview":"Product","textChars":7,"textLines":1,"bbox":[52,328,170,30]}
+{"kind":"textbox","id":"sh/exo3qpcn","slide":7,"text":"POS-basis + intelligence-laag","textPreview":"POS-basis + intelligence-laag","textChars":29,"textLines":1,"bbox":[244,328,350,30]}
+{"kind":"textbox","id":"sh/pozm54va","slide":7,"text":"Van transacties naar aanbevelingen en workflows.","textPreview":"Van transacties naar aanbevelingen en workflows.","textChars":48,"textLines":1,"bbox":[664,328,520,44]}
+{"kind":"shape","id":"sh/on6lwzup","slide":7,"bbox":[52,474,1176,1]}
+{"kind":"textbox","id":"sh/nmx43ud4","slide":7,"text":"Verdienmodel","textPreview":"Verdienmodel","textChars":12,"textLines":1,"bbox":[52,410,170,30]}
+{"kind":"textbox","id":"sh/2lo3u9cj","slide":7,"text":"Werkhypothese: software per winkel","textPreview":"Werkhypothese: software per winkel","textChars":34,"textLines":1,"bbox":[244,410,350,30]}
+{"kind":"textbox","id":"sh/5sv2tkvq","slide":7,"text":"Extra connector-/automation tier na bewezen waarde.","textPreview":"Extra connector-/automation tier na bewezen waarde.","textChars":51,"textLines":1,"bbox":[664,410,520,44]}
+{"kind":"shape","id":"sh/4rmlkfu5","slide":7,"bbox":[52,556,1176,1]}
+{"kind":"textbox","id":"sh/gnadwz6d","slide":7,"text":"Uitbreiding","textPreview":"Uitbreiding","textChars":11,"textLines":1,"bbox":[52,492,170,30]}
+{"kind":"textbox","id":"sh/hojup47y","slide":7,"text":"Andere gespecialiseerde winkels","textPreview":"Andere gespecialiseerde winkels","textChars":31,"textLines":1,"bbox":[244,492,350,30]}
+{"kind":"textbox","id":"sh/ul8vu987","slide":7,"text":"De retailkern blijft; verticale regels en workflows veranderen.","textPreview":"De retailkern blijft; verticale regels en workflows veranderen.","textChars":63,"textLines":1,"bbox":[664,492,520,44]}
+{"kind":"shape","id":"sh/vmhcneps","slide":7,"bbox":[52,574,1176,42]}
+{"kind":"textbox","id":"sh/4rad0j6p","slide":7,"text":"Belangrijk: dit is een businessmodel-hypothese voor validatie, geen opgeblazen marktclaim.","textPreview":"Belangrijk: dit is een businessmodel-hypothese voor validatie, geen opgeblazen marktclaim.","textChars":90,"textLines":1,"bbox":[76,586,1120,22]}
+{"kind":"notes","id":"nt/15nz3t","slide":7,"text":"De businessmodel-regel is bewust als werkhypothese gelabeld. Er zijn geen verzonnen TAM-, omzet- of klantcijfers opgenomen."}
+{"kind":"slide","id":"sl/v43idu","slide":8,"title":"07  /  DE VRAAG","textShapes":15}
+{"kind":"textbox","id":"sh/9wnuxkbu","slide":8,"text":"07  /  DE VRAAG","textPreview":"07  /  DE VRAAG","textChars":15,"textLines":1,"bbox":[52,42,650,22]}
+{"kind":"textbox","id":"sh/mtcbmpc3","slide":8,"text":"Donderdag wil ik geen compliment. Ik wil een volgende stap.","textPreview":"Donderdag wil ik geen compliment. Ik wil een volgende stap.","textChars":59,"textLines":1,"bbox":[52,78,1140,84]}
+{"kind":"textbox","id":"sh/nulcvuto","slide":8,"text":"PWAYMENT  /  TALEMATE RETAIL PILOT","textPreview":"PWAYMENT  /  TALEMATE RETAIL PILOT","textChars":34,"textLines":1,"bbox":[52,681,620,18]}
+{"kind":"textbox","id":"sh/0rutkfud","slide":8,"text":"08","textPreview":"08","textChars":2,"textLines":1,"bbox":[1176,681,52,18]}
+{"kind":"textbox","id":"sh/ls3utkby","slide":8,"text":"Mijn concrete vraag aan Talemate en de stad Oostende:","textPreview":"Mijn concrete vraag aan Talemate en de stad Oostende:","textChars":53,"textLines":1,"bbox":[52,158,900,34]}
+{"kind":"shape","id":"sh/epcbi5c7","slide":8,"bbox":[52,232,1176,118]}
+{"kind":"textbox","id":"sh/zqlcrats","slide":8,"text":"Geef ons de kans om één echte retail-use-case\nsamen te bewijzen.","textPreview":"Geef ons de kans om één echte retail-use-case | samen te bewijzen.","textChars":64,"textLines":2,"bbox":[84,262,820,72]}
+{"kind":"shape","id":"sh/knydwjah","slide":8,"bbox":[52,416,44,44]}
+{"kind":"textbox","id":"sh/5o7u54b2","slide":8,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[63,429,22,20]}
+{"kind":"textbox","id":"sh/5gjmp0jm","slide":8,"text":"Talemate","textPreview":"Talemate","textChars":8,"textLines":1,"bbox":[116,420,260,28]}
+{"kind":"textbox","id":"sh/4va5gf21","slide":8,"text":"Een technische discovery rond één connector en workflow.","textPreview":"Een technische discovery rond één connector en workflow.","textChars":56,"textLines":1,"bbox":[116,462,280,56]}
+{"kind":"shape","id":"sh/3u14nalg","slide":8,"bbox":[444,416,44,44]}
+{"kind":"textbox","id":"sh/itsne5kv","slide":8,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[455,429,22,20]}
+{"kind":"textbox","id":"sh/hszml03a","slide":8,"text":"Oostende","textPreview":"Oostende","textChars":8,"textLines":1,"bbox":[508,420,260,28]}
+{"kind":"textbox","id":"sh/grq5cv25","slide":8,"text":"Een realistische retailomgeving of pilotpartner om het probleem te testen.","textPreview":"Een realistische retailomgeving of pilotpartner om het probleem te testen.","textChars":74,"textLines":1,"bbox":[508,462,280,56]}
+{"kind":"shape","id":"sh/vqh4jqlk","slide":8,"bbox":[836,416,44,44]}
+{"kind":"textbox","id":"sh/up83alkz","slide":8,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[847,429,22,20]}
+{"kind":"textbox","id":"sh/1o3mx4ju","slide":8,"text":"Samen","textPreview":"Samen","textChars":5,"textLines":1,"bbox":[900,420,260,28]}
+{"kind":"textbox","id":"sh/0nu5oz29","slide":8,"text":"Een go/no-go-moment na de pilot voor verdere investering en schaal.","textPreview":"Een go/no-go-moment na de pilot voor verdere investering en schaal.","textChars":67,"textLines":1,"bbox":[900,462,280,56]}
+{"kind":"notes","id":"nt/v43idu","slide":8,"text":"Dit is de kernvraag. Laat de zaal kiezen tussen: concrete pilot, technische discovery, of geen fit. De presentatie hoeft niet te eindigen met een vage uitnodiging."}
+{"kind":"slide","id":"sl/2a6dgi","slide":9,"title":"PWAYMENT","textShapes":7}
+{"kind":"textbox","id":"sh/36hsfulo","slide":9,"text":"PWAYMENT","textPreview":"PWAYMENT","textChars":8,"textLines":1,"bbox":[52,42,300,28]}
+{"kind":"textbox","id":"sh/47qt8zm9","slide":9,"text":"De winkel genereert\nelke dag signalen.","textPreview":"De winkel genereert | elke dag signalen.","textChars":38,"textLines":2,"bbox":[52,170,680,120]}
+{"kind":"textbox","id":"sh/p8zah43e","slide":9,"text":"Pwayment maakt ze begrijpelijk.\nTalemate helpt ze uitvoerbaar maken.","textPreview":"Pwayment maakt ze begrijpelijk. | Talemate helpt ze uitvoerbaar maken.","textChars":68,"textLines":2,"bbox":[56,350,760,82]}
+{"kind":"shape","id":"sh/uhob254r","slide":9,"bbox":[858,178,316,246]}
+{"kind":"textbox","id":"sh/fixsbalc","slide":9,"text":"DE GEZAMENLIJKE KANS","textPreview":"DE GEZAMENLIJKE KANS","textChars":20,"textLines":1,"bbox":[892,214,260,20]}
+{"kind":"textbox","id":"sh/gj6t4fmx","slide":9,"text":"Retaildata\n→ actie\n→ resultaat","textPreview":"Retaildata | → actie | → resultaat","textChars":30,"textLines":3,"bbox":[892,268,240,124]}
+{"kind":"textbox","id":"sh/hkfadk3i","slide":9,"text":"Welke use-case bouwen we als eerste?","textPreview":"Welke use-case bouwen we als eerste?","textChars":36,"textLines":1,"bbox":[56,570,850,38]}
+{"kind":"textbox","id":"sh/6d4ry54v","slide":9,"text":"Pwayment × Talemate · Oostende · 06.08.2026","textPreview":"Pwayment × Talemate · Oostende · 06.08.2026","textChars":43,"textLines":1,"bbox":[56,646,700,24]}
+{"kind":"notes","id":"nt/2a6dgi","slide":9,"text":"Afsluiter: herhaal de concrete vraag en laat daarna stilte vallen. Geen extra slogan uitleggen."}

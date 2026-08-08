@@ -1,0 +1,7 @@
+Pwayment / TALEMATE retail intelligence deck
+
+External sources used in speaker notes:
+- TALEMATE platform one-pager: https://www.talemate.co/web/content/83385?unique=ff28d6f34da4da333f5fb15bacd61f7b7c1884a06
+- TALEMATE contact/product overview: https://www.talemate.co/contact
+
+All numerical dashboard values in the deck are explicitly labelled as illustrative demo data. Product strategy, roadmap, and positioning are original recommendations based on the Pwayment codebase audit and the user's meeting context.

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 160" role="img" aria-labelledby="title desc">
+  <title id="title">pwayment reversed logo</title>
+  <desc id="desc">A geometric P-shaped flow mark followed by the pwayment wordmark in white.</desc>
+  <defs>
+    <linearGradient id="mark" x1="28" y1="22" x2="132" y2="138" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#37E1D0"/>
+      <stop offset="1" stop-color="#1CB7D9"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(8 8)">
+    <rect width="144" height="144" rx="42" fill="#F7FAFC"/>
+    <path d="M48 116V36h40c23 0 38 12 38 31s-15 31-38 31H48" fill="none" stroke="url(#mark)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M91 98l25 18" fill="none" stroke="#7B8F00" stroke-width="11" stroke-linecap="round"/>
+  </g>
+  <text x="184" y="105" fill="#FFFFFF" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="72" font-weight="760" letter-spacing="-4">pwayment</text>
+</svg>

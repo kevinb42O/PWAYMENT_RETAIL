@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-labelledby="title desc">
+  <title id="title">Pwayment</title>
+  <desc id="desc">Pwayment open P monogram</desc>
+  <defs>
+    <linearGradient id="mark" x1="28" y1="22" x2="132" y2="138" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#37E1D0"/>
+      <stop offset="1" stop-color="#1CB7D9"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="144" height="144" rx="42" fill="#0B1220"/>
+  <path d="M48 116V36h40c23 0 38 12 38 31s-15 31-38 31H48" fill="none" stroke="url(#mark)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M91 98l25 18" fill="none" stroke="#D9F36A" stroke-width="11" stroke-linecap="round"/>
+</svg>

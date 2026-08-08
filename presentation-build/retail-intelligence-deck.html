@@ -1,0 +1,982 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pwayment | Pwayment × Talemate</title>
+  <style>
+    :root {
+      --bg: #0c1014;
+      --surface: #151b21;
+      --surface-2: #1c242c;
+      --ink: #f5f7f8;
+      --muted: #94a0aa;
+      --line: rgba(255,255,255,.12);
+      --blue: #4c91ff;
+      --cyan: #63d4ef;
+      --lime: #c8f36c;
+      --orange: #ffb45d;
+      --red: #ff7676;
+      --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; background: var(--bg); color: var(--ink); font-family: var(--font); overflow: hidden; }
+    button { font: inherit; color: inherit; }
+    .deck { width: 100vw; height: 100vh; position: relative; background: var(--bg); }
+    .ambient { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+    .ambient::before { content: ""; position: absolute; width: 58vw; height: 58vw; border-radius: 50%; background: radial-gradient(circle, rgba(76,145,255,.18), transparent 65%); right: -18vw; top: -27vw; }
+    .ambient::after { content: ""; position: absolute; width: 42vw; height: 42vw; border-radius: 50%; background: radial-gradient(circle, rgba(200,243,108,.06), transparent 68%); left: -22vw; bottom: -22vw; }
+    .topbar { position: absolute; top: 0; left: 0; right: 0; height: 76px; display: flex; align-items: center; justify-content: space-between; padding: 0 5.4vw; z-index: 5; }
+    .brand-block { display: flex; flex-direction: column; align-items: flex-start; gap: 7px; }
+    .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); }
+    .brand-mark { width: 22px; height: 22px; display: block; flex: 0 0 auto; }
+    .brand-name { display: inline-block; color: #f5f7f8; font-family: "Avenir Next", "Helvetica Neue", Inter, ui-sans-serif, system-ui, sans-serif; font-size: 17px; line-height: 1; font-weight: 680; letter-spacing: -.055em; font-feature-settings: "kern" 1; white-space: nowrap; }
+    .brand-subtitle { align-self: center; color: var(--muted); font-size: 9px; line-height: 1; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+    .topbar .context { font-size: 12px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+    #next { color: var(--lime); border-color: rgba(200,243,108,.38); }
+    #next.needs-reveal { animation: revealPulse 2.2s ease-in-out infinite; }
+    #next.is-complete { color: var(--muted); border-color: var(--line); animation: none; opacity: .35; }
+    @keyframes revealPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(200,243,108,0); } 50% { box-shadow: 0 0 0 5px rgba(200,243,108,.09); } }
+    .slides { position: absolute; inset: 68px 0 54px; perspective: 1400px; }
+    .slide { position: absolute; inset: 0; padding: clamp(24px, 4.4vh, 46px) clamp(64px, 8vw, 116px) clamp(20px, 3.2vh, 36px); opacity: 0; transform: translate3d(4vw, 16px, 0) scale(.985); filter: blur(7px); clip-path: inset(3% 0 0 0); pointer-events: none; overflow: hidden; transition: opacity .62s cubic-bezier(.22,1,.36,1), transform .82s cubic-bezier(.16,1,.3,1), filter .62s cubic-bezier(.22,1,.36,1), clip-path .82s cubic-bezier(.16,1,.3,1); display: flex; flex-direction: column; justify-content: center; will-change: opacity, transform, filter, clip-path; }
+    .slide.is-active { opacity: 1; transform: translate3d(0, 0, 0) scale(1); filter: blur(0); clip-path: inset(0); pointer-events: auto; z-index: 2; }
+    .slide.is-active > * { animation: contentReveal .72s cubic-bezier(.16,1,.3,1) both; }
+    .slide.is-active > [data-reveal] { animation: none; }
+    .slide.is-active > *:nth-child(2) { animation-delay: .08s; }
+    .slide.is-active > *:nth-child(3) { animation-delay: .16s; }
+    .slide.is-active > *:nth-child(4) { animation-delay: .24s; }
+    .slide.is-active [data-reveal] { opacity: 0; visibility: hidden; transform: translateY(28px) scale(.96); filter: blur(8px); transition: opacity .58s cubic-bezier(.16,1,.3,1), transform .78s cubic-bezier(.16,1,.3,1), filter .58s ease, visibility 0s linear .78s; }
+    .slide.is-active [data-reveal].is-revealed { opacity: 1; visibility: visible; transform: translateY(0) scale(1); filter: blur(0); transition-delay: 0s; }
+    .slide.is-active [data-reveal].is-quiet { opacity: .56; transform: translateY(0) scale(.985); filter: saturate(.82) brightness(.88); }
+    .slide.is-active [data-reveal].is-focus { opacity: 1; transform: translateY(-7px) scale(1.035); filter: none; position: relative; z-index: 3; box-shadow: 0 22px 50px rgba(0,0,0,.24); }
+    .story-slide h1, .story-slide h2 { transition: transform .82s cubic-bezier(.16,1,.3,1), filter .5s ease, opacity .42s ease; transform-origin: left center; }
+    .story-slide[data-stage="0"] h1, .story-slide[data-stage="0"] h2 { transform: translateY(2vh) scale(1.14); filter: brightness(1.04); }
+    .story-slide[data-stage]:not([data-stage="0"]) h1, .story-slide[data-stage]:not([data-stage="0"]) h2 { transform: translateY(-1.6vh) scale(.89); }
+    @keyframes contentReveal { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+    .eyebrow { color: var(--cyan); font-size: 12px; font-weight: 800; letter-spacing: .17em; text-transform: uppercase; margin-bottom: 24px; }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: clamp(44px, min(6.4vw, 9.2vh), 88px); line-height: .96; letter-spacing: -.06em; max-width: 970px; }
+    h2 { font-size: clamp(34px, min(4.25vw, 6.5vh), 60px); line-height: 1.02; letter-spacing: -.05em; max-width: 1010px; }
+    h3 { font-size: 22px; line-height: 1.05; letter-spacing: -.02em; }
+    .lede { color: var(--muted); font-size: clamp(17px, min(1.8vw, 3.1vh), 24px); line-height: 1.3; max-width: 720px; margin-top: clamp(18px, 2.7vh, 28px); }
+    .accent { color: var(--lime); }
+    .blue { color: var(--cyan); }
+    .muted { color: var(--muted); }
+    .foot { position: absolute; left: 10vw; bottom: 28px; font-size: 11px; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; }
+    .num { position: absolute; right: 5.4vw; bottom: 15px; height: 32px; display: flex; align-items: center; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+    .nav { position: absolute; left: 50%; bottom: 15px; height: 32px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; z-index: 5; }
+    .nav button { border: 0; background: transparent; width: 34px; height: 32px; padding: 0; cursor: pointer; color: var(--muted); opacity: .55; display: flex; align-items: center; }
+    .nav button::before { content: ""; display: block; width: 100%; height: 3px; border-radius: 99px; background: currentColor; transition: width .25s ease, background .25s ease; }
+    .nav button.is-active { color: var(--lime); opacity: 1; }
+    .nav button:hover { opacity: 1; }
+    .controls { position: absolute; right: 5.4vw; top: 20px; z-index: 6; display: flex; gap: 8px; }
+    .controls button { border: 1px solid var(--line); background: rgba(12,16,20,.68); border-radius: 10px; width: 40px; height: 40px; cursor: pointer; font-size: 16px; backdrop-filter: blur(12px); }
+    .controls button:focus-visible, .nav button:focus-visible, .live-demo-actions button:focus-visible { outline: 2px solid var(--lime); outline-offset: 3px; }
+    .controls button:hover { border-color: rgba(255,255,255,.35); background: var(--surface-2); }
+    .controls button:disabled { cursor: default; opacity: .3; border-color: var(--line); background: rgba(12,16,20,.45); animation: none; }
+    .hero-grid { display: grid; grid-template-columns: 1.2fr .8fr; gap: 7vw; align-items: center; }
+    .hero-note { border-left: 2px solid var(--lime); padding-left: 26px; max-width: 320px; }
+    .hero-note strong { display: block; font-size: 21px; line-height: 1.16; margin-bottom: 10px; }
+    .hero-note span { display: block; color: var(--muted); font-size: 15px; line-height: 1.35; }
+    .stamp { margin-top: 56px; color: var(--muted); font-size: 12px; letter-spacing: .06em; }
+    .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 54px; max-width: 1040px; }
+    .pain-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 42px; max-width: 1040px; }
+    .pain-card { min-height: 150px; padding: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
+    .pain-card h3 { font-size: 20px; }
+    .pain-card p { color: var(--muted); font-size: 15px; line-height: 1.35; margin-top: 10px; }
+    .pain-card .tag { color: var(--cyan); font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; margin-bottom: 14px; }
+    .source-inline { color: var(--muted); font-size: 11px; line-height: 1.35; letter-spacing: .025em; margin-top: 16px; }
+    .problem { min-height: 210px; padding: 26px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; display: flex; flex-direction: column; justify-content: space-between; }
+    .problem .mark { font-size: 27px; color: var(--red); }
+    .problem:nth-child(2) .mark { color: var(--orange); }
+    .problem:nth-child(3) .mark { color: var(--cyan); }
+    .problem p { color: var(--muted); font-size: 16px; line-height: 1.35; margin-top: 16px; }
+    .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 40px; max-width: 980px; }
+    .price-card { min-height: 170px; padding: 22px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+    .price-card.highlight { background: rgba(76,145,255,.15); border-color: rgba(99,212,239,.55); }
+    .price-card .tag { color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+    .price-card h3 { margin-top: 22px; }
+    .price { margin-top: 8px; color: var(--ink); font-size: 30px; font-weight: 750; letter-spacing: -.05em; }
+    .price small { color: var(--muted); font-size: 12px; font-weight: 500; letter-spacing: 0; }
+    .price-note { color: var(--muted); font-size: 13px; line-height: 1.35; margin-top: 22px; max-width: 620px; }
+    .retention-layout { display: grid; grid-template-columns: .9fr 1.1fr; gap: 7vw; align-items: center; }
+    .retention-points { display: grid; gap: 14px; }
+    .retention-point { padding: 20px 22px; border-left: 3px solid var(--cyan); background: var(--surface); border-radius: 0 14px 14px 0; }
+    .retention-point strong { display: block; font-size: 18px; }
+    .retention-point p { color: var(--muted); font-size: 14px; line-height: 1.35; margin-top: 6px; }
+    .quote { border-left: 3px solid var(--lime); padding-left: 24px; margin-top: 48px; font-size: clamp(24px, 3vw, 42px); line-height: 1.05; letter-spacing: -.04em; max-width: 900px; }
+    .promise { display: grid; grid-template-columns: .75fr 1.25fr; gap: 8vw; align-items: center; }
+    .promise-list { display: grid; gap: 18px; }
+    .promise-item { display: grid; grid-template-columns: 42px 1fr; gap: 16px; align-items: start; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+    .promise-item:last-child { border-bottom: 0; }
+    .promise-item .index { font-size: 13px; color: var(--lime); font-weight: 800; padding-top: 4px; }
+    .promise-item p { color: var(--muted); font-size: 15px; line-height: 1.35; margin-top: 7px; }
+    .product-stage { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(230px, .65fr); gap: clamp(24px, 3.6vw, 52px); align-items: center; margin-top: clamp(18px, 3vh, 30px); }
+    .product-frame { position: relative; margin: 0; padding: 10px; overflow: hidden; border: 1px solid rgba(99,212,239,.36); border-radius: 20px; background: linear-gradient(145deg, rgba(99,212,239,.15), rgba(21,27,33,.92) 26%); box-shadow: 0 28px 80px rgba(0,0,0,.34); }
+    .product-frame img { display: block; width: 100%; border-radius: 12px; }
+    .product-proof-slide .product-frame { aspect-ratio: 16 / 9; padding: 0; background: #f7f8fa; }
+    .product-frame iframe { display: block; width: 100%; height: 100%; border: 0; border-radius: inherit; background: #f7f8fa; }
+    .live-demo-actions { position: absolute; right: 22px; top: 18px; z-index: 8; display: none; gap: 8px; }
+    .live-demo-actions button { border: 1px solid rgba(255,255,255,.17); border-radius: 10px; padding: 10px 13px; background: rgba(12,16,20,.9); color: var(--ink); font: 700 12px/1 var(--font); letter-spacing: .02em; cursor: pointer; box-shadow: 0 10px 28px rgba(0,0,0,.2); }
+    .live-demo-actions button.primary { border-color: rgba(200,243,108,.56); color: var(--lime); }
+    .live-demo-actions button:hover { background: #1c242c; }
+    .proof-stack { display: grid; gap: 12px; }
+    .proof-item { padding: 16px 18px; border-left: 2px solid var(--cyan); background: rgba(21,27,33,.86); }
+    .proof-item .n { color: var(--lime); font-size: 10px; font-weight: 800; letter-spacing: .14em; }
+    .proof-item h3 { margin-top: 7px; font-size: 19px; line-height: 1.08; }
+    .proof-item p { margin-top: 6px; color: var(--muted); font-size: 13px; line-height: 1.35; }
+    .kpi-shell { margin-top: 34px; background: rgba(21,27,33,.78); border: 1px solid var(--line); border-radius: 22px; padding: 24px; max-width: 1120px; box-shadow: 0 20px 80px rgba(0,0,0,.22); }
+    .kpi-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .kpi-top .label { font-size: 13px; color: var(--muted); }
+    .kpi-top .period { border: 1px solid var(--line); padding: 7px 11px; border-radius: 8px; font-size: 12px; color: var(--cyan); }
+    .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .kpi { background: var(--surface-2); border-radius: 13px; padding: 18px; min-height: 110px; }
+    .kpi .value { font-size: 28px; font-weight: 750; letter-spacing: -.04em; }
+    .kpi .name { margin-top: 7px; font-size: 12px; color: var(--muted); }
+    .kpi .delta { margin-top: 8px; font-size: 12px; color: var(--lime); }
+    .kpi .delta.down { color: var(--red); }
+    .chart-wrap { display: grid; grid-template-columns: 1.35fr .65fr; gap: 18px; margin-top: 18px; }
+    .chart { background: var(--surface-2); border-radius: 13px; padding: 18px; }
+    .chart-title { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+    .bars { height: 128px; display: flex; align-items: end; gap: 14px; padding: 0 8px 4px; border-bottom: 1px solid var(--line); }
+    .bar { flex: 1; background: linear-gradient(180deg, var(--cyan), rgba(99,212,239,.25)); border-radius: 5px 5px 0 0; min-height: 14px; position: relative; }
+    .bar:nth-child(2n) { background: linear-gradient(180deg, var(--blue), rgba(76,145,255,.22)); }
+    .bar span { position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%); color: var(--muted); font-size: 10px; }
+    .insight { background: linear-gradient(145deg, rgba(200,243,108,.12), rgba(76,145,255,.08)); border: 1px solid rgba(200,243,108,.28); border-radius: 13px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; }
+    .insight .tag { color: var(--lime); font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .insight strong { font-size: 20px; line-height: 1.12; letter-spacing: -.03em; }
+    .insight p { color: var(--muted); font-size: 13px; line-height: 1.35; }
+    .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 36px; max-width: 1020px; }
+    .action { border-radius: 18px; padding: 26px; min-height: 174px; border: 1px solid var(--line); background: var(--surface); }
+    .action .type { color: var(--lime); font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .action h3 { margin-top: 14px; }
+    .action p { color: var(--muted); font-size: 15px; line-height: 1.35; margin-top: 10px; }
+    .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 48px; max-width: 1100px; }
+    .flow-step { position: relative; min-height: 160px; padding: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; }
+    .flow-step:not(:last-child)::after { content: "→"; position: absolute; right: -21px; top: 59px; color: var(--lime); font-size: 25px; z-index: 2; }
+    .flow-step .n { color: var(--lime); font-size: 12px; font-weight: 800; }
+    .flow-step h3 { margin-top: 22px; }
+    .flow-step p { color: var(--muted); font-size: 14px; line-height: 1.3; margin-top: 9px; }
+    .intelligence-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 42px; max-width: 1160px; }
+    .intelligence-card { min-height: 242px; padding: 26px; border: 1px solid var(--line); border-radius: 18px; background: linear-gradient(145deg, rgba(28,36,44,.96), rgba(17,23,29,.96)); }
+    .intelligence-card:nth-child(2) { border-color: rgba(200,243,108,.45); background: linear-gradient(145deg, rgba(200,243,108,.1), rgba(21,27,33,.96)); }
+    .intelligence-card .tag { color: var(--cyan); font-size: 11px; font-weight: 800; letter-spacing: .13em; }
+    .intelligence-card:nth-child(2) .tag { color: var(--lime); }
+    .intelligence-card h3 { margin-top: 22px; font-size: 24px; line-height: 1.08; letter-spacing: -.035em; }
+    .intelligence-card p { margin-top: 12px; color: var(--muted); font-size: 14px; line-height: 1.4; }
+    .intelligence-card .question { margin-top: 18px; color: var(--ink); font-size: 13px; font-weight: 700; line-height: 1.3; }
+    .intelligence-stage { position: relative; height: clamp(250px, 39vh, 308px); margin-top: clamp(18px, 3vh, 30px); }
+    .intelligence-stage .product-frame { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+    .intelligence-stage .product-frame img { width: 92%; box-shadow: 0 18px 56px rgba(0,0,0,.36); }
+    .intelligence-stage .product-frame iframe { width: 92%; height: 92%; border-radius: 12px; box-shadow: 0 18px 56px rgba(0,0,0,.36); }
+    .intelligence-stage .intelligence-grid { position: absolute; inset: 30px 0 0; margin: 0; z-index: 2; }
+    .story-slide .product-frame.is-quiet { opacity: .46; filter: saturate(.74) brightness(.74); }
+    .intelligence-proof-slide[data-stage="2"] .intelligence-frame,
+    .intelligence-proof-slide[data-stage="3"] .intelligence-frame,
+    .intelligence-proof-slide[data-stage="4"] .intelligence-frame,
+    .intelligence-proof-slide[data-stage="5"] .intelligence-frame {
+      display: none !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none;
+      filter: none;
+    }
+    .product-proof-slide[data-stage="1"] .product-stage, .retention-proof-slide[data-stage="1"] .retention-layout { position: absolute; inset: 0; z-index: 4; display: block; margin: 0; }
+    .intelligence-proof-slide[data-stage="1"] .intelligence-stage { position: absolute; inset: 0; z-index: 4; height: auto; margin: 0; }
+    .product-proof-slide[data-stage="1"] .product-frame, .retention-proof-slide[data-stage="1"] .product-frame, .intelligence-proof-slide[data-stage="1"] .intelligence-frame { width: 100%; height: 100%; padding: 0; border: 0; border-radius: 0; background: #f7f8fa; box-shadow: none; transform: none !important; }
+    .product-proof-slide[data-stage="1"] .product-frame img, .retention-proof-slide[data-stage="1"] .product-frame img, .intelligence-proof-slide[data-stage="1"] .intelligence-frame img, .product-proof-slide[data-stage="1"] .product-frame iframe { width: 100%; height: 100%; border-radius: 0; object-fit: contain; box-shadow: none; }
+    .intelligence-proof-slide[data-stage="1"] .intelligence-frame { position: absolute; inset: 0; display: block; }
+    .intelligence-proof-slide[data-stage="1"] .intelligence-frame iframe { width: 100%; height: 100%; border-radius: 0; box-shadow: none; }
+    .product-proof-slide[data-stage="1"] .live-demo-actions, .retention-proof-slide[data-stage="1"] .live-demo-actions, .intelligence-proof-slide[data-stage="1"] .live-demo-actions { display: flex; }
+    .product-proof-slide[data-stage="1"] > .eyebrow, .retention-proof-slide[data-stage="1"] > .eyebrow, .intelligence-proof-slide[data-stage="1"] > .eyebrow,
+    .product-proof-slide[data-stage="1"] > h2, .retention-proof-slide[data-stage="1"] > h2, .intelligence-proof-slide[data-stage="1"] > h2,
+    .product-proof-slide[data-stage="1"] > .quote, .retention-proof-slide[data-stage="1"] > .truth, .intelligence-proof-slide[data-stage="1"] > .quote { opacity: 0 !important; visibility: hidden !important; animation: none !important; pointer-events: none; }
+    body:has(.product-proof-slide.is-active[data-stage="1"], .intelligence-proof-slide.is-active[data-stage="1"], .retention-proof-slide.is-active[data-stage="1"]) .slides { inset: 0; z-index: 10; }
+    body:has(.product-proof-slide.is-active[data-stage="1"], .intelligence-proof-slide.is-active[data-stage="1"], .retention-proof-slide.is-active[data-stage="1"]) .topbar,
+    body:has(.product-proof-slide.is-active[data-stage="1"], .intelligence-proof-slide.is-active[data-stage="1"], .retention-proof-slide.is-active[data-stage="1"]) .controls,
+    body:has(.product-proof-slide.is-active[data-stage="1"], .intelligence-proof-slide.is-active[data-stage="1"], .retention-proof-slide.is-active[data-stage="1"]) .nav,
+    body:has(.product-proof-slide.is-active[data-stage="1"], .intelligence-proof-slide.is-active[data-stage="1"], .retention-proof-slide.is-active[data-stage="1"]) .num,
+    body:has(.product-proof-slide.is-active[data-stage="1"], .intelligence-proof-slide.is-active[data-stage="1"], .retention-proof-slide.is-active[data-stage="1"]) .foot { opacity: 0; pointer-events: none; }
+    body:has(.product-proof-slide.is-active[data-stage="1"], .intelligence-proof-slide.is-active[data-stage="1"], .retention-proof-slide.is-active[data-stage="1"]) .product-proof-slide,
+    body:has(.product-proof-slide.is-active[data-stage="1"], .intelligence-proof-slide.is-active[data-stage="1"], .retention-proof-slide.is-active[data-stage="1"]) .intelligence-proof-slide,
+    body:has(.product-proof-slide.is-active[data-stage="1"], .intelligence-proof-slide.is-active[data-stage="1"], .retention-proof-slide.is-active[data-stage="1"]) .retention-proof-slide { padding: 0; }
+    .intelligence-proof-slide[data-stage="2"] .intelligence-frame, .intelligence-proof-slide[data-stage="3"] .intelligence-frame, .intelligence-proof-slide[data-stage="4"] .intelligence-frame { opacity: .32; filter: blur(1px) saturate(.65); transform: scale(.965); pointer-events: none; }
+    .product-proof-slide[data-stage="0"] .product-stage, .intelligence-proof-slide[data-stage="0"] .intelligence-stage, .retention-proof-slide[data-stage="0"] .retention-layout, .story-slide[data-stage="0"] .quote, .story-slide[data-stage="0"] .truth { display: none; }
+    .retention-proof-slide .retention-layout { grid-template-columns: 1.2fr .8fr; margin-top: 34px; }
+    .retention-proof-slide .product-frame { align-self: center; transform: scale(1.04); transform-origin: left center; }
+    .core { display: grid; grid-template-columns: .8fr 1.2fr; gap: 7vw; align-items: center; }
+    .core-stack { display: grid; gap: 10px; }
+    .core-row { display: flex; justify-content: space-between; align-items: center; padding: 16px 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+    .core-row span { color: var(--muted); font-size: 14px; }
+    .core-row strong { font-size: 15px; }
+    .core-row.active { border-color: rgba(200,243,108,.45); background: rgba(200,243,108,.08); }
+    .fit { display: grid; grid-template-columns: 1fr 1.1fr 1fr; gap: 16px; align-items: stretch; margin-top: 44px; }
+    .fit-box { min-height: 210px; padding: 26px; border-radius: 18px; border: 1px solid var(--line); background: var(--surface); }
+    .fit-box.center { background: rgba(76,145,255,.16); border-color: rgba(76,145,255,.55); }
+    .fit-box.last { background: var(--blue); border-color: var(--blue); }
+    .fit-box .tag { font-size: 11px; font-weight: 800; color: var(--cyan); letter-spacing: .12em; }
+    .fit-box.last .tag { color: #d9eaff; }
+    .fit-box h3 { margin-top: 30px; font-size: 25px; }
+    .fit-box p { color: var(--muted); font-size: 15px; line-height: 1.35; margin-top: 12px; }
+    .fit-box.last p { color: #e8f2ff; }
+    .roadmap { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 48px; max-width: 1100px; }
+    .phase { padding-top: 20px; border-top: 3px solid var(--line); }
+    .phase:nth-child(1) { border-color: var(--blue); }
+    .phase:nth-child(2) { border-color: var(--cyan); }
+    .phase:nth-child(3) { border-color: var(--lime); }
+    .phase:nth-child(4) { border-color: var(--orange); }
+    .phase .n { font-size: 12px; color: var(--muted); }
+    .phase h3 { margin-top: 12px; }
+    .phase p { color: var(--muted); font-size: 15px; line-height: 1.35; margin-top: 10px; }
+    .ask { display: grid; grid-template-columns: 1.25fr .75fr; gap: 7vw; align-items: center; }
+    .ask-box { padding: 32px; border-radius: 22px; background: linear-gradient(145deg, var(--blue), #245dbd); box-shadow: 0 24px 70px rgba(76,145,255,.2); }
+    .ask-box .tag { color: #d9eaff; font-size: 12px; font-weight: 800; letter-spacing: .15em; }
+    .ask-box h3 { font-size: 32px; margin-top: 28px; line-height: 1.02; }
+    .ask-box p { color: #e8f2ff; font-size: 16px; line-height: 1.35; margin-top: 16px; }
+    .note { color: var(--muted); font-size: 14px; margin-top: 34px; }
+    .cover-credit { margin-top: 64px; color: var(--muted); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+    .cover-layout { min-height: 68vh; display: grid; grid-template-columns: 1.05fr .95fr; gap: 5vw; align-items: center; }
+    .cover-partners { display: flex; align-items: center; gap: 16px; color: var(--ink); font-size: 13px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+    .cover-partners .pwayment-label { color: var(--cyan); }
+    .cover-partners .talemate-label { color: #d9eaff; }
+    .cover-partners .times { color: var(--lime); font-size: 18px; font-weight: 500; letter-spacing: 0; }
+    .cover-layout h1 { margin-top: 34px; max-width: 780px; }
+    .cover-layout .lede { max-width: 540px; }
+    .cover-art { position: relative; min-height: 480px; display: flex; align-items: center; justify-content: center; }
+    .cover-system { width: min(100%, 510px); padding: 10px 0; border-top: 1px solid rgba(99,212,239,.34); border-bottom: 1px solid rgba(99,212,239,.2); }
+    .cover-system-head { display: flex; justify-content: space-between; align-items: baseline; padding: 0 0 20px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+    .cover-system-head strong { color: var(--cyan); font-size: 11px; }
+    .system-row { position: relative; display: grid; grid-template-columns: 1.1fr 1fr; gap: 18px; align-items: center; padding: 18px 0 18px 16px; border-top: 1px solid rgba(255,255,255,.1); }
+    .system-row strong { color: var(--ink); font-size: 18px; font-weight: 650; letter-spacing: -.025em; }
+    .system-row span { color: var(--muted); font-size: 12px; line-height: 1.3; }
+    .system-row.highlight strong { color: var(--lime); }
+    .system-row.highlight span { color: #cfe5ff; }
+    .system-row::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--cyan); position: absolute; left: 0; top: 50%; transform: translateY(-50%); }
+    .statement-layout { display: grid; grid-template-columns: 1.1fr .9fr; gap: 8vw; align-items: center; }
+    .statement { font-size: clamp(28px, 3.4vw, 50px); line-height: 1.04; letter-spacing: -.045em; max-width: 760px; }
+    .line-list { display: grid; gap: 0; border-top: 1px solid var(--line); }
+    .line-list > div { padding: 18px 0; border-bottom: 1px solid var(--line); }
+    .line-list strong { display: block; font-size: 18px; letter-spacing: -.02em; }
+    .line-list span { display: block; margin-top: 6px; color: var(--muted); font-size: 14px; line-height: 1.35; }
+    .progress-line-list { position: relative; padding-left: 24px; --list-progress: 0%; }
+    .progress-line-list::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 3px;
+      height: var(--list-progress);
+      border-radius: 99px;
+      background: linear-gradient(180deg, var(--cyan), #4c91ff);
+      box-shadow: 0 0 18px rgba(99,212,239,.2);
+      transition: height .78s cubic-bezier(.16,1,.3,1);
+    }
+    .market-progress-slide[data-stage="2"] .progress-line-list { --list-progress: 34%; }
+    .market-progress-slide[data-stage="3"] .progress-line-list { --list-progress: 67%; }
+    .market-progress-slide[data-stage="4"] .progress-line-list { --list-progress: 100%; }
+    .winning-progress-slide[data-stage="1"] .progress-line-list { --list-progress: 34%; }
+    .winning-progress-slide[data-stage="2"] .progress-line-list { --list-progress: 67%; }
+    .winning-progress-slide[data-stage="3"] .progress-line-list { --list-progress: 100%; }
+    .retail-progress-slide[data-stage="2"] .progress-line-list { --list-progress: 34%; }
+    .retail-progress-slide[data-stage="3"] .progress-line-list { --list-progress: 67%; }
+    .retail-progress-slide[data-stage="4"] .progress-line-list,
+    .retail-progress-slide[data-stage="5"] .progress-line-list { --list-progress: 100%; }
+    .scale-progress-slide[data-stage="1"] .progress-line-list { --list-progress: 34%; }
+    .scale-progress-slide[data-stage="2"] .progress-line-list { --list-progress: 67%; }
+    .scale-progress-slide[data-stage="3"] .progress-line-list,
+    .scale-progress-slide[data-stage="4"] .progress-line-list { --list-progress: 100%; }
+    .commerce-progress-slide[data-stage="2"] .progress-line-list { --list-progress: 34%; }
+    .commerce-progress-slide[data-stage="3"] .progress-line-list { --list-progress: 67%; }
+    .commerce-progress-slide[data-stage="4"] .progress-line-list,
+    .commerce-progress-slide[data-stage="5"] .progress-line-list { --list-progress: 100%; }
+    .progress-stack { position: relative; padding-left: 24px; --stack-progress: 0%; }
+    .progress-stack::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 3px;
+      height: var(--stack-progress);
+      border-radius: 99px;
+      background: linear-gradient(180deg, var(--cyan), #4c91ff);
+      box-shadow: 0 0 18px rgba(99,212,239,.2);
+      transition: height .78s cubic-bezier(.16,1,.3,1);
+    }
+    .product-proof-slide[data-stage="2"] .progress-stack,
+    .retention-proof-slide[data-stage="2"] .progress-stack,
+    .pricing-progress-slide[data-stage="2"] .progress-stack { --stack-progress: 34%; }
+    .product-proof-slide[data-stage="3"] .progress-stack,
+    .retention-proof-slide[data-stage="3"] .progress-stack,
+    .pricing-progress-slide[data-stage="3"] .progress-stack { --stack-progress: 67%; }
+    .product-proof-slide[data-stage="4"] .progress-stack,
+    .product-proof-slide[data-stage="5"] .progress-stack,
+    .retention-proof-slide[data-stage="4"] .progress-stack,
+    .retention-proof-slide[data-stage="5"] .progress-stack,
+    .pricing-progress-slide[data-stage="4"] .progress-stack,
+    .pricing-progress-slide[data-stage="5"] .progress-stack { --stack-progress: 100%; }
+    .proof-stack.progress-stack .proof-item {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: linear-gradient(145deg, rgba(28,36,44,.9), rgba(21,27,33,.84));
+    }
+    .retention-points.progress-stack .retention-point {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+    }
+    .slide.is-active .progress-line-list [data-reveal].is-quiet,
+    .slide.is-active .progress-stack [data-reveal].is-quiet,
+    .slide.is-active .partner-note [data-reveal].is-quiet {
+      opacity: .88;
+      transform: none;
+      filter: none;
+    }
+    .slide.is-active .progress-line-list [data-reveal].is-focus,
+    .slide.is-active .progress-stack [data-reveal].is-focus,
+    .slide.is-active .partner-note [data-reveal].is-focus {
+      opacity: 1;
+      transform: none;
+      filter: none;
+      box-shadow: none;
+    }
+    .economics { display: grid; grid-template-columns: .88fr 1.12fr; gap: 8vw; align-items: center; }
+    .tier-stack { display: grid; gap: 12px; }
+    .tier { display: grid; grid-template-columns: 128px 1fr auto; align-items: center; gap: 18px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+    .tier.retail { border-color: rgba(200,243,108,.52); background: rgba(200,243,108,.075); }
+    .tier .name { font-size: 19px; font-weight: 750; letter-spacing: -.03em; }
+    .tier .includes { color: var(--muted); font-size: 13px; line-height: 1.34; }
+    .tier .amount { text-align: right; color: var(--ink); font-size: 21px; font-weight: 750; letter-spacing: -.04em; white-space: nowrap; }
+    .tier.retail .amount { color: var(--lime); }
+    .tier .amount small { display: block; color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: .04em; }
+    .truth { color: var(--muted); font-size: 13px; line-height: 1.45; max-width: 760px; margin-top: 28px; }
+    .closing-layout { min-height: 68vh; display: grid; grid-template-columns: 1.15fr .85fr; gap: 7vw; align-items: center; }
+    .partner-note { position: relative; padding-left: 24px; --note-progress: 0%; }
+    .partner-note::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 3px;
+      height: var(--note-progress);
+      border-radius: 99px;
+      background: linear-gradient(180deg, var(--cyan), #4c91ff);
+      box-shadow: 0 0 18px rgba(99,212,239,.2);
+      transition: height .78s cubic-bezier(.16,1,.3,1);
+    }
+    .closing-slide[data-stage="2"] .partner-note { --note-progress: 31%; }
+    .closing-slide[data-stage="3"] .partner-note { --note-progress: 54%; }
+    .closing-slide[data-stage="4"] .partner-note { --note-progress: 78%; }
+    .closing-slide[data-stage="5"] .partner-note { --note-progress: 100%; }
+    .partner-note strong { display: block; font-size: 23px; line-height: 1.15; }
+    .partner-note p { margin-top: 12px; color: var(--muted); font-size: 16px; line-height: 1.42; }
+    .commitment-list { display: grid; gap: 0; margin-top: 20px; }
+    .commitment-item { display: grid; grid-template-columns: 35px 1fr; gap: 12px; padding: 14px 0; border-top: 1px solid var(--line); }
+    .commitment-item:first-child { border-top: 0; padding-top: 0; }
+    .commitment-item .step { color: var(--lime); font-size: 12px; font-weight: 800; letter-spacing: .1em; padding-top: 3px; }
+    .commitment-item b { display: block; font-size: 16px; line-height: 1.2; }
+    .commitment-item span { display: block; margin-top: 4px; color: var(--muted); font-size: 13px; line-height: 1.35; }
+    .closing-question { margin-top: 18px; color: var(--ink); font-size: 17px; font-weight: 700; line-height: 1.3; }
+
+    /* Investor narrative extensions */
+    .retail-progress-slide .statement-layout,
+    .scale-progress-slide .statement-layout,
+    .commerce-progress-slide .statement-layout { grid-template-columns: 1.02fr .98fr; }
+    .retail-progress-slide .lede,
+    .scale-progress-slide .lede,
+    .commerce-progress-slide .lede { max-width: 630px; }
+    .retail-note { margin-top: 24px; padding-left: 18px; border-left: 2px solid var(--lime); color: #dce6ec; font-size: 15px; font-weight: 700; line-height: 1.35; max-width: 610px; }
+    .premium-note strong { display: block; margin-bottom: 5px; color: var(--lime); font-size: 11px; font-weight: 850; letter-spacing: .15em; text-transform: uppercase; }
+    .commerce-progress-slide .scale-note { max-width: 560px; }
+    .scale-progress-slide .line-list strong { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; }
+    .scale-progress-slide .line-list strong b { color: var(--lime); font-size: 23px; letter-spacing: -.035em; }
+    .scale-progress-slide .line-list span { max-width: 560px; }
+    .scale-note { margin-top: 14px; color: var(--muted); font-size: 11px; line-height: 1.35; }
+    .scale-question { margin-top: 20px; color: var(--ink); font-size: 17px; font-weight: 700; line-height: 1.35; }
+
+    .talemate-slide { justify-content: center; }
+    .talemate-layout { max-width: 1120px; }
+    .talemate-layout h2 { max-width: 950px; }
+    .talemate-columns { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 52px; margin-top: 40px; padding-left: 24px; --fit-progress: 0%; }
+    .talemate-columns::before { content: ""; position: absolute; top: 0; left: 0; width: 3px; height: var(--fit-progress); border-radius: 99px; background: linear-gradient(180deg, var(--cyan), #4c91ff); box-shadow: 0 0 18px rgba(99,212,239,.2); transition: height .78s cubic-bezier(.16,1,.3,1); }
+    .talemate-slide[data-stage="1"] .talemate-columns { --fit-progress: 34%; }
+    .talemate-slide[data-stage="2"] .talemate-columns { --fit-progress: 68%; }
+    .talemate-slide[data-stage="3"] .talemate-columns { --fit-progress: 100%; }
+    .talemate-column { padding-top: 18px; border-top: 1px solid var(--line); }
+    .talemate-column .tag { color: var(--cyan); font-size: 11px; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; }
+    .talemate-column:nth-child(2) .tag { color: var(--lime); }
+    .talemate-column h3 { margin-top: 14px; font-size: 25px; }
+    .talemate-list { display: grid; gap: 0; margin-top: 16px; }
+    .talemate-list span { padding: 10px 0; border-top: 1px solid rgba(255,255,255,.08); color: var(--muted); font-size: 14px; line-height: 1.3; }
+    .talemate-conclusion { grid-column: 1 / -1; padding: 20px 0 0 24px; border-top: 1px solid rgba(99,212,239,.28); color: var(--ink); font-size: clamp(20px, 2.2vw, 29px); line-height: 1.14; letter-spacing: -.035em; }
+    .talemate-conclusion strong { color: var(--lime); }
+
+    .pilot-slide .statement-layout { grid-template-columns: .84fr 1.16fr; }
+    .pilot-list { position: relative; display: grid; gap: 0; padding-left: 24px; --pilot-progress: 0%; }
+    .pilot-list::before { content: ""; position: absolute; top: 0; left: 0; width: 3px; height: var(--pilot-progress); border-radius: 99px; background: linear-gradient(180deg, var(--cyan), #4c91ff); box-shadow: 0 0 18px rgba(99,212,239,.2); transition: height .78s cubic-bezier(.16,1,.3,1); }
+    .pilot-slide[data-stage="1"] .pilot-list { --pilot-progress: 25%; }
+    .pilot-slide[data-stage="2"] .pilot-list { --pilot-progress: 50%; }
+    .pilot-slide[data-stage="3"] .pilot-list { --pilot-progress: 75%; }
+    .pilot-slide[data-stage="4"] .pilot-list,
+    .pilot-slide[data-stage="5"] .pilot-list { --pilot-progress: 100%; }
+    .pilot-item { display: grid; grid-template-columns: 42px 1fr; gap: 15px; padding: 15px 0; border-top: 1px solid var(--line); }
+    .pilot-item:first-child { border-top: 0; padding-top: 0; }
+    .pilot-item .n { color: var(--lime); font-size: 12px; font-weight: 800; letter-spacing: .1em; padding-top: 3px; }
+    .pilot-item strong { display: block; font-size: 18px; line-height: 1.15; }
+    .pilot-item span { display: block; margin-top: 5px; color: var(--muted); font-size: 14px; line-height: 1.34; }
+    .pilot-meta { margin-top: 26px; color: var(--cyan); font-size: 12px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+    .pilot-truth { margin-top: 12px; color: var(--ink); font-size: 16px; line-height: 1.4; max-width: 620px; }
+
+    /* PWA explainer */
+    .pwa-slide { justify-content: center; }
+    .pwa-head { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(280px, .75fr); gap: 6vw; align-items: end; max-width: 1100px; }
+    .pwa-head .eyebrow { margin-bottom: 18px; }
+    .pwa-head h2 { max-width: 720px; }
+    .pwa-definition { padding: 0 0 5px 22px; border-left: 2px solid var(--cyan); color: var(--muted); font-size: 16px; line-height: 1.45; }
+    .pwa-definition strong { display: block; margin-bottom: 7px; color: var(--ink); font-size: 19px; line-height: 1.1; letter-spacing: -.025em; }
+    .pwa-compare { display: grid; grid-template-columns: .92fr 1.08fr; gap: 18px; margin-top: clamp(28px, 4.5vh, 42px); max-width: 1100px; }
+    .pwa-panel { min-height: 260px; padding: 24px 26px; border: 1px solid var(--line); border-radius: 18px; background: rgba(21,27,33,.82); }
+    .pwa-panel.is-pwayment { border-color: rgba(99,212,239,.48); background: linear-gradient(145deg, rgba(99,212,239,.1), rgba(21,27,33,.9) 52%); }
+    .pwa-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+    .pwa-panel-head h3 { font-size: 23px; }
+    .pwa-panel-tag { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; }
+    .pwa-panel.is-pwayment .pwa-panel-tag { color: var(--lime); }
+    .pwa-list { display: grid; margin-top: 20px; }
+    .pwa-row { display: grid; grid-template-columns: 24px 1fr; gap: 12px; align-items: start; padding: 13px 0; border-top: 1px solid rgba(255,255,255,.09); color: var(--muted); font-size: 15px; line-height: 1.3; }
+    .pwa-row .signal { color: rgba(255,118,118,.82); font-weight: 800; }
+    .pwa-panel.is-pwayment .pwa-row { color: #d7dfe5; }
+    .pwa-panel.is-pwayment .pwa-row .signal { color: var(--lime); }
+    .pwa-device-line { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+    .pwa-device-line span { padding: 7px 10px; border: 1px solid rgba(99,212,239,.23); border-radius: 999px; color: var(--cyan); font-size: 11px; font-weight: 750; letter-spacing: .035em; }
+    .pwa-panel .pwa-row, .pwa-panel .pwa-device-line { opacity: 0; transform: translateY(10px); }
+    .pwa-panel.is-revealed .pwa-row, .pwa-panel.is-revealed .pwa-device-line { animation: pwaPointReveal .52s cubic-bezier(.16,1,.3,1) both; }
+    .pwa-panel.is-revealed .pwa-row:nth-child(1) { animation-delay: .35s; }
+    .pwa-panel.is-revealed .pwa-row:nth-child(2) { animation-delay: 1.35s; }
+    .pwa-panel.is-revealed .pwa-row:nth-child(3) { animation-delay: 2.35s; }
+    .pwa-panel.is-revealed .pwa-device-line { animation-delay: 3.35s; }
+    @keyframes pwaPointReveal { to { opacity: 1; transform: translateY(0); } }
+
+    /* Opening film — editorial, brand first */
+    .intro-slide { isolation: isolate; align-items: center; justify-content: center; text-align: center; padding: 0; background: linear-gradient(118deg, #070d11 0%, #0a1117 46%, #0b1620 100%); }
+    .intro-slide::before { content: ""; position: absolute; inset: -38% -24%; z-index: -2; background: linear-gradient(106deg, transparent 31%, rgba(99,212,239,.055) 46%, rgba(76,145,255,.035) 54%, transparent 68%); transform: translateX(-7%); animation: introLight 12s ease-in-out infinite alternate; }
+    .intro-content { position: relative; z-index: 2; width: min(88vw, 1120px); display: flex; flex-direction: column; align-items: center; transform: translateY(-1.5vh); }
+    .intro-logo-shell { display: flex; flex-direction: column; align-items: center; justify-content: center; width: max-content; max-width: 100%; animation: introLogo 1.05s cubic-bezier(.16,1,.3,1) both; }
+    .intro-brand-mark { display: block; flex: 0 0 auto; width: clamp(136px, min(17vw, 24vh), 220px); height: auto; overflow: visible; }
+    .intro-wordmark { margin-top: clamp(16px, 2.4vh, 24px); font-family: "Avenir Next", "Helvetica Neue", Inter, ui-sans-serif, system-ui, sans-serif; font-size: clamp(84px, min(10.2vw, 15.5vh), 160px); font-weight: 680; line-height: .8; letter-spacing: -.066em; text-indent: -.035em; font-feature-settings: "kern" 1; white-space: nowrap; }
+    .intro-wordmark { color: #fff; }
+    .intro-title { max-width: 900px; margin-top: clamp(42px, 5.5vh, 54px); font-size: clamp(30px, min(3.35vw, 5.2vh), 46px); line-height: 1; letter-spacing: -.045em; animation: introText .8s .44s cubic-bezier(.16,1,.3,1) both; }
+    .intro-subtitle { max-width: 760px; margin-top: 16px; color: rgba(245,247,248,.7); font-size: clamp(15px, min(1.45vw, 2.35vh), 19px); line-height: 1.45; animation: introText .8s .58s cubic-bezier(.16,1,.3,1) both; }
+    .deck:has(.intro-slide.is-active) .topbar .brand-block { opacity: 0; }
+    @keyframes introLight { from { transform: translateX(-7%); opacity: .65; } to { transform: translateX(7%); opacity: 1; } }
+    @keyframes introLogo { from { opacity: 0; transform: translateY(18px); clip-path: inset(0 100% 0 0); } to { opacity: 1; transform: translateY(0); clip-path: inset(0); } }
+    @keyframes introText { from { opacity: 0; transform: translateY(18px); filter: blur(7px); } to { opacity: 1; transform: none; filter: none; } }
+
+    @media (max-height: 760px) {
+      .topbar { height: 64px; }
+      .slides { inset: 64px 0 50px; }
+      .slide { padding-top: 22px; padding-bottom: 18px; }
+      .eyebrow { margin-bottom: 15px; }
+      .pain-grid { margin-top: 24px; gap: 12px; }
+      .pain-card { min-height: 126px; padding: 18px 20px; }
+      .quote { margin-top: 14px; font-size: 24px; line-height: 1.1; max-width: 860px; }
+      .quote.is-focus { transform: none !important; }
+      .product-proof-slide .product-stage { grid-template-columns: minmax(0, 1.2fr) minmax(260px, .8fr); }
+      .story-slide[data-stage]:not([data-stage="0"]) h2 { transform: translateY(-.7vh) scale(.84); }
+      .economics { gap: 5vw; }
+      .tier { padding: 14px 17px; }
+      .closing-layout, .cover-layout { min-height: 0; }
+      .talemate-columns { margin-top: 26px; gap: 36px; }
+      .talemate-list span { padding: 8px 0; font-size: 13px; }
+      .talemate-conclusion { padding-top: 14px; font-size: 21px; }
+      .pilot-item { padding: 11px 0; }
+      .pilot-item strong { font-size: 16px; }
+      .pilot-item span { font-size: 13px; }
+      .pilot-meta { margin-top: 17px; }
+      .cover-art { min-height: 390px; }
+      .cover-credit { margin-top: 34px; }
+      .line-list > div { padding: 14px 0; }
+      .retention-point { padding: 15px 18px; }
+      .truth { margin-top: 17px; }
+      .source-inline { margin-top: 10px; }
+      .pwa-head { gap: 4vw; }
+      .pwa-head .eyebrow { margin-bottom: 12px; }
+      .pwa-definition { font-size: 14px; }
+      .pwa-definition strong { font-size: 17px; }
+      .pwa-compare { margin-top: 24px; gap: 14px; }
+      .pwa-panel { min-height: 224px; padding: 18px 21px; }
+      .pwa-panel-head h3 { font-size: 20px; }
+      .pwa-list { margin-top: 14px; }
+      .pwa-row { padding: 10px 0; font-size: 14px; }
+      .pwa-device-line { margin-top: 13px; }
+      .intro-brand-mark { width: 132px; }
+      .intro-wordmark { font-size: 94px; }
+      .intro-title { margin-top: 44px; font-size: 35px; }
+      .intro-subtitle { margin-top: 12px; font-size: 15px; }
+    }
+    @media (max-height: 680px) {
+      .slide { padding-top: 14px; padding-bottom: 10px; }
+      .product-proof-slide:not([data-stage="1"]) .product-frame { aspect-ratio: 16 / 8.2; }
+      .retention-proof-slide .product-frame { transform: none; }
+      .retention-proof-slide .retention-layout { margin-top: 18px; }
+      .truth { margin-top: 10px; }
+      .quote { margin-top: 0; }
+      .intelligence-stage { margin-top: 12px; }
+      .pwa-compare { margin-top: 17px; }
+      .pwa-panel { min-height: 202px; padding: 15px 18px; }
+      .pwa-row { padding: 8px 0; font-size: 13px; }
+      .pwa-device-line { margin-top: 10px; }
+      .pwa-device-line span { padding: 5px 8px; font-size: 10px; }
+      .intro-brand-mark { width: 112px; }
+      .intro-wordmark { font-size: 82px; }
+      .intro-title { margin-top: 38px; font-size: 31px; }
+      .intro-subtitle { max-width: 560px; font-size: 14px; }
+      .retail-note { margin-top: 14px; font-size: 13px; }
+      .scale-progress-slide .line-list strong b { font-size: 19px; }
+      .scale-question { margin-top: 12px; font-size: 14px; }
+      .talemate-columns { margin-top: 18px; }
+      .talemate-column { padding-top: 12px; }
+      .talemate-column h3 { margin-top: 9px; font-size: 21px; }
+      .talemate-list { margin-top: 10px; }
+      .talemate-list span { padding: 6px 0; font-size: 12px; }
+      .talemate-conclusion { padding-top: 10px; font-size: 18px; }
+      .pilot-item { padding: 8px 0; }
+      .pilot-item strong { font-size: 15px; }
+      .pilot-item span { margin-top: 3px; font-size: 12px; }
+      .pilot-meta { margin-top: 11px; font-size: 10px; }
+      .pilot-truth { margin-top: 7px; font-size: 13px; }
+    }
+    @media (max-width: 1100px) {
+      .slide { padding-left: 7vw; padding-right: 7vw; }
+      .statement-layout, .economics, .closing-layout { gap: 5vw; }
+      .talemate-columns { gap: 28px; }
+      .product-stage { grid-template-columns: minmax(0, 1.45fr) minmax(215px, .55fr); gap: 24px; }
+      .proof-item { padding: 13px 15px; }
+      .tier { grid-template-columns: 100px 1fr auto; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+      .pwa-panel.is-revealed .pwa-row, .pwa-panel.is-revealed .pwa-device-line { animation-delay: 0s !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="deck" id="pwaymentDeck" aria-label="Pwayment retail intelligence presentatie">
+    <div class="ambient"></div>
+    <header class="topbar">
+      <div class="brand-block" aria-label="pwayment retail intelligence">
+        <div class="brand">
+          <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+            <path d="M7.5 25V7.5h9.2c4.9 0 8.3 2.6 8.3 6.7s-3.4 6.7-8.3 6.7H7.5" fill="none" stroke="var(--cyan)" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="24.8" cy="25" r="2.25" fill="var(--lime)"/>
+          </svg>
+          <span class="brand-name">pwayment</span>
+        </div>
+        <div class="brand-subtitle">retail intelligence</div>
+      </div>
+    </header>
+    <div class="controls">
+      <button id="prev" aria-label="Vorige slide">←</button>
+      <button id="next" aria-label="Volgende slide">→</button>
+      <button id="full" aria-label="Volledig scherm">⛶</button>
+    </div>
+    <div class="slides">
+      <section class="slide intro-slide is-active" data-title="Pwayment retail intelligence">
+        <div class="intro-content">
+          <div class="intro-logo-shell" aria-label="Pwayment">
+            <svg class="intro-brand-mark" viewBox="0 0 80 80" aria-hidden="true" focusable="false">
+              <path d="M16 64V16h25c13.4 0 22.8 7.3 22.8 18.6S54.4 53.2 41 53.2H16" fill="none" stroke="var(--cyan)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="64" cy="64" r="5.3" fill="var(--lime)"/>
+            </svg>
+            <div class="intro-wordmark" aria-hidden="true">pwayment</div>
+          </div>
+          <h1 class="intro-title">Van <span class="blue">kassa</span> naar helder winkel<span class="accent">inzicht</span>.</h1>
+          <p class="intro-subtitle">Je winkel altijd bij de hand — verkopen, beheren en bijsturen vanaf elk toestel.</p>
+        </div>
+      </section>
+
+      <section class="slide pwa-slide" data-title="Wat is een PWA?">
+        <div class="pwa-head">
+          <div>
+            <div class="eyebrow">PWA / Progressive Web App</div>
+            <h2>Je kassa zit niet vast<br><span class="accent">aan één toestel.</span></h2>
+          </div>
+          <p class="pwa-definition"><strong>Een webapp die aanvoelt als een app.</strong>Open Pwayment in je browser of installeer het op je toestel.</p>
+        </div>
+        <div class="pwa-compare">
+          <article class="pwa-panel" data-reveal="1">
+            <div class="pwa-panel-head"><h3>Traditionele installatie</h3><span class="pwa-panel-tag">toestelgebonden</span></div>
+            <div class="pwa-list">
+              <div class="pwa-row"><span class="signal">—</span><span>Installatie en updates per toestel</span></div>
+              <div class="pwa-row"><span class="signal">—</span><span>Beheer vaak gekoppeld aan één vaste omgeving</span></div>
+              <div class="pwa-row"><span class="signal">—</span><span>Werken buiten de winkel vraagt extra stappen</span></div>
+            </div>
+          </article>
+          <article class="pwa-panel is-pwayment" data-reveal="2">
+            <div class="pwa-panel-head"><h3>Pwayment als PWA</h3><span class="pwa-panel-tag">overal</span></div>
+            <div class="pwa-list">
+              <div class="pwa-row"><span class="signal">✓</span><span>Openen of installeren op elk modern toestel</span></div>
+              <div class="pwa-row"><span class="signal">✓</span><span>Eén login, altijd dezelfde winkeldata</span></div>
+              <div class="pwa-row"><span class="signal">✓</span><span>Begin op één toestel en ga verder op een ander</span></div>
+            </div>
+            <div class="pwa-device-line" aria-label="Werkt op laptop, tablet en telefoon"><span>Laptop</span><span>Tablet</span><span>Telefoon</span></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="slide" data-title="Pwayment × Talemate">
+        <div class="cover-layout">
+          <div>
+            <div class="cover-partners"><span class="pwayment-label">Pwayment</span><span class="times">×</span><span class="talemate-label">TALEMATE</span></div>
+            <h1>Pwayment brengt<br>de winkelvloer en<br><span class="accent">de cijfers samen.</span></h1>
+            <p class="lede" data-reveal="1">Verkoop, voorraad en klanten komen samen in één helder systeem. Zo ziet de winkelier niet alleen wat er gebeurde, maar ook wat aandacht vraagt.</p>
+            <div class="cover-credit">WebaanZee · product &amp; ontwikkeling</div>
+          </div>
+          <div class="cover-art">
+            <div class="cover-system">
+              <div class="cover-system-head"><strong>PWAYMENT</strong><span>alles voor je winkel, samen</span></div>
+              <div class="system-row"><strong>Kassa</strong><span>verkoop, korting, kassaticket en betaling</span></div>
+              <div class="system-row"><strong>Winkel</strong><span>producten, voorraad en marge</span></div>
+              <div class="system-row"><strong>Klant</strong><span>profiel, historie en terugkeer</span></div>
+              <div class="system-row highlight"><strong>Inzicht</strong><span>zien waar je moet ingrijpen</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide market-progress-slide" data-title="Een gratis kassa bestaat al">
+        <div class="statement-layout">
+          <div>
+            <div class="eyebrow">01 / wat winkels vandaag krijgen</div>
+            <h1>De kassabasis kan gratis zijn.<br><span class="accent">Inzicht en controle worden al snel betalend.</span></h1>
+            <p class="lede" data-reveal="1">Verkopen ingeven, kassatickets maken en basisvoorraad volgen kan vandaag al zonder maandprijs.</p>
+          </div>
+          <div class="line-list progress-line-list">
+            <div data-reveal="2"><strong>Gratis lost de basis op.</strong><span>Verkoop, producten, kassatickets en een eenvoudig dagoverzicht.</span></div>
+            <div data-reveal="3"><strong>De echte waarde zit een laag dieper.</strong><span>Langere historiek, geavanceerde voorraad, medewerkers en beheer worden vaak betaalde uitbreidingen.</span></div>
+            <div data-reveal="4"><strong>Pwayment brengt die waarde samen.</strong><span>Niet alleen registreren wat er gebeurt, maar tonen waar de winkelier kan bijsturen.</span></div>
+          </div>
+        </div>
+        <div class="source-inline">Bron: Loyverse vermeldt gratis POS, loyalty, basisvoorraad en 31 dagen verkooprapportering; verdere historiek, team en geavanceerde voorraad zijn add-ons. Prijsinformatie geraadpleegd augustus 2026.</div>
+      </section>
+
+      <section class="slide" data-title="Waar de kost vandaag zit">
+        <div class="eyebrow">02 / waar het vandaag misloopt</div>
+        <h2>Winst verdwijnt zelden in één groot probleem.<br><span class="blue">Ze lekt weg in dagelijkse beslissingen.</span></h2>
+        <div class="pain-grid">
+          <article class="pain-card" data-reveal="1"><div class="tag">MARGE</div><h3>Wanneer maakt korting de verkoop minder waard?</h3><p>Een korting kan omzet verhogen, maar tegelijk een groot deel van de winst wegnemen.</p></article>
+          <article class="pain-card" data-reveal="2"><div class="tag">VOORRAAD</div><h3>Welke voorraad houdt cash vast?</h3><p>Producten die niet bewegen nemen ruimte én werkkapitaal in.</p></article>
+          <article class="pain-card" data-reveal="3"><div class="tag">KLANTEN</div><h3>Wie komt terug — en waarom?</h3><p>Zonder gekoppelde klantdata blijft klantwaarde vooral giswerk.</p></article>
+          <article class="pain-card" data-reveal="4"><div class="tag">COMPLEXITEIT</div><h3>Een volledig systeem wordt zelden volledig gebruikt.</h3><p>Veel winkeliers betalen voor een uitgebreid pakket, maar gebruiken vooral de verkoopflow en het kassaticket. De rest voelt te ingewikkeld of te ver van hun dagelijkse werk.</p></article>
+        </div>
+      </section>
+
+      <section class="slide retail-progress-slide" data-title="Gebouwd voor algemene retail">
+        <div class="statement-layout">
+          <div>
+            <div class="eyebrow">03 / breed inzetbaar in retail</div>
+            <h2>Dezelfde kernproblemen komen terug<br><span class="accent">in elke retailzaak.</span></h2>
+            <p class="lede" data-reveal="1">Assortimenten verschillen, maar elke winkel moet verkopen, voorraad beheren, marge bewaken en klanten laten terugkomen.</p>
+            <div class="retail-note" data-reveal="5">Breed inzetbaar vanaf dag één. Pilots bepalen de prioriteiten — niet de grenzen van de markt.</div>
+          </div>
+          <div class="line-list progress-line-list">
+            <div data-reveal="2"><strong>Eén operationele kern.</strong><span>Producten, verkoop, betalingen, voorraad en klanten vormen in iedere winkel dezelfde basis.</span></div>
+            <div data-reveal="3"><strong>Flexibel voor ieder assortiment.</strong><span>Van mode en lifestyle tot voeding en gespecialiseerde retail: de productlogica past zich aan de winkel aan.</span></div>
+            <div data-reveal="4"><strong>Geen aparte versie per sector.</strong><span>Eén platform dat verschillende winkels bedient, zonder telkens opnieuw te moeten bouwen.</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide story-slide product-proof-slide" data-title="De basis moet betrouwbaar zijn">
+        <div class="eyebrow">04 / de basis die er al staat</div>
+        <h2>Pwayment is eerst en vooral<br><span class="accent">een kassa waarop je kunt rekenen.</span></h2>
+        <div class="product-stage">
+          <figure class="product-frame" data-reveal="1">
+            <iframe data-demo-view="pos" title="Live Pwayment kassademo"></iframe>
+            <div class="live-demo-actions"><button type="button" class="primary" data-demo-exit>Terug naar presentatie</button></div>
+          </figure>
+          <div class="proof-stack progress-stack">
+            <div class="proof-item" data-reveal="2"><div class="n">01 / VERKOOP</div><h3>Verkoop zonder omwegen</h3><p>Product, korting, kassaticket en betaling in één korte flow.</p></div>
+            <div class="proof-item" data-reveal="3"><div class="n">02 / VOORRAAD</div><h3>Voorraad volgt iedere verkoop</h3><p>Geen aparte lijst die achteraf moet worden rechtgetrokken.</p></div>
+            <div class="proof-item" data-reveal="4"><div class="n">03 / KLANT</div><h3>De klant geeft context</h3><p>Door een klant te koppelen worden historiek en terugkeer meetbaar.</p></div>
+          </div>
+        </div>
+        <div class="quote" data-reveal="5">Als de basis niet klopt, heeft geen enkel extra inzicht waarde.</div>
+      </section>
+
+      <section class="slide story-slide intelligence-proof-slide" data-title="Waar Pwayment geld zichtbaar maakt">
+        <div class="eyebrow">05 / de reden om voor Pwayment te betalen</div>
+        <h2>De kassa registreert wat verkocht is.<br><span class="accent">Pwayment toont wat beter kan.</span></h2>
+        <div class="intelligence-stage">
+          <figure class="product-frame intelligence-frame" data-reveal="1">
+            <iframe data-demo-view="insights" title="Live Pwayment inzichten met marge, voorraad en klanten"></iframe>
+            <div class="live-demo-actions"><button type="button" class="primary" data-demo-exit>Terug naar presentatie</button></div>
+          </figure>
+          <div class="intelligence-grid">
+            <article class="intelligence-card" data-reveal="2"><div class="tag">01 / KORTING</div><h3>Welke korting levert ook iets op?</h3><p>Vergelijk korting, marge en terugkeer. Zo zie je welke korting klanten oplevert en welke vooral winst kost.</p><div class="question">Korting die werkt, of korting die winst wegneemt?</div></article>
+            <article class="intelligence-card" data-reveal="3"><div class="tag">02 / VOORRAAD</div><h3>Waar zit je geld vast?</h3><p>Zie niet alleen hoeveel er ligt, maar hoeveel cash erin vastzit en wat wél beweegt.</p><div class="question">Opruimen, of opnieuw inkopen?</div></article>
+            <article class="intelligence-card" data-reveal="4"><div class="tag">03 / KLANTEN</div><h3>Welke verkoop brengt iemand terug?</h3><p>Vergelijk de eerste aankoop met latere bezoeken en ontdek welke producten een sterke klantrelatie starten.</p><div class="question">Welke eerste aankoop leidt tot een volgende?</div></article>
+          </div>
+        </div>
+        <div class="quote" data-reveal="5">Van transactiedata naar een concrete beslissing voor de winkel.</div>
+      </section>
+
+      <section class="slide story-slide retention-proof-slide" data-title="De klantenkaart hoort erbij">
+        <div class="eyebrow">06 / klanten die terugkomen</div>
+        <h2>Een klantenkaart wordt pas waardevol<br><span class="accent">wanneer terugkeer meetbaar wordt.</span></h2>
+        <div class="retention-layout">
+          <figure class="product-frame" data-reveal="1">
+            <img src="assets/pwayment-klantprofiel.png" alt="Pwayment klantprofiel met contactgegevens en aankoopgeschiedenis" />
+            <div class="live-demo-actions"><button type="button" class="primary" data-demo-exit>Terug naar presentatie</button></div>
+          </figure>
+          <div class="retention-points progress-stack">
+            <div class="retention-point" data-reveal="2"><strong>Wat vandaag al werkt</strong><p>Klantprofielen, contactgegevens, aankoopgeschiedenis en cadeaubonnen, rechtstreeks gekoppeld aan de kassa.</p></div>
+            <div class="retention-point" data-reveal="3"><strong>Wat erop wordt gebouwd</strong><p>Punten, beloningen en klantgroepen op basis van werkelijk aankoopgedrag.</p></div>
+            <div class="retention-point" data-reveal="4"><strong>Waarom dit telt</strong><p>De winkelier ziet of een actie klanten terugbrengt — en niet alleen hoeveel keer ze werd gebruikt.</p></div>
+          </div>
+        </div>
+        <div class="truth" data-reveal="5">Punten en beloningen zijn nog in ontwikkeling. De klantdata waarop ze steunen zit al in Pwayment.</div>
+      </section>
+
+      <section class="slide pricing-progress-slide" data-title="Freemium zonder valstrik">
+        <div class="eyebrow">07 / hoe we geld verdienen</div>
+        <h2>Gratis om te beginnen.<br><span class="accent">Eén betaald pakket zodra inzicht waarde oplevert.</span></h2>
+        <div class="economics">
+          <div data-reveal="1"><p class="lede">Iedere winkel kan met de kassa starten zonder maandprijs. Wie meer historiek, inzicht en beheer nodig heeft, kiest voor Retail.</p><p class="price-note">Geen prijs per medewerker. Geen factuur voor elke kleine functie. Eén duidelijke prijs per winkel.</p></div>
+          <div class="tier-stack progress-stack">
+            <div class="tier" data-reveal="2"><div class="name">Start</div><div class="includes">Kassa, producten, basisvoorraad, klanten en dagoverzicht.</div><div class="amount">€ 0<small>om te starten</small></div></div>
+            <div class="tier retail" data-reveal="3"><div class="name">Retail</div><div class="includes">Volledige historiek, inzichten, team, geavanceerde voorraad en klantenbinding.</div><div class="amount">€ 49–69<small>doelprijs / winkel / maand</small></div></div>
+            <div class="tier" data-reveal="4"><div class="name">Scale</div><div class="includes">Meerdere locaties, integraties, onboarding, SLA en maatwerk.</div><div class="amount">op maat<small>voor groei</small></div></div>
+          </div>
+        </div>
+        <div class="truth" data-reveal="5">€49–69 is de hypothese die we tijdens de pilot testen: duidelijk per winkel, zonder doolhof van modules.</div>
+      </section>
+
+      <section class="slide scale-progress-slide" data-title="Terugkerende omzet per winkel">
+        <div class="statement-layout">
+          <div>
+            <div class="eyebrow">08 / wat terugkerende omzet kan betekenen</div>
+            <h2>Elke betalende winkel bouwt<br><span class="accent">terugkerende omzet op.</span></h2>
+            <p class="lede">Een eenvoudige bottom-up blik op Retail, op basis van gemiddeld €59 per winkel per maand.</p>
+            <p class="scale-note">Illustratief scenario, geen forecast. Exclusief Scale, onboarding, integraties en andere diensten.</p>
+          </div>
+          <div>
+            <div class="line-list progress-line-list">
+              <div data-reveal="1"><strong><span>100 winkels</span><b>€ 70.800 / jaar</b></strong><span>€5.900 terugkerende omzet per maand.</span></div>
+              <div data-reveal="2"><strong><span>500 winkels</span><b>€ 354.000 / jaar</b></strong><span>€29.500 terugkerende omzet per maand.</span></div>
+              <div data-reveal="3"><strong><span>1.000 winkels</span><b>€ 708.000 / jaar</b></strong><span>€59.000 terugkerende omzet per maand.</span></div>
+            </div>
+            <div class="scale-question" data-reveal="4">De eerste commerciële vraag is helder: kunnen we een herhaalbaar pad naar de eerste 100 betalende winkels bewijzen?</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide winning-progress-slide" data-title="Waar Pwayment kan winnen">
+        <div class="eyebrow">09 / waarom een winkel zou kiezen</div>
+        <h2>Pwayment hoeft niet de meeste functies te hebben.<br><span class="blue">Het moet de duidelijkste keuze zijn.</span></h2>
+        <div class="line-list progress-line-list" style="margin-top:42px; max-width:1050px;">
+          <div data-reveal="1"><strong>Start zonder grote investering.</strong><span>Een winkel kan beginnen zonder eerst een zwaar softwarepakket te kopen.</span></div>
+          <div data-reveal="2"><strong>Eén systeem en één duidelijke prijs.</strong><span>Verkoop, voorraad, marge en klanten blijven samen.</span></div>
+          <div data-reveal="3"><strong>Volwaardig zonder ingewikkeld te worden.</strong><span>De kassaflow blijft eenvoudig. Extra functies en inzichten verschijnen pas waar ze echt helpen.</span></div>
+        </div>
+        <div class="truth">Gericht op zelfstandige retail waarvoor gratis kassasoftware te beperkt en uitgebreide retailsoftware te zwaar wordt.</div>
+        <div class="source-inline">Lightspeed positioneert retail vanaf €99/maand in België; Loyverse biedt een gratis basis met betaalde add-ons voor onder meer onbeperkte historiek, team en geavanceerde voorraad. Prijsinformatie geraadpleegd augustus 2026.</div>
+      </section>
+
+      <section class="slide commerce-progress-slide" data-title="Eén dashboard voor winkel, webshop en inkoop">
+        <div class="statement-layout">
+          <div>
+            <div class="eyebrow">10 / waar Pwayment naartoe kan groeien</div>
+            <h2>Eén dashboard voor winkel,<br><span class="accent">webshop én inkoop.</span></h2>
+            <p class="lede" data-reveal="1">Producten, voorraad, klanten en bestellingen blijven samen. Zo groeit Pwayment uit tot één plek om ook online te verkopen en slimmer in te kopen.</p>
+          <div class="retail-note premium-note" data-reveal="5"><strong>Alleen in de betalende versie</strong>De webshop en Slim inkopen komen niet in het gratis Start-pakket. Deze groeifuncties horen bij het betalende Retail-pakket.</div>
+          <p class="scale-note">Geplande functionaliteit — geen onderdeel van de eerste pilot.</p>
+          </div>
+          <div class="line-list progress-line-list">
+            <div data-reveal="2"><strong>Webshop vanuit Pwayment.</strong><span>Maak, beheer en publiceer de webshop rechtstreeks vanuit hetzelfde dashboard.</span></div>
+            <div data-reveal="3"><strong>Eén assortiment en voorraad.</strong><span>Producten één keer beheren; verkopen in de winkel en online werken dezelfde voorraad bij.</span></div>
+            <div data-reveal="4"><strong>Slim inkopen vanuit echte verkoop.</strong><span>Pwayment analyseert het verkoopritme, voorspelt wanneer voorraad dreigt op te raken en stelt tijdig de juiste inkooporder per leverancier voor.</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide talemate-slide" data-title="Waarom Pwayment en Talemate">
+        <div class="talemate-layout">
+          <div class="eyebrow">11 / waarom deze samenwerking logisch kan zijn</div>
+          <h2>Talemate kan van een werkend product<br><span class="accent">een schaalbaar aanbod helpen maken.</span></h2>
+          <div class="talemate-columns">
+            <div class="talemate-column" data-reveal="1">
+              <div class="tag">Pwayment brengt</div>
+              <h3>Waarde op de winkelvloer</h3>
+              <div class="talemate-list"><span>Een werkend retailproduct</span><span>Dagelijks gebruik in de winkel</span><span>Verkoop-, voorraad- en klantdata</span><span>Een model met terugkerende omzet</span></div>
+            </div>
+            <div class="talemate-column" data-reveal="2">
+              <div class="tag">Talemate kan versterken</div>
+              <h3>De stap naar schaal</h3>
+              <div class="talemate-list"><span>Integraties en technische productisering</span><span>Ervaring met fysieke en digitale systemen</span><span>Structuur rond implementatie en ondersteuning</span><span>De stap van pilot naar schaalbaar aanbod</span></div>
+            </div>
+            <div class="talemate-conclusion" data-reveal="3">Pwayment bewijst de waarde in de winkel. <strong>Talemate kan helpen om die waarde herhaalbaar te leveren.</strong></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide pilot-slide" data-title="Wat de pilot moet bewijzen">
+        <div class="statement-layout">
+          <div>
+            <div class="eyebrow">12 / van interesse naar bewijs</div>
+            <h2>De pilot moet vier<br><span class="accent">investeringsvragen beantwoorden.</span></h2>
+            <div class="pilot-meta" data-reveal="5">3–5 winkels · 6–8 weken · vooraf afgesproken succescriteria</div>
+            <div class="pilot-truth" data-reveal="5">Daarna beslissen we met cijfers of verdere productontwikkeling en investering verantwoord zijn.</div>
+          </div>
+          <div class="pilot-list">
+            <div class="pilot-item" data-reveal="1"><div class="n">01</div><div><strong>Gebruik</strong><span>Kan een winkel snel starten en blijft Pwayment actief gebruikt worden?</span></div></div>
+            <div class="pilot-item" data-reveal="2"><div class="n">02</div><div><strong>Waarde</strong><span>Welke inzichten leiden werkelijk tot een beslissing of actie?</span></div></div>
+            <div class="pilot-item" data-reveal="3"><div class="n">03</div><div><strong>Betalingsbereidheid</strong><span>Willen winkels na de pilot €49–69 per maand betalen?</span></div></div>
+            <div class="pilot-item" data-reveal="4"><div class="n">04</div><div><strong>Schaalbaarheid</strong><span>Hoeveel onboarding en ondersteuning vraagt één nieuwe winkel?</span></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide closing-slide" data-title="De rol voor Talemate">
+        <div class="closing-layout">
+          <div>
+            <div class="eyebrow">13 / wat we vandaag willen beslissen</div>
+            <h1>Vandaag beslissen we niet over het eindpunt.<br><span class="accent">Wel over de eerste echte test.</span></h1>
+            <p class="lede" data-reveal="1">Pwayment bij echte winkels gebruiken, meten wat waarde oplevert en daarna met bewijs beslissen hoe we verdergaan.</p>
+          </div>
+          <div class="partner-note">
+            <strong>Drie concrete afspraken</strong>
+            <div class="commitment-list">
+              <div class="commitment-item" data-reveal="2"><div class="step">01</div><div><b>De pilotscope vastleggen</b><span>Afspreken welke functies en commerciële aannames Pwayment precies moet bewijzen.</span></div></div>
+              <div class="commitment-item" data-reveal="3"><div class="step">02</div><div><b>Drie tot vijf pilotwinkels selecteren</b><span>Retailers die Pwayment werkelijk gebruiken en eerlijke feedback geven.</span></div></div>
+              <div class="commitment-item" data-reveal="4"><div class="step">03</div><div><b>Rollen en succescriteria afspreken</b><span>Wie doet wat, hoe lang loopt de pilot en wanneer is het resultaat sterk genoeg?</span></div></div>
+            </div>
+            <div class="truth" data-reveal="5">Bij positieve resultaten leggen we budget, samenwerking en een mogelijke investering concreet op tafel.</div>
+            <div class="closing-question" data-reveal="5">Starten we de pilot?</div>
+          </div>
+        </div>
+      </section>
+    </div>
+    <nav class="nav" aria-label="Slide navigatie"></nav>
+    <div class="num" id="slideNum" aria-live="polite">01 / 16</div>
+  </main>
+  <script>
+    (() => {
+      const deck = document.getElementById('pwaymentDeck');
+      const slides = [...deck.querySelectorAll('.slide')];
+      const nav = deck.querySelector('.nav');
+      const slideNum = deck.querySelector('#slideNum');
+      const previousButton = deck.querySelector('#prev');
+      const nextButton = deck.querySelector('#next');
+      const demoBase = new URLSearchParams(window.location.search).get('demoBase') || 'http://localhost:4301/';
+      let current = 0;
+      let revealStep = 0;
+      deck.querySelectorAll('iframe[data-demo-view]').forEach((frame) => {
+        const url = new URL(demoBase, window.location.href);
+        url.searchParams.set('view', frame.dataset.demoView);
+        url.searchParams.set('presentation', '1');
+        frame.src = url.toString();
+      });
+      slides.forEach((slide, index) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.title = slide.dataset.title || `Slide ${index + 1}`;
+        button.setAttribute('aria-label', button.title);
+        button.addEventListener('click', () => go(index));
+        nav.appendChild(button);
+      });
+      const buttons = [...nav.querySelectorAll('button')];
+      function revealLevels() {
+        return [...new Set([...slides[current].querySelectorAll('[data-reveal]')]
+          .map((element) => Number(element.dataset.reveal))
+          .filter((level) => Number.isFinite(level) && level > 0))].sort((a, b) => a - b);
+      }
+      function updateNavigationButtons() {
+        const levels = revealLevels();
+        const hasNextPoint = revealStep < levels.length;
+        const canGoForward = hasNextPoint || current < slides.length - 1;
+        const canGoBack = revealStep > 0 || current > 0;
+
+        nextButton.classList.toggle('needs-reveal', hasNextPoint);
+        nextButton.classList.toggle('is-complete', !canGoForward);
+        nextButton.disabled = !canGoForward;
+        nextButton.title = hasNextPoint ? 'Volgende stap' : canGoForward ? 'Volgende slide' : 'Einde van de presentatie';
+        nextButton.setAttribute('aria-label', nextButton.title);
+
+        previousButton.disabled = !canGoBack;
+        previousButton.title = revealStep > 0 ? 'Vorige stap' : canGoBack ? 'Vorige slide' : 'Begin van de presentatie';
+        previousButton.setAttribute('aria-label', previousButton.title);
+      }
+      function applyRevealStage() {
+        const levels = revealLevels();
+        const level = revealStep === 0 ? 0 : levels[revealStep - 1];
+        slides[current].querySelectorAll('[data-reveal]').forEach((element) => {
+          const elementLevel = Number(element.dataset.reveal);
+          element.classList.toggle('is-revealed', elementLevel <= level);
+          element.classList.toggle('is-focus', elementLevel === level && level > 0);
+          element.classList.toggle('is-quiet', elementLevel < level);
+        });
+        slides[current].dataset.stage = String(revealStep);
+      }
+      function showNextPoint() {
+        const levels = revealLevels();
+        if (revealStep >= levels.length) return;
+        revealStep += 1;
+        applyRevealStage();
+        updateNavigationButtons();
+      }
+      function showPreviousPoint() {
+        if (revealStep === 0) return;
+        revealStep -= 1;
+        applyRevealStage();
+        updateNavigationButtons();
+      }
+      function go(next, revealTarget = 'start') {
+        current = Math.max(0, Math.min(slides.length - 1, next));
+        revealStep = revealTarget === 'end' ? revealLevels().length : 0;
+        slides.forEach((slide) => {
+          slide.dataset.stage = '0';
+          slide.querySelectorAll('[data-reveal]').forEach((element) => element.classList.remove('is-revealed', 'is-focus', 'is-quiet'));
+        });
+        slides.forEach((slide, i) => {
+          const active = i === current;
+          slide.classList.toggle('is-active', active);
+          slide.setAttribute('aria-hidden', String(!active));
+          slide.inert = !active;
+        });
+        buttons.forEach((button, i) => {
+          const active = i === current;
+          button.classList.toggle('is-active', active);
+          if (active) button.setAttribute('aria-current', 'page');
+          else button.removeAttribute('aria-current');
+        });
+        slideNum.textContent = `${String(current + 1).padStart(2, '0')} / ${String(slides.length).padStart(2, '0')}`;
+        document.title = `Pwayment | ${slides[current].dataset.title}`;
+        applyRevealStage();
+        updateNavigationButtons();
+      }
+      function goForward() {
+        if (revealStep < revealLevels().length) showNextPoint();
+        else if (current < slides.length - 1) go(current + 1);
+      }
+      function goBack() {
+        if (revealStep > 0) showPreviousPoint();
+        else if (current > 0) go(current - 1, 'end');
+      }
+      previousButton.addEventListener('click', goBack);
+      deck.querySelectorAll('[data-demo-exit]').forEach((button) => button.addEventListener('click', showNextPoint));
+      nextButton.addEventListener('click', goForward);
+      deck.querySelector('#full').addEventListener('click', () => {
+        if (!document.fullscreenElement) deck.requestFullscreen?.();
+        else document.exitFullscreen?.();
+      });
+      window.addEventListener('keydown', (event) => {
+        if (event.target instanceof HTMLElement && (event.target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(event.target.tagName))) return;
+        if (['ArrowRight', 'PageDown', ' '].includes(event.key)) { event.preventDefault(); goForward(); }
+        if (['ArrowLeft', 'PageUp'].includes(event.key)) { event.preventDefault(); goBack(); }
+        if (event.key === 'Home') { event.preventDefault(); go(0); }
+        if (event.key === 'End') { event.preventDefault(); go(slides.length - 1); }
+        if (event.key.toLowerCase() === 'f') deck.querySelector('#full').click();
+      });
+      go(0);
+    })();
+  </script>
+</body>
+</html>

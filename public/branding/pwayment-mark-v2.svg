@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-labelledby="title desc">
+  <title id="title">pwayment monogram</title>
+  <desc id="desc">A minimal open P monogram with a terminal point.</desc>
+  <path d="M7.5 25V7.5h9.2c4.9 0 8.3 2.6 8.3 6.7s-3.4 6.7-8.3 6.7H7.5" fill="none" stroke="#63D4EF" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="24.8" cy="25" r="2.25" fill="#C8F36C"/>
+</svg>

@@ -1,0 +1,5 @@
+{
+  "name": "PWAyment",
+  "description": "Een moderne, offline-first POS applicatie voor Belgische skateshops en retail, inclusief catalogusbeheer, voorraad, btw-berekening, klantenkaart-integratie en Z-rapportage.",
+  "requestFramePermissions": []
+}
