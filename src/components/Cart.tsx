@@ -24,8 +24,9 @@ import {
   dedupeGiftCards,
   finalizeCheckout,
   type GiftCardAllocation,
+  type TenderMethod,
 } from '../services/checkout';
-import { OrderItem, PaymentMethod, Transaction } from '../types';
+import { OrderItem, Transaction } from '../types';
 import { ItemEditModal } from './ItemEditModal';
 import { DiscountModal } from './DiscountModal';
 import { CashPaymentModal } from './CashPaymentModal';
@@ -178,7 +179,7 @@ export const Cart: React.FC = () => {
   }
 
   const runCheckout = async (
-    method: PaymentMethod,
+    method: TenderMethod,
     extras: { tenderedCents?: number; giftCards?: GiftCardAllocation[] } = {},
   ) => {
     if (checkoutBlocked) return;
@@ -233,7 +234,7 @@ export const Cart: React.FC = () => {
     }
   };
 
-  const handleCheckout = (method: PaymentMethod) => {
+  const handleCheckout = (method: TenderMethod) => {
     if (method === 'Cash') {
       setCashOpen(true);
       return;

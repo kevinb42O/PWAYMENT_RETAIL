@@ -34,7 +34,9 @@ const escapeCsv = (value: unknown): string => {
   return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
-export const splitCsvLine = (line: string): string[] => {
+export type CsvDelimiter = ',' | ';';
+
+export const splitCsvLine = (line: string, delimiter: CsvDelimiter = ','): string[] => {
   const out: string[] = [];
   let cur = '';
   let quoted = false;
@@ -47,7 +49,7 @@ export const splitCsvLine = (line: string): string[] => {
       } else {
         quoted = !quoted;
       }
-    } else if ((ch === ',' || ch === ';') && !quoted) {
+    } else if (ch === delimiter && !quoted) {
       out.push(cur.trim());
       cur = '';
     } else {
@@ -56,6 +58,20 @@ export const splitCsvLine = (line: string): string[] => {
   }
   out.push(cur.trim());
   return out;
+};
+
+/**
+ * One delimiter per file, detected from the header row: whichever of `,`/`;`
+ * yields the required columns wins. A semicolon file may therefore contain
+ * unquoted decimal commas (`12,50`) without corrupting the row.
+ */
+export const detectCsvDelimiter = (headerLine: string): CsvDelimiter | null => {
+  const required = ['name', 'category', 'sellingPrice'];
+  for (const delimiter of [',', ';'] as const) {
+    const headers = splitCsvLine(headerLine, delimiter);
+    if (required.every((h) => headers.includes(h))) return delimiter;
+  }
+  return null;
 };
 
 export const serializeProductsCsv = (products: Product[]): string => {
@@ -116,6 +132,10 @@ const moneyReasonText: Record<string, string> = {
 /**
  * Parse a catalogue CSV. Nothing is written here: the caller must check that
  * `issues` is empty and then persist `products` in a single transaction.
+ *
+ * Column semantics: a column that is absent from the header preserves the
+ * existing value of every matched product; a column that is present is
+ * authoritative for every row (an empty cell clears the optional field).
  */
 export const parseProductsCsv = (
   text: string,
@@ -128,15 +148,23 @@ export const parseProductsCsv = (
     return { products: [], issues: [{ line: 1, message: 'Leeg bestand.' }] };
   }
 
-  const headers = splitCsvLine(lines[firstContent]).map((h) => h.trim());
-  const columnIndex = (name: string) => headers.findIndex((h) => h === name);
-  const missing = ['name', 'category', 'sellingPrice'].filter((h) => columnIndex(h) === -1);
-  if (missing.length > 0) {
+  const delimiter = detectCsvDelimiter(lines[firstContent]);
+  if (!delimiter) {
     return {
       products: [],
-      issues: [{ line: firstContent + 1, message: `CSV mist verplichte kolommen: ${missing.join(', ')}.` }],
+      issues: [
+        {
+          line: firstContent + 1,
+          message:
+            'CSV mist verplichte kolommen: kon de kolommen name, category en sellingPrice met geen enkel scheidingsteken (, of ;) vinden.',
+        },
+      ],
     };
   }
+
+  const headers = splitCsvLine(lines[firstContent], delimiter).map((h) => h.trim());
+  const columnIndex = (name: string) => headers.findIndex((h) => h === name);
+  const hasColumn = (name: string) => columnIndex(name) >= 0;
 
   const existingById = new Map(ctx.existing.map((p) => [p.id, p]));
   const skuOwner = new Map<string, string>();
@@ -153,7 +181,14 @@ export const parseProductsCsv = (
     const rawLine = lines[i];
     if (!rawLine.trim()) continue;
     const lineNo = i + 1;
-    const cells = splitCsvLine(rawLine);
+    const cells = splitCsvLine(rawLine, delimiter);
+    if (cells.length !== headers.length) {
+      issues.push({
+        line: lineNo,
+        message: `verwacht ${headers.length} kolommen maar vond er ${cells.length}; controleer scheidingstekens en aanhalingstekens.`,
+      });
+      continue;
+    }
     const cell = (name: string) => {
       const idx = columnIndex(name);
       return idx >= 0 ? (cells[idx] ?? '').trim() : '';
@@ -184,8 +219,17 @@ export const parseProductsCsv = (
       continue;
     }
 
+    const id = cell('id') || slugifyId(`${cell('brand') || 'item'}-${name}`) || `product-${lineNo}`;
+    if (seenIds.has(id)) {
+      issues.push({ line: lineNo, message: `${name}: dubbele id "${id}" in het bestand.` });
+      continue;
+    }
+    const existing = existingById.get(id);
+
     const costText = cell('costPrice');
-    let costPriceCents: number | undefined;
+    let costPriceCents: number | undefined = hasColumn('costPrice')
+      ? undefined
+      : existing?.costPriceCents;
     if (costText) {
       const cost = parseDecimalToCents(costText);
       if (!cost.ok) {
@@ -196,7 +240,9 @@ export const parseProductsCsv = (
     }
 
     const vatText = cell('vatRate');
-    const vatRate = vatText ? Number(vatText) : ctx.categoryVatById.get(category);
+    const vatRate = vatText
+      ? Number(vatText)
+      : existing?.vatRate ?? ctx.categoryVatById.get(category);
     if (!isSupportedVatRate(vatRate)) {
       issues.push({
         line: lineNo,
@@ -205,25 +251,24 @@ export const parseProductsCsv = (
       continue;
     }
 
-    const stockQty = parseWholeNumber(cell('stockQty'));
+    const stockQty = hasColumn('stockQty')
+      ? parseWholeNumber(cell('stockQty'))
+      : existing?.stockQty;
     if (stockQty === null) {
       issues.push({ line: lineNo, message: `${name}: stockQty moet een geheel getal ≥ 0 zijn.` });
       continue;
     }
-    const minStockQty = parseWholeNumber(cell('minStockQty'));
+    const minStockQty = hasColumn('minStockQty')
+      ? parseWholeNumber(cell('minStockQty'))
+      : existing?.minStockQty;
     if (minStockQty === null) {
       issues.push({ line: lineNo, message: `${name}: minStockQty moet een geheel getal ≥ 0 zijn.` });
       continue;
     }
 
-    const id = cell('id') || slugifyId(`${cell('brand') || 'item'}-${name}`) || `product-${lineNo}`;
-    if (seenIds.has(id)) {
-      issues.push({ line: lineNo, message: `${name}: dubbele id "${id}" in het bestand.` });
-      continue;
-    }
     seenIds.add(id);
 
-    const sku = cell('sku') || undefined;
+    const sku = hasColumn('sku') ? cell('sku') || undefined : existing?.sku;
     if (sku) {
       const owner = skuOwner.get(sku.toLowerCase());
       if (owner && owner !== id) {
@@ -233,7 +278,7 @@ export const parseProductsCsv = (
       skuOwner.set(sku.toLowerCase(), id);
     }
 
-    const barcode = cell('barcode') || undefined;
+    const barcode = hasColumn('barcode') ? cell('barcode') || undefined : existing?.barcode;
     if (barcode) {
       const owner = barcodeOwner.get(barcode);
       if (owner && owner !== id) {
@@ -243,16 +288,27 @@ export const parseProductsCsv = (
       barcodeOwner.set(barcode, id);
     }
 
-    const isActiveCell = cell('isActive');
+    // isActive only changes on an explicit true/false; an omitted column or
+    // empty cell can never silently reactivate an archived product.
+    const isActiveCell = cell('isActive').toLowerCase();
+    if (isActiveCell && isActiveCell !== 'true' && isActiveCell !== 'false') {
+      issues.push({ line: lineNo, message: `${name}: isActive moet "true" of "false" zijn.` });
+      continue;
+    }
+    const isActive = isActiveCell ? isActiveCell === 'true' : existing?.isActive ?? true;
+
+    const optionalText = (column: string, existingValue: string | undefined) =>
+      hasColumn(column) ? cell(column) || undefined : existingValue;
+
     products.push({
-      ...existingById.get(id),
+      ...existing,
       id,
       name,
       category,
-      subCategory: cell('subCategory') || undefined,
-      brand: cell('brand') || undefined,
-      supplier: cell('supplier') || undefined,
-      variant: cell('variant') || undefined,
+      subCategory: optionalText('subCategory', existing?.subCategory),
+      brand: optionalText('brand', existing?.brand),
+      supplier: optionalText('supplier', existing?.supplier),
+      variant: optionalText('variant', existing?.variant),
       sku,
       barcode,
       costPriceCents,
@@ -260,8 +316,8 @@ export const parseProductsCsv = (
       vatRate,
       stockQty,
       minStockQty,
-      isActive: isActiveCell !== 'false',
-      color: existingById.get(id)?.color ?? 'bg-sky-700',
+      isActive,
+      color: existing?.color ?? 'bg-sky-700',
     });
   }
 

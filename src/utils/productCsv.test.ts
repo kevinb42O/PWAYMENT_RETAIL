@@ -100,6 +100,79 @@ describe('product CSV round trip', () => {
   it('reports missing required columns without producing rows', () => {
     const { products, issues } = parseProductsCsv('name,category\nDeck,skateboards', ctx);
     expect(products).toEqual([]);
-    expect(issues[0].message).toMatch(/sellingPrice/);
+    expect(issues[0].message).toMatch(/verplichte kolommen/);
+  });
+
+  it('parses a semicolon-delimited file with unquoted decimal commas', () => {
+    const csv = [
+      'id;name;category;sellingPrice;costPrice',
+      'a;Deck A;skateboards;12,50;6,40',
+      'b;Deck B;skateboards;1.234,56;',
+    ].join('\n');
+
+    const { products, issues } = parseProductsCsv(csv, ctx);
+    expect(issues).toEqual([]);
+    expect(products.map((p) => p.priceCents)).toEqual([1250, 123456]);
+    expect(products[0].costPriceCents).toBe(640);
+  });
+
+  it('rejects rows whose column count does not match the header', () => {
+    const csv = [
+      'name,category,sellingPrice',
+      'Deck,skateboards,12,50', // unquoted decimal comma in a comma file
+    ].join('\n');
+
+    const { products, issues } = parseProductsCsv(csv, ctx);
+    expect(products).toEqual([]);
+    expect(issues[0].message).toMatch(/kolommen/);
+  });
+
+  it('preserves fields whose columns are absent from a partial file', () => {
+    const csv = ['id,name,category,sellingPrice', 'deck-1,Deck 8.25,skateboards,15.00'].join('\n');
+
+    const { products, issues } = parseProductsCsv(csv, ctx);
+    expect(issues).toEqual([]);
+    const [p] = products;
+    expect(p.priceCents).toBe(1500);
+    // Everything the file did not mention survives from the catalogue.
+    expect(p.costPriceCents).toBe(640);
+    expect(p.sku).toBe('DCK-825');
+    expect(p.barcode).toBe('5412345678901');
+    expect(p.stockQty).toBe(12);
+    expect(p.minStockQty).toBe(3);
+    expect(p.vatRate).toBe(21);
+  });
+
+  it('never reactivates an archived product without an explicit isActive=true', () => {
+    const archived: Product = { ...catalog[0], isActive: false };
+    const partialCtx = { ...ctx, existing: [archived, catalog[1]] };
+
+    const noColumn = parseProductsCsv(
+      'id,name,category,sellingPrice\ndeck-1,Deck 8.25,skateboards,12.50',
+      partialCtx,
+    );
+    expect(noColumn.issues).toEqual([]);
+    expect(noColumn.products[0].isActive).toBe(false);
+
+    const emptyCell = parseProductsCsv(
+      'id,name,category,sellingPrice,isActive\ndeck-1,Deck 8.25,skateboards,12.50,',
+      partialCtx,
+    );
+    expect(emptyCell.issues).toEqual([]);
+    expect(emptyCell.products[0].isActive).toBe(false);
+
+    const explicit = parseProductsCsv(
+      'id,name,category,sellingPrice,isActive\ndeck-1,Deck 8.25,skateboards,12.50,true',
+      partialCtx,
+    );
+    expect(explicit.issues).toEqual([]);
+    expect(explicit.products[0].isActive).toBe(true);
+
+    const invalid = parseProductsCsv(
+      'id,name,category,sellingPrice,isActive\ndeck-1,Deck 8.25,skateboards,12.50,yes',
+      partialCtx,
+    );
+    expect(invalid.products).toEqual([]);
+    expect(invalid.issues[0].message).toMatch(/isActive/);
   });
 });

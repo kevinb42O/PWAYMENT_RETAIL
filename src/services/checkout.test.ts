@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../db/db';
 import { CheckoutError, finalizeCheckout } from './checkout';
 import { Customer, GiftCard, OrderItem, Product } from '../types';
@@ -221,5 +221,81 @@ describe('finalizeCheckout', () => {
       { method: 'Cash', amountCents: 6000 },
     ]);
     expect((await db.gift_cards.get('gc-1')).balanceCents).toBe(0);
+  });
+
+  it('refuses "Split" as an input tender method', async () => {
+    await expect(
+      finalizeCheckout(baseInput({ method: 'Split' })),
+    ).rejects.toMatchObject({ code: 'invalid-tender' });
+    expect(await counts()).toEqual({ transactions: 0, audit: 0, outbox: 0 });
+  });
+
+  it('refuses a gift-card-only checkout that does not cover the full total', async () => {
+    await db.gift_cards.put(giftCard({ balanceCents: 4000 }));
+
+    await expect(
+      finalizeCheckout(
+        baseInput({
+          method: 'Cadeaubon',
+          giftCards: [{ id: 'gc-1', code: 'AAAA-BBBB-CCCC', amountCents: 4000 }],
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'invalid-tender' });
+
+    expect((await db.gift_cards.get('gc-1')).balanceCents).toBe(4000);
+    expect(await counts()).toEqual({ transactions: 0, audit: 0, outbox: 0 });
+  });
+
+  it('refuses cash tendered below the amount still to pay', async () => {
+    await db.gift_cards.put(giftCard({ balanceCents: 4000 }));
+
+    await expect(
+      finalizeCheckout(baseInput({ method: 'Cash', tenderedCents: 9999 })),
+    ).rejects.toMatchObject({ code: 'invalid-tender' });
+
+    await expect(
+      finalizeCheckout(
+        baseInput({
+          method: 'Cash',
+          tenderedCents: 5000,
+          giftCards: [{ id: 'gc-1', code: 'AAAA-BBBB-CCCC', amountCents: 4000 }],
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'invalid-tender' });
+
+    expect((await db.gift_cards.get('gc-1')).balanceCents).toBe(4000);
+    expect(await counts()).toEqual({ transactions: 0, audit: 0, outbox: 0 });
+  });
+
+  it('rolls back every table when a write fails after the transaction row was added', async () => {
+    await db.gift_cards.put(giftCard());
+    await db.customers.put(customer());
+
+    // The outbox write is the last write in the checkout transaction, so a
+    // failure here proves the earlier transaction/stock/card/customer/audit
+    // writes are all rolled back.
+    const outboxAdd = vi.spyOn(db.outbox, 'add').mockRejectedValueOnce(new Error('disk full'));
+
+    const input = baseInput({
+      customerId: 'cust-1',
+      method: 'Cash',
+      tenderedCents: 6000,
+      giftCards: [{ id: 'gc-1', code: 'AAAA-BBBB-CCCC', amountCents: 4000 }],
+    });
+
+    await expect(finalizeCheckout(input)).rejects.toThrow('disk full');
+
+    expect(await counts()).toEqual({ transactions: 0, audit: 0, outbox: 0 });
+    expect((await db.products.get('deck-1')).stockQty).toBe(5);
+    expect((await db.gift_cards.get('gc-1')).balanceCents).toBe(10000);
+    expect((await db.customers.get('cust-1')).visitCount).toBe(0);
+
+    // The same request id must be retryable after the rollback.
+    const retry = await finalizeCheckout(input);
+    expect(retry.duplicate).toBe(false);
+    expect(await counts()).toEqual({ transactions: 1, audit: 1, outbox: 1 });
+    expect((await db.gift_cards.get('gc-1')).balanceCents).toBe(6000);
+
+    outboxAdd.mockRestore();
   });
 });

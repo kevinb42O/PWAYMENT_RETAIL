@@ -3,7 +3,11 @@
 > Audit date: 2026-08-08 · Scope excludes auth, storage and backend security (demo build, local storage only, 0 backend).
 > Status legend: `[ ]` open · `[~]` in progress · `[x]` fixed & verified
 
-**Verification performed:** `npx tsc --noEmit` (clean) · `npx vitest run` (47/47 pass, 11 files) · isolated re-execution of the money/VAT/CSV logic to confirm arithmetic defects. No source, config, schema, or data was modified during the audit.
+**Initial audit verification:** `npx tsc --noEmit` (clean) · `npx vitest run` (47/47 pass, 11 files) · isolated re-execution of the money/VAT/CSV logic to confirm arithmetic defects. No source, config, schema, or data was modified during the initial audit.
+
+**Post-remediation verification (commit `41e1a74`):** `npm run lint` clean · `npm test` 69/69 pass (13 files) · `npm run build` succeeds. The repository was independently re-checked after the remediation commit.
+
+**Remediation round 2 (2026-08-08):** F1, F2 and F3 implemented · `npm run lint` clean · `npm test` **89/89 pass (15 files)** · `npm run build` succeeds. Gift-card payment and CSV import now **default to off** (`FEATURES`), so an unconfigured deployment is safe. On-device verification and the pre-v10 IndexedDB export remain outstanding, so the release status is still **NO-GO**.
 
 ---
 
@@ -11,20 +15,21 @@
 
 ### Actual architecture
 
-A **single-process, browser-only React 19 + Vite SPA**. There is no server, no API, no queue, no scheduled job, and no second process. ~12.6k LOC across 71 files.
+A **single-process, browser-only React 19 + Vite SPA**. There is no server, API, scheduled job, payment-provider process, or sync worker. Checkout now has one canonical service and one atomic IndexedDB write boundary; the outbox is still never drained.
 
 ```mermaid
 graph LR
   SCAN[Keyboard-wedge scanner] --> LAYOUT[Layout.tsx global keydown]
   LAYOUT --> LOOKUP[productLookup.ts]
   LOOKUP --> STORE[useStore cart zustand]
-  STORE --> VAT[vat.ts calculateTotals]
-  VAT --> CART[Cart.tsx finalizeCheckout]
-  CART --> TX[(Dexie transactions)]
-  CART --> STOCK[(products)]
-  CART --> GC[(gift_cards)]
-  CART --> CUST[(customers)]
-  CART --> OUT[(outbox - never drained)]
+  STORE --> CART[Cart.tsx]
+  CART --> VAT[vat.ts calculateTotals]
+  CART --> CHECKOUT[checkout.ts atomic checkout service]
+  CHECKOUT --> TX[(Dexie transactions)]
+  CHECKOUT --> STOCK[(products)]
+  CHECKOUT --> GC[(gift_cards)]
+  CHECKOUT --> CUST[(customers)]
+  CHECKOUT --> OUT[(outbox - never drained)]
   CART --> USB[WebUSB EscPosPrintAdapter]
   TX --> ZR[report.ts generateZReport]
   ZR --> DR[(daily_reports + SHA-256 chain)]
@@ -42,15 +47,15 @@ graph LR
 | Inventory | `products.stockQty` | Mutated in place, no ledger except purchase receipts |
 | Tax | `products.vatRate` snapshot inside `transactions.items` | Only 12 / 21 are representable |
 | Receipt numbering | `transactions.id` (IndexedDB `++id`) | No series, no gap control |
-| Gift cards | `gift_cards.balanceCents` | Debited best-effort at checkout |
+| Gift cards | `gift_cards.balanceCents` | Redemption is atomic; issuance/recharge still has no matching cash transaction |
 | Reports | `daily_reports` + prev-hash chain | Chain never verified |
 | Accounting export | **Does not exist** | — |
 
 **Entry points:** the app shell, the global keydown scanner, WebUSB, CSV import, and the `?view=` / `?presentation=1` URL parameters.
 
-**Money-flow equality check.** The target `expected = persisted = provider = receipt = report = accounting` **cannot hold today**, at five distinct points: gift-card redemption (A1/A2), the discount base (A3), the non-atomic checkout (A5), the report payment buckets (A6/A7), and any VAT rate other than 12/21 (B1). There is no provider leg at all — "PIN" is a button that records a row; no terminal is integrated.
+**Money-flow equality check.** For the currently supported 12%/21% checkout paths, A1–A5, A19 and B1 are remediated at the persistence boundary. The full target `expected = persisted = provider = receipt = report = accounting` still **cannot hold end to end**: there is no payment-provider leg, A6/A7 can break report reconciliation, A8 mis-models gift-card issuance/recharge, historical receipt identity remains mutable (B3/B4), and there is no accounting-export leg.
 
-**Assumptions / unknowns not resolvable from the repo:** deployment status; whether more than one device is ever used (`tableId` is hard-coded to `1`, so all registers self-identify as "Kassa 1"); whether the merchant is subject to fiscalization obligations; and whether the intended market is Belgium only (`nl-BE`, `BE` VAT number, 12/21 rates are hard-coded, but nothing enforces it).
+**Assumptions / unknowns not resolvable from the repo:** deployment status; whether more than one device is ever used (`tableId` is hard-coded to `1`, so all registers self-identify as "Kassa 1"); whether the merchant is subject to fiscalization obligations; and whether 12%/21% are sufficient for the real catalogue. Those two rates are now enforced; products requiring 0% or 6% remain intentionally blocked until the VAT model is generalized.
 
 > Out of the scope set for this audit: a production build still auto-logs in as `owner` when the URL carries `?presentation=1` ([src/App.tsx](src/App.tsx#L16-L34)). Noted once, not pursued.
 
@@ -67,9 +72,13 @@ graph LR
 
 A €100 card pays a €100 basket an unlimited number of times. The partial-payment path (add card, then press Cash/PIN) is unaffected because it spans two renders — which is exactly why this is invisible in casual testing.
 
+**Resolution:** the selected allocation is now passed explicitly to `checkout.ts`; the full-payment path no longer depends on a Zustand re-render. The committed transaction contains the gift-card tender and the balance debit in the same Dexie transaction.
+
 ### - [x] A2 · FIXED · CRITICAL — Redemption is not capped by the real balance
 
 `addCartGiftCard` appends with no de-duplication, and `GiftCardPaymentModal` computes `Math.min(totalCents, card.balanceCents)` against an in-memory copy that is only written at checkout. The same card can therefore be added twice for a combined amount exceeding its balance. `deductGiftCard` then absorbs the overdraft silently via `Math.max(0, cur.balanceCents - amountCents)` ([src/store/useCustomers.ts](src/store/useCustomers.ts#L146-L155)) — the shop eats the difference with no trace.
+
+**Resolution:** allocations are de-duplicated, the card is re-read inside the database transaction, and inactive, invalid, over-balance and over-basket allocations fail the whole checkout without writes.
 
 ### - [x] A3 · FIXED · HIGH — Manual discount is computed on an inflated base
 
@@ -82,13 +91,19 @@ a 10% discount then computes 1050c instead of 1000c
 
 Every discount applied on top of an existing discount is too large, and it compounds on each re-open.
 
+**Resolution:** `DiscountModal` receives `totals.subtotal`, the undiscounted gross, directly.
+
 ### - [x] A4 · FIXED · HIGH — No idempotency; double-submit produces duplicate sales
 
 `isProcessing` gates only the three buttons in the Cart footer. The confirm buttons inside `CashPaymentModal` and `GiftCardPaymentModal` are not gated, and `finalizeCheckout` itself never checks `isProcessing`. `Transaction` carries no idempotency key and `db.transactions.add` unconditionally creates a new row.
 
+**Resolution:** DB v10 adds a unique `clientRequestId`; the UI retains the request ID across retries and the checkout service shares an identical in-flight request while rejecting a different concurrent request. Repeating a committed key resolves to the original transaction.
+
 ### - [x] A5 · FIXED · HIGH — Checkout is not atomic and fails open
 
 [src/components/Cart.tsx](src/components/Cart.tsx#L200-L232) performs seven independent IndexedDB writes in sequence: transaction → print → audit → stock → outbox → gift-card debit → customer visit. There is no `db.transaction('rw', ...)` wrapper. Any failure after the first write leaves money booked with stock not decremented and the card not debited. The `catch` shows `alert('Er ging iets mis bij het afrekenen.')`, does **not** roll back, and does **not** clear the cart — so the cashier retries, which combined with A4 produces a duplicate sale.
+
+**Resolution:** `src/services/checkout.ts` now writes the transaction, stock, gift-card balances, customer visit, audit and outbox inside one `db.transaction('rw', …)`. Printing occurs only after commit. A late-write failure injection test is still required to prove rollback after an earlier table write; see the post-remediation follow-ups below.
 
 ### - [ ] A6 · CONFIRMED · HIGH — One malformed row turns the whole Z-report into `NaN`
 
@@ -126,7 +141,7 @@ A repository-wide search for refund/return/credit-note logic returns only unrela
 
 ### - [ ] A13 · CONFIRMED · MEDIUM — Stock can be oversold, and the evidence is discarded
 
-`applySale` ([src/store/useProducts.ts](src/store/useProducts.ts#L142-L174)) clamps with `Math.max(0, cur.stockQty - soldQty)`, runs *after* the sale is persisted, outside any Dexie transaction, with a separate `db.products.get` per product. Stock is never re-validated at checkout — only at scan time.
+The new checkout service re-reads and updates stock inside the atomic checkout transaction, resolving the partial-write portion of the original finding. It still clamps with `Math.max(0, current.stockQty - soldQty)` instead of rejecting insufficient stock, and it creates no `stock_movements` evidence for the oversold quantity. Stock is checked when adding/scanning, not re-validated as a sale invariant at commit.
 
 ### - [ ] A14 · CONFIRMED · MEDIUM — The barcode listener stays live behind payment modals
 
@@ -159,13 +174,15 @@ stored 6495c -> CSV "64.95" -> re-imported as 649500c
 
 The import runs row-by-row with no transaction, no dry-run, no confirmation, and — unlike the manual editor — no duplicate SKU/barcode check.
 
+**Resolution:** export/import now shares integer-only decimal utilities, the app's own export round-trips exactly, every row is validated before persistence, duplicate SKU/barcode values are rejected, and valid rows are written in one transaction. Partial-file semantics and delimiter detection still need hardening before general CSV import is enabled; see F1 below.
+
 ### - [ ] A20 · CONFIRMED · MEDIUM — Product editor blocks the products that need editing
 
 `save()` rejects `minStockQty > stockQty` ([src/components/ProductAdmin.tsx](src/components/ProductAdmin.tsx#L241-L245)). Minimum stock is a *reorder threshold*; it is supposed to exceed current stock precisely when you are running low. This blocks editing exactly the items the forecast is flagging.
 
 ### - [ ] A21 · CONFIRMED · MEDIUM — The outbox is write-only and self-blocking
 
-`enqueueOutbox('transaction', ...)` runs on every checkout; `drainOutbox` is never called. The queue grows unbounded. Its `daily_report` and `audit` kinds are never enqueued at all. `drainOutbox` also `break`s on the first failure with no backoff — despite the doc comment promising "exponential backoff" — so one poison entry blocks the queue permanently.
+The atomic checkout service now writes the transaction outbox entry directly inside the checkout transaction, but `drainOutbox` is still never called, so the queue grows unbounded. `daily_report` and `audit` kinds are still never enqueued. The dormant drainer also `break`s on the first failure with no backoff — despite the doc comment promising "exponential backoff" — so one poison entry would block the queue permanently if draining were enabled.
 
 ### - [ ] A22 · CONFIRMED · LOW — Tips are half-modelled
 
@@ -173,7 +190,7 @@ The import runs row-by-row with no transaction, no dry-run, no confirmation, and
 
 ### - [ ] A23 · CONFIRMED · LOW — Rounding is not true half-up
 
-`toCents` and `parseCents` both use `Math.round(float * 100)`. Because of binary floating point, `Math.round(1.005 * 100) === 100`, not 101. Low impact today (both are entry-point-only), but the doc comment in [src/utils/money.ts](src/utils/money.ts#L8) explicitly claims "Rounds half-up".
+CSV and product-editor entry now use integer-only `parseDecimalToCents`, removing this defect from A19's path. `toCents` and the gift-card amount parser in `Customers.tsx` still use floating-point `Math.round(value * 100)`. Because of binary floating point, `Math.round(1.005 * 100) === 100`, not 101, while the `toCents` comment still claims half-up rounding.
 
 ### - [ ] A24 · DESIGN RISK — No register identity
 
@@ -194,9 +211,13 @@ vatRate=0%,  gross 1060c -> booked vat21=184c | correct at 0% = 0c
 
 This is reachable **today**: CSV import accepts `vatRate: Number(get('vatRate'))` unchecked ([src/components/ProductAdmin.tsx](src/components/ProductAdmin.tsx#L349)), `ProductCategory.vatRate` is a free `number`, and `ProductSchema` only requires `z.number().int().nonnegative()`. The over-collected VAT then flows into the receipt, the Z-report, and the hash chain.
 
-### - [ ] B2 · CONFIRMED · HIGH — The receipt contradicts itself for such a product
+**Resolution:** `calculateTotals` throws `UnsupportedVatRateError`; product upsert, bulk import and checkout enforce the 12%/21% boundary. The cart names unsupported lines and blocks all payment actions instead of silently re-bucketing them.
+
+### - [~] B2 · MITIGATED · HIGH — The receipt contradicts itself for such a product
 
 [src/components/ReceiptTicket.tsx](src/components/ReceiptTicket.tsx#L88) prints the per-line rate from `item.product.vatRate` — "6%" — while the *BTW UITSPLITSING* block books that amount under the 21% row. `EscPosPrintAdapter` does the same on the thermal ticket. The customer receives a document that states two different tax rates for the same line.
+
+New unsupported-rate checkouts are now blocked by B1, so the contradiction is no longer reachable through supported write paths. Historical rows can still reproduce it, and the receipt/report model must be generalized before 0% or 6% products are enabled.
 
 ### - [ ] B3 · CONFIRMED · HIGH — Merchant identity is not snapshotted; historical receipts mutate
 
@@ -246,7 +267,10 @@ There is no fiscal-data-module interface, no signed ticket, no accountant export
 
 ## Test-coverage observation
 
-All 47 tests pass, but coverage is concentrated in the pure helpers and misses every defect above. `vat.test.ts` exercises only 12% and 21% (B1 is invisible to it). There is **no** test for `Cart.finalizeCheckout`, gift-card redemption, `calculateReportData`'s payment buckets, CSV round-trip, or either receipt renderer — precisely the six areas carrying the critical findings.
+The suite now has **89 passing tests across 15 files**. Round 1 added direct coverage for atomic checkout, gift-card balance enforcement, repeated request IDs, supported/unsupported VAT, decimal parsing and CSV round-trip. Round 2 added: late-write rollback (failure injected after `transactions.add`, all six tables verified rolled back and the request id retryable), a populated v9 → v10 upgrade with legacy rows and unique-index enforcement, tender-reconciliation rejection cases, semicolon-decimal CSV, partial-file field preservation and archived-product reactivation guards. Remaining gaps:
+
+- report tests do not cover malformed `Split` rows or gift-card display reconciliation (A6/A7);
+- neither receipt renderer has snapshot/layout regression tests.
 
 ---
 
@@ -254,8 +278,8 @@ All 47 tests pass, but coverage is concentrated in the pure helpers and misses e
 
 | Priority | Findings |
 |---|---|
-| **Fix before any real money** | ~~A1, A2, B1, A19~~ — all fixed |
-| **Fix before pilot** | ~~A3, A4, A5~~, A6, A7, A8, A9, A12, B2, B3, B4 |
+| **Round 1 automated gate** | ~~A1–A5, A19, B1~~ — fixed; on-device gate still outstanding |
+| **Fix before pilot** | A6, A7, A8, A9, A12, B2, B3, B4, plus a real payment-provider lifecycle |
 | **Fix before scale** | A10, A11, A13–A18, A20, A21, B5–B12 |
 
 ---
@@ -278,6 +302,52 @@ IndexedDB snapshot must still be exported manually from DevTools → Application
 **Regression tests added:** [src/services/checkout.test.ts](src/services/checkout.test.ts) (9 cases, Dexie on `fake-indexeddb`), [src/utils/productCsv.test.ts](src/utils/productCsv.test.ts), plus new cases in [src/utils/money.test.ts](src/utils/money.test.ts) and [src/utils/vat.test.ts](src/utils/vat.test.ts).
 
 **Gate run:** `npm run lint` clean · `npm test` 69/69 pass (13 files) · `npm run build` succeeds. Manual money-equality checks on device are still outstanding — treat the build as **NO-GO** until they pass.
+
+### Post-remediation follow-ups
+
+| ID | Priority | Open follow-up | Required outcome |
+|---|---|---|---|
+| F1 | ~~HIGH~~ **FIXED** | ~~A valid partial CSV can erase omitted optional values and reactivate an archived product; no per-file delimiter detection.~~ | Done: a column absent from the header preserves the existing value per product; `isActive` only changes on an explicit `true`/`false`; the delimiter is detected once per file from the header (so semicolon files with unquoted decimal commas parse) and every row must match the header's column count. Covered by partial-update, semicolon-decimal and reactivation tests. |
+| F2 | ~~HIGH~~ **FIXED** | ~~`checkout.ts` could accept a partial gift card with `method: 'Cadeaubon'` or `method: 'Split'` without reconciling tenders.~~ | Done: `CheckoutInput.method` is `TenderMethod` (`'Split'` unrepresentable, also rejected at runtime), gift-card-only checkout requires the cards to cover the total exactly, cash tendered below the remainder is refused, and `sum(splitTenders) === totalCents` is asserted before any write (`invalid-tender`). |
+| F3 | ~~MEDIUM~~ **FIXED** | ~~No late transactional failure or real v9 → v10 upgrade test.~~ | Done: a failure injected into the final checkout write proves transaction, stock, gift-card, customer and audit rollback plus request-id retryability; a populated v9 database upgrades to v10 with legacy rows intact and the unique `clientRequestId` index enforced ([src/db/db.migration.test.ts](src/db/db.migration.test.ts)). |
+| F4 | RELEASE | The pre-v10 IndexedDB export and physical-device scenarios are outstanding. | Feature switches now **default to off**; enable via `VITE_ENABLE_GIFT_CARD_PAYMENT` / `VITE_ENABLE_CSV_IMPORT` only after the manual matrix passes. Export `POSDatabase` before first v10 launch; run and record the manual matrix before enabling either feature. |
+
+## Next execution plan
+
+### 1. Close the Round 1 release gate
+
+1. Export the browser's current `POSDatabase` **before opening the v10 build**.
+2. ~~Set `VITE_ENABLE_GIFT_CARD_PAYMENT=false` and `VITE_ENABLE_CSV_IMPORT=false` in the deployment configuration.~~ Done — both switches now default to off in code; deployments opt in explicitly.
+3. ~~Implement F2 and F3; either implement F1 or leave CSV import disabled.~~ Done — F1, F2 and F3 implemented and tested.
+4. ~~Re-run lint, all tests and the production build.~~ Done — lint clean, 89/89, build succeeds.
+5. On the actual device/browser/database, verify:
+   - €100 basket paid by a €100 gift card debits once and reports one sale;
+   - partial gift card + cash records tenders that sum exactly to the sale;
+   - repeated confirmation creates one transaction, audit entry and outbox entry;
+   - mixed 12%/21% basket matches persisted VAT, receipt and report calculations;
+   - export/import preserves prices, stock, identifiers and active status;
+   - printer failure occurs after commit and leaves a reprintable sale.
+
+Passing this gate approves the **Round 1 remediation**, not a real-money pilot.
+
+### 2. Next small correctness slice
+
+Implement together, in this order:
+
+1. **A6 + A7:** validate malformed tenders in reporting, prevent `NaN`, and show Cash, PIN and Cadeaubon so payment buckets reconcile visibly.
+2. **A14:** suspend the global scanner while any payment/edit modal is open and prevent cart mutation during checkout.
+3. **A20:** remove the invalid `minStockQty <= stockQty` editor rule.
+4. **A13:** reject insufficient stock at commit or explicitly record the oversold quantity in a stock ledger.
+
+### 3. Pilot-blocking design work
+
+Do not patch these independently; design their data model first:
+
+1. **A8:** gift-card issuance/recharge as liability transactions with a preserved original issue amount.
+2. **A9:** returns, partial refunds and credit notes linked immutably to the original sale.
+3. **A12:** shift lifecycle, opening float, paid-in/out, closing count and drawer variance.
+4. **B3 + B4 + B9:** immutable merchant/receipt snapshots, a durable receipt-number series, marked reprints, and one shared receipt model for screen and ESC/POS.
+5. Confirm the real Belgian tax/fiscal/accounting requirements and integrate an actual payment-provider lifecycle before authorizing a live-money pilot.
 
 ---
 

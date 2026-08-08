@@ -13,8 +13,8 @@ export const FEATURES = {
   seedDemoProducts: parseBoolean(import.meta.env.VITE_SEED_DEMO_PRODUCTS, false),
   seedRetailCatalog: parseBoolean(import.meta.env.VITE_SEED_RETAIL_CATALOG, true),
   autoResetLegacyCatalog: parseBoolean(import.meta.env.VITE_AUTO_RESET_LEGACY_CATALOG, true),
-  /** Kill switch for gift-card tendering (audit A1/A2). */
-  giftCardPayment: parseBoolean(import.meta.env.VITE_ENABLE_GIFT_CARD_PAYMENT, true),
-  /** Kill switch for catalogue CSV import (audit A19). */
-  csvImport: parseBoolean(import.meta.env.VITE_ENABLE_CSV_IMPORT, true),
+  /** Kill switch for gift-card tendering (audit A1/A2). Off until the on-device gate passes. */
+  giftCardPayment: parseBoolean(import.meta.env.VITE_ENABLE_GIFT_CARD_PAYMENT, false),
+  /** Kill switch for catalogue CSV import (audit A19/F1). Off until the on-device gate passes. */
+  csvImport: parseBoolean(import.meta.env.VITE_ENABLE_CSV_IMPORT, false),
 } as const;

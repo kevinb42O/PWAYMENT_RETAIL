@@ -15,6 +15,7 @@ export type CheckoutErrorCode =
   | 'empty-cart'
   | 'busy'
   | 'unsupported-vat'
+  | 'invalid-tender'
   | 'gift-card-not-found'
   | 'gift-card-inactive'
   | 'gift-card-invalid-amount'
@@ -37,6 +38,11 @@ export interface GiftCardAllocation {
   amountCents: number;
 }
 
+/** 'Split' is derived by the service, never accepted as input. */
+export type TenderMethod = Exclude<PaymentMethod, 'Split'>;
+
+const TENDER_METHODS: readonly TenderMethod[] = ['Cash', 'PIN', 'Cadeaubon'];
+
 export interface CheckoutInput {
   /** Idempotency key — the same key can never produce a second sale. */
   clientRequestId: string;
@@ -48,7 +54,7 @@ export interface CheckoutInput {
   /** Gift cards applied to this sale, passed explicitly (never read from a store closure). */
   giftCards: GiftCardAllocation[];
   /** Tender used for whatever is left after the gift cards. */
-  method: PaymentMethod;
+  method: TenderMethod;
   tenderedCents?: number;
   customerId?: string;
   userId?: string;
@@ -98,6 +104,17 @@ export const finalizeCheckout = (input: CheckoutInput): Promise<CheckoutResult> 
 const runCheckout = async (input: CheckoutInput): Promise<CheckoutResult> => {
   if (input.items.length === 0) {
     throw new CheckoutError('empty-cart', 'Winkelwagen is leeg.');
+  }
+
+  // tsconfig is not strict, so the TenderMethod type alone does not protect us.
+  if (!TENDER_METHODS.includes(input.method)) {
+    throw new CheckoutError('invalid-tender', `Ongeldige betaalwijze "${input.method}".`);
+  }
+  if (
+    input.tenderedCents != null &&
+    (!Number.isSafeInteger(input.tenderedCents) || input.tenderedCents < 0)
+  ) {
+    throw new CheckoutError('invalid-tender', 'Ongeldig ontvangen bedrag.');
   }
 
   let totals: Totals;
@@ -158,13 +175,31 @@ const runCheckout = async (input: CheckoutInput): Promise<CheckoutResult> => {
       }
 
       const remainingCents = totals.total - giftCardTotal;
+      if (input.method === 'Cadeaubon' && remainingCents !== 0) {
+        throw new CheckoutError(
+          'invalid-tender',
+          'Cadeaubonnen dekken het totaalbedrag niet volledig; kies een tweede betaalwijze voor het restant.',
+        );
+      }
+      if (input.method === 'Cash' && input.tenderedCents != null && input.tenderedCents < remainingCents) {
+        throw new CheckoutError('invalid-tender', 'Ontvangen bedrag is lager dan het te betalen restant.');
+      }
+
       let paymentMethod: PaymentMethod = input.method;
       let splitTenders: Transaction['splitTenders'];
       if (allocations.length > 0) {
         paymentMethod = 'Split';
         splitTenders = allocations.map((a) => ({ method: 'Cadeaubon' as const, amountCents: a.amountCents }));
-        if (remainingCents > 0 && (input.method === 'Cash' || input.method === 'PIN')) {
-          splitTenders.push({ method: input.method, amountCents: remainingCents });
+        if (remainingCents > 0) {
+          splitTenders.push({ method: input.method as 'Cash' | 'PIN', amountCents: remainingCents });
+        }
+        // Reconciliation invariant: recorded tenders must equal the sale total.
+        const tenderSum = splitTenders.reduce((s, t) => s + t.amountCents, 0);
+        if (tenderSum !== totals.total) {
+          throw new CheckoutError(
+            'invalid-tender',
+            `Tenders (${tenderSum}c) sluiten niet aan op het totaal (${totals.total}c).`,
+          );
         }
       }
 
