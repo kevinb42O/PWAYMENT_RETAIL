@@ -98,30 +98,42 @@ const configureServiceWorker = async () => {
 const root = createRoot(document.getElementById("root")!);
 
 root.render(
-  <div className="flex flex-col items-center justify-center min-h-dvh bg-[#f6f5f1] gap-7 animate-in fade-in duration-1000">
-    <div className="flex items-center justify-center">
-      <img
-        src="/branding/pwayment-logo.svg"
-        alt="Pwayment"
-        className="hidden sm:block h-7 w-auto object-contain"
-      />
-      <img
-        src="/branding/pwayment-mark.svg"
-        alt="Pwayment"
-        className="block sm:hidden h-10 w-10 object-contain"
-      />
+  <div 
+    className="flex flex-col items-center justify-center min-h-dvh bg-[#f6f5f1] animate-in fade-in duration-1000 relative overflow-hidden"
+    style={{
+      backgroundImage: 'radial-gradient(rgba(15, 23, 42, 0.05) 1px, transparent 1px)',
+      backgroundSize: '20px 20px'
+    }}
+  >
+    <div className="flex flex-col items-center gap-8 z-10">
+      <div className="flex items-center justify-center">
+        <img
+          src="/branding/pwayment-logo.svg"
+          alt="Pwayment"
+          className="hidden sm:block h-7 w-auto object-contain"
+        />
+        <img
+          src="/branding/pwayment-mark.svg"
+          alt="Pwayment"
+          className="block sm:hidden h-10 w-10 object-contain"
+        />
+      </div>
+      
+      <div className="flex flex-col items-center gap-4">
+        <div className="text-[9px] uppercase tracking-[0.3em] font-bold text-slate-400">
+          {storefrontRoute
+            ? "Webshop wordt klaargezet"
+            : "Pwayment wordt klaargezet"}
+        </div>
+        <div className="w-16 h-[1px] bg-slate-200 overflow-hidden relative rounded-full">
+          <div className="absolute inset-0 w-full h-full bg-slate-500 animate-pulse"></div>
+        </div>
+      </div>
     </div>
-    
-    <div className="flex items-center gap-3 text-slate-500 opacity-80">
-      <svg className="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
-        <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-      </svg>
-      <span className="text-[10px] uppercase tracking-[0.2em] font-bold mt-[1px]">
-        {storefrontRoute
-          ? "Webshop wordt klaargezet..."
-          : "Pwayment wordt klaargezet..."}
-      </span>
+
+    <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between text-[8px] font-extrabold tracking-widest text-slate-300 uppercase select-none pointer-events-none px-2 sm:px-6">
+      <div>System Init</div>
+      <div>Retail OS // v2.4</div>
     </div>
   </div>,
 );
