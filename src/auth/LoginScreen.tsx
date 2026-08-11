@@ -3,6 +3,7 @@ import { useAuth } from "./useAuth";
 import { db } from "../db/db";
 import { User, Role } from "../types";
 import { supabase } from "../lib/supabase";
+import { SiteHeader } from "../public/PublicSite";
 import {
   getLoadingProgress,
   reportLoadingProgress,
@@ -41,6 +42,7 @@ export const LoginScreen: React.FC = () => {
     window.location.pathname.startsWith("/register") ? "register" : "login",
   );
   const [showPinDrawer, setShowPinDrawer] = useState(false);
+  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
 
   // Form states
   const [email, setEmail] = useState("");
@@ -168,8 +170,12 @@ export const LoginScreen: React.FC = () => {
         style={{ backgroundImage: 'url("/login_bg.png")' }}
       />
 
-      {/* Top Header */}
-      <header className="relative z-10 flex w-full items-center justify-between gap-5 border-b border-zinc-200/70 bg-white/65 px-6 py-4 backdrop-blur-xl sm:px-10 lg:px-12">
+      <div className="relative z-10">
+        <SiteHeader mobileOpen={mobileNavigationOpen} setMobileOpen={setMobileNavigationOpen} />
+      </div>
+
+      {/* Legacy login header is deliberately hidden: the shared public header above is the only navigation. */}
+      <header className="hidden">
         <div className="hidden items-center gap-3">
           {/* P Monogram Icon */}
           <svg
@@ -615,7 +621,7 @@ export const LoginScreen: React.FC = () => {
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className="group relative mt-3 flex h-13 w-full items-center justify-center gap-2 overflow-hidden rounded-2xl border border-cyan-300/30 bg-gradient-to-r from-slate-950 via-slate-900 to-cyan-950 text-sm font-extrabold text-white shadow-[0_12px_28px_-12px_rgba(8,47,73,0.7)] transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-0 before:-left-1/2 before:w-1/3 before:-skew-x-12 before:bg-white/15 before:blur-md before:transition-transform before:duration-700 hover:-translate-y-0.5 hover:border-cyan-200/70 hover:shadow-[0_20px_36px_-14px_rgba(8,145,178,0.72)] hover:before:translate-x-[420%] active:translate-y-0 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 disabled:cursor-wait disabled:translate-y-0 disabled:opacity-70 disabled:shadow-none"
+                      className="group relative mt-3 flex h-13 w-full items-center justify-center gap-2 overflow-hidden rounded-2xl border border-zinc-300 bg-white text-sm font-extrabold text-zinc-950 shadow-[0_10px_24px_-14px_rgba(15,23,42,0.35)] transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-0 before:-left-1/2 before:w-1/3 before:-skew-x-12 before:bg-zinc-950/[0.045] before:transition-transform before:duration-700 hover:-translate-y-0.5 hover:border-zinc-950 hover:bg-zinc-50 hover:shadow-[0_18px_32px_-16px_rgba(15,23,42,0.48)] hover:before:translate-x-[420%] active:translate-y-0 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:cursor-wait disabled:translate-y-0 disabled:opacity-70 disabled:shadow-none"
                     >
                       {isLoading ? (
                         <span className="relative z-10 flex items-center gap-2">
@@ -795,7 +801,7 @@ export const LoginScreen: React.FC = () => {
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className="group relative mt-3 flex h-13 w-full items-center justify-center gap-2 overflow-hidden rounded-2xl border border-cyan-300/30 bg-gradient-to-r from-slate-950 via-slate-900 to-cyan-950 text-sm font-extrabold text-white shadow-[0_12px_28px_-12px_rgba(8,47,73,0.7)] transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-0 before:-left-1/2 before:w-1/3 before:-skew-x-12 before:bg-white/15 before:blur-md before:transition-transform before:duration-700 hover:-translate-y-0.5 hover:border-cyan-200/70 hover:shadow-[0_20px_36px_-14px_rgba(8,145,178,0.72)] hover:before:translate-x-[420%] active:translate-y-0 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 disabled:cursor-wait disabled:translate-y-0 disabled:opacity-70 disabled:shadow-none"
+                      className="group relative mt-3 flex h-13 w-full items-center justify-center gap-2 overflow-hidden rounded-2xl border border-zinc-300 bg-white text-sm font-extrabold text-zinc-950 shadow-[0_10px_24px_-14px_rgba(15,23,42,0.35)] transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-0 before:-left-1/2 before:w-1/3 before:-skew-x-12 before:bg-zinc-950/[0.045] before:transition-transform before:duration-700 hover:-translate-y-0.5 hover:border-zinc-950 hover:bg-zinc-50 hover:shadow-[0_18px_32px_-16px_rgba(15,23,42,0.48)] hover:before:translate-x-[420%] active:translate-y-0 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:cursor-wait disabled:translate-y-0 disabled:opacity-70 disabled:shadow-none"
                     >
                       {isLoading ? (
                         <span className="relative z-10 flex items-center gap-2">
