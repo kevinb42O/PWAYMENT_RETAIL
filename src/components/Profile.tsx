@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db/db';
 import { useAuth } from '../auth/useAuth';
 import { useStore } from '../store/useStore';
 import { ProductAdmin } from './ProductAdmin';
@@ -99,8 +101,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   initialTab,
   initialTabRequestKey,
 }) => {
-  const { currentUserName, currentRole } = useAuth();
-  const { setMainView } = useStore();
+  const currentStoreIsDemo = useAuth((s) => s.currentStoreIsDemo);
+  const currentRole = useAuth((s) => s.currentRole);
+
+  const teamUsers = useLiveQuery(() => db.users.toArray()) || [];
   const appliedInitialTabRequestRef = useRef<number | undefined>(undefined);
 
   // DEFAULT TAB IS BILLING & ABONNEMENTEN (TOP ITEM)
@@ -1288,36 +1292,23 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
-                  <tr>
-                    <td className="py-3 px-3 font-bold text-slate-900 flex items-center gap-2.5">
-                      <div className="h-7 w-7 rounded-full bg-sky-100 text-sky-800 font-black text-xs flex items-center justify-center">
-                        {currentUserName ? currentUserName.charAt(0).toUpperCase() : 'E'}
-                      </div>
-                      <span>{currentUserName}</span>
-                    </td>
-                    <td className="py-3 px-3 text-slate-500">kevin@pwayment.com</td>
-                    <td className="py-3 px-3">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-black bg-slate-900 text-white uppercase tracking-wide">
-                        {currentRole}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 text-right text-emerald-600 font-bold">Actief</td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 px-3 font-bold text-slate-900 flex items-center gap-2.5">
-                      <div className="h-7 w-7 rounded-full bg-slate-100 text-slate-700 font-black text-xs flex items-center justify-center">
-                        S
-                      </div>
-                      <span>Sara De Smet</span>
-                    </td>
-                    <td className="py-3 px-3 text-slate-500">sara@pwayment.com</td>
-                    <td className="py-3 px-3">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 uppercase tracking-wide border border-slate-200">
-                        Manager
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 text-right text-emerald-600 font-bold">Actief</td>
-                  </tr>
+                  {teamUsers.map((user) => (
+                    <tr key={user.id}>
+                      <td className="py-3 px-3 font-bold text-slate-900 flex items-center gap-2.5">
+                        <div className="h-7 w-7 rounded-full bg-slate-100 text-slate-700 font-black text-xs flex items-center justify-center">
+                          {user.name ? user.name.charAt(0).toUpperCase() : 'E'}
+                        </div>
+                        <span>{user.name}</span>
+                      </td>
+                      <td className="py-3 px-3 text-slate-500">{user.email || '-'}</td>
+                      <td className="py-3 px-3">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 uppercase tracking-wide border border-slate-200">
+                          {user.role}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-right text-emerald-600 font-bold">Actief</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

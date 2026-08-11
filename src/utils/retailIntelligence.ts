@@ -48,6 +48,7 @@ export const buildRetailIntelligence = (
   products: Product[],
   customers: Customer[],
   now = Date.now(),
+  users: { id: string; name: string }[] = [],
 ): RetailIntelligenceSnapshot => {
   const revenueCents = transactions.reduce((total, transaction) => total + transaction.totalCents, 0);
   const costCents = transactions.reduce((total, transaction) => total + productCostForTransaction(transaction), 0);
@@ -72,6 +73,14 @@ export const buildRetailIntelligence = (
     .sort((a, b) => new Date(a.lastVisitAt ?? 0).getTime() - new Date(b.lastVisitAt ?? 0).getTime());
 
   const employees = new Map<string, EmployeePerformance>();
+  for (const user of users) {
+    employees.set(user.id, {
+      userId: user.id,
+      name: user.name ?? 'Onbekende medewerker',
+      transactionCount: 0,
+      revenueCents: 0,
+    });
+  }
   for (const transaction of transactions) {
     if (!transaction.userId) continue;
     const current = employees.get(transaction.userId) ?? {

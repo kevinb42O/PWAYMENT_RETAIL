@@ -588,7 +588,7 @@ export const buildDemoRetailDataset = (catalogue: Product[], now = new Date()): 
 };
 
 export const clearDemoRetailData = async (): Promise<void> => {
-  await db.transaction('rw', db.transactions, db.customers, db.gift_cards, db.gift_card_events, async () => {
+  await db.transaction('rw', [db.transactions, db.customers, db.gift_cards, db.gift_card_events, db.users], async () => {
     const transactionIds = (await db.transactions.where('source').equals('demo').toArray())
       .map((transaction) => transaction.id)
       .filter((id): id is number => id != null);
@@ -604,6 +604,10 @@ export const clearDemoRetailData = async (): Promise<void> => {
       .map((event) => event.id);
     if (giftCardEventIds.length > 0) await db.gift_card_events.bulkDelete(giftCardEventIds);
     if (giftCardIds.length > 0) await db.gift_cards.bulkDelete(giftCardIds);
+
+    const demoUserIds = (await db.users.where('id').startsWith('demo-user-').toArray())
+      .map((user) => user.id);
+    if (demoUserIds.length > 0) await db.users.bulkDelete(demoUserIds);
   });
 };
 
@@ -650,11 +654,28 @@ export const seedDemoRetailData = async (now = new Date()): Promise<DemoSeedResu
   const existingGiftCardEventIds = new Set(existingGiftCardEvents.map((event) => event.id));
   const missingGiftCardEvents = dataset.giftCardEvents.filter((event) => !existingGiftCardEventIds.has(event.id));
 
-  await db.transaction('rw', db.transactions, db.customers, db.gift_cards, db.gift_card_events, async () => {
+  const existingDemoUsers = await db.users.filter((user) => user.id.startsWith('demo-user-')).toArray();
+  const existingDemoUserIds = new Set(existingDemoUsers.map((u) => u.id));
+  const missingDemoUsers = team
+    .filter((u) => !existingDemoUserIds.has(u.id))
+    .map((u) => ({
+      id: u.id,
+      name: u.name,
+      firstName: u.name,
+      lastName: '',
+      role: 'cashier' as const,
+      pinHash: 'demo',
+      email: `${u.name.toLowerCase()}@demo.pwayment.com`,
+      createdAt: now.toISOString(),
+      storeName: 'PWAYMENT Demo Store'
+    }));
+
+  await db.transaction('rw', [db.transactions, db.customers, db.gift_cards, db.gift_card_events, db.users], async () => {
     await db.customers.bulkPut(dataset.customers);
     await db.transactions.bulkAdd(dataset.transactions);
     if (missingGiftCards.length > 0) await db.gift_cards.bulkPut(missingGiftCards);
     if (missingGiftCardEvents.length > 0) await db.gift_card_events.bulkPut(missingGiftCardEvents);
+    if (missingDemoUsers.length > 0) await db.users.bulkPut(missingDemoUsers);
   });
 
   return {

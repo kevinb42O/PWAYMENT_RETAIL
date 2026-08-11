@@ -245,9 +245,11 @@ export const Insights = () => {
     () => filterPreviousPeriodTransactions(analysisTransactions, period, now),
     [analysisTransactions, now, period],
   );
+  const users = useLiveQuery(() => db.users.toArray()) || [];
+
   const snapshot = useMemo(
-    () => buildRetailIntelligence(periodTransactions, products, customers),
-    [customers, periodTransactions, products],
+    () => buildRetailIntelligence(periodTransactions, products, customers, now, users),
+    [customers, periodTransactions, products, now, users],
   );
   const previousSnapshot = useMemo(
     () => buildRetailIntelligence(previousTransactions, products, customers),
@@ -549,6 +551,7 @@ export const Insights = () => {
               {location.page === "team-activity" && (
                 <TeamActivityPage
                   transactions={periodTransactions}
+                  users={users}
                   period={period}
                   now={now}
                   headerActions={periodActions}
@@ -2319,11 +2322,13 @@ const TeamOverviewPage = ({
 
 const TeamActivityPage = ({
   transactions,
+  users,
   period,
   now,
   headerActions,
 }: {
   transactions: Transaction[];
+  users: { id: string; name: string }[];
   period: InsightPeriod;
   now: number;
   headerActions: React.ReactNode;
@@ -2338,23 +2343,33 @@ const TeamActivityPage = ({
       title="Aantal verkopen per medewerker en weekdag"
       subtitle="De volledige balk is het totaal van toegewezen verkopen op die weekdag"
     >
-      <TeamWeekdayChart transactions={transactions} />
+      <TeamWeekdayChart transactions={transactions} users={users} />
     </SectionCard>
   </>
 );
 
 const TeamWeekdayChart = ({
   transactions,
+  users,
 }: {
   transactions: Transaction[];
+  users: { id: string; name: string }[];
 }) => {
-  const employees = [
-    ...new Map(
-      transactions
-        .filter((row) => row.userId)
-        .map((row) => [row.userId!, row.userName ?? "Onbekende medewerker"]),
-    ).entries(),
-  ];
+  const employees: [string, string][] = users.map(user => [user.id, user.name]);
+
+  // Still add anyone found in transactions just in case (e.g. deleted users)
+  const transactionUsers = new Map(
+    transactions
+      .filter((row) => row.userId)
+      .map((row) => [row.userId!, row.userName ?? "Onbekende medewerker"])
+  );
+  
+  for (const [id, name] of transactionUsers.entries()) {
+    if (!employees.some(([eId]) => eId === id)) {
+      employees.push([id, name]);
+    }
+  }
+
   const rows = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"].map(
     (label, dayIndex) => {
       const counts = employees.map(
