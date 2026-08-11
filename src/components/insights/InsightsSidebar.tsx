@@ -41,7 +41,11 @@ export type InsightsPage =
 interface NavigationItem {
   section: InsightsSection;
   label: string;
-  icon: ComponentType<{ size?: number; strokeWidth?: number }>;
+  icon: ComponentType<{
+    className?: string;
+    size?: number;
+    strokeWidth?: number;
+  }>;
   defaultPage: InsightsPage;
   pages?: Array<{ id: InsightsPage; label: string }>;
 }
@@ -149,6 +153,28 @@ interface InsightsSidebarProps {
   qualityLabel: string;
 }
 
+const compactBadgeLabel = (value: string | number): string => {
+  const label = String(value).trim();
+  const numericPrefix = label.match(/^\d+/)?.[0];
+  if (!numericPrefix) return label;
+  if (/\bd\b/i.test(label)) return `${numericPrefix}d`;
+  return numericPrefix;
+};
+
+const NavigationBadge = ({ value }: { value: string | number }) => {
+  const fullLabel = String(value).trim();
+  return (
+    <span
+      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-sky-100 bg-white px-1.5 py-0.5 text-[10px] font-black tabular-nums text-slate-600 shadow-xs"
+      title={fullLabel}
+      aria-label={fullLabel}
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-cyan-500" aria-hidden="true" />
+      <span>{compactBadgeLabel(value)}</span>
+    </span>
+  );
+};
+
 const NavigationContent = ({
   section,
   page,
@@ -188,17 +214,15 @@ const NavigationContent = ({
                       if (!item.pages) onSelected?.();
                     }}
                     aria-expanded={item.pages ? active : undefined}
-                    className={`insights-nav-item flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-semibold ${active ? "insights-nav-item--active" : ""}`}
+                    className={`insights-nav-item flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-semibold ${active ? "insights-nav-item--active" : ""}`}
                   >
-                    <Icon size={17} strokeWidth={1.8} />
+                    <Icon size={17} strokeWidth={1.8} className="shrink-0" />
                     <span className="min-w-0 flex-1 truncate">
                       {item.label}
                     </span>
                     {badges[item.section] != null &&
                       String(badges[item.section]) !== "0" && (
-                        <span className="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-500">
-                          {badges[item.section]}
-                        </span>
+                        <NavigationBadge value={badges[item.section]} />
                       )}
                     {item.pages && (
                       <ChevronDown
