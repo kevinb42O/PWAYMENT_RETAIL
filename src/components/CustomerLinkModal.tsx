@@ -1,7 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, UserPlus, CheckCircle2 } from 'lucide-react';
+import { Search, CheckCircle2, Gift } from 'lucide-react';
 import { Modal } from './Modal';
 import { useCustomers } from '../store/useCustomers';
+import { formatEUR } from '../utils/money';
+import { isGiftCardExpired } from '../utils/giftCards';
 
 interface Props {
   open: boolean;
@@ -10,7 +12,7 @@ interface Props {
 }
 
 export const CustomerLinkModal: React.FC<Props> = ({ open, onClose, onLink }) => {
-  const { customers, hydrate } = useCustomers();
+  const { customers, giftCards, hydrate } = useCustomers();
   const [search, setSearch] = useState('');
 
   useEffect(() => {
@@ -18,6 +20,20 @@ export const CustomerLinkModal: React.FC<Props> = ({ open, onClose, onLink }) =>
   }, [open, hydrate]);
 
   const activeCustomers = useMemo(() => customers.filter(c => c.isActive), [customers]);
+
+  const customerGiftCardMap = useMemo(() => {
+    const map = new Map<string, { count: number; totalCents: number }>();
+    for (const gc of giftCards) {
+      if (gc.customerId && gc.isActive && !isGiftCardExpired(gc) && gc.balanceCents > 0) {
+        const current = map.get(gc.customerId) ?? { count: 0, totalCents: 0 };
+        map.set(gc.customerId, {
+          count: current.count + 1,
+          totalCents: current.totalCents + gc.balanceCents,
+        });
+      }
+    }
+    return map;
+  }, [giftCards]);
 
   const filtered = useMemo(() => {
     const term = search.toLowerCase().trim();
@@ -60,7 +76,16 @@ export const CustomerLinkModal: React.FC<Props> = ({ open, onClose, onLink }) =>
                     {c.name.charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <div className="font-semibold text-white">{c.name}</div>
+                    <div className="font-semibold text-white flex items-center gap-2">
+                      <span>{c.name}</span>
+                      {customerGiftCardMap.has(c.id) && (
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-medium flex items-center gap-1">
+                          <Gift size={12} /> {customerGiftCardMap.get(c.id)!.count}{' '}
+                          {customerGiftCardMap.get(c.id)!.count === 1 ? 'bon' : 'bonnen'} ·{' '}
+                          {formatEUR(customerGiftCardMap.get(c.id)!.totalCents)}
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-zinc-500">
                       {[c.email, c.phone].filter(Boolean).join(' • ')}
                     </div>

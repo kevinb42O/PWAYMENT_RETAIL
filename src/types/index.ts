@@ -35,6 +35,11 @@ export interface Product {
   color?: string;
   /** Soft-delete flag. Inactive products stay in history but disappear from the menu. */
   isActive?: boolean;
+  /**
+   * Financial treatment of the catalog row. Gift-card value is a liability,
+   * never merchandise revenue or gross profit.
+   */
+  productType?: "merchandise" | "service" | "gift-card";
 }
 
 /**
@@ -55,15 +60,15 @@ export interface OrderItem {
   notes?: string;
   modifiers?: Modifier[];
   /**
-  * Marker reserved for external fulfilment integrations, so tickets are not
-  * duplicated when the cart is mutated again.
+   * Marker reserved for external fulfilment integrations, so tickets are not
+   * duplicated when the cart is mutated again.
    */
   sentAt?: number;
   /** Marker reserved for external fulfilment status integrations. */
   bumpedAt?: number;
 }
 
-export type TableStatus = 'free' | 'ordered' | 'waiting';
+export type TableStatus = "free" | "ordered" | "waiting";
 
 export interface Table {
   id: number;
@@ -88,7 +93,16 @@ export interface CustomerCard {
   points: number;
 }
 
-export type PaymentMethod = 'Cash' | 'PIN' | 'Cadeaubon' | 'Split';
+export type PaymentMethod = "Cash" | "PIN" | "Cadeaubon" | "Split";
+
+export type TenderMethod = Exclude<PaymentMethod, "Split">;
+
+export interface PaymentTender {
+  method: TenderMethod;
+  amountCents: number;
+}
+
+export type TransactionKind = "sale" | "refund";
 
 export interface Transaction {
   id?: number;
@@ -112,31 +126,63 @@ export interface Transaction {
   /** Cash tendered, used to compute change for receipts. */
   tenderedCents?: number;
   paymentMethod: PaymentMethod;
-  splitTenders?: { method: 'Cash' | 'PIN' | 'Cadeaubon'; amountCents: number }[];
+  /** Canonical tender ledger. New rows always contain at least one tender. */
+  tenders?: PaymentTender[];
+  /** @deprecated Legacy alias retained for database migration/read compatibility. */
+  splitTenders?: PaymentTender[];
+  /** Exact cards used in this sale; required for card-level reconciliation and history. */
+  giftCardAllocations?: {
+    giftCardId: string;
+    code: string;
+    amountCents: number;
+    /** Immutable balance immediately after this redemption, for receipts/reprints. */
+    balanceAfterCents?: number;
+  }[];
   timestamp: number;
   isFinalized: 0 | 1;
   userId?: string;
   userName?: string;
   customerId?: string;
   /** Demo transactions are explicitly marked so they can be removed without touching live sales. */
-  source?: 'live' | 'demo';
+  source?: "live" | "demo" | "webshop" | "import";
+  kind?: TransactionKind;
+  /** Original sale for a refund/correction row. */
+  originalTransactionId?: number;
+  correctionReason?: string;
+  /** Stable human-facing number and immutable merchant snapshot. */
+  documentNumber?: string;
+  merchantSnapshot?: {
+    name: string;
+    legalName?: string;
+    addressLine1: string;
+    addressLine2: string;
+    vatNumber: string;
+    phone?: string;
+    email?: string;
+    website?: string;
+    footer?: string;
+    returnPolicy?: string;
+  };
+  registerId?: string;
+  shiftId?: number;
 }
 
 export type BusinessActionType =
-  | 'inventory-reorder'
-  | 'discount-review'
-  | 'customer-recovery'
-  | 'team-review';
+  "inventory-reorder" | "discount-review" | "customer-recovery" | "team-review";
 
-export type BusinessActionStatus = 'draft' | 'in-progress' | 'completed' | 'snoozed' | 'dismissed';
+export type BusinessActionStatus =
+  "draft" | "in-progress" | "completed" | "snoozed" | "dismissed";
 
-export type InventoryForecastConfidence = 'low' | 'medium' | 'high';
+export type InventoryForecastConfidence = "low" | "medium" | "high";
 
-export type InventoryForecastUrgency = 'out' | 'critical' | 'soon' | 'watch' | 'healthy' | 'no-sales';
+export type InventoryForecastUrgency =
+  "out" | "critical" | "soon" | "watch" | "healthy" | "no-sales";
 
-export type InventoryForecastModel = 'insufficient' | 'recent-blend' | 'intermittent' | 'seasonal-blend';
+export type InventoryForecastModel =
+  "insufficient" | "recent-blend" | "intermittent" | "seasonal-blend";
 
-export type InventoryForecastTrend = 'rising' | 'stable' | 'falling' | 'unknown';
+export type InventoryForecastTrend =
+  "rising" | "stable" | "falling" | "unknown";
 
 export interface ReorderActionItem {
   productId: string;
@@ -164,7 +210,8 @@ export interface ReorderActionItem {
   unitCostCents?: number;
 }
 
-export type PurchaseOrderStatus = 'draft' | 'ordered' | 'partially-received' | 'received' | 'cancelled';
+export type PurchaseOrderStatus =
+  "draft" | "ordered" | "partially-received" | "received" | "cancelled";
 
 export interface PurchaseOrderItem {
   productId: string;
@@ -185,7 +232,7 @@ export interface PurchaseOrder {
   id: string;
   supplier: string;
   status: PurchaseOrderStatus;
-  source: 'inventory-forecast';
+  source: "inventory-forecast";
   createdAt: number;
   updatedAt: number;
   orderedAt?: number;
@@ -203,11 +250,81 @@ export interface StockMovement {
   productId: string;
   productName: string;
   quantityDelta: number;
-  reason: 'purchase-receipt';
+  reason:
+    | "purchase-receipt"
+    | "webshop-reservation"
+    | "webshop-release"
+    | "pos-sale"
+    | "pos-refund"
+    | "manual-adjustment";
   timestamp: number;
-  purchaseOrderId: string;
+  purchaseOrderId?: string;
+  transactionId?: number;
   userId?: string;
   userName?: string;
+}
+
+export type WebshopOrderStatus =
+  "pending" | "confirmed" | "completed" | "cancelled";
+export type WebshopPaymentStatus = "pending" | "paid" | "failed" | "refunded";
+export type WebshopFulfillmentStatus =
+  "unfulfilled" | "processing" | "ready-for-pickup" | "shipped" | "picked-up";
+export type WebshopInventoryStatus = "reserved" | "committed" | "released";
+export type WebshopDeliveryMode = "shipping" | "pickup";
+
+/** Immutable commercial snapshot; catalog edits never rewrite existing webshop orders. */
+export interface WebshopOrderLine {
+  productId: string;
+  productName: string;
+  variant?: string;
+  sku?: string;
+  quantity: number;
+  unitPriceCents: number;
+  lineTotalCents: number;
+}
+
+export interface WebshopOrder {
+  id: string;
+  /** Unique retry key. A double click or retry can never create a second order. */
+  clientRequestId: string;
+  number: string;
+  source: "demo" | "live";
+  createdAt: number;
+  updatedAt: number;
+  status: WebshopOrderStatus;
+  paymentStatus: WebshopPaymentStatus;
+  fulfillmentStatus: WebshopFulfillmentStatus;
+  inventoryStatus: WebshopInventoryStatus;
+  paymentMethod: string;
+  paymentReference: string;
+  deliveryMode: WebshopDeliveryMode;
+  customer: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+  };
+  shippingAddress?: {
+    street: string;
+    number: string;
+    postal: string;
+    city: string;
+    country: string;
+  };
+  pickupAddress?: string;
+  note?: string;
+  couponCode?: string;
+  lines: WebshopOrderLine[];
+  subtotalCents: number;
+  discountCents: number;
+  shippingCents: number;
+  totalCents: number;
+  confirmationEmail: {
+    to: string;
+    status: "sent-demo" | "queued" | "failed";
+    sentAt?: number;
+    subject: string;
+  };
 }
 
 /**
@@ -257,60 +374,106 @@ export interface DailyReport {
     PIN: number;
     Cadeaubon: number;
   };
+  giftCardLiabilityAddedCents?: number;
+  giftCardLiabilityPaymentTotalsCents?: {
+    Cash: number;
+    PIN: number;
+    Cadeaubon: number;
+  };
+  giftCardEventIds?: string[];
   transactionIds: number[];
   hash: string;
   prevHash: string | null;
   closedByUserId?: string;
   closedByUserName?: string;
+  registerId?: string;
+  shiftId?: number;
+  openingFloatCents?: number;
+  countedCashCents?: number;
+  expectedCashCents?: number;
+  cashDifferenceCents?: number;
+  cashDifferenceReason?: string;
+  /** Canonical data that the hash was calculated from. */
+  hashPayloadVersion?: number;
 }
 
-export type Role = 'owner' | 'manager' | 'cashier';
+export interface RegisterShift {
+  id?: number;
+  shiftNumber: number;
+  registerId: string;
+  openedAt: number;
+  openedByUserId?: string;
+  openedByUserName?: string;
+  openingFloatCents: number;
+  closedAt?: number;
+  closedByUserId?: string;
+  closedByUserName?: string;
+  countedCashCents?: number;
+  expectedCashCents?: number;
+  cashDifferenceCents?: number;
+  cashDifferenceReason?: string;
+  status: "open" | "closed";
+}
+
+export type Role = "owner" | "manager" | "cashier";
 
 export interface User {
   id: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   role: Role;
   /** SHA-256 hex of the PIN. */
   pinHash: string;
+  email?: string;
+  /** SHA-256 hex of the password. */
+  passwordHash?: string;
+  storeName?: string;
+  createdAt?: string;
 }
 
 export type AuditAction =
-  | 'login'
-  | 'logout'
-  | 'order.add'
-  | 'order.remove'
-  | 'order.update'
-  | 'order.note'
-  | 'order.modifier'
-  | 'order.void'
-  | 'order.send'
-  | 'order.bump'
-  | 'table.clear'
-  | 'table.guests'
-  | 'table.server'
-  | 'checkout'
-  | 'approve'
-  | 'discount.apply'
-  | 'zreport.finalize'
-  | 'product.create'
-  | 'product.update'
-  | 'product.delete'
-  | 'product.restore'
-  | 'customer.create'
-  | 'customer.update'
-  | 'customer.delete'
-  | 'customer.restore'
-  | 'giftcard.create'
-  | 'giftcard.recharge'
-  | 'giftcard.deduct'
-  | 'giftcard.deactivate'
-  | 'giftcard.activate'
-  | 'business_action.create'
-  | 'business_action.update'
-  | 'purchase_order.create'
-  | 'purchase_order.update'
-  | 'purchase_order.receive'
-  | 'purchase_order.cancel';
+  | "login"
+  | "logout"
+  | "register"
+  | "order.add"
+  | "order.remove"
+  | "order.update"
+  | "order.note"
+  | "order.modifier"
+  | "order.void"
+  | "order.send"
+  | "order.bump"
+  | "table.clear"
+  | "table.guests"
+  | "table.server"
+  | "checkout"
+  | "refund.create"
+  | "approve"
+  | "discount.apply"
+  | "zreport.finalize"
+  | "product.create"
+  | "product.update"
+  | "product.delete"
+  | "product.restore"
+  | "customer.create"
+  | "customer.update"
+  | "customer.delete"
+  | "customer.restore"
+  | "giftcard.create"
+  | "giftcard.recharge"
+  | "giftcard.deduct"
+  | "giftcard.deactivate"
+  | "giftcard.activate"
+  | "business_action.create"
+  | "business_action.update"
+  | "purchase_order.create"
+  | "purchase_order.update"
+  | "purchase_order.receive"
+  | "purchase_order.cancel"
+  | "webshop_order.create"
+  | "webshop_order.update"
+  | "webshop_order.cancel";
 
 export interface AuditEntry {
   id?: number;
@@ -324,7 +487,12 @@ export interface AuditEntry {
 export interface OutboxEntry {
   id?: number;
   timestamp: number;
-  kind: 'transaction' | 'daily_report' | 'audit';
+  kind:
+    | "transaction"
+    | "daily_report"
+    | "audit"
+    | "webshop_order"
+    | "webshop_email";
   payload: unknown;
   attempts: number;
   lastError?: string;
@@ -379,4 +547,37 @@ export interface GiftCard {
   expiresAt?: string;
   /** Active/blocked flag. */
   isActive: boolean;
+}
+
+export type GiftCardEventType =
+  | "issue"
+  | "recharge"
+  | "redeem"
+  | "deactivate"
+  | "activate"
+  | "refund"
+  | "expire"
+  | "opening-balance";
+
+/** Append-only ledger row. Financial mutations write this atomically with the card itself. */
+export interface GiftCardEvent {
+  id: string;
+  giftCardId: string;
+  giftCardCode: string;
+  type: GiftCardEventType;
+  /** Positive magnitude for issue, recharge and redemption; zero for status events. */
+  amountCents: number;
+  balanceBeforeCents: number;
+  balanceAfterCents: number;
+  timestamp: number;
+  transactionId?: number;
+  clientRequestId?: string;
+  customerId?: string;
+  userId?: string;
+  userName?: string;
+  source?: "live" | "demo" | "migration";
+  note?: string;
+  /** Payment received when value was issued/recharged. Empty for non-financial status events. */
+  paymentTenders?: PaymentTender[];
+  dailyReportId?: number;
 }

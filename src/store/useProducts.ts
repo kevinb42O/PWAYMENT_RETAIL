@@ -11,6 +11,8 @@ interface ProductsState {
   list: Product[];
   hydrated: boolean;
   hydrate: () => Promise<void>;
+  /** Re-read current inventory after a webshop order or another tab changed stock. */
+  refresh: () => Promise<void>;
   findByScanCode: (code: string) => ProductScanMatch | null;
   upsert: (p: Product) => Promise<void>;
   bulkUpsert: (products: Product[]) => Promise<void>;
@@ -108,6 +110,11 @@ export const useProducts = create<ProductsState>((set, get) => ({
     }
 
     set({ list: existing.map((p) => normalizeProduct(p)), hydrated: true });
+  },
+
+  refresh: async () => {
+    const current = await db.products.toArray();
+    set({ list: current.map((product) => normalizeProduct(product)), hydrated: true });
   },
 
   upsert: async (p) => {

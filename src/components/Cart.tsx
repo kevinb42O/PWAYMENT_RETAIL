@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Banknote,
@@ -12,38 +12,49 @@ import {
   Trash2,
   User,
   Gift,
-} from 'lucide-react';
-import { useStore } from '../store/useStore';
-import { useProducts } from '../store/useProducts';
-import { useAuth } from '../auth/useAuth';
-import { calculateTotals, findUnsupportedVatItems, SUPPORTED_VAT_RATES } from '../utils/vat';
-import { formatEUR } from '../utils/money';
-import { FEATURES } from '../config/features';
+} from "lucide-react";
+import { useStore } from "../store/useStore";
+import { useProducts } from "../store/useProducts";
+import { useAuth } from "../auth/useAuth";
+import {
+  calculateTotals,
+  findUnsupportedVatItems,
+  SUPPORTED_VAT_RATES,
+} from "../utils/vat";
+import { formatEUR } from "../utils/money";
+import { FEATURES } from "../config/features";
 import {
   CheckoutError,
   dedupeGiftCards,
   finalizeCheckout,
   type GiftCardAllocation,
   type TenderMethod,
-} from '../services/checkout';
-import { OrderItem, Transaction } from '../types';
-import { ItemEditModal } from './ItemEditModal';
-import { DiscountModal } from './DiscountModal';
-import { CashPaymentModal } from './CashPaymentModal';
-import { ReceiptTicket } from './ReceiptTicket';
-import { useThermalPrinter, EPSON_PRODUCT_IDS } from '../hooks/useThermalPrinter';
-import { EscPosPrintAdapter } from './ThermalPrinterPanel';
-import { CustomerLinkModal } from './CustomerLinkModal';
-import { GiftCardPaymentModal } from './GiftCardPaymentModal';
-import { useCustomers } from '../store/useCustomers';
+} from "../services/checkout";
+import { OrderItem, Transaction } from "../types";
+import { ItemEditModal } from "./ItemEditModal";
+import { DiscountModal } from "./DiscountModal";
+import { CashPaymentModal } from "./CashPaymentModal";
+import { ReceiptTicket } from "./ReceiptTicket";
+import {
+  useThermalPrinter,
+  EPSON_PRODUCT_IDS,
+} from "../hooks/useThermalPrinter";
+import { EscPosPrintAdapter } from "./ThermalPrinterPanel";
+import { CustomerLinkModal } from "./CustomerLinkModal";
+import { GiftCardPaymentModal } from "./GiftCardPaymentModal";
+import { useCustomers } from "../store/useCustomers";
+import { isGiftCardExpired } from "../utils/giftCards";
+import { Modal } from "./Modal";
 
 const lineUnitCents = (o: OrderItem): number =>
-  o.product.priceCents + (o.modifiers ?? []).reduce((s, m) => s + m.deltaCents, 0);
+  o.product.priceCents +
+  (o.modifiers ?? []).reduce((s, m) => s + m.deltaCents, 0);
 
 export const Cart: React.FC = () => {
   const cart = useStore((s) => s.cart);
   const updateOrderItemQuantity = useStore((s) => s.updateOrderItemQuantity);
   const clearCart = useStore((s) => s.clearCart);
+  const voidOrderItem = useStore((s) => s.voidOrderItem);
   const cartDiscount = useStore((s) => s.cartDiscount);
   const setCartDiscount = useStore((s) => s.setCartDiscount);
   const resetCartExtras = useStore((s) => s.resetCartExtras);
@@ -52,13 +63,55 @@ export const Cart: React.FC = () => {
   const removeCartGiftCard = useStore((s) => s.removeCartGiftCard);
   const syncPersistedProducts = useProducts((s) => s.syncPersisted);
   const auth = useAuth();
+  const [clearCartOpen, setClearCartOpen] = useState(false);
+  const [clearCartReason, setClearCartReason] = useState(
+    "Klant ziet af van aankoop",
+  );
 
   const linkedCustomerId = useStore((s) => s.linkedCustomerId);
   const linkCustomer = useStore((s) => s.linkCustomer);
   const unlinkCustomer = useStore((s) => s.unlinkCustomer);
 
-  const { customers, syncPersisted: syncPersistedCustomers } = useCustomers();
-  const linkedCustomer = useMemo(() => customers.find(c => c.id === linkedCustomerId), [customers, linkedCustomerId]);
+  const {
+    customers,
+    giftCards,
+    hydrate,
+    syncPersisted: syncPersistedCustomers,
+  } = useCustomers();
+  const linkedCustomer = useMemo(
+    () => customers.find((c) => c.id === linkedCustomerId),
+    [customers, linkedCustomerId],
+  );
+
+  useEffect(() => {
+    void hydrate();
+  }, [hydrate]);
+
+  const appliedGiftCardCents = useMemo(() => {
+    const applied: Record<string, number> = {};
+    for (const gc of cartGiftCards)
+      applied[gc.id] = (applied[gc.id] ?? 0) + gc.amountCents;
+    return applied;
+  }, [cartGiftCards]);
+
+  const linkedCustomerGiftCards = useMemo(() => {
+    if (!linkedCustomerId) return [];
+    return giftCards.filter(
+      (gc) =>
+        gc.customerId === linkedCustomerId &&
+        gc.isActive &&
+        !isGiftCardExpired(gc) &&
+        Math.max(0, gc.balanceCents - (appliedGiftCardCents[gc.id] ?? 0)) > 0,
+    );
+  }, [linkedCustomerId, giftCards, appliedGiftCardCents]);
+
+  const linkedCustomerGiftCardTotal = useMemo(() => {
+    return linkedCustomerGiftCards.reduce(
+      (sum, gc) =>
+        sum + Math.max(0, gc.balanceCents - (appliedGiftCardCents[gc.id] ?? 0)),
+      0,
+    );
+  }, [linkedCustomerGiftCards]);
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [receipt, setReceipt] = useState<Transaction | null>(null);
@@ -73,15 +126,22 @@ export const Cart: React.FC = () => {
   // ── Thermal printer (WebUSB) ───────────────────────────────────────────
   // The hook manages the USB device lifecycle. `connect()` must be called
   // from a user-gesture (button click) — Chrome's WebUSB security rule.
-  const { status: printerStatus, isConnected: printerConnected, connect: connectPrinter, sendRaw } =
-    useThermalPrinter();
+  const {
+    status: printerStatus,
+    isConnected: printerConnected,
+    connect: connectPrinter,
+    sendRaw,
+  } = useThermalPrinter();
 
   const itemsToCheckout: OrderItem[] = cart.orders;
 
   const hasItemsToCheckout = itemsToCheckout.length > 0;
   const manualDiscountCents = cartDiscount?.amountCents ?? 0;
   const totalDiscountCents = manualDiscountCents;
-  const vatBlockers = useMemo(() => findUnsupportedVatItems(itemsToCheckout), [itemsToCheckout]);
+  const vatBlockers = useMemo(
+    () => findUnsupportedVatItems(itemsToCheckout),
+    [itemsToCheckout],
+  );
   const totals = useMemo(
     () =>
       vatBlockers.length > 0
@@ -93,12 +153,8 @@ export const Cart: React.FC = () => {
 
   const giftCardsTotal = cartGiftCards.reduce((s, gc) => s + gc.amountCents, 0);
   const remainingTotal = Math.max(0, grandTotal - giftCardsTotal);
-  const checkoutBlocked = !hasItemsToCheckout || isProcessing || vatBlockers.length > 0;
-  const appliedGiftCardCents = useMemo(() => {
-    const applied: Record<string, number> = {};
-    for (const gc of cartGiftCards) applied[gc.id] = (applied[gc.id] ?? 0) + gc.amountCents;
-    return applied;
-  }, [cartGiftCards]);
+  const checkoutBlocked =
+    !hasItemsToCheckout || isProcessing || vatBlockers.length > 0;
 
   if (receipt) {
     return (
@@ -108,19 +164,25 @@ export const Cart: React.FC = () => {
           <div className="flex items-center gap-2 text-emerald-400">
             <CheckCircle size={20} />
             <span className="font-semibold text-white">Betaling gelukt</span>
-            <span className="text-sm text-zinc-400">— {receipt.paymentMethod}</span>
+            <span className="text-sm text-zinc-400">
+              — {receipt.paymentMethod}
+            </span>
           </div>
           {/* Printer status — shown only when disconnected so cashier knows to connect */}
           {!printerConnected && (
             <div className="mt-2 flex items-center gap-2">
               <span
                 className="inline-block w-2 h-2 rounded-full"
-                style={{ background: printerStatus === 'error' ? '#ef4444' : '#6b7280' }}
+                style={{
+                  background: printerStatus === "error" ? "#ef4444" : "#6b7280",
+                }}
               />
               <span className="text-xs text-zinc-500">
-                Printer niet verbonden —{' '}
+                Printer niet verbonden —{" "}
                 <button
-                  onClick={() => void connectPrinter(EPSON_PRODUCT_IDS.TM_T20II_B)}
+                  onClick={() =>
+                    void connectPrinter(EPSON_PRODUCT_IDS.TM_T20II_B)
+                  }
                   className="text-blue-400 hover:text-blue-300 underline"
                 >
                   Verbinden
@@ -149,13 +211,15 @@ export const Cart: React.FC = () => {
                 const adapter = new EscPosPrintAdapter(sendRaw);
                 await adapter.printReceipt(receipt);
               } catch (e) {
-                console.error('Reprint failed:', e);
-                alert(`Herdruk mislukt: ${e instanceof Error ? e.message : String(e)}`);
+                console.error("Reprint failed:", e);
+                alert(
+                  `Herdruk mislukt: ${e instanceof Error ? e.message : String(e)}`,
+                );
               }
             }}
             className="flex-1 py-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white font-medium"
           >
-            {printerConnected ? '🖨️ Herdruk' : '🔌 Verbind & Druk'}
+            {printerConnected ? "🖨️ Herdruk" : "🔌 Verbind & Druk"}
           </button>
           <button
             onClick={() => setReceipt(null)}
@@ -173,7 +237,9 @@ export const Cart: React.FC = () => {
       <div className="flex flex-col items-center justify-center h-full text-zinc-500 bg-zinc-900 border-l border-zinc-800 p-8 text-center">
         <ShoppingCart size={48} className="mb-4 opacity-20" />
         <p className="text-lg font-medium">Geen actieve kassa</p>
-        <p className="text-sm mt-2">Herlaad de pagina om de kassa opnieuw te initialiseren</p>
+        <p className="text-sm mt-2">
+          Herlaad de pagina om de kassa opnieuw te initialiseren
+        </p>
       </div>
     );
   }
@@ -219,15 +285,15 @@ export const Cart: React.FC = () => {
           const adapter = new EscPosPrintAdapter(sendRaw);
           await adapter.printReceipt(result.transaction);
         } catch (printErr) {
-          console.error('Thermal print failed (transaction saved):', printErr);
+          console.error("Thermal print failed (transaction saved):", printErr);
         }
       }
     } catch (error) {
-      console.error('Checkout failed:', error);
+      console.error("Checkout failed:", error);
       alert(
         error instanceof CheckoutError
           ? error.message
-          : 'Er ging iets mis bij het afrekenen. Er is niets geboekt — probeer opnieuw.',
+          : "Er ging iets mis bij het afrekenen. Er is niets geboekt — probeer opnieuw.",
       );
     } finally {
       setIsProcessing(false);
@@ -235,7 +301,7 @@ export const Cart: React.FC = () => {
   };
 
   const handleCheckout = (method: TenderMethod) => {
-    if (method === 'Cash') {
+    if (method === "Cash") {
       setCashOpen(true);
       return;
     }
@@ -243,41 +309,61 @@ export const Cart: React.FC = () => {
   };
 
   return (
-    <div className="pos-cart flex flex-col h-full bg-zinc-900 border-l border-zinc-800 text-white">
-      <div className="px-4 py-3 border-b border-zinc-800 flex justify-between items-start">
+    <div className="pos-cart flex flex-col h-full border-l border-slate-200 text-slate-900">
+      <div className="pos-cart-header px-4 py-4 border-b border-slate-200 flex justify-between items-start">
         <div>
           <div className="flex items-center gap-2">
             <ShoppingCart size={18} className="pos-accent-text" />
-            <h2 className="text-lg font-semibold leading-none">Winkelwagen</h2>
+            <h2 className="pos-cart-title text-lg font-semibold leading-none">
+              Winkelwagen
+            </h2>
             <span className="pos-cart-count rounded-full px-2 py-0.5 text-[11px] font-semibold">
               {cart.orders.reduce((sum, order) => sum + order.quantity, 0)}
             </span>
           </div>
-          <div className="flex items-center gap-2 mt-2.5">
-            {linkedCustomer ? (
-              <button 
-                onClick={() => setLinkOpen(true)}
-                className="pos-soft-accent flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-medium transition-colors"
-              >
-                <User size={14} /> {linkedCustomer.name}
-              </button>
-            ) : (
-              <button 
-                onClick={() => setLinkOpen(true)}
-                className="pos-neutral-action flex items-center gap-1.5 px-2 py-1 rounded-md border border-zinc-200 bg-white text-zinc-500 text-xs font-medium transition-colors"
-              >
-                <User size={14} /> Klant koppelen
-              </button>
+          <div className="flex flex-col gap-1.5 mt-2.5">
+            <div className="flex items-center gap-2">
+              {linkedCustomer ? (
+                <button
+                  onClick={() => setLinkOpen(true)}
+                  className="pos-soft-accent flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-medium transition-colors"
+                >
+                  <User size={14} /> {linkedCustomer.name}
+                </button>
+              ) : (
+                <button
+                  onClick={() => setLinkOpen(true)}
+                  className="pos-neutral-action flex items-center gap-1.5 px-2 py-1 rounded-md border border-zinc-200 bg-white text-zinc-500 text-xs font-medium transition-colors"
+                >
+                  <User size={14} /> Klant koppelen
+                </button>
+              )}
+            </div>
+            {linkedCustomerGiftCardTotal > 0 && (
+              <div className="p-2 bg-emerald-950/40 border border-emerald-500/30 rounded-lg flex items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-1.5 text-emerald-300 font-medium">
+                  <Gift size={14} className="text-emerald-400 shrink-0" />
+                  <span>
+                    {linkedCustomerGiftCards.length === 1
+                      ? `1 cadeaubon (${formatEUR(linkedCustomerGiftCardTotal)})`
+                      : `${linkedCustomerGiftCards.length} cadeaubonnen (totaal ${formatEUR(linkedCustomerGiftCardTotal)})`}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setGiftOpen(true)}
+                  disabled={checkoutBlocked}
+                  className="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition-colors shrink-0 disabled:opacity-50 text-[11px]"
+                >
+                  Gebruiken
+                </button>
+              </div>
             )}
           </div>
         </div>
         <div className="flex items-center gap-2">
           {cart.orders.length > 0 && (
             <button
-              onClick={() => {
-                resetCartExtras();
-                clearCart();
-              }}
+              onClick={() => setClearCartOpen(true)}
               className="text-red-400 hover:text-red-300 p-2 ml-1"
               title="Winkelwagen legen"
             >
@@ -289,10 +375,16 @@ export const Cart: React.FC = () => {
 
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {cart.orders.length === 0 ? (
-          <div className="flex h-full min-h-48 flex-col items-center justify-center text-center text-zinc-400">
-            <ShoppingCart size={32} className="mb-3 text-zinc-300" />
-            <span className="text-sm font-medium text-zinc-500">Winkelwagen is leeg</span>
-            <span className="mt-1 text-xs">Scan of kies een product</span>
+          <div className="flex h-full min-h-48 flex-col items-center justify-center px-6 text-center text-zinc-400">
+            <div className="pos-empty-cart-icon mb-4 grid h-16 w-16 place-items-center rounded-2xl">
+              <ShoppingCart size={27} className="text-cyan-300" />
+            </div>
+            <span className="pos-empty-cart-title text-sm font-semibold text-zinc-200">
+              Klaar voor de eerste scan
+            </span>
+            <span className="pos-empty-cart-copy mt-1.5 max-w-44 text-xs leading-relaxed text-zinc-500">
+              Scan een barcode of tik op een product uit de catalogus.
+            </span>
           </div>
         ) : (
           cart.orders.map((order) => {
@@ -313,7 +405,10 @@ export const Cart: React.FC = () => {
                     <div className="text-zinc-400 text-sm mt-0.5">
                       {formatEUR(unit)}
                       {unit !== order.product.priceCents && (
-                        <span className="text-zinc-500"> · basis {formatEUR(order.product.priceCents)}</span>
+                        <span className="text-zinc-500">
+                          {" "}
+                          · basis {formatEUR(order.product.priceCents)}
+                        </span>
                       )}
                     </div>
                     {(order.modifiers?.length ?? 0) > 0 && (
@@ -324,7 +419,9 @@ export const Cart: React.FC = () => {
                             className="text-[11px] px-1.5 py-0.5 rounded bg-zinc-950 text-zinc-300 border border-zinc-700"
                           >
                             + {m.label}
-                            {m.deltaCents > 0 ? ` (${formatEUR(m.deltaCents)})` : ''}
+                            {m.deltaCents > 0
+                              ? ` (${formatEUR(m.deltaCents)})`
+                              : ""}
                           </span>
                         ))}
                       </div>
@@ -338,14 +435,31 @@ export const Cart: React.FC = () => {
                   </button>
                   <div className="flex items-center gap-1 bg-zinc-50 rounded-lg p-1 border border-zinc-200">
                     <button
-                      onClick={() => updateOrderItemQuantity(order.lineId, order.quantity - 1)}
+                      type="button"
+                      aria-label={`Aantal ${order.product.name} verlagen`}
+                      onClick={() =>
+                        updateOrderItemQuantity(
+                          order.lineId,
+                          order.quantity - 1,
+                        )
+                      }
+                      disabled={order.quantity <= 1}
                       className="w-8 h-8 flex items-center justify-center bg-white hover:bg-zinc-100 rounded-md text-zinc-600"
                     >
                       <Minus size={16} />
                     </button>
-                    <span className="w-6 text-center font-semibold text-sm text-zinc-900">{order.quantity}</span>
+                    <span className="w-6 text-center font-semibold text-sm text-zinc-900">
+                      {order.quantity}
+                    </span>
                     <button
-                      onClick={() => updateOrderItemQuantity(order.lineId, order.quantity + 1)}
+                      type="button"
+                      aria-label={`Aantal ${order.product.name} verhogen`}
+                      onClick={() =>
+                        updateOrderItemQuantity(
+                          order.lineId,
+                          order.quantity + 1,
+                        )
+                      }
                       className="w-8 h-8 flex items-center justify-center bg-white hover:bg-zinc-100 rounded-md text-zinc-600"
                     >
                       <Plus size={16} />
@@ -363,10 +477,17 @@ export const Cart: React.FC = () => {
           <div className="mb-3 flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-800">
             <AlertTriangle size={16} className="mt-px flex-shrink-0" />
             <div>
-              <div className="font-semibold">Afrekenen geblokkeerd — niet-ondersteund BTW-tarief</div>
+              <div className="font-semibold">
+                Afrekenen geblokkeerd — niet-ondersteund BTW-tarief
+              </div>
               <div className="mt-1">
-                Enkel {SUPPORTED_VAT_RATES.join('% en ')}% zijn ondersteund. Corrigeer:{' '}
-                {vatBlockers.map((o) => `${o.product.name} (${String(o.product.vatRate)}%)`).join(', ')}
+                Enkel {SUPPORTED_VAT_RATES.join("% en ")}% zijn ondersteund.
+                Corrigeer:{" "}
+                {vatBlockers
+                  .map(
+                    (o) => `${o.product.name} (${String(o.product.vatRate)}%)`,
+                  )
+                  .join(", ")}
               </div>
             </div>
           </div>
@@ -382,18 +503,18 @@ export const Cart: React.FC = () => {
               onClick={() => setDiscountOpen(true)}
               disabled={!hasItemsToCheckout}
               className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-                cartDiscount
-                  ? 'bg-amber-50 text-amber-700'
-                  : 'pos-accent-link'
+                cartDiscount ? "bg-amber-50 text-amber-700" : "pos-accent-link"
               } disabled:opacity-40`}
             >
               <Percent size={13} />
-              {cartDiscount ? `−${formatEUR(cartDiscount.amountCents)}` : 'Toevoegen'}
+              {cartDiscount
+                ? `−${formatEUR(cartDiscount.amountCents)}`
+                : "Toevoegen"}
             </button>
           </div>
           {manualDiscountCents > 0 && (
             <div className="flex justify-between text-xs text-zinc-400">
-              <span>{cartDiscount?.reason ?? 'Toegepaste korting'}</span>
+              <span>{cartDiscount?.reason ?? "Toegepaste korting"}</span>
               <span>In totaal verwerkt</span>
             </div>
           )}
@@ -407,24 +528,33 @@ export const Cart: React.FC = () => {
               <span className="tabular-nums">{formatEUR(totals.vat12)}</span>
             </div>
           )}
-          {cartGiftCards.map(gc => (
+          {cartGiftCards.map((gc) => (
             <div key={gc.id} className="flex justify-between text-[#667619]">
               <div className="flex items-center gap-1">
-                <button onClick={() => removeCartGiftCard(gc.id)} className="text-red-400 hover:text-red-300 mr-1"><Minus size={14} /></button>
+                <button
+                  type="button"
+                  aria-label={`Cadeaubon ${gc.code} verwijderen`}
+                  onClick={() => removeCartGiftCard(gc.id)}
+                  className="text-red-400 hover:text-red-300 mr-1"
+                >
+                  <Minus size={14} />
+                </button>
                 <span>Cadeaubon ({gc.code})</span>
               </div>
               <span className="tabular-nums">−{formatEUR(gc.amountCents)}</span>
             </div>
           ))}
           <div className="flex justify-between text-xl font-bold text-zinc-950 pt-3 mt-2 border-t border-zinc-200">
-            <span>{cartGiftCards.length > 0 ? 'Nog te betalen' : 'Totaal'}</span>
+            <span>
+              {cartGiftCards.length > 0 ? "Nog te betalen" : "Totaal"}
+            </span>
             <span className="tabular-nums">{formatEUR(remainingTotal)}</span>
           </div>
         </div>
 
         <div className="grid grid-cols-3 gap-2">
           <button
-            onClick={() => handleCheckout('Cash')}
+            onClick={() => handleCheckout("Cash")}
             disabled={checkoutBlocked}
             className="pos-payment-secondary flex flex-col items-center justify-center gap-1.5 py-3 border border-zinc-200 bg-white text-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-semibold transition-colors"
           >
@@ -432,7 +562,7 @@ export const Cart: React.FC = () => {
             <span className="text-sm">Cash</span>
           </button>
           <button
-            onClick={() => handleCheckout('PIN')}
+            onClick={() => handleCheckout("PIN")}
             disabled={checkoutBlocked}
             className="pos-primary-action flex flex-col items-center justify-center gap-1.5 py-3 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-semibold shadow-sm transition-colors"
           >
@@ -440,9 +570,10 @@ export const Cart: React.FC = () => {
             <span className="text-sm">PIN</span>
           </button>
           <button
-            onClick={() => { if (!checkoutBlocked) setGiftOpen(true); }}
-            disabled={checkoutBlocked || !FEATURES.giftCardPayment}
-            title={FEATURES.giftCardPayment ? undefined : 'Cadeaubon betaling is uitgeschakeld'}
+            onClick={() => {
+              if (!checkoutBlocked) setGiftOpen(true);
+            }}
+            disabled={checkoutBlocked}
             className="pos-payment-secondary flex flex-col items-center justify-center gap-1.5 py-3 border border-zinc-200 bg-white text-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-semibold transition-colors"
           >
             <Gift size={24} />
@@ -468,7 +599,7 @@ export const Cart: React.FC = () => {
         totalCents={remainingTotal}
         onConfirm={(t) => {
           setCashOpen(false);
-          void runCheckout('Cash', { tenderedCents: t });
+          void runCheckout("Cash", { tenderedCents: t });
         }}
       />
       <CustomerLinkModal
@@ -484,20 +615,76 @@ export const Cart: React.FC = () => {
         onClose={() => setGiftOpen(false)}
         totalCents={remainingTotal}
         appliedCentsByCardId={appliedGiftCardCents}
-        onConfirm={(giftCardId, amountCents, code) => {
+        linkedCustomerId={linkedCustomerId}
+        onConfirm={(allocations, splitMethod) => {
           setGiftOpen(false);
-          const allocations = dedupeGiftCards([
+          const nextCartGiftCards = dedupeGiftCards([
             ...cartGiftCards,
-            { id: giftCardId, amountCents, code },
+            ...allocations,
           ]);
-          addCartGiftCard({ id: giftCardId, amountCents, code });
-          const allocated = allocations.reduce((s, a) => s + a.amountCents, 0);
-          if (grandTotal - allocated <= 0) {
-            // Pass the allocation explicitly: the store value is one render stale.
-            void runCheckout('Cadeaubon', { giftCards: allocations });
+          for (const item of allocations) {
+            addCartGiftCard(item);
+          }
+          const allocated = nextCartGiftCards.reduce(
+            (s, a) => s + a.amountCents,
+            0,
+          );
+
+          if (splitMethod) {
+            if (splitMethod === "Cash") {
+              setCashOpen(true);
+            } else {
+              void runCheckout("PIN", { giftCards: nextCartGiftCards });
+            }
+          } else if (grandTotal - allocated <= 0) {
+            void runCheckout("Cadeaubon", { giftCards: nextCartGiftCards });
           }
         }}
       />
+      <Modal
+        open={clearCartOpen}
+        onClose={() => setClearCartOpen(false)}
+        title="Winkelwagen annuleren"
+        footer={
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setClearCartOpen(false)}
+              className="rounded-lg bg-zinc-200 px-4 py-2 text-sm font-bold text-zinc-800"
+            >
+              Behouden
+            </button>
+            <button
+              disabled={clearCartReason.trim().length < 3}
+              onClick={() => {
+                const lines = [...cart.orders];
+                void (async () => {
+                  for (const line of lines)
+                    await voidOrderItem(line.lineId, clearCartReason.trim());
+                  resetCartExtras();
+                  setClearCartOpen(false);
+                })();
+              }}
+              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+            >
+              Annuleren en registreren
+            </button>
+          </div>
+        }
+      >
+        <p className="text-sm text-zinc-300">
+          Alle {cart.orders.length} regels worden als geannuleerd in de audit-
+          en voidhistoriek bewaard.
+        </p>
+        <label className="mt-4 block text-xs font-bold text-zinc-400">
+          Reden
+          <textarea
+            autoFocus
+            value={clearCartReason}
+            onChange={(event) => setClearCartReason(event.target.value)}
+            className="mt-1.5 min-h-24 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white"
+          />
+        </label>
+      </Modal>
     </div>
   );
 };

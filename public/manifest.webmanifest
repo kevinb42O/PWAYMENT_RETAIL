@@ -1,12 +1,12 @@
 {
-  "name": "PWAyment",
-  "short_name": "PWAyment",
-  "description": "Offline-first POS voor Belgische skateshops en retail",
-  "start_url": "/",
+  "name": "PWAYMENT Retail Intelligence",
+  "short_name": "PWAYMENT",
+  "description": "Kassa, voorraad, klanten, webshop en retail intelligence in één helder systeem.",
+  "start_url": "/app",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#0a0a0a",
-  "theme_color": "#0a0a0a",
+  "background_color": "#fbfbfa",
+  "theme_color": "#fbfbfa",
   "lang": "nl-BE",
   "icons": [
     {

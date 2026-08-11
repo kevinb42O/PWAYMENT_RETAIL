@@ -63,6 +63,7 @@ beforeEach(async () => {
     db.transactions.clear(),
     db.products.clear(),
     db.gift_cards.clear(),
+    db.gift_card_events.clear(),
     db.customers.clear(),
     db.audit.clear(),
     db.outbox.clear(),
@@ -94,9 +95,27 @@ describe('finalizeCheckout', () => {
       }),
     );
 
-    expect(result.transaction.paymentMethod).toBe('Split');
-    expect(result.transaction.splitTenders).toEqual([{ method: 'Cadeaubon', amountCents: 10000 }]);
+    expect(result.transaction.paymentMethod).toBe('Cadeaubon');
+    expect(result.transaction.tenders).toEqual([{ method: 'Cadeaubon', amountCents: 10000 }]);
+    expect(result.transaction.splitTenders).toBeUndefined();
     expect((await db.gift_cards.get('gc-1')).balanceCents).toBe(0);
+    expect(result.transaction.giftCardAllocations).toEqual([
+      {
+        giftCardId: 'gc-1',
+        code: 'AAAA-BBBB-CCCC',
+        amountCents: 10000,
+        balanceAfterCents: 0,
+      },
+    ]);
+    expect(await db.gift_card_events.where('giftCardId').equals('gc-1').toArray()).toEqual([
+      expect.objectContaining({
+        type: 'redeem',
+        amountCents: 10000,
+        balanceBeforeCents: 10000,
+        balanceAfterCents: 0,
+        transactionId: result.transaction.id,
+      }),
+    ]);
     expect(await db.transactions.count()).toBe(1);
 
     // A second, genuinely new sale on the drained card must be refused.
@@ -175,6 +194,25 @@ describe('finalizeCheckout', () => {
     expect((await db.products.get('deck-1')).stockQty).toBe(5);
     expect((await db.gift_cards.get('gc-1')).balanceCents).toBe(10000);
     expect((await db.customers.get('cust-1')).visitCount).toBe(0);
+    expect(await db.gift_card_events.count()).toBe(0);
+  });
+
+  it('refuses an expired gift card without mutating any checkout state', async () => {
+    await db.gift_cards.put(giftCard({ expiresAt: new Date(Date.now() - 60_000).toISOString() }));
+
+    await expect(
+      finalizeCheckout(
+        baseInput({
+          method: 'Cadeaubon',
+          giftCards: [{ id: 'gc-1', code: 'AAAA-BBBB-CCCC', amountCents: 10000 }],
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'gift-card-expired' });
+
+    expect((await db.gift_cards.get('gc-1')).balanceCents).toBe(10000);
+    expect((await db.products.get('deck-1')).stockQty).toBe(5);
+    expect(await counts()).toEqual({ transactions: 0, audit: 0, outbox: 0 });
+    expect(await db.gift_card_events.count()).toBe(0);
   });
 
   it('refuses unsupported VAT rates instead of booking them at 21%', async () => {
@@ -221,6 +259,39 @@ describe('finalizeCheckout', () => {
       { method: 'Cash', amountCents: 6000 },
     ]);
     expect((await db.gift_cards.get('gc-1')).balanceCents).toBe(0);
+  });
+
+  it('deducts a custom partial gift-card amount and leaves the remaining balance on the card', async () => {
+    await db.gift_cards.put(giftCard({ balanceCents: 10000 }));
+
+    const result = await finalizeCheckout(
+      baseInput({
+        method: 'PIN',
+        giftCards: [{ id: 'gc-1', code: 'AAAA-BBBB-CCCC', amountCents: 2500 }],
+      }),
+    );
+
+    expect(result.transaction.splitTenders).toEqual([
+      { method: 'Cadeaubon', amountCents: 2500 },
+      { method: 'PIN', amountCents: 7500 },
+    ]);
+    expect(result.transaction.giftCardAllocations).toEqual([
+      {
+        giftCardId: 'gc-1',
+        code: 'AAAA-BBBB-CCCC',
+        amountCents: 2500,
+        balanceAfterCents: 7500,
+      },
+    ]);
+    expect((await db.gift_cards.get('gc-1')).balanceCents).toBe(7500);
+    expect(await db.gift_card_events.where('giftCardId').equals('gc-1').toArray()).toEqual([
+      expect.objectContaining({
+        type: 'redeem',
+        amountCents: 2500,
+        balanceBeforeCents: 10000,
+        balanceAfterCents: 7500,
+      }),
+    ]);
   });
 
   it('refuses "Split" as an input tender method', async () => {
@@ -289,12 +360,14 @@ describe('finalizeCheckout', () => {
     expect((await db.products.get('deck-1')).stockQty).toBe(5);
     expect((await db.gift_cards.get('gc-1')).balanceCents).toBe(10000);
     expect((await db.customers.get('cust-1')).visitCount).toBe(0);
+    expect(await db.gift_card_events.count()).toBe(0);
 
     // The same request id must be retryable after the rollback.
     const retry = await finalizeCheckout(input);
     expect(retry.duplicate).toBe(false);
     expect(await counts()).toEqual({ transactions: 1, audit: 1, outbox: 1 });
     expect((await db.gift_cards.get('gc-1')).balanceCents).toBe(6000);
+    expect(await db.gift_card_events.count()).toBe(1);
 
     outboxAdd.mockRestore();
   });

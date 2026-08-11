@@ -1,19 +1,43 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 160" role="img" aria-labelledby="title desc">
-  <title id="title">pwayment logo</title>
-  <desc id="desc">A geometric P-shaped flow mark followed by the pwayment wordmark.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 64" width="320" height="64" role="img" aria-label="pwayment logo" shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
   <defs>
-    <linearGradient id="mark" x1="28" y1="22" x2="132" y2="138" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#37E1D0"/>
-      <stop offset="1" stop-color="#1CB7D9"/>
+    <!-- Ultra High-Contrast Electric Cyan to Royal Blue Gradient -->
+    <linearGradient id="pway-brand-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00F0FF"/>
+      <stop offset="50%" stop-color="#0088FF"/>
+      <stop offset="100%" stop-color="#0055FF"/>
     </linearGradient>
+
+    <!-- Neon Lime Accent -->
+    <linearGradient id="pway-accent-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#BEF264"/>
+      <stop offset="100%" stop-color="#84CC16"/>
+    </linearGradient>
+
+    <!-- Crisp Subtle Drop Shadow -->
+    <filter id="mark-glow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#0077FF" flood-opacity="0.3"/>
+    </filter>
   </defs>
 
-  <g transform="translate(8 8)">
-    <rect width="144" height="144" rx="42" fill="#0B1220"/>
-    <!-- The open P is a transaction path: one continuous route from checkout to insight. -->
-    <path d="M48 116V36h40c23 0 38 12 38 31s-15 31-38 31H48" fill="none" stroke="url(#mark)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M91 98l25 18" fill="none" stroke="#D9F36A" stroke-width="11" stroke-linecap="round"/>
+  <!-- P Monogram Icon -->
+  <g transform="translate(6, 2)" filter="url(#mark-glow)">
+    <!-- Main P Loop: Stem extends from y=8 down to y=56, loop is y=8 to y=38 -->
+    <path d="M 16 56 V 8 H 32 C 43 8 50 15.5 50 23 C 50 30.5 43 38 32 38 H 16"
+          fill="none"
+          stroke="url(#pway-brand-grad)"
+          stroke-width="6.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"/>
+
+    <!-- Neon Lime Terminal Dot -->
+    <circle cx="49" cy="40" r="4.5" fill="url(#pway-accent-grad)"/>
   </g>
 
-  <text x="184" y="105" fill="#0B1220" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="72" font-weight="760" letter-spacing="-4">pwayment</text>
+  <!-- Wordmark "pwayment" -->
+  <text x="72" y="44"
+        fill="#09090B"
+        font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Inter', 'Outfit', 'SF Pro Display', sans-serif"
+        font-size="34"
+        font-weight="900"
+        letter-spacing="-0.05em">pwayment</text>
 </svg>

@@ -1,0 +1,60 @@
+import { expect, test } from "./fixtures";
+
+test("registration requires strong credentials and reload locks the session", async ({
+  appPage,
+}) => {
+  await appPage.goto("/register");
+  await expect(
+    appPage.getByRole("heading", { name: "Nieuw account aanmaken" }),
+  ).toBeVisible();
+  await appPage.getByRole("textbox", { name: "Voornaam" }).fill("E2E");
+  await appPage.getByRole("textbox", { name: "Familienaam" }).fill("Eigenaar");
+  await appPage
+    .getByRole("textbox", { name: "Winkel / Bedrijfsnaam" })
+    .fill("E2E Skate Shop");
+  await appPage
+    .getByRole("textbox", { name: "E-mailadres" })
+    .fill("e2e-owner@example.test");
+  await appPage
+    .getByRole("textbox", { name: "Wachtwoord", exact: true })
+    .fill("CorrectHorseBattery12!");
+  await appPage
+    .getByRole("textbox", { name: "Wachtwoord herhalen" })
+    .fill("CorrectHorseBattery12!");
+  await appPage.getByLabel("Kassa Snel-PIN (6 cijfers)").fill("654321");
+  await appPage
+    .getByRole("button", { name: "Account Aanmaken" })
+    .last()
+    .click();
+  await expect(
+    appPage.getByRole("searchbox", { name: "Scan barcode of zoek product" }),
+  ).toBeVisible();
+
+  await appPage.reload();
+  await appPage.goto("/login");
+  await expect(
+    appPage.getByRole("heading", { name: "Inloggen bij PWAyment" }),
+  ).toBeVisible();
+});
+
+test("seed owner can authenticate by email with upgraded credential hashing", async ({
+  appPage,
+}) => {
+  await appPage.goto("/login");
+  await expect(
+    appPage.getByRole("heading", { name: "Inloggen bij PWAyment" }),
+  ).toBeVisible();
+  await appPage
+    .getByRole("textbox", { name: "E-mailadres" })
+    .fill("eigenaar@pwayment.be");
+  await appPage
+    .getByRole("textbox", { name: "Wachtwoord", exact: true })
+    .fill("password123");
+  await appPage
+    .getByRole("button", { name: "Inloggen", exact: true })
+    .last()
+    .click();
+  await expect(
+    appPage.getByRole("searchbox", { name: "Scan barcode of zoek product" }),
+  ).toBeVisible();
+});

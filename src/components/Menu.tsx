@@ -1,21 +1,26 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useStore } from '../store/useStore';
-import { useProducts } from '../store/useProducts';
-import { formatEUR } from '../utils/money';
-import { useCategories } from '../store/useCategories';
-import { matchesCatalogQuery, normalizeCatalogQuery } from '../utils/productLookup';
+import React, { useEffect, useMemo, useState } from "react";
+import { useStore } from "../store/useStore";
+import { useProducts } from "../store/useProducts";
+import { formatEUR } from "../utils/money";
+import { useCategories } from "../store/useCategories";
+import {
+  matchesCatalogQuery,
+  normalizeCatalogQuery,
+} from "../utils/productLookup";
+import { Box, Grid2X2, Layers3 } from "lucide-react";
+import { isGiftCardProduct } from "../utils/financial";
 
 const stockLabel = (stockQty?: number): string => {
-  if (stockQty == null) return 'Geen voorraadtracking';
-  if (stockQty === 0) return 'Uitverkocht';
+  if (stockQty == null) return "Geen voorraadtracking";
+  if (stockQty === 0) return "Uitverkocht";
   return `${stockQty} op voorraad`;
 };
 
 const categoryBadgeTone = (subCategory?: string): string => {
-  const normalized = subCategory?.toLocaleLowerCase('nl-BE') ?? '';
-  if (normalized.includes('cadeaubon')) return 'pos-badge-gift';
-  if (normalized.includes('advies')) return 'pos-badge-advice';
-  return 'pos-badge-default';
+  const normalized = subCategory?.toLocaleLowerCase("nl-BE") ?? "";
+  if (normalized.includes("cadeaubon")) return "pos-badge-gift";
+  if (normalized.includes("advies")) return "pos-badge-advice";
+  return "pos-badge-default";
 };
 
 interface MenuProps {
@@ -31,9 +36,12 @@ export const Menu: React.FC<MenuProps> = ({ query, onQueryChange }) => {
   const categories = useCategories((s) => s.list);
   const hydrateCategories = useCategories((s) => s.hydrate);
 
-  const [activeCategory, setActiveCategory] = useState<string | 'all'>('all');
-  const [activeSubCategory, setActiveSubCategory] = useState<string | 'all'>('all');
-  const [activeBrand, setActiveBrand] = useState<string | 'all'>('all');
+  const [activeCategory, setActiveCategory] = useState<string | "all">("all");
+  const [activeSubCategory, setActiveSubCategory] = useState<string | "all">(
+    "all",
+  );
+  const [activeBrand, setActiveBrand] = useState<string | "all">("all");
+  const [visibleProductCount, setVisibleProductCount] = useState(40);
 
   useEffect(() => {
     void hydrateProducts();
@@ -41,7 +49,10 @@ export const Menu: React.FC<MenuProps> = ({ query, onQueryChange }) => {
   }, [hydrateProducts, hydrateCategories]);
 
   const activeProducts = useMemo(
-    () => products.filter((product) => product.isActive !== false),
+    () =>
+      products.filter(
+        (product) => product.isActive !== false && !isGiftCardProduct(product),
+      ),
     [products],
   );
 
@@ -52,65 +63,104 @@ export const Menu: React.FC<MenuProps> = ({ query, onQueryChange }) => {
         .map((category) => ({
           id: category.id,
           name: category.name,
-          count: activeProducts.filter((product) => product.category === category.id).length,
+          count: activeProducts.filter(
+            (product) => product.category === category.id,
+          ).length,
         }))
         .filter((category) => category.count > 0);
     }
 
-    const fallback = Array.from(new Set(activeProducts.map((product) => product.category).filter(Boolean))).sort();
+    const fallback = Array.from(
+      new Set(
+        activeProducts.map((product) => product.category).filter(Boolean),
+      ),
+    ).sort();
     return fallback.map((name) => ({
       id: name,
       name,
-      count: activeProducts.filter((product) => product.category === name).length,
+      count: activeProducts.filter((product) => product.category === name)
+        .length,
     }));
   }, [activeProducts, categories]);
 
   const categoryProducts = useMemo(
-    () => activeProducts.filter((product) => activeCategory === 'all' || product.category === activeCategory),
+    () =>
+      activeProducts.filter(
+        (product) =>
+          activeCategory === "all" || product.category === activeCategory,
+      ),
     [activeCategory, activeProducts],
   );
 
   const subCategoryItems = useMemo(() => {
-    const names = Array.from(new Set(categoryProducts.map((product) => product.subCategory ?? 'Overig'))).sort();
+    const names = Array.from(
+      new Set(
+        categoryProducts.map((product) => product.subCategory ?? "Overig"),
+      ),
+    ).sort();
     return names.map((name) => ({
       id: name,
       name,
-      count: categoryProducts.filter((product) => (product.subCategory ?? 'Overig') === name).length,
+      count: categoryProducts.filter(
+        (product) => (product.subCategory ?? "Overig") === name,
+      ).length,
     }));
   }, [categoryProducts]);
 
   const subCategoryProducts = useMemo(
-    () => categoryProducts.filter((product) => activeSubCategory === 'all' || (product.subCategory ?? 'Overig') === activeSubCategory),
+    () =>
+      categoryProducts.filter(
+        (product) =>
+          activeSubCategory === "all" ||
+          (product.subCategory ?? "Overig") === activeSubCategory,
+      ),
     [activeSubCategory, categoryProducts],
   );
 
   const brandItems = useMemo(() => {
-    const names = Array.from(new Set(subCategoryProducts.map((product) => product.brand ?? 'Zonder merk'))).sort();
+    const names = Array.from(
+      new Set(
+        subCategoryProducts.map((product) => product.brand ?? "Zonder merk"),
+      ),
+    ).sort();
     return names.map((name) => ({
       id: name,
       name,
-      count: subCategoryProducts.filter((product) => (product.brand ?? 'Zonder merk') === name).length,
+      count: subCategoryProducts.filter(
+        (product) => (product.brand ?? "Zonder merk") === name,
+      ).length,
     }));
   }, [subCategoryProducts]);
 
   useEffect(() => {
-    if (activeCategory !== 'all' && !categoryItems.some((category) => category.id === activeCategory)) {
-      setActiveCategory('all');
-      setActiveSubCategory('all');
-      setActiveBrand('all');
+    if (
+      activeCategory !== "all" &&
+      !categoryItems.some((category) => category.id === activeCategory)
+    ) {
+      setActiveCategory("all");
+      setActiveSubCategory("all");
+      setActiveBrand("all");
     }
   }, [activeCategory, categoryItems]);
 
   useEffect(() => {
-    if (activeSubCategory !== 'all' && !subCategoryItems.some((subCategory) => subCategory.id === activeSubCategory)) {
-      setActiveSubCategory('all');
-      setActiveBrand('all');
+    if (
+      activeSubCategory !== "all" &&
+      !subCategoryItems.some(
+        (subCategory) => subCategory.id === activeSubCategory,
+      )
+    ) {
+      setActiveSubCategory("all");
+      setActiveBrand("all");
     }
   }, [activeSubCategory, subCategoryItems]);
 
   useEffect(() => {
-    if (activeBrand !== 'all' && !brandItems.some((brand) => brand.id === activeBrand)) {
-      setActiveBrand('all');
+    if (
+      activeBrand !== "all" &&
+      !brandItems.some((brand) => brand.id === activeBrand)
+    ) {
+      setActiveBrand("all");
     }
   }, [activeBrand, brandItems]);
 
@@ -119,137 +169,199 @@ export const Menu: React.FC<MenuProps> = ({ query, onQueryChange }) => {
   const filteredProducts = useMemo(() => {
     const base = term
       ? activeProducts.filter((product) => matchesCatalogQuery(product, term))
-      : subCategoryProducts.filter((product) => activeBrand === 'all' || (product.brand ?? 'Zonder merk') === activeBrand);
+      : subCategoryProducts.filter(
+          (product) =>
+            activeBrand === "all" ||
+            (product.brand ?? "Zonder merk") === activeBrand,
+        );
 
     return [...base].sort((a, b) => {
-      const subCategoryCompare = (a.subCategory ?? '').localeCompare(b.subCategory ?? '');
+      const subCategoryCompare = (a.subCategory ?? "").localeCompare(
+        b.subCategory ?? "",
+      );
       if (subCategoryCompare !== 0) return subCategoryCompare;
-      const brandCompare = (a.brand ?? '').localeCompare(b.brand ?? '');
+      const brandCompare = (a.brand ?? "").localeCompare(b.brand ?? "");
       if (brandCompare !== 0) return brandCompare;
-      return a.name.localeCompare(b.name) || (a.variant ?? '').localeCompare(b.variant ?? '');
+      return (
+        a.name.localeCompare(b.name) ||
+        (a.variant ?? "").localeCompare(b.variant ?? "")
+      );
     });
   }, [activeBrand, activeProducts, subCategoryProducts, term]);
 
-  const activeCategoryName =
-    activeCategory === 'all'
-      ? 'Alle hoofdcategorieen'
-      : categoryItems.find((category) => category.id === activeCategory)?.name ?? 'Alle hoofdcategorieen';
-  const activeSubCategoryName = activeSubCategory === 'all' ? 'Alle subcategorieen' : activeSubCategory;
-  const resultLabel = filteredProducts.length === 1 ? '1 product' : `${filteredProducts.length} producten`;
+  useEffect(() => {
+    setVisibleProductCount(40);
+  }, [activeBrand, activeCategory, activeSubCategory, term]);
 
-  const showSubCategory = activeCategory !== 'all';
+  const visibleProducts = filteredProducts.slice(0, visibleProductCount);
+
+  const activeCategoryName =
+    activeCategory === "all"
+      ? "Alle hoofdcategorieën"
+      : (categoryItems.find((category) => category.id === activeCategory)
+          ?.name ?? "Alle hoofdcategorieën");
+  const activeSubCategoryName =
+    activeSubCategory === "all" ? "Alle subcategorieën" : activeSubCategory;
+  const resultLabel =
+    filteredProducts.length === 1
+      ? "1 product"
+      : `${filteredProducts.length} producten`;
+
+  const showSubCategory = activeCategory !== "all";
 
   return (
-    <div className={`pos-catalog grid h-full grid-cols-1 overflow-hidden bg-zinc-950 text-white ${showSubCategory ? 'lg:grid-cols-[200px_220px_minmax(0,1fr)]' : 'lg:grid-cols-[200px_minmax(0,1fr)]'}`}>
-      <div className="overflow-y-auto border-b border-zinc-800 bg-zinc-900 lg:border-b-0 lg:border-r">
-        <div className="sticky top-0 z-10 border-b border-zinc-800 bg-zinc-950 px-4 py-3">
-          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">Hoofdcategorie</div>
+    <div
+      className={`pos-catalog grid h-full grid-cols-1 overflow-hidden text-slate-900 ${showSubCategory ? "lg:grid-cols-[210px_230px_minmax(0,1fr)]" : "lg:grid-cols-[210px_minmax(0,1fr)]"}`}
+    >
+      {/* Hoofdcategorieën kolom */}
+      <div className="pos-category-rail overflow-y-auto border-b border-slate-200 lg:border-b-0 lg:border-r">
+        <div className="pos-rail-heading sticky top-0 z-10 border-b border-slate-200/70 px-4 py-3.5 backdrop-blur-md">
+          <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
+            <Grid2X2 size={13} /> Hoofdcategorie
+          </div>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto p-2 lg:block lg:overflow-visible lg:p-0">
+        <div className="flex gap-1.5 overflow-x-auto p-2 lg:block lg:overflow-visible lg:p-0">
           <button
             onClick={() => {
-              setActiveCategory('all');
-              setActiveSubCategory('all');
-              setActiveBrand('all');
-              onQueryChange('');
+              setActiveCategory("all");
+              setActiveSubCategory("all");
+              setActiveBrand("all");
+              onQueryChange("");
             }}
-            className={`min-w-[150px] border-l-4 px-4 py-4 text-left text-sm font-bold transition-colors lg:w-full lg:min-w-0 ${
-              activeCategory === 'all' && !term
-                ? 'pos-category-active bg-zinc-800 text-white'
-                : 'border-l-transparent text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
+            className={`min-w-[150px] border-l-4 px-4 py-3.5 text-left transition-all lg:w-full lg:min-w-0 ${
+              activeCategory === "all" && !term
+                ? "pos-rail-active border-l-sky-600 text-slate-900 font-bold"
+                : "border-l-transparent text-slate-600 hover:bg-white/60 hover:text-slate-900 font-medium"
             }`}
           >
-            <span className="block">Alles</span>
-            <span className="mt-1 block text-xs font-medium text-zinc-500">{activeProducts.length} producten</span>
+            <span className="block text-sm">Alles</span>
+            <span
+              className={`mt-0.5 block text-xs ${activeCategory === "all" && !term ? "text-sky-700 font-semibold" : "text-slate-600"}`}
+            >
+              {activeProducts.length} producten
+            </span>
           </button>
 
-          {categoryItems.map((category) => (
-            <button
-              key={category.id}
-              onClick={() => {
-                setActiveCategory(category.id);
-                setActiveSubCategory('all');
-                setActiveBrand('all');
-                onQueryChange('');
-              }}
-              className={`min-w-[170px] border-l-4 px-4 py-4 text-left text-sm font-bold transition-colors lg:w-full lg:min-w-0 ${
-                activeCategory === category.id && !term
-                  ? 'pos-category-active bg-zinc-800 text-white'
-                  : 'border-l-transparent text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
-              }`}
-            >
-              <span className="block leading-tight">{category.name}</span>
-              <span className="mt-1 block text-xs font-medium text-zinc-500">{category.count} producten</span>
-            </button>
-          ))}
+          {categoryItems.map((category) => {
+            const isActive = activeCategory === category.id && !term;
+            return (
+              <button
+                key={category.id}
+                onClick={() => {
+                  setActiveCategory(category.id);
+                  setActiveSubCategory("all");
+                  setActiveBrand("all");
+                  onQueryChange("");
+                }}
+                className={`min-w-[170px] border-l-4 px-4 py-3.5 text-left transition-all lg:w-full lg:min-w-0 ${
+                  isActive
+                    ? "pos-rail-active border-l-sky-600 text-slate-900 font-bold"
+                    : "border-l-transparent text-slate-600 hover:bg-white/60 hover:text-slate-900 font-medium"
+                }`}
+              >
+                <span className="block text-sm leading-tight">
+                  {category.name}
+                </span>
+                <span
+                  className={`mt-0.5 block text-xs ${isActive ? "text-sky-700 font-semibold" : "text-slate-600"}`}
+                >
+                  {category.count} producten
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
+      {/* Subcategorieën kolom */}
       {showSubCategory && (
-        <div className="overflow-y-auto border-b border-zinc-800 bg-zinc-950 lg:border-b-0 lg:border-r">
-          <div className="sticky top-0 z-10 border-b border-zinc-800 bg-zinc-950 px-4 py-3">
-            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">Subcategorie</div>
-            <div className="mt-1 truncate text-sm font-semibold text-zinc-200">{activeCategoryName}</div>
+        <div className="pos-category-rail pos-category-rail--secondary overflow-y-auto border-b border-slate-200 lg:border-b-0 lg:border-r">
+          <div className="pos-rail-heading sticky top-0 z-10 border-b border-slate-200/70 px-4 py-3 backdrop-blur-md">
+            <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
+              <Layers3 size={13} /> Subcategorie
+            </div>
+            <div className="mt-0.5 truncate text-xs font-bold text-slate-800">
+              {activeCategoryName}
+            </div>
           </div>
 
-          <div className="flex gap-2 overflow-x-auto p-2 lg:block lg:overflow-visible lg:p-0">
+          <div className="flex gap-1.5 overflow-x-auto p-2 lg:block lg:overflow-visible lg:p-0">
             <button
               onClick={() => {
-                setActiveSubCategory('all');
-                setActiveBrand('all');
-                onQueryChange('');
+                setActiveSubCategory("all");
+                setActiveBrand("all");
+                onQueryChange("");
               }}
-              className={`min-w-[170px] border-l-4 px-4 py-3 text-left text-sm font-semibold transition-colors lg:w-full lg:min-w-0 ${
-                  activeSubCategory === 'all' && !term
-                  ? 'pos-category-active bg-zinc-900 text-white'
-                  : 'border-l-transparent text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+              className={`min-w-[170px] border-l-4 px-4 py-3 text-left transition-all lg:w-full lg:min-w-0 ${
+                activeSubCategory === "all" && !term
+                  ? "pos-rail-active border-l-sky-600 text-slate-900 font-bold"
+                  : "border-l-transparent text-slate-600 hover:bg-white/60 hover:text-slate-900 font-medium"
               }`}
             >
-              <span className="block">Alle subcategorieen</span>
-              <span className="mt-1 block text-xs text-zinc-500">{categoryProducts.length} producten</span>
+              <span className="block text-sm">Alle subcategorieën</span>
+              <span
+                className={`mt-0.5 block text-xs ${activeSubCategory === "all" && !term ? "text-sky-700 font-semibold" : "text-slate-600"}`}
+              >
+                {categoryProducts.length} producten
+              </span>
             </button>
 
-            {subCategoryItems.map((subCategory) => (
-              <button
-                key={subCategory.id}
-                onClick={() => {
-                  setActiveSubCategory(subCategory.id);
-                  setActiveBrand('all');
-                  onQueryChange('');
-                }}
-                className={`min-w-[180px] border-l-4 px-4 py-3 text-left text-sm font-semibold transition-colors lg:w-full lg:min-w-0 ${
-                  activeSubCategory === subCategory.id && !term
-                    ? 'pos-category-active bg-zinc-900 text-white'
-                    : 'border-l-transparent text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
-                }`}
-              >
-                <span className="block leading-tight">{subCategory.name}</span>
-                <span className="mt-1 block text-xs text-zinc-500">{subCategory.count} producten</span>
-              </button>
-            ))}
+            {subCategoryItems.map((subCategory) => {
+              const isActive = activeSubCategory === subCategory.id && !term;
+              return (
+                <button
+                  key={subCategory.id}
+                  onClick={() => {
+                    setActiveSubCategory(subCategory.id);
+                    setActiveBrand("all");
+                    onQueryChange("");
+                  }}
+                  className={`min-w-[180px] border-l-4 px-4 py-3 text-left transition-all lg:w-full lg:min-w-0 ${
+                    isActive
+                      ? "pos-rail-active border-l-sky-600 text-slate-900 font-bold"
+                      : "border-l-transparent text-slate-600 hover:bg-white/60 hover:text-slate-900 font-medium"
+                  }`}
+                >
+                  <span className="block text-sm leading-tight">
+                    {subCategory.name}
+                  </span>
+                  <span
+                    className={`mt-0.5 block text-xs ${isActive ? "text-sky-700 font-semibold" : "text-slate-600"}`}
+                  >
+                    {subCategory.count} producten
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
 
-      <div className="flex min-w-0 flex-col overflow-hidden bg-zinc-950">
-        <div className="border-b border-zinc-800 bg-zinc-900/40 p-4">
+      {/* Producten raster area */}
+      <div className="pos-product-stage flex min-w-0 flex-col overflow-hidden">
+        <div className="pos-catalog-toolbar border-b border-slate-200/80 p-4">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
             <div className="min-w-0">
-              <div className="text-sm font-semibold text-white">{term ? 'Zoekresultaten' : `${activeCategoryName} / ${activeSubCategoryName}`}</div>
-              <div className="mt-1 text-xs text-zinc-500">
+              <div className="flex items-center gap-2 text-sm font-extrabold text-slate-900">
+                <Box size={16} className="text-sky-600" />
+                {term
+                  ? "Zoekresultaten"
+                  : `${activeCategoryName} / ${activeSubCategoryName}`}
+              </div>
+              <div className="mt-1 text-xs text-slate-500">
                 {term
                   ? exactCodeMatch
-                    ? `${resultLabel}. Exacte ${exactCodeMatch.matchedOn === 'barcode' ? 'barcode' : 'SKU'}-match voor ${exactCodeMatch.product.name}. Enter in de scanbalk voegt direct toe.`
-                    : `${resultLabel}. Zoek op barcode, SKU, product, merk, subcategorie of maat.`
-                  : `${resultLabel}. Filter verder op merk of tik meteen een product aan.`}
+                    ? `${resultLabel}. Exacte ${exactCodeMatch.matchedOn === "barcode" ? "barcode" : "SKU"}-match voor ${exactCodeMatch.product.name}.`
+                    : `${resultLabel}. Zoek op barcode, SKU, product, merk of subcategorie.`
+                  : `${resultLabel}. Filter verder op merk of kies een product.`}
               </div>
             </div>
 
             {term && (
               <button
-                onClick={() => onQueryChange('')}
-                className="self-start rounded-lg bg-zinc-800 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-700"
+                onClick={() => onQueryChange("")}
+                className="self-start rounded-lg bg-slate-200 hover:bg-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors"
               >
                 Wis filter
               </button>
@@ -257,13 +369,13 @@ export const Menu: React.FC<MenuProps> = ({ query, onQueryChange }) => {
           </div>
 
           {!term && brandItems.length > 1 && (
-            <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
               <button
-                onClick={() => setActiveBrand('all')}
-                className={`whitespace-nowrap rounded-lg border px-3 py-2 text-xs font-semibold ${
-                  activeBrand === 'all'
-                    ? 'pos-filter-active'
-                    : 'border-zinc-800 bg-zinc-950 text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                onClick={() => setActiveBrand("all")}
+                className={`whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all ${
+                  activeBrand === "all"
+                    ? "pos-filter-active"
+                    : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                 }`}
               >
                 Alle merken ({subCategoryProducts.length})
@@ -272,10 +384,10 @@ export const Menu: React.FC<MenuProps> = ({ query, onQueryChange }) => {
                 <button
                   key={brand.id}
                   onClick={() => setActiveBrand(brand.id)}
-                  className={`whitespace-nowrap rounded-lg border px-3 py-2 text-xs font-semibold ${
+                  className={`whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all ${
                     activeBrand === brand.id
-                      ? 'pos-filter-active'
-                      : 'border-zinc-800 bg-zinc-950 text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                      ? "pos-filter-active"
+                      : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                   }`}
                 >
                   {brand.name} ({brand.count})
@@ -285,49 +397,84 @@ export const Menu: React.FC<MenuProps> = ({ query, onQueryChange }) => {
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto bg-zinc-950 p-4">
+        {/* Product grid */}
+        <div className="pos-product-grid flex-1 overflow-y-auto p-4 lg:p-5">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-            {filteredProducts.map((product) => {
-              const outOfStock = product.stockQty != null && product.stockQty <= 0;
-              const lowStock = product.stockQty != null && product.minStockQty != null && product.stockQty > 0 && product.stockQty <= product.minStockQty;
+            {visibleProducts.map((product) => {
+              const outOfStock =
+                product.stockQty != null && product.stockQty <= 0;
+              const lowStock =
+                product.stockQty != null &&
+                product.minStockQty != null &&
+                product.stockQty > 0 &&
+                product.stockQty <= product.minStockQty;
 
               return (
                 <button
                   key={product.id}
                   onClick={() => addOrderItem(product)}
                   disabled={outOfStock}
-                  className={`pos-product-tile relative flex min-h-[144px] flex-col justify-between rounded-xl border p-4 text-left shadow-sm transition-all ${
-                    outOfStock ? 'cursor-not-allowed opacity-50' : 'pos-product-tile--interactive hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:scale-[0.99]'
+                  className={`pos-product-card relative flex min-h-[146px] flex-col justify-between overflow-hidden rounded-xl border p-4 text-left transition-colors ${
+                    outOfStock
+                      ? "cursor-not-allowed opacity-50 bg-slate-50"
+                      : "hover:border-sky-300 active:bg-sky-50/40"
                   }`}
                 >
-                  <div className="space-y-2.5">
+                  <div className="relative z-10 space-y-2">
                     <div className="flex items-start justify-between gap-2">
-                      <span className={`rounded-md border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${categoryBadgeTone(product.subCategory)}`}>
+                      <span className="rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-600">
                         {product.subCategory ?? product.category}
                       </span>
                       {(outOfStock || lowStock) && (
-                        <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${outOfStock ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}`}>
-                          {outOfStock ? 'Uitverkocht' : 'Lage stock'}
+                        <span
+                          className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                            outOfStock
+                              ? "bg-red-50 text-red-700 border border-red-200"
+                              : "bg-amber-50 text-amber-700 border border-amber-200"
+                          }`}
+                        >
+                          {outOfStock ? "Uitverkocht" : "Lage stock"}
                         </span>
                       )}
                     </div>
-                    <span className="block text-sm font-semibold leading-snug text-zinc-900">{product.name}</span>
-                    <span className="block text-xs text-zinc-500">{[product.brand, product.variant].filter(Boolean).join(' · ')}</span>
+                    <span className="block text-sm font-bold leading-snug text-slate-900">
+                      {product.name}
+                    </span>
+                    <span className="block text-xs font-medium text-slate-500">
+                      {[product.brand, product.variant]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
                   </div>
 
-                  <div className="mt-4 flex items-end justify-between gap-3">
-                    <span className="text-lg font-bold tracking-tight text-zinc-950">{formatEUR(product.priceCents)}</span>
-                    <span className="text-right text-[11px] font-medium text-zinc-400">{stockLabel(product.stockQty)}</span>
+                  <div className="relative z-10 mt-3 flex items-end justify-between gap-3 pt-3 border-t border-slate-100">
+                    <span className="text-base font-extrabold tracking-tight text-slate-950">
+                      {formatEUR(product.priceCents)}
+                    </span>
+                    <span className="max-w-28 text-right text-[10px] font-semibold leading-tight text-slate-600">
+                      {stockLabel(product.stockQty)}
+                    </span>
                   </div>
                 </button>
               );
             })}
             {filteredProducts.length === 0 && (
-              <div className="col-span-full py-12 text-center text-zinc-500">
+              <div className="col-span-full py-12 text-center text-slate-500 font-medium">
                 {term
-                  ? 'Geen product gevonden. Controleer barcode, SKU, merk, subcategorie of maat.'
-                  : 'Geen producten in deze selectie.'}
+                  ? "Geen product gevonden. Controleer barcode, SKU, merk, subcategorie of maat."
+                  : "Geen producten in deze selectie."}
               </div>
+            )}
+            {filteredProducts.length > visibleProducts.length && (
+              <button
+                type="button"
+                onClick={() => setVisibleProductCount((count) => count + 40)}
+                className="col-span-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm hover:border-sky-300 hover:bg-sky-50 focus:outline-none focus:ring-2 focus:ring-sky-500"
+              >
+                Toon volgende{" "}
+                {Math.min(40, filteredProducts.length - visibleProducts.length)}{" "}
+                van {filteredProducts.length} producten
+              </button>
             )}
           </div>
         </div>

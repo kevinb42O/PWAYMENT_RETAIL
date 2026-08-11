@@ -23,7 +23,19 @@ export const useMerchantProfile = create<MerchantProfileState>()(
     }),
     {
       name: 'pwayment:merchant-profile',
-      version: 1,
+      version: 2,
+      migrate: (persistedState: any, version: number) => {
+        const state = persistedState as MerchantProfileState | undefined;
+        if (state?.profile) {
+          if (state.profile.name === 'PWAyment Skate Shop') {
+            state.profile.name = 'PWAYMENT';
+          }
+          if (state.profile.legalName === 'PWAyment Retail BV' || state.profile.legalName === 'PWAyment Skate Shop') {
+            state.profile.legalName = 'PWAYMENT';
+          }
+        }
+        return state as MerchantProfileState;
+      },
     },
   ),
 );

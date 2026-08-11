@@ -32,11 +32,11 @@ export interface CartScanResult {
 interface POSState {
   cart: RetailCart;
   mobileView: 'menu' | 'cart';
-  mainView: 'pos' | 'insights' | 'z-report' | 'audit-log' | 'admin' | 'customers';
+  mainView: 'pos' | 'insights' | 'z-report' | 'audit-log' | 'admin' | 'customers' | 'profile';
   /** Manual cart-level discount (manager-approved). */
   cartDiscount: CartDiscount | null;
 
-  setMainView: (view: 'pos' | 'insights' | 'z-report' | 'audit-log' | 'admin' | 'customers') => void;
+  setMainView: (view: 'pos' | 'insights' | 'z-report' | 'audit-log' | 'admin' | 'customers' | 'profile') => void;
   setMobileView: (view: 'menu' | 'cart') => void;
 
   addOrderItem: (product: Product) => void;
@@ -69,8 +69,7 @@ const initialCart: RetailCart = {
   orders: [],
 };
 
-const lineId = () =>
-  `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+const lineId = () => globalThis.crypto.randomUUID();
 
 const sameLineCandidate = (a: OrderItem, b: OrderItem) =>
   a.product.id === b.product.id &&
@@ -156,7 +155,7 @@ export const useStore = create<POSState>()(
             return {
               cart: {
                 ...state.cart,
-                orders: state.cart.orders.filter((o) => o.lineId !== lineId),
+                orders: state.cart.orders,
               },
             };
           }
@@ -264,6 +263,7 @@ export const useStore = create<POSState>()(
         set({
           cartDiscount: null,
           cartGiftCards: [],
+          linkedCustomerId: null,
         }),
 
       addCartGiftCard: (gc) =>
@@ -281,10 +281,12 @@ export const useStore = create<POSState>()(
     }),
     {
       name: 'pwayment-storage-v5',
-      version: 5,
+      version: 6,
       partialize: (state) => ({
         cart: state.cart,
         cartDiscount: state.cartDiscount,
+        cartGiftCards: state.cartGiftCards,
+        linkedCustomerId: state.linkedCustomerId,
       }),
       migrate: (persisted: unknown, version: number) => {
         const p = persisted as
@@ -294,6 +296,8 @@ export const useStore = create<POSState>()(
               cartTip?: number;
               tables?: Array<{ id: number; orders?: OrderItem[]; customerCard?: CustomerCard | null }>;
               activeTableId?: number | null;
+              cartGiftCards?: POSState['cartGiftCards'];
+              linkedCustomerId?: string | null;
             }
           | undefined;
 
@@ -315,7 +319,8 @@ export const useStore = create<POSState>()(
               orders: (p.cart.orders ?? []).map((o) => (o.lineId ? o : { ...o, lineId: lineId() })),
             },
             cartDiscount: p.cartDiscount ?? null,
-            cartGiftCards: [],
+            cartGiftCards: p.cartGiftCards ?? [],
+            linkedCustomerId: p.linkedCustomerId ?? null,
           } as POSState;
         }
 

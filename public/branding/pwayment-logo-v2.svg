@@ -1,9 +1,43 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 80" role="img" aria-labelledby="title desc">
-  <title id="title">pwayment logo</title>
-  <desc id="desc">Minimal open P monogram with a terminal point and pwayment wordmark.</desc>
-  <g transform="translate(4 4)">
-    <path d="M20 61V15h23c12.3 0 21 6.7 21 17s-8.7 17-21 17H20" fill="none" stroke="#63D4EF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-    <circle cx="64" cy="61" r="5" fill="#C8F36C"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 64" width="320" height="64" role="img" aria-label="pwayment logo" shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
+  <defs>
+    <!-- Ultra High-Contrast Electric Cyan to Royal Blue Gradient -->
+    <linearGradient id="pway-brand-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00F0FF"/>
+      <stop offset="50%" stop-color="#0088FF"/>
+      <stop offset="100%" stop-color="#0055FF"/>
+    </linearGradient>
+
+    <!-- Neon Lime Accent -->
+    <linearGradient id="pway-accent-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#BEF264"/>
+      <stop offset="100%" stop-color="#84CC16"/>
+    </linearGradient>
+
+    <!-- Crisp Subtle Drop Shadow -->
+    <filter id="mark-glow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#0077FF" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- P Monogram Icon -->
+  <g transform="translate(6, 2)" filter="url(#mark-glow)">
+    <!-- Main P Loop: Stem extends from y=8 down to y=56, loop is y=8 to y=38 -->
+    <path d="M 16 56 V 8 H 32 C 43 8 50 15.5 50 23 C 50 30.5 43 38 32 38 H 16"
+          fill="none"
+          stroke="url(#pway-brand-grad)"
+          stroke-width="6.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"/>
+
+    <!-- Neon Lime Terminal Dot -->
+    <circle cx="49" cy="40" r="4.5" fill="url(#pway-accent-grad)"/>
   </g>
-  <text x="112" y="55" fill="#0B1220" font-family="Avenir Next, Helvetica Neue, Inter, ui-sans-serif, system-ui, sans-serif" font-size="48" font-weight="680" letter-spacing="-3.1">pwayment</text>
+
+  <!-- Wordmark "pwayment" -->
+  <text x="72" y="44"
+        fill="#09090B"
+        font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Inter', 'Outfit', 'SF Pro Display', sans-serif"
+        font-size="34"
+        font-weight="900"
+        letter-spacing="-0.05em">pwayment</text>
 </svg>

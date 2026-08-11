@@ -1,6 +1,26 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-labelledby="title desc">
-  <title id="title">pwayment monogram</title>
-  <desc id="desc">A minimal open P monogram with a terminal point.</desc>
-  <path d="M7.5 25V7.5h9.2c4.9 0 8.3 2.6 8.3 6.7s-3.4 6.7-8.3 6.7H7.5" fill="none" stroke="#63D4EF" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="24.8" cy="25" r="2.25" fill="#C8F36C"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="pwayment icon" shape-rendering="geometricPrecision">
+  <defs>
+    <linearGradient id="pway-brand-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00F0FF"/>
+      <stop offset="50%" stop-color="#0088FF"/>
+      <stop offset="100%" stop-color="#0055FF"/>
+    </linearGradient>
+    <linearGradient id="pway-accent-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#BEF264"/>
+      <stop offset="100%" stop-color="#84CC16"/>
+    </linearGradient>
+    <filter id="mark-glow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#0077FF" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <g transform="translate(6, 4)" filter="url(#mark-glow)">
+    <path d="M 14 52 V 10 H 28 C 37.5 10 44.5 15.5 44.5 22 C 44.5 28.5 37.5 34 28 34 H 14"
+          fill="none"
+          stroke="url(#pway-brand-grad)"
+          stroke-width="7"
+          stroke-linecap="round"
+          stroke-linejoin="round"/>
+    <circle cx="43" cy="36" r="4.5" fill="url(#pway-accent-grad)"/>
+  </g>
 </svg>

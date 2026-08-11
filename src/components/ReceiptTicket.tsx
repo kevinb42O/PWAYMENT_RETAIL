@@ -4,7 +4,10 @@ import { Transaction } from '../types';
 import { formatEUR } from '../utils/money';
 import { MerchantInfo } from '../data/merchant';
 import { useMerchantProfile } from '../store/useMerchantProfile';
+import { useCustomers } from '../store/useCustomers';
 import { calculateTotals } from '../utils/vat';
+import { receiptPaymentRows } from '../utils/receiptPayments';
+import { transactionTenders } from '../utils/financial';
 
 interface Props {
   transaction: Transaction;
@@ -32,11 +35,16 @@ const padRight = (s: string, n: number) => (s.length >= n ? s.slice(0, n) : s + 
  */
 export const ReceiptTicket: React.FC<Props> = ({ transaction: t, ticketNumber, merchantOverride }) => {
   const storedMerchant = useMerchantProfile((state) => state.profile);
-  const merchant = merchantOverride ?? storedMerchant;
+  const merchant = merchantOverride ?? t.merchantSnapshot ?? storedMerchant;
+  const customers = useCustomers((state) => state.customers);
+  const customer = t.customerId ? customers.find((c) => c.id === t.customerId) : null;
+  const customerDisplayName = customer ? customer.name : t.customerId;
+
   // Recompute VAT splits from items so the on-screen ticket also has excl values
   // (the persisted Transaction only stores vat12/vat21, not excl per bracket).
   const totals = calculateTotals(t.items, t.discountCents);
-  const change = t.tenderedCents != null ? Math.max(0, t.tenderedCents - t.totalCents) : 0;
+  const paymentRows = receiptPaymentRows(t);
+  const tenders = transactionTenders(t);
 
   return (
     <div
@@ -166,24 +174,41 @@ export const ReceiptTicket: React.FC<Props> = ({ transaction: t, ticketNumber, m
 
       {/* Betaling */}
       <div className="space-y-0.5">
-        {t.paymentMethod === 'Split' && t.splitTenders ? (
+        {t.paymentMethod === 'Split' && tenders.length > 0 ? (
           <>
             <div className="font-bold mb-0.5">Betalingen</div>
-            {t.splitTenders.map((tender, i) => (
-              <Row key={i} left={tender.method} right={formatEUR(tender.amountCents)} />
+            {paymentRows.map((row, i) => (
+              <Row key={`${row.method}-${row.label}-${i}`} left={row.label} right={formatEUR(row.amountCents)} />
             ))}
-            {t.tenderedCents != null && t.splitTenders.some(x => x.method === 'Cash') && (
+            {t.tenderedCents != null && tenders.some((x) => x.method === 'Cash') && (
               <>
                 <Row left="Ontvangen (Cash)" right={formatEUR(t.tenderedCents)} />
-                <Row left="Wisselgeld" right={formatEUR(
-                  Math.max(0, t.tenderedCents - (t.splitTenders.find(x => x.method === 'Cash')?.amountCents || 0))
-                )} />
+                <Row
+                  left="Wisselgeld"
+                  right={formatEUR(
+                    Math.max(
+                      0,
+                      t.tenderedCents -
+                        (tenders.find((x) => x.method === 'Cash')?.amountCents || 0),
+                    ),
+                  )}
+                />
               </>
             )}
           </>
         ) : (
           <>
-            <Row left="Betaling" right={t.paymentMethod} />
+            {t.paymentMethod === 'Cadeaubon' && t.giftCardAllocations?.length ? (
+              paymentRows.map((row, i) => (
+                <Row
+                  key={`${row.method}-${row.label}-${i}`}
+                  left={row.label}
+                  right={formatEUR(row.amountCents)}
+                />
+              ))
+            ) : (
+              <Row left="Betaling" right={t.paymentMethod} />
+            )}
             {t.paymentMethod === 'Cash' && t.tenderedCents != null && (
               <>
                 <Row left="Ontvangen" right={formatEUR(t.tenderedCents)} />
@@ -192,7 +217,16 @@ export const ReceiptTicket: React.FC<Props> = ({ transaction: t, ticketNumber, m
             )}
           </>
         )}
-        {t.customerId && <Row left="Klant" right={t.customerId} />}
+        {t.giftCardAllocations?.map((allocation) =>
+          allocation.balanceAfterCents != null ? (
+            <Row
+              key={`gift-card-balance-${allocation.giftCardId}`}
+              left={`Resterend saldo (${allocation.code})`}
+              right={formatEUR(allocation.balanceAfterCents)}
+            />
+          ) : null,
+        )}
+        {customerDisplayName && <Row left="Klant" right={customerDisplayName} />}
       </div>
 
       <Sep />

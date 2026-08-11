@@ -22,9 +22,9 @@
 /** ESC — prefixes most ESC/POS control sequences. */
 const ESC = 0x1b;
 /** GS — prefixes cut, barcode, and size commands. */
-const GS  = 0x1d;
+const GS = 0x1d;
 /** LF — advances paper one line and executes the current print buffer. */
-const LF  = 0x0a;
+const LF = 0x0a;
 /** NUL — parameter filler. */
 const NUL = 0x00;
 
@@ -69,23 +69,68 @@ export class EscPosBuilder {
    * they use single-byte code pages.  We map only printable characters:
    *   - 0x20–0x7E  → identical in every code page (safe 7-bit ASCII)
    *   - '€' (U+20AC) → 0xD5 in PC858 (code page 19)
-   *   - 0x80–0xFF  → pass through as-is (Latin-1 supplement, code page dependent)
+   *   - Western-European accents → explicit PC858 byte mapping
    *   - Everything else → '?' replacement
    */
   private encodeText(text: string): number[] {
+    const pc858 = new Map<number, number>([
+      [0x00c7, 0x80],
+      [0x00fc, 0x81],
+      [0x00e9, 0x82],
+      [0x00e2, 0x83],
+      [0x00e4, 0x84],
+      [0x00e0, 0x85],
+      [0x00e5, 0x86],
+      [0x00e7, 0x87],
+      [0x00ea, 0x88],
+      [0x00eb, 0x89],
+      [0x00e8, 0x8a],
+      [0x00ef, 0x8b],
+      [0x00ee, 0x8c],
+      [0x00ec, 0x8d],
+      [0x00c4, 0x8e],
+      [0x00c5, 0x8f],
+      [0x00c9, 0x90],
+      [0x00f4, 0x93],
+      [0x00f6, 0x94],
+      [0x00f2, 0x95],
+      [0x00fb, 0x96],
+      [0x00f9, 0x97],
+      [0x00ff, 0x98],
+      [0x00d6, 0x99],
+      [0x00dc, 0x9a],
+      [0x00e1, 0xa0],
+      [0x00ed, 0xa1],
+      [0x00f3, 0xa2],
+      [0x00fa, 0xa3],
+      [0x00f1, 0xa4],
+      [0x00d1, 0xa5],
+      [0x00a1, 0xad],
+      [0x00ab, 0xae],
+      [0x00bb, 0xaf],
+      [0x00b7, 0xfa],
+    ]);
     const bytes: number[] = [];
     for (let i = 0; i < text.length; i++) {
       const cp = text.codePointAt(i) ?? 0x3f;
       // Skip low surrogate of a surrogate pair
-      if (cp > 0xffff) { i++; }
+      if (cp > 0xffff) {
+        i++;
+      }
       if (cp === 0x20ac) {
         bytes.push(0xd5); // € in PC858
       } else if (cp === 0x0a) {
-        bytes.push(LF);   // newline → LF
+        bytes.push(LF); // newline → LF
       } else if (cp <= 0x7e) {
-        bytes.push(cp);   // printable ASCII — safe in any code page
-      } else if (cp <= 0xff) {
-        bytes.push(cp);   // Latin-1 supplement — pass through
+        bytes.push(cp); // printable ASCII — safe in any code page
+      } else if (pc858.has(cp)) {
+        bytes.push(pc858.get(cp)!);
+      } else if (cp === 0x2018 || cp === 0x2019) {
+        bytes.push(0x27); // typographic apostrophe → ASCII apostrophe
+      } else if (cp === 0x2013 || cp === 0x2014) {
+        bytes.push(0x2d); // en/em dash → ASCII hyphen
+      } else if (cp === 0x2022) {
+        bytes.push(0x2a); // bullet → ASCII asterisk
       } else {
         bytes.push(0x3f); // unsupported → '?'
       }
@@ -129,9 +174,15 @@ export class EscPosBuilder {
     return this.push(ESC, 0x61, n);
   }
 
-  alignLeft(): this   { return this.align(0); }
-  alignCenter(): this { return this.align(1); }
-  alignRight(): this  { return this.align(2); }
+  alignLeft(): this {
+    return this.align(0);
+  }
+  alignCenter(): this {
+    return this.align(1);
+  }
+  alignRight(): this {
+    return this.align(2);
+  }
 
   /**
    * ESC E n — Turn emphasis (bold) on/off.
@@ -165,10 +216,18 @@ export class EscPosBuilder {
     return this.push(GS, 0x21, n & 0xff);
   }
 
-  normalSize(): this   { return this.charSize(0x00); }
-  doubleSize(): this   { return this.charSize(0x11); }
-  doubleHeight(): this { return this.charSize(0x01); }
-  doubleWidth(): this  { return this.charSize(0x10); }
+  normalSize(): this {
+    return this.charSize(0x00);
+  }
+  doubleSize(): this {
+    return this.charSize(0x11);
+  }
+  doubleHeight(): this {
+    return this.charSize(0x01);
+  }
+  doubleWidth(): this {
+    return this.charSize(0x10);
+  }
 
   /**
    * Append a text string, encoding to single-byte code-page bytes.
@@ -199,8 +258,8 @@ export class EscPosBuilder {
    * @param char       Character to repeat (default '-')
    * @param lineWidth  Characters per line (42 for 80mm, 32 for 58mm)
    */
-  separator(char = '-', lineWidth = 42): this {
-    return this.text(char.repeat(lineWidth) + '\n');
+  separator(char = "-", lineWidth = 42): this {
+    return this.text(char.repeat(lineWidth) + "\n");
   }
 
   /**
@@ -260,9 +319,9 @@ export function formatItemLine(
   const rightWidth = priceStr.length;
   const maxNameWidth = lineWidth - qtyStr.length - rightWidth - 1;
   const displayName =
-    name.length > maxNameWidth ? name.slice(0, maxNameWidth - 1) + '>' : name;
+    name.length > maxNameWidth ? name.slice(0, maxNameWidth - 1) + ">" : name;
   const padding = lineWidth - qtyStr.length - displayName.length - rightWidth;
-  return `${qtyStr}${displayName}${' '.repeat(Math.max(1, padding))}${priceStr}\n`;
+  return `${qtyStr}${displayName}${" ".repeat(Math.max(1, padding))}${priceStr}\n`;
 }
 
 /**
@@ -280,5 +339,5 @@ export function formatTotalLine(
   lineWidth = 42,
 ): string {
   const padding = lineWidth - key.length - value.length;
-  return `${key}${' '.repeat(Math.max(1, padding))}${value}\n`;
+  return `${key}${" ".repeat(Math.max(1, padding))}${value}\n`;
 }

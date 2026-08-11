@@ -1,44 +1,183 @@
-import React from 'react';
-import { X } from 'lucide-react';
+import React, { useEffect, useId, useRef } from "react";
+import { X } from "lucide-react";
 
 interface ModalProps {
   open: boolean;
   onClose: () => void;
   title: string;
+  subtitle?: React.ReactNode;
+  icon?: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "5xl";
+  variant?: "light" | "dark";
+  className?: string;
+  closeOnBackdrop?: boolean;
 }
 
-const sizeClass: Record<NonNullable<ModalProps['size']>, string> = {
-  sm: 'max-w-sm',
-  md: 'max-w-md',
-  lg: 'max-w-lg',
-  xl: 'max-w-5xl',
+const sizeClass: Record<NonNullable<ModalProps["size"]>, string> = {
+  sm: "max-w-sm",
+  md: "max-w-md",
+  lg: "max-w-lg",
+  xl: "max-w-5xl",
+  "2xl": "max-w-2xl",
+  "3xl": "max-w-3xl",
+  "4xl": "max-w-4xl",
+  "5xl": "max-w-5xl",
 };
 
-export const Modal: React.FC<ModalProps> = ({ open, onClose, title, children, footer, size = 'md' }) => {
+export const Modal: React.FC<ModalProps> = ({
+  open,
+  onClose,
+  title,
+  subtitle,
+  icon,
+  children,
+  footer,
+  size = "md",
+  variant = "light",
+  className = "",
+  closeOnBackdrop = false,
+}) => {
+  const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const dialog = dialogRef.current;
+    const focusable = dialog?.querySelector<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+    );
+    requestAnimationFrame(() => {
+      if (!dialog?.contains(document.activeElement))
+        (focusable ?? dialog)?.focus();
+    });
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== "Tab" || !dialog) return;
+      const elements = [
+        ...dialog.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+        ),
+      ];
+      if (elements.length === 0) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+      const first = elements[0];
+      const last = elements[elements.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      previous?.focus();
+    };
+  }, [open]);
+
   if (!open) return null;
+  const isLight = variant === "light";
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-150"
+      onClick={(event) => {
+        if (closeOnBackdrop && event.target === event.currentTarget) onClose();
+      }}
+      role="presentation"
     >
       <div
-        className={`bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl w-full ${sizeClass[size]} flex flex-col max-h-[90vh]`}
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className={`${
+          isLight
+            ? "bg-white border border-slate-200 text-slate-900 shadow-2xl"
+            : "bg-slate-900 border border-slate-800 text-slate-100 shadow-2xl shadow-black/50"
+        } rounded-3xl w-full ${sizeClass[size]} ${className} flex flex-col max-h-[92vh] my-auto overflow-hidden transition-all`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between p-4 border-b border-zinc-800">
-          <h2 className="text-lg font-bold">{title}</h2>
+        <div
+          className={`flex items-center justify-between px-6 py-4.5 border-b ${
+            isLight
+              ? "border-slate-100 bg-slate-50/50"
+              : "border-slate-800 bg-slate-900/50"
+          }`}
+        >
+          <div className="flex items-center gap-3 min-w-0 pr-4">
+            {icon && (
+              <div
+                className={`p-2.5 rounded-2xl shrink-0 ${
+                  isLight
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "bg-slate-800 text-slate-100"
+                }`}
+              >
+                {icon}
+              </div>
+            )}
+            <div className="min-w-0">
+              <h2
+                id={titleId}
+                className={`text-base sm:text-lg font-black tracking-tight truncate ${isLight ? "text-slate-900" : "text-slate-100"}`}
+              >
+                {title}
+              </h2>
+              {subtitle && (
+                <div
+                  className={`text-xs font-medium truncate ${isLight ? "text-slate-500" : "text-slate-400"}`}
+                >
+                  {subtitle}
+                </div>
+              )}
+            </div>
+          </div>
+
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-white"
+            className={`p-2 rounded-xl ${
+              isLight
+                ? "text-slate-400 hover:bg-slate-200/70 hover:text-slate-900"
+                : "text-slate-400 hover:bg-slate-800 hover:text-white"
+            } transition-colors shrink-0`}
+            title="Sluiten"
+            aria-label="Venster sluiten"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-4">{children}</div>
-        {footer && <div className="p-4 border-t border-zinc-800">{footer}</div>}
+
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+          {children}
+        </div>
+
+        {footer && (
+          <div
+            className={`px-6 py-4 border-t ${
+              isLight
+                ? "border-slate-100 bg-slate-50/50"
+                : "border-slate-800/80 bg-slate-900/50"
+            }`}
+          >
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );

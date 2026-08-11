@@ -5,15 +5,15 @@ const THEME_STORAGE_KEY = 'pwayment-theme';
 export const isThemeMode = (value: unknown): value is ThemeMode => value === 'dark' || value === 'light';
 
 export const readInitialThemeMode = (): ThemeMode => {
-  if (typeof window === 'undefined') return 'dark';
+  if (typeof window === 'undefined') return 'light';
 
   try {
     const raw = window.localStorage.getItem(THEME_STORAGE_KEY);
-    if (!raw) return 'dark';
+    if (!raw) return 'light';
     const parsed = JSON.parse(raw) as { state?: { mode?: unknown } } | null;
-    return isThemeMode(parsed?.state?.mode) ? parsed.state.mode : 'dark';
+    return isThemeMode(parsed?.state?.mode) ? parsed.state.mode : 'light';
   } catch {
-    return 'dark';
+    return 'light';
   }
 };
 

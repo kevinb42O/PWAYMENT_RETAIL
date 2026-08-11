@@ -18,8 +18,8 @@ export interface MerchantInfo {
 }
 
 export const DEFAULT_MERCHANT: MerchantInfo = {
-  name: 'PWAyment Skate Shop',
-  legalName: 'PWAyment Retail BV',
+  name: 'PWAYMENT',
+  legalName: 'PWAYMENT',
   addressLine1: 'Voorbeeldstraat 1',
   addressLine2: '9000 Gent',
   vatNumber: 'BE0123.456.789',

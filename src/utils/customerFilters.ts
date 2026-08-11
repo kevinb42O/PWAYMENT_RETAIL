@@ -1,4 +1,5 @@
 import { Customer, GiftCard } from '../types';
+import { isGiftCardExpired } from './giftCards';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const collator = new Intl.Collator('nl-BE', { sensitivity: 'base', numeric: true });
@@ -115,7 +116,7 @@ export const buildCustomerRows = (
       giftCardCount: cards.length,
       blockedGiftCardCount: cards.filter((card) => !card.isActive).length,
       openGiftCardBalanceCents: cards
-        .filter((card) => card.isActive && card.balanceCents > 0)
+        .filter((card) => card.isActive && !isGiftCardExpired(card, now) && card.balanceCents > 0)
         .reduce((sum, card) => sum + card.balanceCents, 0),
     };
   });
@@ -255,7 +256,7 @@ export const filterAndSortGiftCards = (
       return {
         giftCard,
         customerName: giftCard.customerId ? customerNameById.get(giftCard.customerId) : undefined,
-        isExpired: expiresAt != null && expiresAt < now,
+        isExpired: isGiftCardExpired(giftCard, now),
         daysUntilExpiry: expiresAt == null ? null : Math.ceil((expiresAt - now) / DAY_MS),
       };
     })

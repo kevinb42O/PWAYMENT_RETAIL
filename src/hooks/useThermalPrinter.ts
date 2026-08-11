@@ -117,9 +117,9 @@ export interface ThermalPrinterHook {
    * Request USB permission and open the printer connection.
    *
    * Must be called from a user gesture (button click).
-   * If `productId` is omitted, Chrome shows all Epson USB devices to pick from.
+   * If `productId`/`vendorId` are omitted, Chrome shows all USB printers.
    */
-  connect: (productId?: number) => Promise<void>;
+  connect: (productId?: number, vendorId?: number) => Promise<void>;
   /** Close the USB connection and release the interface. */
   disconnect: () => Promise<void>;
   /**
@@ -207,7 +207,7 @@ export function useThermalPrinter(): ThermalPrinterHook {
 
   // ── connect ─────────────────────────────────────────────────────────────
 
-  const connect = useCallback(async (productId?: number) => {
+  const connect = useCallback(async (productId?: number, vendorId?: number) => {
     // Guard: check WebUSB API availability first
     if (!navigator.usb) {
       const msg =

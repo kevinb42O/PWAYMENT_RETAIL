@@ -24,9 +24,13 @@ import type { Transaction } from '../types';
 import { formatEUR } from '../utils/money';
 import { calculateTotals } from '../utils/vat';
 import { getMerchantProfileSnapshot } from '../store/useMerchantProfile';
+import { useCustomers } from '../store/useCustomers';
 import { EscPosBuilder, formatItemLine, formatTotalLine } from '../utils/escpos';
+import { receiptPaymentRows } from '../utils/receiptPayments';
+import { transactionTenders } from '../utils/financial';
 import {
   useThermalPrinter,
+  EPSON_VENDOR_ID,
   EPSON_PRODUCT_IDS,
   type PrinterStatus,
 } from '../hooks/useThermalPrinter';
@@ -51,7 +55,7 @@ export class EscPosPrintAdapter implements PrintAdapter {
   ) {}
 
   async printReceipt(t: Transaction): Promise<void> {
-    const merchant = getMerchantProfileSnapshot();
+    const merchant = t.merchantSnapshot ?? getMerchantProfileSnapshot();
     const totals   = calculateTotals(t.items, t.discountCents);
 
     // ── Helper: format price consistently ───────────────────────────────
@@ -181,24 +185,48 @@ export class EscPosPrintAdapter implements PrintAdapter {
     b.separator('-', 42);
 
     // ── Betaling ──────────────────────────────────────────────────────────
-    if (t.paymentMethod === 'Split' && t.splitTenders?.length) {
+    const tenders = transactionTenders(t);
+    if (t.paymentMethod === 'Split' && tenders.length > 0) {
       b.text('Betalingen:\n');
-      for (const tender of t.splitTenders) {
-        b.text(formatTotalLine(`  ${tender.method}`, fmt(tender.amountCents)));
+      for (const row of receiptPaymentRows(t)) {
+        b.text(formatTotalLine(`  ${row.label}`, fmt(row.amountCents)));
       }
-      const cashTender = t.splitTenders.find((x) => x.method === 'Cash');
+      const cashTender = tenders.find((x) => x.method === 'Cash');
       if (cashTender && t.tenderedCents != null) {
         b.text(formatTotalLine('Ontvangen (Cash)', fmt(t.tenderedCents)));
         const change = Math.max(0, t.tenderedCents - cashTender.amountCents);
         b.text(formatTotalLine('Wisselgeld', fmt(change)));
       }
     } else {
-      b.text(formatTotalLine('Betaling', t.paymentMethod));
+      if (t.paymentMethod === 'Cadeaubon' && t.giftCardAllocations?.length) {
+        for (const row of receiptPaymentRows(t)) {
+          b.text(formatTotalLine(row.label, fmt(row.amountCents)));
+        }
+      } else {
+        b.text(formatTotalLine('Betaling', t.paymentMethod));
+      }
       if (t.paymentMethod === 'Cash' && t.tenderedCents != null) {
         const change = Math.max(0, t.tenderedCents - t.totalCents);
         b.text(formatTotalLine('Ontvangen', fmt(t.tenderedCents)));
         b.text(formatTotalLine('Wisselgeld', fmt(change)));
       }
+    }
+
+    for (const allocation of t.giftCardAllocations ?? []) {
+      if (allocation.balanceAfterCents != null) {
+        b.text(
+          formatTotalLine(
+            `Resterend saldo (${allocation.code})`,
+            fmt(allocation.balanceAfterCents),
+          ),
+        );
+      }
+    }
+
+    if (t.customerId) {
+      const customers = useCustomers.getState().customers;
+      const customer = customers.find((c) => c.id === t.customerId);
+      b.text(formatTotalLine('Klant', customer ? customer.name : t.customerId));
     }
 
     b.separator('-', 42);
@@ -231,41 +259,349 @@ export class EscPosPrintAdapter implements PrintAdapter {
 // Status badge sub-component
 // ---------------------------------------------------------------------------
 
-const STATUS_CONFIG: Record<PrinterStatus, { label: string; color: string; dot: string }> = {
-  disconnected: { label: 'Niet verbonden', color: '#6b7280', dot: '#9ca3af' },
-  connecting:   { label: 'Verbinden…',     color: '#d97706', dot: '#f59e0b' },
-  connected:    { label: 'Verbonden',       color: '#059669', dot: '#10b981' },
-  printing:     { label: 'Bezig…',          color: '#2563eb', dot: '#3b82f6' },
-  error:        { label: 'Fout',            color: '#dc2626', dot: '#ef4444' },
-};
+export interface ThermalPrinterModel {
+  id: string;
+  name: string;
+  series: string;
+  vid?: number;
+  pid?: number;
+  protocol: string;
+  paperSizes: Array<'80mm' | '58mm'>;
+  speed: string;
+  description: string;
+}
+
+export interface ThermalPrinterBrand {
+  id: string;
+  name: string;
+  tagline: string;
+  vid?: number;
+  models: ThermalPrinterModel[];
+}
+
+export const THERMAL_PRINTER_CATALOG: ThermalPrinterBrand[] = [
+  {
+    id: 'epson',
+    name: 'Epson',
+    tagline: 'Marktleider in POS & Thermische Bonprinters',
+    vid: EPSON_VENDOR_ID,
+    models: [
+      {
+        id: 'epson-t20ii',
+        name: 'TM-T20II / TM-T20III',
+        series: 'Retail Direct Series',
+        vid: EPSON_VENDOR_ID,
+        pid: EPSON_PRODUCT_IDS.TM_T20II_B,
+        protocol: 'ESC/POS Standard',
+        paperSizes: ['80mm', '58mm'],
+        speed: '200 mm/s',
+        description: 'Standaard betrouwbare retail USB bonprinter met automatische papierafsnijder.',
+      },
+      {
+        id: 'epson-m30',
+        name: 'TM-m30 / TM-m30II / TM-m30III',
+        series: 'Compact Cube Series',
+        vid: EPSON_VENDOR_ID,
+        pid: 0x0e2b,
+        protocol: 'ePOS-Print / ESC/POS',
+        paperSizes: ['80mm', '58mm'],
+        speed: '250 mm/s',
+        description: 'Ultra-compacte kubusbonprinter voor iPad & tablet kassasystemen.',
+      },
+      {
+        id: 'epson-m50',
+        name: 'TM-m50',
+        series: 'High-End POS Cube',
+        vid: EPSON_VENDOR_ID,
+        pid: 0x0e35,
+        protocol: 'ePOS-Print / ESC/POS',
+        paperSizes: ['80mm'],
+        speed: '350 mm/s',
+        description: 'Stijlvolle high-speed kubusbonprinter met meervoudige connectiviteit.',
+      },
+      {
+        id: 'epson-t88vi',
+        name: 'TM-T88V / TM-T88VI / TM-T88VII',
+        series: 'Enterprise High-Speed Series',
+        vid: EPSON_VENDOR_ID,
+        pid: EPSON_PRODUCT_IDS.TM_T88V,
+        protocol: 'ESC/POS High-Speed',
+        paperSizes: ['80mm'],
+        speed: '500 mm/s',
+        description: 'Vlaggenschip bonprinter voor drukke retail winkels, supermarkten en horeca.',
+      },
+      {
+        id: 'epson-t70ii',
+        name: 'TM-T70II',
+        series: 'Front-Loading Series',
+        vid: EPSON_VENDOR_ID,
+        pid: 0x0e1b,
+        protocol: 'ESC/POS Standard',
+        paperSizes: ['80mm'],
+        speed: '250 mm/s',
+        description: 'Onderbouw-kassaprinter met papierinvoer en uitgang aan de voorzijde.',
+      },
+      {
+        id: 'epson-p20-p80',
+        name: 'TM-P20 / TM-P80 Mobil',
+        series: 'Mobile Handheld Series',
+        vid: EPSON_VENDOR_ID,
+        pid: 0x0e17,
+        protocol: 'ESC/POS Mobile',
+        paperSizes: ['58mm', '80mm'],
+        speed: '100 mm/s',
+        description: 'Mobiele riemprinter voor draadloze verkopen en beurzen.',
+      },
+      {
+        id: 'epson-l90',
+        name: 'TM-L90 / L90 Linerfree',
+        series: 'Label & Ticket Series',
+        vid: EPSON_VENDOR_ID,
+        pid: 0x0e08,
+        protocol: 'ESC/POS Label Mode',
+        paperSizes: ['80mm'],
+        speed: '150 mm/s',
+        description: 'Kassaprinter geschikt voor zowel bonnen als plakkende barcode-etiketten.',
+      },
+    ],
+  },
+  {
+    id: 'star',
+    name: 'Star Micronics',
+    tagline: 'Premium POS & Kiosk Printing Solutions',
+    vid: 0x051d,
+    models: [
+      {
+        id: 'star-tsp100iii',
+        name: 'TSP100III / TSP143III',
+        series: 'eco Retail Series',
+        vid: 0x051d,
+        pid: 0x0012,
+        protocol: 'Star Line / ESC/POS',
+        paperSizes: ['80mm'],
+        speed: '250 mm/s',
+        description: 'Wereldwijde retailstandaard met interne voeding en automatische snijder.',
+      },
+      {
+        id: 'star-tsp654ii',
+        name: 'TSP654II',
+        series: 'High Performance Series',
+        vid: 0x051d,
+        pid: 0x0005,
+        protocol: 'Star Line Mode',
+        paperSizes: ['80mm'],
+        speed: '300 mm/s',
+        description: 'Snel en veelzijdig werkpaard voor detailhandel en keukentickets.',
+      },
+      {
+        id: 'star-mpop',
+        name: 'mPOP All-in-One',
+        series: 'Integrated Cash Drawer POS',
+        vid: 0x051d,
+        pid: 0x0024,
+        protocol: 'Star mPOP Protocol',
+        paperSizes: ['58mm'],
+        speed: '100 mm/s',
+        description: 'Geïntegreerde bluetooth & USB bonprinter gecombineerd met elektrische kassalade.',
+      },
+      {
+        id: 'star-mcprint3',
+        name: 'mC-Print2 / mC-Print3',
+        series: 'mCollection Modern POS',
+        vid: 0x051d,
+        pid: 0x0033,
+        protocol: 'Star PRNT Protocol',
+        paperSizes: ['80mm', '58mm'],
+        speed: '250 mm/s',
+        description: 'Strakke minimalistische kubusprinter met bescherming tegen vocht en vuil.',
+      },
+      {
+        id: 'star-sm-l200',
+        name: 'SM-S230i / SM-L200 / SM-T300i',
+        series: 'Portable Mobile POS',
+        vid: 0x051d,
+        pid: 0x001a,
+        protocol: 'Star Portable Mode',
+        paperSizes: ['58mm', '80mm'],
+        speed: '80 mm/s',
+        description: 'Draagbare bluetooth/USB bonprinter voor ambulante retail.',
+      },
+    ],
+  },
+  {
+    id: 'bixolon',
+    name: 'Bixolon (Samsung)',
+    tagline: 'Industriële Kassa & Logistieke Hardware',
+    vid: 0x154f,
+    models: [
+      {
+        id: 'bixolon-srp350iii',
+        name: 'SRP-350III / SRP-350plusIII',
+        series: 'Direct Thermal POS',
+        vid: 0x154f,
+        pid: 0x0002,
+        protocol: 'Bixolon ESC/POS',
+        paperSizes: ['80mm'],
+        speed: '300 mm/s',
+        description: 'Robuuste en uiterst betrouwbare thermische bonprinter met anti-jam technologie.',
+      },
+      {
+        id: 'bixolon-srp330ii',
+        name: 'SRP-330II',
+        series: 'Economy POS Series',
+        vid: 0x154f,
+        pid: 0x0006,
+        protocol: 'Bixolon ESC/POS',
+        paperSizes: ['80mm', '58mm'],
+        speed: '220 mm/s',
+        description: 'Kostenefficiënte retail-bonprinter met drievoudige interface.',
+      },
+      {
+        id: 'bixolon-srpq300',
+        name: 'SRP-Q300',
+        series: 'Cube POS Series',
+        vid: 0x154f,
+        pid: 0x001c,
+        protocol: 'Bixolon ESC/POS',
+        paperSizes: ['80mm'],
+        speed: '220 mm/s',
+        description: 'Ultra-kleine kubusprinter met uitgang naar keuze aan boven- of voorzijde.',
+      },
+      {
+        id: 'bixolon-sppr200',
+        name: 'SPP-R200III / SPP-R310',
+        series: 'Mobile Receipt Series',
+        vid: 0x154f,
+        pid: 0x0010,
+        protocol: 'Bixolon Mobile',
+        paperSizes: ['58mm', '80mm'],
+        speed: '100 mm/s',
+        description: 'Valbestendige mobiele bonprinter met IP54 beschermingsklasse.',
+      },
+      {
+        id: 'bixolon-bk331',
+        name: 'BK3-31 Kiosk',
+        series: 'Embedded Kiosk Series',
+        vid: 0x154f,
+        pid: 0x0020,
+        protocol: 'Bixolon Kiosk Protocol',
+        paperSizes: ['80mm'],
+        speed: '250 mm/s',
+        description: 'Inbouw bonprinter voor self-service kassa-kiosken.',
+      },
+    ],
+  },
+  {
+    id: 'citizen',
+    name: 'Citizen Systems',
+    tagline: 'Duurzame Japanse Precisie-Printers',
+    vid: 0x076b,
+    models: [
+      {
+        id: 'citizen-cts310ii',
+        name: 'CT-S310II',
+        series: 'Eco POS Series',
+        vid: 0x076b,
+        pid: 0x0002,
+        protocol: 'Citizen ESC/POS',
+        paperSizes: ['80mm', '58mm'],
+        speed: '160 mm/s',
+        description: 'Energiezuinige retailbonprinter met verlaagd stroom- en papierverbruik.',
+      },
+      {
+        id: 'citizen-cte351',
+        name: 'CT-E351 / CT-E651',
+        series: 'Front-Exit Design Series',
+        vid: 0x076b,
+        pid: 0x0008,
+        protocol: 'Citizen ESC/POS',
+        paperSizes: ['80mm'],
+        speed: '300 mm/s',
+        description: 'Front-output bonprinter die beschermt tegen spatwater en stof.',
+      },
+      {
+        id: 'citizen-cts851ii',
+        name: 'CT-S651II / CT-S851II',
+        series: 'Heavy Duty Premium Series',
+        vid: 0x076b,
+        pid: 0x000c,
+        protocol: 'Citizen High-Speed',
+        paperSizes: ['80mm'],
+        speed: '350 mm/s',
+        description: 'Heavy-duty topsnelheid bonprinter met grafisch LCD-scherm.',
+      },
+    ],
+  },
+  {
+    id: 'custom',
+    name: 'Metapace & Custom',
+    tagline: 'Retail POS & Kiosk Specialisten',
+    vid: 0x1504,
+    models: [
+      {
+        id: 'metapace-t3',
+        name: 'Metapace T-3 / T-4',
+        series: 'Retail Workhorse',
+        vid: 0x1504,
+        pid: 0x0001,
+        protocol: 'ESC/POS Compatible',
+        paperSizes: ['80mm'],
+        speed: '250 mm/s',
+        description: 'Complete kassa-set printer met auto-cutter en RJ11 aansluiting.',
+      },
+      {
+        id: 'custom-kubeii',
+        name: 'Custom Kube II',
+        series: 'Heavy Duty Kiosk & Hospitality',
+        vid: 0x0dd4,
+        pid: 0x01a0,
+        protocol: 'Custom Command Suite',
+        paperSizes: ['80mm'],
+        speed: '250 mm/s',
+        description: 'Industriële kassaprinter voor drukke winkelketens en ticketing.',
+      },
+    ],
+  },
+  {
+    id: 'generic',
+    name: 'Generieke USB ESC/POS',
+    tagline: 'Universele WebUSB Endpoint Auto-Detectie',
+    models: [
+      {
+        id: 'generic-escpos-auto',
+        name: 'Generieke USB Bonprinter (Auto Endpoint)',
+        series: 'Universal Raw Class 7',
+        protocol: 'Raw ESC/POS Endpoint',
+        paperSizes: ['80mm', '58mm'],
+        speed: 'Variabel',
+        description: 'Maakt automatisch verbinding met elk merk USB thermische printer via USB Class 7.',
+      },
+    ],
+  },
+];
 
 const StatusBadge: React.FC<{ status: PrinterStatus }> = ({ status }) => {
-  const cfg = STATUS_CONFIG[status];
-  const isPulsing = status === 'connecting' || status === 'printing';
+  const isConnected = status === 'connected';
+  const isConnecting = status === 'connecting';
+  const isPrinting = status === 'printing';
 
   return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '6px',
-        fontSize: '13px',
-        fontWeight: 500,
-        color: cfg.color,
-      }}
+    <div
+      className={`px-3 py-1 rounded-full text-xs font-extrabold flex items-center gap-2 border ${
+        isConnected || isPrinting
+          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+          : isConnecting
+          ? 'bg-amber-50 text-amber-800 border-amber-200'
+          : 'bg-slate-100 text-slate-600 border-slate-200'
+      }`}
     >
       <span
-        style={{
-          width: '8px',
-          height: '8px',
-          borderRadius: '50%',
-          backgroundColor: cfg.dot,
-          display: 'inline-block',
-          animation: isPulsing ? 'pulse 1.2s ease-in-out infinite' : 'none',
-        }}
+        className={`w-2 h-2 rounded-full ${
+          isConnected || isPrinting ? 'bg-emerald-500' : isConnecting ? 'bg-amber-500 animate-pulse' : 'bg-slate-400'
+        }`}
       />
-      {cfg.label}
-    </span>
+      <span>{isPrinting ? 'Afdrukken…' : isConnected ? 'Verbonden' : isConnecting ? 'Verbinden…' : 'Niet Verbonden'}</span>
+    </div>
   );
 };
 
@@ -282,14 +618,6 @@ interface Props {
   onPrintError?: (error: string) => void;
 }
 
-/**
- * `ThermalPrinterPanel` — self-contained UI for printer management.
- *
- * Drop this anywhere in your settings / POS layout.
- * It provides Connect / Disconnect buttons and a "Print Test Receipt" button.
- *
- * To print a real transaction receipt, pass a `transaction` prop.
- */
 export const ThermalPrinterPanel: React.FC<Props> = ({
   transaction,
   onPrintSuccess,
@@ -298,13 +626,30 @@ export const ThermalPrinterPanel: React.FC<Props> = ({
   const { status, isConnected, error, connect, disconnect, sendRaw } =
     useThermalPrinter();
 
+  const [selectedBrandId, setSelectedBrandId] = React.useState<string>('epson');
+
+  const selectedBrand = React.useMemo(() => {
+    return THERMAL_PRINTER_CATALOG.find((b) => b.id === selectedBrandId) || THERMAL_PRINTER_CATALOG[0];
+  }, [selectedBrandId]);
+
+  const [selectedModelId, setSelectedModelId] = React.useState<string>('epson-t20ii');
+
+  // Auto-select first model when brand changes
+  React.useEffect(() => {
+    if (selectedBrand.models.length > 0 && !selectedBrand.models.some((m) => m.id === selectedModelId)) {
+      setSelectedModelId(selectedBrand.models[0].id);
+    }
+  }, [selectedBrand, selectedModelId]);
+
+  const selectedModel = React.useMemo(() => {
+    return selectedBrand.models.find((m) => m.id === selectedModelId) || selectedBrand.models[0];
+  }, [selectedBrand, selectedModelId]);
+
   // ── Connect handler ─────────────────────────────────────────────────────
 
   const handleConnect = useCallback(() => {
-    // Pass the TM-T20II PID — Chrome's device picker will be pre-filtered.
-    // Remove the productId argument to show ALL Epson devices (handy for setup).
-    void connect(EPSON_PRODUCT_IDS.TM_T20II_B); // PID 0x0E15 — confirmed via ioreg on this unit
-  }, [connect]);
+    void connect(selectedModel?.pid, selectedModel?.vid || selectedBrand.vid);
+  }, [connect, selectedModel, selectedBrand]);
 
   // ── Print handler ───────────────────────────────────────────────────────
 
@@ -313,12 +658,10 @@ export const ThermalPrinterPanel: React.FC<Props> = ({
       let bytes: Uint8Array;
 
       if (transaction) {
-        // Print a real receipt using the full adapter
         const adapter = new EscPosPrintAdapter(sendRaw);
         await adapter.printReceipt(transaction);
-        bytes = new Uint8Array(0); // Adapter already called sendRaw internally
+        bytes = new Uint8Array(0);
       } else {
-        // Build a standalone test receipt
         bytes = buildTestReceipt();
         await sendRaw(bytes);
       }
@@ -333,113 +676,149 @@ export const ThermalPrinterPanel: React.FC<Props> = ({
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div
-      style={{
-        fontFamily:
-          "system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif",
-        fontSize: '14px',
-        padding: '20px',
-        background: '#1a1a2e',
-        border: '1px solid #2d2d4a',
-        borderRadius: '12px',
-        maxWidth: '420px',
-        color: '#e2e8f0',
-      }}
-    >
-      {/* Pulse animation keyframes (injected once via <style>) */}
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.5; transform: scale(1.3); }
-        }
-      `}</style>
-
+    <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-6 text-slate-900 space-y-6">
       {/* Header */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '16px',
-        }}
-      >
+      <div className="flex items-center justify-between border-b border-slate-200/80 pb-4">
         <div>
-          <div
-            style={{ fontWeight: 700, fontSize: '16px', marginBottom: '2px' }}
-          >
-            🖨️ Thermische Printer
-          </div>
-          <div style={{ color: '#94a3b8', fontSize: '12px' }}>
-            Epson TM-T20II — WebUSB
-          </div>
+          <h4 className="font-black text-sm text-slate-900 uppercase tracking-wide">
+            Thermische Bonprinter Selectie & Verbinding
+          </h4>
+          <p className="text-xs text-slate-500 font-medium mt-0.5">
+            Selecteer uw merk en specifiek printermodel voor optimale driver-communicatie
+          </p>
         </div>
         <StatusBadge status={status} />
       </div>
 
-      {/* Error message */}
-      {error && (
-        <div
-          role="alert"
-          style={{
-            background: '#7f1d1d',
-            border: '1px solid #b91c1c',
-            borderRadius: '8px',
-            padding: '10px 14px',
-            marginBottom: '14px',
-            fontSize: '12px',
-            color: '#fca5a5',
-            lineHeight: '1.5',
-          }}
-        >
-          <strong>⚠️ Fout:</strong> {error}
+      {/* STAP 1: MERK SELECTIE (BRAND SELECTOR) */}
+      <div className="space-y-2">
+        <label className="block text-xs font-black uppercase tracking-wider text-slate-400">
+          Stap 1: Kies het Merk van de Bonprinter
+        </label>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+          {THERMAL_PRINTER_CATALOG.map((b) => {
+            const isSelected = selectedBrandId === b.id;
+            return (
+              <button
+                key={b.id}
+                type="button"
+                onClick={() => setSelectedBrandId(b.id)}
+                className={`py-3 px-3 rounded-xl border text-center transition-all cursor-pointer ${
+                  isSelected
+                    ? 'border-slate-900 bg-slate-900 text-white font-extrabold shadow-xs'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-100 font-bold'
+                }`}
+              >
+                <div className="text-xs font-extrabold truncate">{b.name}</div>
+                <div className={`text-[10px] font-semibold mt-0.5 truncate ${isSelected ? 'text-slate-300' : 'text-slate-400'}`}>
+                  {b.models.length} {b.models.length === 1 ? 'model' : 'modellen'}
+                </div>
+              </button>
+            );
+          })}
         </div>
-      )}
-
-      {/* Action buttons */}
-      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-        {!isConnected ? (
-          <button
-            id="thermal-printer-connect-btn"
-            onClick={handleConnect}
-            disabled={status === 'connecting'}
-            style={buttonStyle('#2563eb', status === 'connecting')}
-          >
-            {status === 'connecting' ? 'Verbinden…' : '🔌 Printer verbinden'}
-          </button>
-        ) : (
-          <button
-            id="thermal-printer-disconnect-btn"
-            onClick={() => void disconnect()}
-            style={buttonStyle('#475569', false)}
-          >
-            🔗 Verbreken
-          </button>
-        )}
-
-        <button
-          id="thermal-printer-print-btn"
-          onClick={() => void handlePrint()}
-          disabled={!isConnected || status === 'printing'}
-          style={buttonStyle('#059669', !isConnected || status === 'printing')}
-        >
-          {status === 'printing' ? 'Bezig…' : '🖨️ Test afdrukken'}
-        </button>
       </div>
 
-      {/* Info footer */}
-      {!isConnected && status !== 'connecting' && (
-        <p
-          style={{
-            marginTop: '14px',
-            fontSize: '11px',
-            color: '#64748b',
-            lineHeight: '1.6',
-          }}
-        >
-          Klik op <em>Printer verbinden</em> om de Chrome USB
-          apparaat-keuzedialog te openen. Selecteer de{' '}
-          <strong>EPSON TM-T20</strong> uit de lijst.
-        </p>
+      {/* STAP 2: MODEL SELECTIE (MODEL SELECTOR GRID) */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <label className="block text-xs font-black uppercase tracking-wider text-slate-400">
+            Stap 2: Kies het Specifieke Model van {selectedBrand.name}
+          </label>
+          <span className="text-xs text-slate-500 font-medium">{selectedBrand.tagline}</span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {selectedBrand.models.map((m) => {
+            const isSelected = selectedModelId === m.id;
+            return (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setSelectedModelId(m.id)}
+                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-3 ${
+                  isSelected
+                    ? 'border-slate-900 bg-white ring-2 ring-slate-900 shadow-2xs'
+                    : 'border-slate-200/90 bg-white hover:border-slate-300 hover:bg-slate-50/80'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="font-extrabold text-xs text-slate-900">{m.name}</span>
+                    <span className="px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 font-mono text-[10px] font-bold rounded-md">
+                      {m.speed}
+                    </span>
+                  </div>
+                  <div className="text-[11px] font-bold text-slate-500">{m.series}</div>
+                  <p className="text-[11px] text-slate-500 mt-2 line-clamp-2 leading-relaxed">{m.description}</p>
+                </div>
+
+                <div className="flex items-center justify-between border-t border-slate-100 pt-2.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">{m.protocol}</span>
+                  <span className="text-[10px] font-extrabold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
+                    {m.paperSizes.join(' / ')}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* SELECTED MODEL DETAILS & VERBINDEN BUTTON */}
+      {selectedModel && (
+        <div className="p-5 bg-white rounded-2xl border border-slate-200/90 space-y-4 shadow-2xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+            <div>
+              <div className="text-xs font-bold text-slate-900">
+                Actieve Printer Driver Configuratieset: <span className="font-black underline">{selectedBrand.name} {selectedModel.name}</span>
+              </div>
+              <div className="text-[11px] text-slate-500 mt-0.5">
+                Protocol: <span className="font-mono font-bold text-slate-800">{selectedModel.protocol}</span> | Aanbevolen Bonformaat: <span className="font-bold text-slate-800">{selectedModel.paperSizes.join(', ')}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {!isConnected ? (
+                <button
+                  id="thermal-printer-connect-btn"
+                  onClick={handleConnect}
+                  disabled={status === 'connecting'}
+                  className="px-4 py-2.5 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {status === 'connecting' ? 'Verbinden…' : `Verbinden met ${selectedBrand.name} ${selectedModel.name}`}
+                </button>
+              ) : (
+                <button
+                  id="thermal-printer-disconnect-btn"
+                  onClick={() => void disconnect()}
+                  className="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                >
+                  Verbreken
+                </button>
+              )}
+
+              <button
+                id="thermal-printer-print-btn"
+                onClick={() => void handlePrint()}
+                disabled={!isConnected || status === 'printing'}
+                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {status === 'printing' ? 'Afdrukken…' : 'Testbon afdrukken'}
+              </button>
+            </div>
+          </div>
+
+          {error && (
+            <div
+              role="alert"
+              className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 font-medium"
+            >
+              <strong>Foutmelding:</strong> {error}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

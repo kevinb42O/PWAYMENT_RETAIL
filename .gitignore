@@ -3,6 +3,10 @@ build/
 dist/
 baseline/
 coverage/
+playwright-report/
+test-results/
+e2e-results.xml
+coverage/
 .DS_Store
 *.log
 .env*

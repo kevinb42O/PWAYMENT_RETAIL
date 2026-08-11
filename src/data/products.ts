@@ -60,6 +60,11 @@ const makeProduct = (item: SeedProduct, index: number): Product => {
     barcode: item.barcode === null ? undefined : item.barcode ?? `5407001${String(index + 1).padStart(6, '0')}`,
     vatRate,
     color: item.color ?? colorsByCategory[item.category] ?? 'bg-zinc-800',
+    productType: item.subCategory === 'Cadeaubonnen'
+      ? 'gift-card'
+      : item.category === 'services'
+        ? 'service'
+        : 'merchandise',
   };
 };
 

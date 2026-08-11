@@ -1,8 +1,10 @@
 import { db } from '../db/db';
-import { Customer, OrderItem, PaymentMethod, Product, Transaction } from '../types';
+import { Customer, GiftCard, GiftCardEvent, OrderItem, PaymentMethod, Product, Transaction } from '../types';
 import { calculateTotals } from './vat';
 
 const DEMO_CUSTOMER_PREFIX = 'demo-customer-';
+const DEMO_GIFT_CARD_PREFIX = 'demo-gift-card-';
+const DEMO_GIFT_CARD_EVENT_PREFIX = 'demo-gift-card-event-';
 const firstNames = ['Alex', 'Amélie', 'An', 'Bram', 'Camille', 'Eline', 'Emma', 'Flor', 'Jens', 'Julie', 'Lina', 'Lucas', 'Marie', 'Mats', 'Noor', 'Sofie'];
 const lastNames = ['Aerts', 'Baert', 'Claeys', 'De Smet', 'Hermans', 'Janssens', 'Maes', 'Peeters', 'Smet', 'Vermeulen'];
 const streets = ['Korenmarkt', 'Lange Nieuwstraat', 'Meir', 'Nationalestraat', 'Oude Koornmarkt', 'Sint-Jacobsmarkt', 'Vlaanderenstraat', 'Vrijdagmarkt'];
@@ -47,11 +49,15 @@ const DEMO_DEMAND_PROFILES: DemoDemandProfile[] = [
 
 export interface DemoRetailDataset {
   customers: Customer[];
+  giftCards: GiftCard[];
+  giftCardEvents: GiftCardEvent[];
   transactions: Transaction[];
 }
 
 export interface DemoSeedResult {
   customers: number;
+  giftCards: number;
+  giftCardEvents: number;
   transactions: number;
   alreadyPresent: boolean;
 }
@@ -75,6 +81,204 @@ const emailIdentifier = (value: string) => value
   .replace(/\s/g, '');
 
 const startOfDemoPeriod = (now: Date) => new Date(now.getFullYear(), now.getMonth() - 23, 1, 9, 0, 0, 0);
+
+interface DemoGiftCardSpec {
+  customerIndex?: number;
+  initialCents: number;
+  balanceCents: number;
+  issuedDaysAgo: number;
+  expiresInDays?: number;
+  isActive?: boolean;
+}
+
+/**
+ * A deliberately broad gift-card population for demos and acceptance tests.
+ * It covers linked/anonymous, unused/part-used/empty, blocked, expired,
+ * near-expiry and no-expiry cards. A few customers own multiple cards.
+ */
+const DEMO_GIFT_CARD_SPECS: DemoGiftCardSpec[] = [
+  { customerIndex: 0, initialCents: 10000, balanceCents: 10000, issuedDaysAgo: 20, expiresInDays: 345 },
+  { customerIndex: 0, initialCents: 5000, balanceCents: 1250, issuedDaysAgo: 180 },
+  { customerIndex: 1, initialCents: 2500, balanceCents: 0, issuedDaysAgo: 300, expiresInDays: 65 },
+  { customerIndex: 1, initialCents: 10000, balanceCents: 5500, issuedDaysAgo: 95 },
+  { customerIndex: 2, initialCents: 15000, balanceCents: 8700, issuedDaysAgo: 100, expiresInDays: 265 },
+  { customerIndex: 2, initialCents: 2500, balanceCents: 2500, issuedDaysAgo: 14, expiresInDays: 29 },
+  { customerIndex: 2, initialCents: 7500, balanceCents: 1100, issuedDaysAgo: 230, expiresInDays: 135 },
+  { customerIndex: 3, initialCents: 7500, balanceCents: 7500, issuedDaysAgo: 7, expiresInDays: 28 },
+  { customerIndex: 4, initialCents: 20000, balanceCents: 6000, issuedDaysAgo: 240, expiresInDays: 120 },
+  { customerIndex: 5, initialCents: 5000, balanceCents: 5000, issuedDaysAgo: 370, expiresInDays: -5 },
+  { customerIndex: 6, initialCents: 10000, balanceCents: 2300, issuedDaysAgo: 390, expiresInDays: -25 },
+  { customerIndex: 7, initialCents: 2500, balanceCents: 1900, issuedDaysAgo: 45, expiresInDays: 12 },
+  { customerIndex: 8, initialCents: 5000, balanceCents: 0, issuedDaysAgo: 250 },
+  { customerIndex: 9, initialCents: 10000, balanceCents: 4000, issuedDaysAgo: 70, expiresInDays: 290, isActive: false },
+  { customerIndex: 10, initialCents: 15000, balanceCents: 15000, issuedDaysAgo: 15 },
+  { customerIndex: 11, initialCents: 2500, balanceCents: 500, issuedDaysAgo: 350, expiresInDays: 15 },
+  { customerIndex: 12, initialCents: 7500, balanceCents: 0, issuedDaysAgo: 500, expiresInDays: -120 },
+  { customerIndex: 13, initialCents: 5000, balanceCents: 3500, issuedDaysAgo: 34, expiresInDays: 331 },
+  { customerIndex: 14, initialCents: 10000, balanceCents: 10000, issuedDaysAgo: 2, expiresInDays: 363 },
+  { customerIndex: 15, initialCents: 20000, balanceCents: 12500, issuedDaysAgo: 200 },
+  { customerIndex: 16, initialCents: 2500, balanceCents: 2500, issuedDaysAgo: 9, expiresInDays: 21 },
+  { customerIndex: 17, initialCents: 7500, balanceCents: 2600, issuedDaysAgo: 120, expiresInDays: 245 },
+  { customerIndex: 18, initialCents: 15000, balanceCents: 0, issuedDaysAgo: 360, expiresInDays: 5 },
+  { customerIndex: 19, initialCents: 5000, balanceCents: 5000, issuedDaysAgo: 410, expiresInDays: -45, isActive: false },
+  { customerIndex: 20, initialCents: 10000, balanceCents: 6800, issuedDaysAgo: 80 },
+  { customerIndex: 21, initialCents: 2500, balanceCents: 900, issuedDaysAgo: 30, expiresInDays: 335 },
+  { customerIndex: 22, initialCents: 20000, balanceCents: 20000, issuedDaysAgo: 1, expiresInDays: 364 },
+  { customerIndex: 23, initialCents: 2500, balanceCents: 0, issuedDaysAgo: 120, expiresInDays: 245, isActive: false },
+  { customerIndex: 24, initialCents: 7500, balanceCents: 4300, issuedDaysAgo: 25, expiresInDays: 340 },
+  { customerIndex: 25, initialCents: 20000, balanceCents: 7500, issuedDaysAgo: 365, expiresInDays: 1 },
+  { initialCents: 2500, balanceCents: 2500, issuedDaysAgo: 3, expiresInDays: 362 },
+  { initialCents: 5000, balanceCents: 1700, issuedDaysAgo: 75 },
+  { initialCents: 10000, balanceCents: 0, issuedDaysAgo: 320, expiresInDays: 45 },
+  { initialCents: 15000, balanceCents: 9200, issuedDaysAgo: 60, expiresInDays: 305 },
+  { initialCents: 20000, balanceCents: 20000, issuedDaysAgo: 6, expiresInDays: 24 },
+  { initialCents: 7500, balanceCents: 2500, issuedDaysAgo: 375, expiresInDays: -10 },
+  { initialCents: 5000, balanceCents: 5000, issuedDaysAgo: 50, expiresInDays: 315, isActive: false },
+  { initialCents: 10000, balanceCents: 3100, issuedDaysAgo: 190 },
+  { initialCents: 15000, balanceCents: 15000, issuedDaysAgo: 500, isActive: false },
+  { initialCents: 2500, balanceCents: 600, issuedDaysAgo: 40, expiresInDays: 325 },
+];
+
+export const buildDemoGiftCards = (customers: Customer[], now = new Date()): GiftCard[] => {
+  const anchor = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0);
+  return DEMO_GIFT_CARD_SPECS.map((spec, index) => {
+    const number = String(index + 1).padStart(3, '0');
+    const issuedAt = new Date(anchor.getTime() - spec.issuedDaysAgo * DAY_MS + index * 60_000);
+    const expiresAt = spec.expiresInDays == null
+      ? undefined
+      : new Date(anchor.getTime() + spec.expiresInDays * DAY_MS + index * 60_000).toISOString();
+    return {
+      id: `${DEMO_GIFT_CARD_PREFIX}${number}`,
+      customerId: spec.customerIndex == null ? undefined : customers[spec.customerIndex]?.id,
+      code: `DEMO-${number}-${String(7319 + index * 137).padStart(4, '0')}`,
+      initialCents: spec.initialCents,
+      balanceCents: spec.balanceCents,
+      issuedAt: issuedAt.toISOString(),
+      expiresAt,
+      isActive: spec.isActive ?? true,
+    };
+  });
+};
+
+export const buildDemoGiftCardEvents = (giftCards: GiftCard[], now = new Date()): GiftCardEvent[] => {
+  const nowTime = now.getTime();
+  const events: GiftCardEvent[] = [];
+
+  giftCards.forEach((card, position) => {
+    const parsedCardNumber = Number.parseInt(card.id.replace(DEMO_GIFT_CARD_PREFIX, ''), 10);
+    const cardIndex = Number.isFinite(parsedCardNumber) ? parsedCardNumber - 1 : position;
+    const cardNumber = String(cardIndex + 1).padStart(3, '0');
+    const issuedAt = Date.parse(card.issuedAt);
+    const expiresAt = card.expiresAt ? Date.parse(card.expiresAt) : Number.POSITIVE_INFINITY;
+    const activityEnd = Math.max(
+      issuedAt + 60 * 60 * 1000,
+      Math.min(nowTime - 60 * 60 * 1000, expiresAt - DAY_MS),
+    );
+    const duration = Math.max(60 * 60 * 1000, activityEnd - issuedAt);
+    let balance = card.initialCents;
+    const hasRecharge = cardIndex % 9 === 1 && card.initialCents >= 5000;
+    const rechargeCents = hasRecharge ? 2500 : 0;
+    const issuedCents = card.initialCents - rechargeCents;
+    balance = issuedCents;
+
+    const addEvent = (
+      key: string,
+      event: Omit<GiftCardEvent, 'id' | 'giftCardId' | 'giftCardCode' | 'customerId' | 'source'>,
+    ) => {
+      events.push({
+        ...event,
+        id: `${DEMO_GIFT_CARD_EVENT_PREFIX}${cardNumber}-${key}`,
+        giftCardId: card.id,
+        giftCardCode: card.code,
+        customerId: card.customerId,
+        source: 'demo',
+      });
+    };
+
+    addEvent('issue', {
+      type: 'issue',
+      amountCents: issuedCents,
+      balanceBeforeCents: 0,
+      balanceAfterCents: issuedCents,
+      timestamp: issuedAt,
+      userId: 'demo-user-lina',
+      userName: 'Lina',
+      note: 'Demo-uitgifte',
+    });
+
+    if (rechargeCents > 0) {
+      addEvent('recharge', {
+        type: 'recharge',
+        amountCents: rechargeCents,
+        balanceBeforeCents: balance,
+        balanceAfterCents: balance + rechargeCents,
+        timestamp: Math.round(issuedAt + duration * 0.28),
+        userId: 'demo-user-noah',
+        userName: 'Noah',
+        note: 'Demo-opwaardering',
+      });
+      balance += rechargeCents;
+    }
+
+    const spentCents = card.initialCents - card.balanceCents;
+    const redemptionCount = spentCents === 0 ? 0 : spentCents >= 7500 ? 3 : spentCents >= 2500 ? 2 : 1;
+    let remainingSpent = spentCents;
+    for (let redemptionIndex = 0; redemptionIndex < redemptionCount; redemptionIndex += 1) {
+      const amountCents = redemptionIndex === redemptionCount - 1
+        ? remainingSpent
+        : Math.max(1, Math.round(remainingSpent / (redemptionCount - redemptionIndex)));
+      const balanceAfterCents = balance - amountCents;
+      addEvent(`redeem-${String(redemptionIndex + 1).padStart(2, '0')}`, {
+        type: 'redeem',
+        amountCents,
+        balanceBeforeCents: balance,
+        balanceAfterCents,
+        timestamp: Math.round(issuedAt + duration * (0.48 + redemptionIndex * 0.17)),
+        userId: team[redemptionIndex % team.length].id,
+        userName: team[redemptionIndex % team.length].name,
+        note: 'Demo-aankoop',
+      });
+      balance = balanceAfterCents;
+      remainingSpent -= amountCents;
+    }
+
+    if (!card.isActive) {
+      addEvent('deactivate', {
+        type: 'deactivate',
+        amountCents: 0,
+        balanceBeforeCents: balance,
+        balanceAfterCents: balance,
+        timestamp: Math.round(issuedAt + duration * 0.9),
+        userId: 'demo-user-sam',
+        userName: 'Sam',
+        note: 'Demo-blokkering',
+      });
+    } else if (cardIndex % 13 === 0 && duration > 2 * DAY_MS) {
+      addEvent('deactivate', {
+        type: 'deactivate',
+        amountCents: 0,
+        balanceBeforeCents: balance,
+        balanceAfterCents: balance,
+        timestamp: Math.round(issuedAt + duration * 0.86),
+        userId: 'demo-user-sam',
+        userName: 'Sam',
+        note: 'Tijdelijk geblokkeerd in demo',
+      });
+      addEvent('activate', {
+        type: 'activate',
+        amountCents: 0,
+        balanceBeforeCents: balance,
+        balanceAfterCents: balance,
+        timestamp: Math.round(issuedAt + duration * 0.9),
+        userId: 'demo-user-lina',
+        userName: 'Lina',
+        note: 'Opnieuw geactiveerd in demo',
+      });
+    }
+  });
+
+  return events.sort((a, b) => a.timestamp - b.timestamp || a.id.localeCompare(b.id));
+};
 
 const makeLine = (product: Product, quantity: number, index: number): OrderItem => ({
   lineId: `demo-line-${index}-${product.id}`,
@@ -162,7 +366,7 @@ const chooseDemandProduct = (
  */
 export const buildDemoRetailDataset = (catalogue: Product[], now = new Date()): DemoRetailDataset => {
   const products = catalogue.filter((product) => product.isActive !== false && product.priceCents > 0);
-  if (products.length === 0) return { customers: [], transactions: [] };
+  if (products.length === 0) return { customers: [], giftCards: [], giftCardEvents: [], transactions: [] };
 
   const random = createRandom();
   const start = startOfDemoPeriod(now);
@@ -374,36 +578,92 @@ export const buildDemoRetailDataset = (catalogue: Product[], now = new Date()): 
     addControlledSale(representativeByProfile.get('dormant'), daysAgo, 1);
   }
 
-  return { customers, transactions: transactions.sort((a, b) => a.timestamp - b.timestamp) };
+  const giftCards = buildDemoGiftCards(customers, now);
+  return {
+    customers,
+    giftCards,
+    giftCardEvents: buildDemoGiftCardEvents(giftCards, now),
+    transactions: transactions.sort((a, b) => a.timestamp - b.timestamp),
+  };
 };
 
 export const clearDemoRetailData = async (): Promise<void> => {
-  await db.transaction('rw', db.transactions, db.customers, async () => {
-    const transactionIds = (await db.transactions.filter((transaction) => transaction.source === 'demo').toArray())
+  await db.transaction('rw', db.transactions, db.customers, db.gift_cards, db.gift_card_events, async () => {
+    const transactionIds = (await db.transactions.where('source').equals('demo').toArray())
       .map((transaction) => transaction.id)
       .filter((id): id is number => id != null);
     if (transactionIds.length > 0) await db.transactions.bulkDelete(transactionIds);
 
-    const customerIds = (await db.customers.filter((customer) => customer.id.startsWith(DEMO_CUSTOMER_PREFIX)).toArray())
+    const customerIds = (await db.customers.where('id').startsWith(DEMO_CUSTOMER_PREFIX).toArray())
       .map((customer) => customer.id);
     if (customerIds.length > 0) await db.customers.bulkDelete(customerIds);
+
+    const giftCardIds = (await db.gift_cards.where('id').startsWith(DEMO_GIFT_CARD_PREFIX).toArray())
+      .map((giftCard) => giftCard.id);
+    const giftCardEventIds = (await db.gift_card_events.where('id').startsWith(DEMO_GIFT_CARD_EVENT_PREFIX).toArray())
+      .map((event) => event.id);
+    if (giftCardEventIds.length > 0) await db.gift_card_events.bulkDelete(giftCardEventIds);
+    if (giftCardIds.length > 0) await db.gift_cards.bulkDelete(giftCardIds);
   });
 };
 
 export const seedDemoRetailData = async (now = new Date()): Promise<DemoSeedResult> => {
-  const existingTransactions = await db.transactions.filter((transaction) => transaction.source === 'demo').count();
-  if (existingTransactions > 0) return { customers: 0, transactions: existingTransactions, alreadyPresent: true };
-
-  const products = await db.products.toArray();
+  const [existingTransactions, existingGiftCards, existingGiftCardEvents, products] = await Promise.all([
+    db.transactions.where('source').equals('demo').count(),
+    db.gift_cards.where('id').startsWith(DEMO_GIFT_CARD_PREFIX).toArray(),
+    db.gift_card_events.where('id').startsWith(DEMO_GIFT_CARD_EVENT_PREFIX).toArray(),
+    db.products.toArray(),
+  ]);
   const dataset = buildDemoRetailDataset(products, now);
+
+  if (existingTransactions > 0) {
+    const demoCustomers = await db.customers
+      .filter((customer) => customer.id.startsWith(DEMO_CUSTOMER_PREFIX))
+      .toArray();
+    const expectedGiftCards = buildDemoGiftCards(
+      dataset.customers.length > 0 ? dataset.customers : demoCustomers,
+      now,
+    );
+    const existingIds = new Set(existingGiftCards.map((giftCard) => giftCard.id));
+    const missingGiftCards = expectedGiftCards.filter((giftCard) => !existingIds.has(giftCard.id));
+    const actualGiftCards = [...existingGiftCards, ...missingGiftCards];
+    const expectedEvents = buildDemoGiftCardEvents(actualGiftCards, now);
+    const existingEventIds = new Set(existingGiftCardEvents.map((event) => event.id));
+    const missingEvents = expectedEvents.filter((event) => !existingEventIds.has(event.id));
+    await db.transaction('rw', db.gift_cards, db.gift_card_events, async () => {
+      if (missingGiftCards.length > 0) await db.gift_cards.bulkPut(missingGiftCards);
+      if (missingEvents.length > 0) await db.gift_card_events.bulkPut(missingEvents);
+    });
+    return {
+      customers: 0,
+      giftCards: existingGiftCards.length + missingGiftCards.length,
+      giftCardEvents: existingGiftCardEvents.length + missingEvents.length,
+      transactions: existingTransactions,
+      alreadyPresent: true,
+    };
+  }
+
   if (dataset.transactions.length === 0) throw new Error('Voeg eerst minstens één actief product met een verkoopprijs toe.');
 
-  await db.transaction('rw', db.transactions, db.customers, async () => {
+  const existingGiftCardIds = new Set(existingGiftCards.map((giftCard) => giftCard.id));
+  const missingGiftCards = dataset.giftCards.filter((giftCard) => !existingGiftCardIds.has(giftCard.id));
+  const existingGiftCardEventIds = new Set(existingGiftCardEvents.map((event) => event.id));
+  const missingGiftCardEvents = dataset.giftCardEvents.filter((event) => !existingGiftCardEventIds.has(event.id));
+
+  await db.transaction('rw', db.transactions, db.customers, db.gift_cards, db.gift_card_events, async () => {
     await db.customers.bulkPut(dataset.customers);
     await db.transactions.bulkAdd(dataset.transactions);
+    if (missingGiftCards.length > 0) await db.gift_cards.bulkPut(missingGiftCards);
+    if (missingGiftCardEvents.length > 0) await db.gift_card_events.bulkPut(missingGiftCardEvents);
   });
 
-  return { customers: dataset.customers.length, transactions: dataset.transactions.length, alreadyPresent: false };
+  return {
+    customers: dataset.customers.length,
+    giftCards: existingGiftCards.length + missingGiftCards.length,
+    giftCardEvents: existingGiftCardEvents.length + missingGiftCardEvents.length,
+    transactions: dataset.transactions.length,
+    alreadyPresent: false,
+  };
 };
 
 export const isDemoTransaction = (transaction: Transaction) => transaction.source === 'demo';

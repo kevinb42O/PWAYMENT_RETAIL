@@ -1,6 +1,7 @@
 import { Transaction } from '../types';
 import { formatEUR } from './money';
 import { getMerchantProfileSnapshot } from '../store/useMerchantProfile';
+import { receiptPaymentRows } from './receiptPayments';
 
 /**
  * Receipt printing adapter. The default ConsolePrintAdapter writes a formatted
@@ -44,9 +45,21 @@ class ConsolePrintAdapter implements PrintAdapter {
     if (t.vat12Cents > 0) lines.push(`BTW 12%:                 ${formatEUR(t.vat12Cents)}`);
     lines.push(`TOTAAL:                  ${formatEUR(t.totalCents)}`);
     lines.push(`Betaald via: ${t.paymentMethod}`);
+    if (t.paymentMethod === 'Split' || t.paymentMethod === 'Cadeaubon') {
+      for (const row of receiptPaymentRows(t)) {
+        lines.push(`${row.label}: ${formatEUR(row.amountCents)}`);
+      }
+    }
     if (t.paymentMethod === 'Cash' && t.tenderedCents != null) {
       lines.push(`Ontvangen:               ${formatEUR(t.tenderedCents)}`);
       lines.push(`Wisselgeld:              ${formatEUR(Math.max(0, t.tenderedCents - t.totalCents))}`);
+    }
+    for (const allocation of t.giftCardAllocations ?? []) {
+      if (allocation.balanceAfterCents != null) {
+        lines.push(
+          `Resterend saldo (${allocation.code}): ${formatEUR(allocation.balanceAfterCents)}`,
+        );
+      }
     }
     if (merchant.footer) lines.push(merchant.footer);
     if (merchant.returnPolicy) lines.push(merchant.returnPolicy);
@@ -65,4 +78,3 @@ export const setPrintAdapter = (a: PrintAdapter): void => {
 
 export const printReceipt = (t: Transaction): Promise<void> =>
   adapter.printReceipt(t);
-

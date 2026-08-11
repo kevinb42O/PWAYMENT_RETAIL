@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import { describe, expect, it } from 'vitest';
-import { POSDatabase } from './db';
+import { DB_NAME, POSDatabase } from './db';
 import { Transaction } from '../types';
 
 // The exact schema db.ts declares for v9, i.e. what a pre-idempotency
@@ -57,13 +57,13 @@ const newTransaction = (clientRequestId?: string): Omit<Transaction, 'id'> => ({
   ...(clientRequestId ? { clientRequestId } : {}),
 });
 
-describe('POSDatabase v9 → v10 migration', () => {
-  it('upgrades a populated v9 database, keeps legacy rows and enforces the unique clientRequestId index', async () => {
-    await Dexie.delete('POSDatabase');
+describe('POSDatabase v9 → v12 migration', () => {
+  it('keeps legacy rows, enforces checkout idempotency and creates an honest gift-card opening balance', async () => {
+    await Dexie.delete(DB_NAME);
 
     // Build a realistic v9 installation: legacy transactions have no
     // clientRequestId field at all.
-    const legacy = new Dexie('POSDatabase');
+    const legacy = new Dexie(DB_NAME);
     legacy.version(9).stores(V9_SCHEMA);
     await legacy.open();
     await legacy.table('transactions').bulkAdd([
@@ -85,12 +85,21 @@ describe('POSDatabase v9 → v10 migration', () => {
       totalRevenueCents: 12500,
       prevHash: null,
     });
+    await legacy.table('gift_cards').put({
+      id: 'legacy-card',
+      code: 'LEGACY-1234',
+      initialCents: 10000,
+      balanceCents: 3750,
+      issuedAt: new Date(1690000000000).toISOString(),
+      isActive: true,
+    });
     legacy.close();
 
     const upgraded = new POSDatabase();
     try {
       await upgraded.open();
-      expect(upgraded.verno).toBe(10);
+      expect(upgraded.verno).toBe(14);
+      expect(upgraded.webshop_orders).toBeDefined();
 
       // Legacy rows survive the upgrade untouched.
       const rows = await upgraded.transactions.toArray();
@@ -99,6 +108,15 @@ describe('POSDatabase v9 → v10 migration', () => {
       expect(rows.every((r) => r.clientRequestId === undefined)).toBe(true);
       expect((await upgraded.products.get('deck-1'))?.stockQty).toBe(5);
       expect(await upgraded.daily_reports.count()).toBe(1);
+      expect(await upgraded.gift_card_events.where('giftCardId').equals('legacy-card').first()).toEqual(
+        expect.objectContaining({
+          type: 'opening-balance',
+          amountCents: 3750,
+          balanceBeforeCents: 3750,
+          balanceAfterCents: 3750,
+          source: 'migration',
+        }),
+      );
 
       // The new unique index accepts distinct keys and more keyless legacy-style rows…
       await upgraded.transactions.add(newTransaction('req-a') as Transaction);
