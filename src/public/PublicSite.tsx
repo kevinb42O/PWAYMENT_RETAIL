@@ -18,6 +18,8 @@ import {
   Layers3,
   LockKeyhole,
   Menu,
+  Pause,
+  Play,
   ReceiptText,
   RefreshCw,
   ScanLine,
@@ -60,6 +62,13 @@ const webshopImage = '/website/pwayment-webshop-orders-current.png';
 const integrationsImage = '/website/pwayment-integrations-current.jpg';
 const plansImage = '/website/pwayment-plans-current.jpg';
 const heroVideo = '/website/hero_video1.mp4';
+const paymentVideo = '/website/hero_video.mp4';
+
+const keepVideoSilent = (video: HTMLVideoElement) => {
+  video.defaultMuted = true;
+  video.muted = true;
+  video.volume = 0;
+};
 
 interface PricingPlan {
   name: string;
@@ -548,15 +557,8 @@ const HeroProductVideo = () => {
       preload="auto"
       aria-label="Stille PWAYMENT merkvideo voor moderne retail"
       disablePictureInPicture
-      onLoadedMetadata={(event) => {
-        event.currentTarget.defaultMuted = true;
-        event.currentTarget.muted = true;
-        event.currentTarget.volume = 0;
-      }}
-      onPlay={(event) => {
-        event.currentTarget.muted = true;
-        event.currentTarget.volume = 0;
-      }}
+      onLoadedMetadata={(event) => keepVideoSilent(event.currentTarget)}
+      onPlay={(event) => keepVideoSilent(event.currentTarget)}
     >
       <source src={heroVideo} type="video/mp4" />
     </video>
@@ -774,6 +776,58 @@ const OperationalLinks = () => (
   </motion.section>
 );
 
+const PosPaymentVideoSection = () => {
+  const reducedMotion = useReducedMotion();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [paused, setPaused] = useState(Boolean(reducedMotion));
+
+  const togglePlayback = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    keepVideoSilent(video);
+    if (video.paused) {
+      void video.play();
+      setPaused(false);
+      return;
+    }
+    video.pause();
+    setPaused(true);
+  };
+
+  return (
+    <motion.section className="pw-payment-story pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>
+      <motion.div className="pw-payment-story-copy" variants={fadeUp}>
+        <span className="pw-eyebrow">POS &amp; betalingen</span>
+        <h2>De laatste stap hoort de rustigste te zijn.</h2>
+        <p>PWAYMENT houdt de betaalkeuze kort en duidelijk voor kassier en klant. Cash, PIN, cadeaubon en gesplitste betaling blijven in één flow; terminalproviders krijgen pas een actief-label na device- en reconciliatietests.</p>
+        <a href="/hardware" className="pw-text-link">Bekijk terminal- en hardwarestatus <ArrowRight size={15} /></a>
+      </motion.div>
+      <motion.div className="pw-payment-video-wrap" variants={fadeUp}>
+        <video
+          ref={videoRef}
+          autoPlay={!reducedMotion}
+          loop={!reducedMotion}
+          muted
+          controls={false}
+          playsInline
+          preload="metadata"
+          aria-label="Contactloze betaling aan een winkelterminal"
+          disablePictureInPicture
+          onLoadedMetadata={(event) => keepVideoSilent(event.currentTarget)}
+          onPlay={(event) => { keepVideoSilent(event.currentTarget); setPaused(false); }}
+          onPause={() => setPaused(true)}
+        >
+          <source src={paymentVideo} type="video/mp4" />
+        </video>
+        <button type="button" className="pw-video-toggle" onClick={togglePlayback} aria-label={paused ? 'Video afspelen' : 'Video pauzeren'}>
+          {paused ? <Play size={14} fill="currentColor" /> : <Pause size={14} fill="currentColor" />}
+          <span>{paused ? 'Afspelen' : 'Pauzeren'}</span>
+        </button>
+      </motion.div>
+    </motion.section>
+  );
+};
+
 const IntegrationStatusSection = () => (
   <motion.section className="pw-status-section pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>
     <motion.div className="pw-section-heading" variants={fadeUp}><div><span className="pw-eyebrow">Capabilitystatus</span><h2>Geen logo zonder status.</h2><p>“Actief” betekent dat de flow in PWAYMENT aantoonbaar werkt. “Pilot” en “Validatie” maken duidelijk waar nog end-to-end bewijs nodig is.</p></div></motion.div>
@@ -822,6 +876,7 @@ const FeaturePage = ({ data, route }: { data: FeaturePageData; route: string }) 
     <AnimatedPageHero eyebrow={data.eyebrow} title={data.title} intro={data.intro} actions={<><a className="pw-button pw-button-dark" href="/register">Start gratis <ArrowRight size={16} /></a><a className="pw-text-link" href="/demo">Plan een demo <ArrowRight size={15} /></a></>} />
     <motion.section className="pw-wide-product pw-shell" initial={{ opacity: 0, y: 42, scale: .98 }} whileInView={{ opacity: 1, y: 0, scale: 1 }} viewport={revealViewport} transition={{ duration: .9, ease: motionEase }}><div className="pw-window-bar"><i /><i /><i /><span>app.pwayment.be</span><b>Live</b></div><motion.img src={data.image} alt={data.imageAlt} whileHover={{ scale: 1.008 }} transition={{ duration: .45 }} /><motion.div className="pw-wide-proof" initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={revealViewport} transition={{ delay: .35, duration: .55 }}><CircleCheck size={18} />{data.proof}</motion.div></motion.section>
     <section className="pw-chapters pw-shell">{data.chapters.map((chapter, index) => <motion.article key={chapter.number} initial={{ opacity: 0, y: 34 }} whileInView={{ opacity: 1, y: 0 }} viewport={revealViewport} transition={{ duration: .72, delay: index * .04, ease: motionEase }}><span>{chapter.number}</span><div><h2>{chapter.title}</h2><p>{chapter.body}</p></div><ul>{chapter.points.map((point, pointIndex) => <motion.li key={point} initial={{ opacity: 0, x: 12 }} whileInView={{ opacity: 1, x: 0 }} viewport={revealViewport} transition={{ delay: .15 + pointIndex * .07 }}><Check size={15} />{point}</motion.li>)}</ul></motion.article>)}</section>
+    {route === '/pos' && <PosPaymentVideoSection />}
     {route === '/integrations' && <IntegrationStatusSection />}
     {route === '/hardware' && <HardwareCompatibilitySection />}
     <OperationalLinks />
