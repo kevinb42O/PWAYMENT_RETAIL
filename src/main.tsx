@@ -106,29 +106,30 @@ root.render(
       }
     `}</style>
     
-    <div className="flex flex-col items-center gap-8 z-10">
-      <div className="flex items-center justify-center">
+    <div className="flex flex-col items-center gap-10 z-10">
+      {/* Optische correctie: zwaar icoon links, dus we nudgen het iets naar rechts (sm:translate-x-3) */}
+      <div className="flex items-center justify-center sm:translate-x-3">
         <img
           src="/branding/pwayment-logo.svg"
           alt="Pwayment"
-          className="hidden sm:block h-7 w-auto object-contain"
+          className="hidden sm:block h-12 w-auto object-contain"
         />
         <img
           src="/branding/pwayment-mark.svg"
           alt="Pwayment"
-          className="block sm:hidden h-10 w-10 object-contain"
+          className="block sm:hidden h-16 w-16 object-contain"
         />
       </div>
       
-      <div className="flex flex-col items-center gap-4">
-        <div className="text-[9px] uppercase tracking-[0.3em] font-bold text-slate-400">
+      <div className="flex flex-col items-center gap-5">
+        <div className="text-[10px] uppercase tracking-[0.3em] font-bold text-slate-400">
           {storefrontRoute
             ? "Webshop wordt klaargezet"
             : "Pwayment wordt klaargezet"}
         </div>
-        <div className="w-24 h-[2px] bg-slate-200 overflow-hidden relative rounded-full">
+        <div className="w-32 h-[2px] bg-slate-200 overflow-hidden relative rounded-full">
           <div 
-            className="absolute top-0 bottom-0 left-0 w-1/2 bg-slate-500 rounded-full"
+            className="absolute top-0 bottom-0 left-0 w-1/2 bg-slate-400 rounded-full"
             style={{ animation: 'loading-sweep 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite' }}
           ></div>
         </div>
