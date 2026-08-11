@@ -98,16 +98,7 @@ const configureServiceWorker = async () => {
 const root = createRoot(document.getElementById("root")!);
 
 root.render(
-  <div 
-    className="flex flex-col items-center justify-center min-h-dvh bg-[#f6f5f1] animate-in fade-in duration-1000 relative overflow-hidden"
-    style={{
-      backgroundImage: `
-        linear-gradient(to right, rgba(15, 23, 42, 0.04) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(15, 23, 42, 0.04) 1px, transparent 1px)
-      `,
-      backgroundSize: '32px 32px'
-    }}
-  >
+  <div className="flex flex-col items-center justify-center min-h-dvh bg-[#f6f5f1] animate-in fade-in duration-1000 relative overflow-hidden">
     <style>{`
       @keyframes loading-sweep {
         0% { transform: translateX(-100%); }
@@ -142,11 +133,6 @@ root.render(
           ></div>
         </div>
       </div>
-    </div>
-
-    <div className="absolute bottom-8 left-8 right-8 flex items-center justify-between text-[9px] font-bold tracking-widest text-slate-400 uppercase select-none pointer-events-none">
-      <div>System Init</div>
-      <div>Retail OS // v2.4</div>
     </div>
   </div>,
 );
