@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { useAuth } from '../auth/useAuth';
 import { useStore } from '../store/useStore';
@@ -104,10 +105,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const currentRole = useAuth((s) => s.currentRole);
   const currentUserName = useAuth((s) => s.currentUserName);
 
-  const [teamUsers, setTeamUsers] = useState<any[]>([]);
-  useEffect(() => {
-    db.users.toArray().then(setTeamUsers);
-  }, []);
+  const teamUsers = useLiveQuery(() => db.users.toArray()) || [];
   const appliedInitialTabRequestRef = useRef<number | undefined>(undefined);
 
   // DEFAULT TAB IS BILLING & ABONNEMENTEN (TOP ITEM)
