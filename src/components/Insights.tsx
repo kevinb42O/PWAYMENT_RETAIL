@@ -184,6 +184,7 @@ export const Insights = () => {
   const categories = useCategories((state) => state.list);
   const hydrateCategories = useCategories((state) => state.hydrate);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<InsightPeriod>("30d");
   const [location, setLocation] = useState(initialLocation);
@@ -198,7 +199,9 @@ export const Insights = () => {
       hydrateCategories(),
     ]);
     const rows = await db.transactions.orderBy("timestamp").reverse().toArray();
+    const userRows = await db.users.toArray();
     setTransactions(rows);
+    setUsers(userRows);
     setLoading(false);
   }, [hydrateCategories, hydrateCustomers, hydrateProducts]);
 
@@ -245,7 +248,6 @@ export const Insights = () => {
     () => filterPreviousPeriodTransactions(analysisTransactions, period, now),
     [analysisTransactions, now, period],
   );
-  const users = useLiveQuery(() => db.users.toArray()) || [];
 
   const snapshot = useMemo(
     () => buildRetailIntelligence(periodTransactions, products, customers, now, users),
