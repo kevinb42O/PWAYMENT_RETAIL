@@ -98,10 +98,32 @@ const configureServiceWorker = async () => {
 const root = createRoot(document.getElementById("root")!);
 
 root.render(
-  <div className="grid min-h-dvh place-items-center bg-[#f6f5f1] text-sm font-bold text-slate-500">
-    {storefrontRoute
-      ? "Webshop wordt klaargezet…"
-      : "Pwayment wordt klaargezet…"}
+  <div className="flex flex-col items-center justify-center min-h-dvh bg-[#f6f5f1] gap-6 animate-in fade-in duration-700">
+    <div className="flex items-center justify-center">
+      <img
+        src="/branding/pwayment-logo.svg"
+        alt="Pwayment"
+        className="hidden sm:block h-9 w-auto object-contain opacity-90"
+      />
+      <img
+        src="/branding/pwayment-mark.svg"
+        alt="Pwayment"
+        className="block sm:hidden h-12 w-12 object-contain opacity-90"
+      />
+    </div>
+    
+    <div className="flex flex-col items-center gap-4">
+      <div className="h-4 w-4 relative flex items-center justify-center">
+        <div className="absolute inset-0 rounded-full border-2 border-slate-200"></div>
+        <div className="absolute inset-0 rounded-full border-2 border-slate-500 border-t-transparent animate-spin"></div>
+      </div>
+      
+      <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-slate-500">
+        {storefrontRoute
+          ? "Webshop wordt klaargezet..."
+          : "Pwayment wordt klaargezet..."}
+      </div>
+    </div>
   </div>,
 );
 
