@@ -174,9 +174,9 @@ export const DonutBreakdown = ({
             return segment;
           })}
         </svg>
-        <div className={`absolute inset-0 flex flex-col items-center justify-center text-center transition duration-500 ${visible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}>
-          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">{centerLabel}</span>
-          <strong className="mt-1 text-xl font-bold tracking-tight text-slate-950">{valueFormatter(total)}</strong>
+        <div className={`absolute inset-0 flex flex-col items-center justify-center text-center px-4 transition duration-500 ${visible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}>
+          <span className="max-w-[100px] text-[10px] sm:text-[11px] font-bold leading-tight uppercase tracking-[0.12em] text-slate-400 [word-break:break-word]">{centerLabel}</span>
+          <strong className="mt-1 max-w-[100px] truncate text-xl font-bold tracking-tight text-slate-950">{valueFormatter(total)}</strong>
         </div>
       </div>
       <div className="w-full max-w-sm space-y-3">

@@ -1328,8 +1328,8 @@ const InventoryOverview = ({
                 value: Math.max(0, stock.trackedProducts - recommendations),
               },
             ]}
-            centerLabel="Voorraadproducten"
-            valueFormatter={(value) => `${value} producten`}
+            centerLabel="Voorraad"
+            valueFormatter={(value) => String(value)}
             ariaLabel="Voorraadproducten verdeeld per actiestatus"
           />
           <button
@@ -1725,8 +1725,8 @@ const CustomerOverviewPage = ({
                 value: snapshot.returningCustomers,
               },
             ]}
-            centerLabel="Herkende klanten"
-            valueFormatter={(value) => `${value} klanten`}
+            centerLabel="Klanten"
+            valueFormatter={(value) => String(value)}
             ariaLabel="Herkende klanten verdeeld naar aantal aankopen"
           />
         </SectionCard>
