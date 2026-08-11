@@ -569,17 +569,19 @@ const HomePage = () => (
   <>
     <section className="pw-hero pw-shell">
       <motion.div className="pw-hero-copy" initial="hidden" animate="visible" variants={stagger}>
-        <motion.div className="pw-kicker" variants={fadeUp}><span /> Retail intelligence voor Belgische winkels</motion.div>
-        <motion.h1 variants={fadeUp}>Je winkel.<br /><em>Eén helder systeem.</em></motion.h1>
-        <motion.p variants={fadeUp}>Verkoop sneller, hou je voorraad onder controle, leer je klanten kennen en zie waar je winkel kan groeien—ook wanneer je internet even wegvalt.</motion.p>
+        <motion.div className="pw-kicker" variants={fadeUp}><span /> Retailplatform voor Belgische winkels</motion.div>
+        <motion.h1 variants={fadeUp}>Minder losse systemen.<br /><em>Meer grip op je winkel.</em></motion.h1>
+        <motion.p variants={fadeUp}>PWAYMENT verbindt kassa, voorraad, klanten, webshop en rapportage in één rustige werkplek. Zo verkoop je vlotter en neem je betere beslissingen met dezelfde gegevens.</motion.p>
         <motion.div className="pw-hero-actions" variants={fadeUp}>
-          <a href="/register?plan=professional" className="pw-button pw-button-dark">Probeer Professional 30 dagen gratis <ArrowRight size={17} /></a>
+          <a href="/register?plan=professional" className="pw-button pw-button-dark">Start gratis met PWAYMENT <ArrowRight size={17} /></a>
           <a href="/demo" className="pw-text-link">Plan een persoonlijke demo <ArrowRight size={15} /></a>
         </motion.div>
-        <motion.div className="pw-hero-note" variants={fadeUp}><CircleCheck size={16} /> Basis blijft gratis · Professional 1 maand gratis proberen</motion.div>
+        <motion.div className="pw-hero-proof" variants={fadeUp}><span>Basis blijft gratis</span><span>30 dagen Professional</span><span>Offline-first kassa</span></motion.div>
       </motion.div>
       <motion.div className="pw-product-stage pw-product-video-stage" initial={{ opacity: 0, y: 48, scale: .975 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: .92, delay: .2, ease: motionEase }}>
+        <div className="pw-hero-media-head"><span>PWAYMENT in de winkel</span><b>10 seconden</b></div>
         <HeroProductVideo />
+        <div className="pw-hero-media-caption"><strong>Rust op de winkelvloer.</strong><span>Grip achter de schermen.</span></div>
       </motion.div>
     </section>
 
