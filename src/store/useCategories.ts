@@ -4,7 +4,7 @@ import { ProductCategory } from '../types';
 import { FEATURES } from '../config/features';
 import { BELGIAN_RETAIL_VAT_RATE, productCategories } from '../data/categories';
 import { useAuth } from '../auth/useAuth';
-import { deleteSupabaseCategory, upsertSupabaseCategories } from '../services/supabaseMutations';
+import { enqueueOutbox } from '../db/outbox';
 import { FEATURE_KEYS, featureLimit } from '../billing/entitlements';
 
 interface CategoriesState {
@@ -80,7 +80,7 @@ export const useCategories = create<CategoriesState>((set, get) => ({
     while (state.list.some((c) => c.id === id)) id = `${base}-${i++}`;
 
     const category: ProductCategory = { id, name, vatRate: BELGIAN_RETAIL_VAT_RATE, isActive: true };
-    await upsertSupabaseCategories(useAuth.getState().currentStoreId, [category]);
+    await enqueueOutbox('upsert_category', [category]);
     await db.categories.put(category);
     set((s) => ({ list: sortByName([...s.list, category]) }));
     return category;
@@ -92,7 +92,7 @@ export const useCategories = create<CategoriesState>((set, get) => ({
     const cur = await db.categories.get(id);
     if (!cur) return;
     const next = { ...cur, name };
-    await upsertSupabaseCategories(useAuth.getState().currentStoreId, [next]);
+    await enqueueOutbox('upsert_category', [next]);
     await db.categories.put(next);
     set((s) => ({
       list: sortByName(s.list.map((c) => (c.id === id ? next : c))),
@@ -102,7 +102,7 @@ export const useCategories = create<CategoriesState>((set, get) => ({
   removeCategory: async (id) => {
     const productsInCategory = await db.products.where('category').equals(id).count();
     if (productsInCategory > 0) return false;
-    await deleteSupabaseCategory(useAuth.getState().currentStoreId, id);
+    await enqueueOutbox('delete_category', { categoryId: id });
     await db.categories.delete(id);
     set((s) => ({ list: s.list.filter((c) => c.id !== id) }));
     return true;

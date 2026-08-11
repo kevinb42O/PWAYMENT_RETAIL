@@ -9,6 +9,8 @@ import { useAuth } from "./auth/useAuth";
 import { useEffect, useState } from "react";
 import { useTheme } from "./store/useTheme";
 import { applyThemeMode } from "./utils/theme";
+import { startOutboxWorker, stopOutboxWorker } from "./services/outboxWorker";
+import { startRealtimeSync, stopRealtimeSync } from "./services/realtimeSync";
 
 const RecordingCursor = () => {
   const [cursor, setCursor] = useState({
@@ -98,6 +100,20 @@ export default function App() {
       });
     }
   }, [e2eMode, presentationMode, unlocked]);
+
+  useEffect(() => {
+    if (unlocked) {
+      startOutboxWorker();
+      startRealtimeSync();
+    } else {
+      stopOutboxWorker();
+      stopRealtimeSync();
+    }
+    return () => {
+      stopOutboxWorker();
+      stopRealtimeSync();
+    };
+  }, [unlocked]);
 
   return unlocked ? (
     <>

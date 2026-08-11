@@ -492,7 +492,12 @@ export interface OutboxEntry {
     | "daily_report"
     | "audit"
     | "webshop_order"
-    | "webshop_email";
+    | "webshop_email"
+    | "upsert_product"
+    | "upsert_customer"
+    | "upsert_category"
+    | "delete_category"
+    | "gift_card_mutation";
   payload: unknown;
   attempts: number;
   lastError?: string;
