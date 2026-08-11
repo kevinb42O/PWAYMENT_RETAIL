@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+@keyframes pwayment-loading-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
 .pwayment-recording-cursor {
   position: fixed;
   top: 0;

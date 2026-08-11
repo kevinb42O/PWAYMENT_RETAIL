@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useAuth } from "./useAuth";
 import { db } from "../db/db";
 import { User, Role } from "../types";
@@ -10,6 +10,7 @@ import {
   Eye,
   EyeOff,
   KeyRound,
+  LoaderCircle,
   ShieldCheck,
   User as UserIcon,
 } from "lucide-react";
@@ -57,6 +58,8 @@ export const LoginScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingLabel, setLoadingLabel] = useState("Aanmelden…");
+  const loadingTimer = useRef<number | null>(null);
   const pinLoginEnabled =
     import.meta.env.DEV ||
     import.meta.env.VITE_PRESENTATION_BUILD === "true" ||
@@ -66,17 +69,43 @@ export const LoginScreen: React.FC = () => {
     void db.users.toArray().then(setStaffUsers);
   }, []);
 
+  useEffect(
+    () => () => {
+      if (loadingTimer.current != null) window.clearTimeout(loadingTimer.current);
+    },
+    [],
+  );
+
+  const beginLoading = (initialLabel: string) => {
+    if (loadingTimer.current != null) window.clearTimeout(loadingTimer.current);
+    setLoadingLabel(initialLabel);
+    setIsLoading(true);
+    loadingTimer.current = window.setTimeout(
+      () => setLoadingLabel("Je winkelgegevens worden geladen…"),
+      550,
+    );
+  };
+
+  const stopLoading = () => {
+    if (loadingTimer.current != null) {
+      window.clearTimeout(loadingTimer.current);
+      loadingTimer.current = null;
+    }
+    setIsLoading(false);
+  };
+
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setNotice(null);
-    setIsLoading(true);
+    beginLoading("Aanmelden…");
     const res = await loginWithEmail(email, password);
-    setIsLoading(false);
     if (!res.success) {
+      stopLoading();
       setError(res.message || "Aanmelden mislukt");
       return;
     }
+    setLoadingLabel("Je winkel wordt geopend…");
     window.history.replaceState(window.history.state, "", "/app");
   };
 
@@ -105,7 +134,7 @@ export const LoginScreen: React.FC = () => {
       return;
     }
 
-    setIsLoading(true);
+    beginLoading("Account wordt aangemaakt…");
     const res = await registerAccount({
       email,
       password,
@@ -114,11 +143,12 @@ export const LoginScreen: React.FC = () => {
       storeName,
       pin: pinCode,
     });
-    setIsLoading(false);
     if (!res.success) {
+      stopLoading();
       setError(res.message || "Registratie mislukt");
       return;
     }
+    stopLoading();
     if (res.message) {
       setNotice(res.message);
       setMode("login");
@@ -127,17 +157,17 @@ export const LoginScreen: React.FC = () => {
 
   const handlePinSubmit = async (uId: string, candidatePin: string) => {
     setError(null);
-    setIsLoading(true);
+    beginLoading("PIN wordt gecontroleerd…");
     const ok = await loginWithPin(uId, candidatePin);
-    setIsLoading(false);
     if (!ok) {
+      stopLoading();
       setError("Ongeldige PIN code");
       setEnteredPin("");
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#FBFBFD] text-zinc-950 flex flex-col justify-between selection:bg-zinc-950 selection:text-white font-sans antialiased relative overflow-hidden">
+    <div className="min-h-screen bg-[#FBFBFD] text-zinc-950 flex flex-col justify-between selection:bg-zinc-950 selection:text-white font-sans antialiased relative overflow-x-hidden">
       {/* Background Image with Subtle Blur */}
       <div
         className="absolute inset-0 pointer-events-none bg-cover bg-center bg-no-repeat blur-[4px] scale-[1.02] opacity-95 transition-all duration-500"
@@ -419,7 +449,10 @@ export const LoginScreen: React.FC = () => {
               </div>
             ) : (
               /* Main Auth Card */
-              <div className="bg-white/90 backdrop-blur-xl rounded-3xl border border-zinc-200/90 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.08)] p-8 sm:p-10 transition-all">
+              <div
+                className="bg-white/90 backdrop-blur-xl rounded-3xl border border-zinc-200/90 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.08)] p-8 sm:p-10 transition-all"
+                aria-busy={isLoading}
+              >
                 {/* Tab Switcher */}
                 <div className="grid grid-cols-2 p-1 bg-zinc-100/80 border border-zinc-200/60 rounded-2xl mb-8">
                   <button
@@ -481,11 +514,13 @@ export const LoginScreen: React.FC = () => {
                   /* LOGIN FORM */
                   <form onSubmit={handleLoginSubmit} className="space-y-4">
                     <div>
-                      <label className="block text-xs font-semibold text-zinc-800 mb-1.5">
+                      <label htmlFor="login-email" className="block text-xs font-semibold text-zinc-800 mb-1.5">
                         E-mailadres
                       </label>
                       <input
                         type="email"
+                        id="login-email"
+                        autoComplete="email"
                         required
                         placeholder="E-mailadres"
                         value={email}
@@ -496,7 +531,7 @@ export const LoginScreen: React.FC = () => {
 
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <label className="block text-xs font-semibold text-zinc-800">
+                        <label htmlFor="login-password" className="block text-xs font-semibold text-zinc-800">
                           Wachtwoord
                         </label>
                         <a
@@ -535,6 +570,8 @@ export const LoginScreen: React.FC = () => {
                       <div className="relative">
                         <input
                           type={showPassword ? "text" : "password"}
+                          id="login-password"
+                          autoComplete="current-password"
                           required
                           placeholder="Wachtwoord"
                           value={password}
@@ -561,8 +598,8 @@ export const LoginScreen: React.FC = () => {
                     </div>
 
                     <p className="pt-1 text-xs leading-5 text-zinc-500">
-                      Voor kassaveiligheid wordt de sessie na herladen opnieuw
-                      vergrendeld.
+                      Je sessie wordt veilig beheerd via Supabase en herstelt
+                      alleen op dit vertrouwde toestel.
                     </p>
 
                     <button
@@ -571,7 +608,10 @@ export const LoginScreen: React.FC = () => {
                       className="w-full h-12 bg-zinc-950 hover:bg-black active:scale-[0.99] text-white font-bold rounded-xl text-sm shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-2"
                     >
                       {isLoading ? (
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <>
+                          <LoaderCircle size={16} className="animate-spin" />
+                          Aanmelden…
+                        </>
                       ) : (
                         <>
                           Inloggen <ArrowRight size={15} />
@@ -772,6 +812,26 @@ export const LoginScreen: React.FC = () => {
           WebaanZee
         </div>
       </footer>
+
+      {isLoading && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/28 px-6 backdrop-blur-sm"
+          role="status"
+          aria-live="polite"
+          aria-label={loadingLabel}
+        >
+          <div className="w-full max-w-sm rounded-3xl border border-white/70 bg-white/95 p-7 text-center shadow-[0_32px_100px_-30px_rgba(15,23,42,0.55)]">
+            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-lg">
+              <LoaderCircle size={25} className="animate-spin" />
+            </div>
+            <p className="text-base font-extrabold tracking-tight text-slate-950">Even geduld</p>
+            <p className="mt-1.5 text-sm leading-6 text-slate-500">{loadingLabel}</p>
+            <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+              <div className="h-full w-1/2 animate-[pwayment-loading-sweep_1.15s_ease-in-out_infinite] rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

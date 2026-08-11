@@ -98,16 +98,15 @@ const configureServiceWorker = async () => {
 const root = createRoot(document.getElementById("root")!);
 
 root.render(
-  <div className="flex flex-col items-center justify-center min-h-dvh bg-[#f6f5f1] animate-in fade-in duration-1000 relative overflow-hidden">
+  <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-[#f6f5f1] px-6 text-slate-950 animate-in fade-in duration-500">
     <style>{`
-      @keyframes loading-sweep {
+      @keyframes pwayment-loading-sweep {
         0% { transform: translateX(-100%); }
         100% { transform: translateX(200%); }
       }
     `}</style>
     
-    <div className="flex flex-col items-center gap-10 z-10">
-      {/* Optische correctie: zwaar icoon links, dus we nudgen het iets naar rechts (sm:translate-x-3) */}
+    <div className="z-10 flex w-full max-w-sm flex-col items-center rounded-[2rem] border border-white/80 bg-white/70 px-8 py-10 text-center shadow-[0_32px_90px_-42px_rgba(15,23,42,0.45)] backdrop-blur-xl sm:px-10">
       <div className="flex items-center justify-center sm:translate-x-3">
         <img
           src="/branding/pwayment-logo.svg"
@@ -121,19 +120,21 @@ root.render(
         />
       </div>
       
-      <div className="flex flex-col items-center gap-5">
-        <div className="text-[10px] uppercase tracking-[0.3em] font-bold text-slate-400">
+      <div className="mt-9 flex w-full flex-col items-center gap-4">
+        <div className="text-[10px] uppercase tracking-[0.24em] font-bold text-slate-400">
           {storefrontRoute
             ? "Webshop wordt klaargezet"
             : "Pwayment wordt klaargezet"}
         </div>
-        <div className="w-32 h-[2px] bg-slate-200 overflow-hidden relative rounded-full">
+        <p className="text-sm font-semibold text-slate-800">Een ogenblik, we maken alles klaar.</p>
+        <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
           <div 
-            className="absolute top-0 bottom-0 left-0 w-1/2 bg-slate-400 rounded-full"
-            style={{ animation: 'loading-sweep 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite' }}
+            className="absolute top-0 bottom-0 left-0 w-1/2 rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600"
+            style={{ animation: 'pwayment-loading-sweep 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite' }}
           ></div>
         </div>
       </div>
+      <p className="mt-5 text-xs leading-5 text-slate-500">Beveiligde sessie · lokale gegevens worden veilig gesynchroniseerd</p>
     </div>
   </div>,
 );
