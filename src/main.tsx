@@ -98,31 +98,30 @@ const configureServiceWorker = async () => {
 const root = createRoot(document.getElementById("root")!);
 
 root.render(
-  <div className="flex flex-col items-center justify-center min-h-dvh bg-[#f6f5f1] gap-6 animate-in fade-in duration-700">
+  <div className="flex flex-col items-center justify-center min-h-dvh bg-[#f6f5f1] gap-7 animate-in fade-in duration-1000">
     <div className="flex items-center justify-center">
       <img
         src="/branding/pwayment-logo.svg"
         alt="Pwayment"
-        className="hidden sm:block h-9 w-auto object-contain opacity-90"
+        className="hidden sm:block h-7 w-auto object-contain"
       />
       <img
         src="/branding/pwayment-mark.svg"
         alt="Pwayment"
-        className="block sm:hidden h-12 w-12 object-contain opacity-90"
+        className="block sm:hidden h-10 w-10 object-contain"
       />
     </div>
     
-    <div className="flex flex-col items-center gap-4">
-      <div className="h-4 w-4 relative flex items-center justify-center">
-        <div className="absolute inset-0 rounded-full border-2 border-slate-200"></div>
-        <div className="absolute inset-0 rounded-full border-2 border-slate-500 border-t-transparent animate-spin"></div>
-      </div>
-      
-      <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-slate-500">
+    <div className="flex items-center gap-3 text-slate-500 opacity-80">
+      <svg className="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
+        <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      <span className="text-[10px] uppercase tracking-[0.2em] font-bold mt-[1px]">
         {storefrontRoute
           ? "Webshop wordt klaargezet..."
           : "Pwayment wordt klaargezet..."}
-      </div>
+      </span>
     </div>
   </div>,
 );
