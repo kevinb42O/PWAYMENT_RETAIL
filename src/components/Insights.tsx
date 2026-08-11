@@ -2458,7 +2458,7 @@ const DataQualityPage = ({ snapshot }: { snapshot: DataQualitySnapshot }) => {
           value={lowest?.label ?? "Nog geen data"}
           detail={
             lowest
-              ? `${lowest.complete} van ${lowest.total} geregistreerd · ${lowest.coverage}%`
+              ? `${lowest.complete} van ${lowest.total} ${lowest.entityLabel} geregistreerd · ${lowest.coverage}%`
               : "Er zijn nog geen producten of verkopen om te meten"
           }
         />
@@ -2477,7 +2477,7 @@ const DataQualityPage = ({ snapshot }: { snapshot: DataQualitySnapshot }) => {
                 source.total > 0 ? `${source.coverage}%` : "Niet meetbaar",
               secondary:
                 source.total > 0
-                  ? `${source.complete} van ${source.total} geregistreerd`
+                  ? `${source.complete} van ${source.total} ${source.entityLabel} geregistreerd`
                   : "Nog geen relevante producten of verkopen",
             }))}
             formatValue={(value) => `${value}%`}

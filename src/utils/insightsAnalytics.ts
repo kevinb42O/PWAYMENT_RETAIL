@@ -61,6 +61,8 @@ export interface DataQualitySnapshot {
   sources: Array<{
     key: string;
     label: string;
+    /** What is counted in this source, e.g. products or finalized sales. */
+    entityLabel: string;
     complete: number;
     total: number;
     coverage: number;
@@ -486,6 +488,7 @@ export const buildDataQuality = (
     {
       key: "cost",
       label: "Geldige kostprijzen",
+      entityLabel: "producten",
       complete: activeProducts.filter(
         (product) =>
           Number.isSafeInteger(product.costPriceCents) &&
@@ -497,6 +500,7 @@ export const buildDataQuality = (
     {
       key: "stock",
       label: "Geldige voorraadregistratie",
+      entityLabel: "producten",
       complete: stockProducts.filter(
         (product) =>
           Number.isSafeInteger(product.stockQty) && product.stockQty! >= 0,
@@ -506,6 +510,7 @@ export const buildDataQuality = (
     {
       key: "category",
       label: "Categorie-indeling",
+      entityLabel: "producten",
       complete: activeProducts.filter(
         (product) =>
           product.category && product.category !== "Ongecategoriseerd",
@@ -514,7 +519,11 @@ export const buildDataQuality = (
     },
     {
       key: "customer",
-      label: "Klantkoppeling",
+      // This measures whether a sale is linked to a customer. It must not
+      // read as a count of customer profiles: repeat purchases are separate
+      // finalized sales and therefore belong in both the numerator and total.
+      label: "Klantkoppeling bij verkoop",
+      entityLabel: "verkopen",
       complete: finalizedTransactions.filter(
         (transaction) => transaction.customerId,
       ).length,
@@ -523,6 +532,7 @@ export const buildDataQuality = (
     {
       key: "employee",
       label: "Medewerkertoewijzing",
+      entityLabel: "verkopen",
       complete: finalizedTransactions.filter(
         (transaction) => transaction.userId,
       ).length,

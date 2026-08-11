@@ -7,7 +7,7 @@ import { useProducts } from "../store/useProducts";
 import { matchesCatalogQuery } from "../utils/productLookup";
 import { FeatureGate } from "../billing/FeatureGate";
 import { TrialStatus } from "../billing/TrialStatus";
-import { FEATURE_KEYS, useEntitlements } from "../billing/entitlements";
+import { FEATURE_KEYS, planLabel, useEntitlements } from "../billing/entitlements";
 import { supabase } from "../lib/supabase";
 import {
   AlertCircle,
@@ -85,6 +85,7 @@ export const Layout: React.FC = () => {
   } = useStore();
   const { currentUserName, currentRole, currentStoreId, logout } = useAuth();
   const refreshEntitlements = useEntitlements((state) => state.load);
+  const entitlementSnapshot = useEntitlements((state) => state.snapshot);
   const canUseWebshop = useEntitlements(
     (state) => state.snapshot?.features[FEATURE_KEYS.webshopPublish] === true,
   );
@@ -99,9 +100,10 @@ export const Layout: React.FC = () => {
   );
   const [isNavDropdownOpen, setIsNavDropdownOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [profileInitialTab, setProfileInitialTab] = useState<
-    "billing" | "webshop-general"
-  >("billing");
+  const [profileInitialTarget, setProfileInitialTarget] = useState<{
+    tab: "billing" | "webshop-general";
+    requestKey: number;
+  }>({ tab: "billing", requestKey: 0 });
 
   const scanInputRef = useRef<HTMLInputElement | null>(null);
   const scanBufferRef = useRef("");
@@ -111,9 +113,26 @@ export const Layout: React.FC = () => {
   const userMenuButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const cartCount = cart.orders.reduce((acc, o) => acc + o.quantity, 0);
+  const activePlanBadge = entitlementSnapshot
+    ? entitlementSnapshot.status === "trialing"
+      ? "Pro trial"
+      : {
+          basic: "Basis",
+          pro: "Pro",
+          enterprise: "Enterprise",
+        }[entitlementSnapshot.effectivePlan]
+    : null;
+  const activePlanTitle = entitlementSnapshot
+    ? `Actief plan: ${planLabel(entitlementSnapshot.effectivePlan)}${
+        entitlementSnapshot.status === "trialing" ? " trial" : ""
+      }`
+    : undefined;
 
   const openProfile = (tab: "billing" | "webshop-general" = "billing") => {
-    setProfileInitialTab(tab);
+    setProfileInitialTarget((current) => ({
+      tab,
+      requestKey: current.requestKey + 1,
+    }));
     setMainView("profile");
   };
 
@@ -460,7 +479,7 @@ export const Layout: React.FC = () => {
           ].map(({ view, label, Icon, title, profileTab }) => {
             const active =
               mainView === view &&
-              (view !== "profile" || profileTab === profileInitialTab);
+              (view !== "profile" || profileTab === profileInitialTarget.tab);
             return (
               <button
                 key={view}
@@ -490,8 +509,16 @@ export const Layout: React.FC = () => {
         >
           <TrialStatus onOpenBilling={() => openProfile("billing")} />
           <div className="pos-user-badge hidden sm:flex flex-col items-end leading-tight px-3 py-1.5 select-none">
-            <span className="text-xs font-bold text-slate-800">
-              {currentUserName}
+            <span className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+              <span className="max-w-32 truncate">{currentUserName}</span>
+              {activePlanBadge && (
+                <span
+                  className="rounded-full border border-slate-200 bg-white/75 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-slate-500"
+                  title={activePlanTitle}
+                >
+                  {activePlanBadge}
+                </span>
+              )}
             </span>
             <span className="text-[9px] font-extrabold text-slate-600 uppercase tracking-wider">
               {
@@ -675,7 +702,10 @@ export const Layout: React.FC = () => {
         )}
         {(mainView === "profile" || mainView === "admin") &&
           (currentRole === "owner" || currentRole === "manager" ? (
-            <ProfileView initialTab={profileInitialTab} />
+            <ProfileView
+              initialTab={profileInitialTarget.tab}
+              initialTabRequestKey={profileInitialTarget.requestKey}
+            />
           ) : (
             <div className="flex-1 flex items-center justify-center text-slate-500 font-medium">
               Onvoldoende rechten.

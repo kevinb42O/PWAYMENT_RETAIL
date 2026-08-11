@@ -84,6 +84,10 @@ describe('insights analytics', () => {
   it('reports completeness without inventing missing sources', () => {
     const snapshot = buildDataQuality([product, { ...product, id: 'unknown', costPriceCents: undefined, stockQty: undefined }], [sale('2026-08-10T10:00:00', { customerId: 'c1', userId: 'u1' })], []);
     expect(snapshot).toMatchObject({ costPriceCoverage: 50, stockCoverage: 50, categoryCoverage: 100, customerLinkCoverage: 100, employeeLinkCoverage: 100 });
+    expect(snapshot.sources.find((source) => source.key === 'customer')).toMatchObject({
+      label: 'Klantkoppeling bij verkoop',
+      entityLabel: 'verkopen',
+    });
   });
 
   it('shows where discounts land and calculates margin after discount', () => {

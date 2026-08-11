@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../auth/useAuth';
 import { useStore } from '../store/useStore';
 import { ProductAdmin } from './ProductAdmin';
@@ -92,11 +92,16 @@ type WorkspaceTab =
 
 interface ProfileViewProps {
   initialTab?: WorkspaceTab;
+  initialTabRequestKey?: number;
 }
 
-export const ProfileView: React.FC<ProfileViewProps> = ({ initialTab }) => {
+export const ProfileView: React.FC<ProfileViewProps> = ({
+  initialTab,
+  initialTabRequestKey,
+}) => {
   const { currentUserName, currentRole } = useAuth();
   const { setMainView } = useStore();
+  const appliedInitialTabRequestRef = useRef<number | undefined>(undefined);
 
   // DEFAULT TAB IS BILLING & ABONNEMENTEN (TOP ITEM)
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(() => {
@@ -145,10 +150,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ initialTab }) => {
   const [hardwareExpanded, setHardwareExpanded] = useState(false);
 
   useEffect(() => {
-    if (!initialTab || initialTab === activeTab) return;
+    if (!initialTab || appliedInitialTabRequestRef.current === initialTabRequestKey) return;
+    appliedInitialTabRequestRef.current = initialTabRequestKey;
     setActiveTab(initialTab);
+    if (initialTab.startsWith('billing')) setBillingExpanded(true);
     if (initialTab.startsWith('webshop')) setWebshopExpanded(true);
-  }, [activeTab, initialTab]);
+  }, [initialTab, initialTabRequestKey]);
 
   const getBillingSubTab = (tab: WorkspaceTab): BillingSubTab => {
     if (tab === 'billing-invoices') return 'invoices';
