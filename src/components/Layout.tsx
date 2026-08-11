@@ -421,11 +421,23 @@ export const Layout: React.FC = () => {
           className="flex items-center select-none shrink-0"
           aria-label="Pwayment retail"
         >
-          <img
-            src="/branding/pwayment-logo.svg"
-            alt="Pwayment"
-            className="hidden h-7 w-auto object-contain sm:block"
-          />
+          <div className="pos-brand-lockup hidden sm:flex">
+            <img
+              src="/branding/pwayment-logo.svg"
+              alt="Pwayment"
+              className="h-6 w-auto object-contain"
+            />
+            {activePlanBadge && (
+              <button
+                type="button"
+                className="pos-brand-plan"
+                title={`${activePlanTitle}. Bekijk plan en facturatie.`}
+                onClick={() => openProfile("billing")}
+              >
+                {activePlanBadge}
+              </button>
+            )}
+          </div>
           <img
             src="/branding/pwayment-mark.svg"
             alt="Pwayment"
@@ -509,16 +521,8 @@ export const Layout: React.FC = () => {
         >
           <TrialStatus onOpenBilling={() => openProfile("billing")} />
           <div className="pos-user-badge hidden min-w-0 sm:flex flex-col items-start leading-tight px-2 py-1 select-none">
-            <span className="flex max-w-48 items-center justify-start gap-1.5 text-xs font-bold text-slate-800">
+            <span className="flex max-w-48 items-center justify-start text-xs font-bold text-slate-800">
               <span className="min-w-0 truncate">{currentUserName}</span>
-              {activePlanBadge && (
-                <span
-                  className="pos-plan-chip"
-                  title={activePlanTitle}
-                >
-                  {activePlanBadge}
-                </span>
-              )}
             </span>
             <span className="text-[9px] font-extrabold text-slate-600 uppercase tracking-wider">
               {
