@@ -230,7 +230,7 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
     fetchAll<any>((from, to) =>
       supabase
         .from("store_memberships")
-        .select("role, user_id, profiles(display_name, first_name, last_name, phone)")
+        .select("role, user_id")
         .eq("store_id", storeId)
         .eq("status", "active")
         .range(from, to),
@@ -246,8 +246,20 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
   if (storeResult.error) throw storeResult.error;
   if (webshopResult.error) throw webshopResult.error;
 
+  const userIds = membershipRows.map((r) => r.user_id);
+  let profileMap = new Map();
+  if (userIds.length > 0) {
+    const { data: profileRows, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, display_name, first_name, last_name, phone")
+      .in("id", userIds);
+      
+    if (profileError) throw profileError;
+    profileMap = new Map(profileRows?.map((p) => [p.id, p]));
+  }
+
   const users = membershipRows.map((row) => {
-    const p = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+    const p = profileMap.get(row.user_id);
     return {
       id: row.user_id,
       name: p?.display_name || "Gebruiker",
