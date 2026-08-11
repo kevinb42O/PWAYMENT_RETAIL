@@ -634,9 +634,26 @@ export const seedDemoRetailData = async (now = new Date()): Promise<DemoSeedResu
     const expectedEvents = buildDemoGiftCardEvents(actualGiftCards, now);
     const existingEventIds = new Set(existingGiftCardEvents.map((event) => event.id));
     const missingEvents = expectedEvents.filter((event) => !existingEventIds.has(event.id));
-    await db.transaction('rw', db.gift_cards, db.gift_card_events, async () => {
+    const existingDemoUsers = await db.users.filter((user) => user.id.startsWith('demo-user-')).toArray();
+    const existingDemoUserIds = new Set(existingDemoUsers.map((u) => u.id));
+    const missingDemoUsers = team
+      .filter((u) => !existingDemoUserIds.has(u.id))
+      .map((u) => ({
+        id: u.id,
+        name: u.name,
+        firstName: u.name,
+        lastName: '',
+        role: 'cashier' as const,
+        pinHash: 'demo',
+        email: `${u.name.toLowerCase()}@demo.pwayment.com`,
+        createdAt: now.toISOString(),
+        storeName: 'PWAYMENT Demo Store'
+      }));
+
+    await db.transaction('rw', [db.gift_cards, db.gift_card_events, db.users], async () => {
       if (missingGiftCards.length > 0) await db.gift_cards.bulkPut(missingGiftCards);
       if (missingEvents.length > 0) await db.gift_card_events.bulkPut(missingEvents);
+      if (missingDemoUsers.length > 0) await db.users.bulkPut(missingDemoUsers);
     });
     return {
       customers: 0,
