@@ -90,9 +90,6 @@ export const AuditLog: React.FC = () => {
   );
   const [tab, setTab] = useState<Tab>("sales");
   const [salesRange, setSalesRange] = useState<SalesRange>("12m");
-  const [salesSource, setSalesSource] = useState<"live" | "all">(() =>
-    auth.currentStoreIsDemo ? "all" : "live",
-  );
   const [reports, setReports] = useState<DailyReport[]>([]);
   const [auditRows, setAuditRows] = useState<AuditEntry[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -102,10 +99,6 @@ export const AuditLog: React.FC = () => {
   useEffect(() => {
     void load();
   }, []);
-
-  useEffect(() => {
-    setSalesSource(auth.currentStoreIsDemo ? "all" : "live");
-  }, [auth.currentStoreId, auth.currentStoreIsDemo]);
 
   const load = async () => {
     const [nextReports, nextAuditRows, nextTransactions] = await Promise.all([
@@ -119,21 +112,15 @@ export const AuditLog: React.FC = () => {
   };
 
   const visibleTransactions = useMemo(() => {
-    const bySource =
-      salesSource === "live"
-        ? transactions.filter(
-            (transaction) => (transaction.source ?? "live") !== "demo",
-          )
-        : transactions;
-    if (salesRange === "all") return bySource;
+    if (salesRange === "all") return transactions;
     const start = new Date();
     if (salesRange === "30d") start.setDate(start.getDate() - 29);
     else start.setMonth(start.getMonth() - 11, 1);
     start.setHours(0, 0, 0, 0);
-    return bySource.filter(
+    return transactions.filter(
       (transaction) => transaction.timestamp >= start.getTime(),
     );
-  }, [salesRange, salesSource, transactions]);
+  }, [salesRange, transactions]);
 
   const historyRows = useMemo(
     () =>
@@ -300,20 +287,20 @@ export const AuditLog: React.FC = () => {
         : auditRows.length === 0;
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto bg-[#f5f7fb] text-slate-950">
-      <main className="mx-auto w-full max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-        <header className="mb-6 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+    <div className="insights-light flex h-full flex-col overflow-y-auto bg-slate-50 text-slate-950">
+      <main className="mx-auto w-full max-w-[1320px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
+        <header className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <div className="mb-2 flex items-center gap-2 text-sm font-bold text-sky-700">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-100">
-                <BarChart3 size={16} />
+            <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.1em] text-cyan-800">
+              <span className="flex h-6 w-6 items-center justify-center rounded-md bg-cyan-50 text-cyan-700">
+                <BarChart3 size={14} />
               </span>
               Historiek
             </div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
+            <h1 className="text-[28px] font-bold tracking-tight text-slate-950">
               Verkoopgeschiedenis
             </h1>
-            <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-600">
+            <p className="mt-1 max-w-2xl text-sm text-slate-500">
               Vind een verkoop, controleer de betaling en open of download het
               onveranderlijke verkoopdocument.
             </p>
@@ -324,7 +311,7 @@ export const AuditLog: React.FC = () => {
               type="button"
               onClick={exportCSV}
               disabled={exportDisabled}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-cyan-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45"
             >
               <FileText size={16} /> Exporteer CSV
             </button>
@@ -332,7 +319,7 @@ export const AuditLog: React.FC = () => {
               type="button"
               onClick={exportJSON}
               disabled={exportDisabled}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-cyan-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45"
             >
               <FileJson size={16} /> Exporteer JSON
             </button>
@@ -341,7 +328,7 @@ export const AuditLog: React.FC = () => {
 
         <nav
           aria-label="Historiek onderdelen"
-          className="mb-6 grid grid-cols-3 gap-1.5 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm sm:gap-2"
+          className="insights-tabs mb-5 grid grid-cols-3 gap-1 rounded-xl border border-slate-200 bg-white p-1"
         >
           {tabs.map((item) => {
             const active = tab === item.id;
@@ -351,14 +338,14 @@ export const AuditLog: React.FC = () => {
                 type="button"
                 aria-pressed={active}
                 onClick={() => setTab(item.id)}
-                className={`flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-center transition focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1 sm:min-h-14 sm:flex-row sm:justify-start sm:gap-3 sm:px-4 sm:py-2.5 sm:text-left ${
+                className={`flex min-h-14 flex-col items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-center transition focus:outline-none focus:ring-2 focus:ring-cyan-600 focus:ring-offset-1 sm:flex-row sm:justify-start sm:gap-3 sm:px-4 sm:text-left ${
                   active
-                    ? "bg-slate-900 text-white shadow-sm"
-                    : "text-slate-700 hover:bg-slate-100"
+                    ? "insights-tab--active"
+                    : "insights-tab"
                 }`}
               >
                 <span
-                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${active ? "bg-white/12 text-sky-300" : "bg-slate-100 text-slate-500"}`}
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${active ? "bg-white text-cyan-700 ring-1 ring-cyan-100" : "bg-slate-100 text-slate-500"}`}
                 >
                   {item.icon}
                 </span>
@@ -367,7 +354,7 @@ export const AuditLog: React.FC = () => {
                     {item.label}
                   </span>
                   <span
-                    className={`mt-0.5 hidden text-xs lg:block ${active ? "text-slate-300" : "text-slate-500"}`}
+                    className="mt-0.5 hidden text-xs text-slate-600 lg:block"
                   >
                     {item.description}
                   </span>
@@ -381,8 +368,6 @@ export const AuditLog: React.FC = () => {
           <SalesHistory
             range={salesRange}
             onRangeChange={setSalesRange}
-            source={salesSource}
-            onSourceChange={setSalesSource}
             transactions={visibleTransactions}
             rows={historyRows}
             totals={salesTotals}
@@ -419,8 +404,6 @@ export const AuditLog: React.FC = () => {
 const SalesHistory = ({
   range,
   onRangeChange,
-  source,
-  onSourceChange,
   transactions,
   rows,
   totals,
@@ -431,8 +414,6 @@ const SalesHistory = ({
 }: {
   range: SalesRange;
   onRangeChange: (range: SalesRange) => void;
-  source: "live" | "all";
-  onSourceChange: (source: "live" | "all") => void;
   transactions: Transaction[];
   rows: SalesHistoryRow[];
   totals: {
@@ -596,36 +577,20 @@ const SalesHistory = ({
 
   return (
     <section className="space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+      <div className="insights-panel p-4 sm:p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-base font-extrabold text-slate-900">
+            <h2 className="text-base font-bold text-slate-900">
               Resultatenperiode
             </h2>
             <p className="mt-1 text-sm text-slate-500">
               Alle cijfers en facturen hieronder volgen deze selectie.
             </p>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <div
-              className="grid grid-cols-2 rounded-xl bg-amber-50 p-1 text-xs"
-              aria-label="Kies databron"
-            >
-              <RangeButton
-                label="Alleen live"
-                active={source === "live"}
-                onClick={() => onSourceChange("live")}
-              />
-              <RangeButton
-                label="Live + demo"
-                active={source === "all"}
-                onClick={() => onSourceChange("all")}
-              />
-            </div>
-            <div
-              className="grid grid-cols-3 rounded-xl bg-slate-100 p-1 sm:min-w-[390px]"
-              aria-label="Kies een periode"
-            >
+          <div
+            className="grid grid-cols-3 rounded-lg border border-slate-200 bg-slate-50 p-1"
+            aria-label="Kies een periode"
+          >
               <RangeButton
                 label="30 dagen"
                 active={range === "30d"}
@@ -641,7 +606,6 @@ const SalesHistory = ({
                 active={range === "all"}
                 onClick={() => onRangeChange("all")}
               />
-            </div>
           </div>
         </div>
       </div>
@@ -652,39 +616,35 @@ const SalesHistory = ({
           value={formatEUR(totals.revenueCents)}
           detail={`${transactions.length} ${transactions.length === 1 ? "boeking" : "boekingen"}, inclusief retouren`}
           icon={<BarChart3 size={19} />}
-          tone="sky"
         />
         <HistoryMetric
           label="Gemiddeld per boeking"
           value={formatEUR(averageTicket)}
           detail="Netto over verkopen en retouren"
           icon={<ShoppingBag size={19} />}
-          tone="violet"
         />
         <HistoryMetric
           label="Totale korting"
           value={formatEUR(totals.discountCents)}
           detail="Verwerkt in de omzet"
           icon={<WalletCards size={19} />}
-          tone="amber"
         />
         <HistoryMetric
           label="Met klant"
           value={`${linkedShare}%`}
           detail={`${totals.linkedCustomerCount} gekoppelde verkopen`}
           icon={<UserRound size={19} />}
-          tone="emerald"
         />
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
+      <div className="insights-panel overflow-hidden">
+        <div className="border-b border-slate-100 px-5 py-4 sm:px-6">
           <div className="flex items-start gap-3">
-            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-700">
+            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-50 text-cyan-700">
               <BarChart3 size={18} />
             </span>
             <div>
-              <h2 className="font-extrabold text-slate-900">
+              <h2 className="font-bold text-slate-900">
                 {range === "30d" ? "Omzet per dag" : "Omzet per maand"}
               </h2>
               <p className="mt-1 text-sm text-slate-500">
@@ -788,17 +748,17 @@ const SalesHistory = ({
                         Math.round(row.revenueCents / row.transactionCount),
                       )}
                     </td>
-                    <td className="px-5 py-4 text-right font-semibold tabular-nums text-sky-700">
+                    <td className="px-5 py-4 text-right font-semibold tabular-nums text-slate-700">
                       {formatEUR(row.pinCents)}
                     </td>
-                    <td className="px-6 py-4 text-right font-semibold tabular-nums text-emerald-700">
+                    <td className="px-6 py-4 text-right font-semibold tabular-nums text-slate-700">
                       {formatEUR(row.cashCents)}
                     </td>
-                    <td className="px-5 py-4 text-right font-semibold tabular-nums text-violet-700">
+                    <td className="px-5 py-4 text-right font-semibold tabular-nums text-slate-700">
                       {formatEUR(row.giftCardCents)}
                     </td>
                     <td
-                      className={`px-5 py-4 text-right font-bold tabular-nums ${row.cashCents + row.pinCents + row.giftCardCents === row.revenueCents ? "text-emerald-700" : "text-rose-700"}`}
+                      className={`px-5 py-4 text-right font-bold tabular-nums ${row.cashCents + row.pinCents + row.giftCardCents === row.revenueCents ? "text-cyan-700" : "text-rose-700"}`}
                     >
                       {formatEUR(
                         row.cashCents +
@@ -815,15 +775,15 @@ const SalesHistory = ({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-5 py-5 sm:px-6">
+      <div className="insights-panel overflow-hidden">
+        <div className="border-b border-slate-100 px-5 py-5 sm:px-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-extrabold text-slate-950">
+                <h2 className="text-lg font-bold text-slate-950">
                   Transacties & facturen
                 </h2>
-                <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-extrabold text-emerald-700 ring-1 ring-inset ring-emerald-200">
+                <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-xs font-bold text-cyan-800 ring-1 ring-inset ring-cyan-100">
                   {filteredTransactions.length} gevonden
                 </span>
               </div>
@@ -847,7 +807,7 @@ const SalesHistory = ({
                     setVisibleTransactionCount(12);
                   }}
                   placeholder="Factuur, kassier, bedrag…"
-                  className="h-11 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-9 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+                  className="h-11 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-9 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400 focus:border-cyan-600 focus:ring-2 focus:ring-cyan-600/20"
                 />
                 {query && (
                   <button
@@ -872,7 +832,7 @@ const SalesHistory = ({
                     setPaymentFilter(event.target.value as PaymentFilter);
                     setVisibleTransactionCount(12);
                   }}
-                  className="h-11 w-full appearance-none rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+                  className="h-11 w-full appearance-none rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm font-bold text-slate-700 outline-none focus:border-cyan-600 focus:ring-2 focus:ring-cyan-600/20"
                 >
                   <option value="all">Alle betalingen</option>
                   <option value="PIN">Kaart / PIN</option>
@@ -887,7 +847,7 @@ const SalesHistory = ({
             <button
               type="button"
               onClick={clearFilters}
-              className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-sky-700 hover:text-sky-900"
+              className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-cyan-800 hover:text-cyan-950"
             >
               <X size={14} /> Filters wissen
             </button>
@@ -909,7 +869,7 @@ const SalesHistory = ({
               <button
                 type="button"
                 onClick={clearFilters}
-                className="mt-4 rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-800"
+                className="mt-4 rounded-lg bg-cyan-700 px-4 py-2 text-sm font-bold text-white hover:bg-cyan-800"
               >
                 Wis filters
               </button>
@@ -1014,7 +974,7 @@ const SalesHistory = ({
             <button
               type="button"
               onClick={() => setVisibleTransactionCount((value) => value + 50)}
-              className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-extrabold text-slate-700 shadow-sm hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500"
+            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-cyan-600"
             >
               Toon volgende{" "}
               {Math.min(
@@ -1027,8 +987,8 @@ const SalesHistory = ({
         )}
       </div>
 
-      <div className="flex items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3.5 text-sm text-sky-900">
-        <ShieldCheck className="mt-0.5 shrink-0 text-sky-700" size={18} />
+      <div className="flex items-start gap-3 rounded-xl border border-cyan-100 bg-cyan-50/70 px-4 py-3.5 text-sm text-slate-700">
+        <ShieldCheck className="mt-0.5 shrink-0 text-cyan-700" size={18} />
         <p>
           <strong>Z-rapporten blijven apart:</strong> ze vormen de officiële
           financiële dagafsluiting en staan daarom in hun eigen onderdeel
@@ -1052,8 +1012,8 @@ const TransactionRow = ({
   canRefund: boolean;
   onRefund: (transaction: Transaction) => void;
 }) => (
-  <tr className="transition-colors hover:bg-sky-50/50">
-    <td className="px-6 py-4 font-mono text-xs font-extrabold text-sky-700">
+  <tr className="transition-colors hover:bg-slate-50">
+    <td className="px-6 py-4 font-mono text-xs font-bold text-cyan-800">
       {invoice.invoiceNumber}
     </td>
     <td className="px-5 py-4 font-medium text-slate-700">
@@ -1174,7 +1134,7 @@ const InvoiceActions = ({
     <button
       type="button"
       onClick={() => onPreview(invoice)}
-      className={`inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-sm font-extrabold text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500 ${mobile ? "flex-1" : ""}`}
+      className={`inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-cyan-600 ${mobile ? "flex-1" : ""}`}
       aria-label={`Bekijk factuur ${invoice.invoiceNumber}`}
     >
       <Eye size={16} /> Bekijken
@@ -1184,7 +1144,7 @@ const InvoiceActions = ({
       onClick={() =>
         downloadInvoicePdf(invoice, `${invoice.invoiceNumber}.pdf`)
       }
-      className={`inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-sky-700 px-3.5 text-sm font-extrabold text-white shadow-sm transition hover:bg-sky-800 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 ${mobile ? "flex-1" : ""}`}
+      className={`inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-cyan-700 px-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-cyan-800 focus:outline-none focus:ring-2 focus:ring-cyan-600 focus:ring-offset-2 ${mobile ? "flex-1" : ""}`}
       aria-label={`Download factuur ${invoice.invoiceNumber}`}
     >
       <Download size={16} /> Download
@@ -1457,14 +1417,14 @@ const ReportsTable = ({ reports }: { reports: DailyReport[] }) => {
   };
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="border-b border-slate-200 px-5 py-5 sm:px-6">
+    <section className="insights-panel overflow-hidden">
+      <div className="border-b border-slate-100 px-5 py-5 sm:px-6">
         <div className="flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-700">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-cyan-50 text-cyan-700">
             <CalendarDays size={20} />
           </span>
           <div>
-            <h2 className="text-lg font-extrabold text-slate-950">
+            <h2 className="text-lg font-bold text-slate-950">
               Z-rapporten
             </h2>
             <p className="mt-1 text-sm text-slate-500">
@@ -1543,7 +1503,7 @@ const ReportsTable = ({ reports }: { reports: DailyReport[] }) => {
             ) : (
               sortedReports.map((report) => (
                 <tr key={report.id} className="hover:bg-slate-50">
-                  <td className="px-6 py-4 font-mono text-xs font-extrabold text-violet-700">
+                  <td className="px-6 py-4 font-mono text-xs font-bold text-cyan-800">
                     #{report.reportNumber}
                   </td>
                   <td className="px-5 py-4 font-semibold text-slate-700">
@@ -1552,17 +1512,17 @@ const ReportsTable = ({ reports }: { reports: DailyReport[] }) => {
                   <td className="px-5 py-4 text-right font-extrabold tabular-nums text-slate-950">
                     {formatEUR(report.totalRevenueCents)}
                   </td>
-                  <td className="px-5 py-4 text-right font-semibold tabular-nums text-emerald-700">
+                  <td className="px-5 py-4 text-right font-semibold tabular-nums text-slate-700">
                     {formatEUR(report.paymentTotalsCents.Cash)}
                   </td>
-                  <td className="px-5 py-4 text-right font-semibold tabular-nums text-sky-700">
+                  <td className="px-5 py-4 text-right font-semibold tabular-nums text-slate-700">
                     {formatEUR(report.paymentTotalsCents.PIN)}
                   </td>
-                  <td className="px-5 py-4 text-right font-semibold tabular-nums text-violet-700">
+                  <td className="px-5 py-4 text-right font-semibold tabular-nums text-slate-700">
                     {formatEUR(report.paymentTotalsCents.Cadeaubon)}
                   </td>
                   <td
-                    className={`px-5 py-4 text-right font-bold tabular-nums ${(report.cashDifferenceCents ?? 0) === 0 ? "text-emerald-700" : "text-rose-700"}`}
+                    className={`px-5 py-4 text-right font-bold tabular-nums ${(report.cashDifferenceCents ?? 0) === 0 ? "text-cyan-700" : "text-rose-700"}`}
                   >
                     {formatEUR(report.cashDifferenceCents ?? 0)}
                   </td>
@@ -1629,14 +1589,14 @@ const AuditTable = ({ rows }: { rows: AuditEntry[] }) => {
   };
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="border-b border-slate-200 px-5 py-5 sm:px-6">
+    <section className="insights-panel overflow-hidden">
+      <div className="border-b border-slate-100 px-5 py-5 sm:px-6">
         <div className="flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-cyan-50 text-cyan-700">
             <ShieldCheck size={20} />
           </span>
           <div>
-            <h2 className="text-lg font-extrabold text-slate-950">Auditlog</h2>
+            <h2 className="text-lg font-bold text-slate-950">Auditlog</h2>
             <p className="mt-1 text-sm text-slate-500">
               Een controleerbaar overzicht van belangrijke acties in Pwayment.
             </p>
@@ -1699,7 +1659,7 @@ const AuditTable = ({ rows }: { rows: AuditEntry[] }) => {
                     {row.userName ?? "Systeem"}
                   </td>
                   <td className="px-5 py-4">
-                    <span className="rounded-lg bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700">
+                    <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-700">
                       {auditActionLabel[row.action] ?? row.action}
                     </span>
                   </td>
@@ -1752,9 +1712,9 @@ function SortableHeader<K extends string>({
         onClick={() => onSort(sortKey)}
         aria-label={`Sorteer ${label} ${nextDirection}`}
         title={`Sorteer op ${label}`}
-        className={`flex w-full items-center gap-1.5 py-3 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500 ${
+        className={`flex w-full items-center gap-1.5 py-3 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-600 ${
           align === "right" ? "justify-end" : "justify-start"
-        } ${active ? "text-sky-700" : "text-slate-500 hover:text-slate-900"}`}
+        } ${active ? "text-cyan-800" : "text-slate-500 hover:text-slate-900"}`}
       >
         <span>{label}</span>
         {active ? (
@@ -1784,48 +1744,39 @@ const RangeButton = ({
     type="button"
     aria-pressed={active}
     onClick={onClick}
-    className={`min-h-10 rounded-lg px-3 py-2 text-sm font-extrabold transition focus:outline-none focus:ring-2 focus:ring-sky-500 ${
+    className={`min-h-9 rounded-md px-3 py-1.5 text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-cyan-600 ${
       active
-        ? "bg-white text-slate-950 shadow-sm ring-1 ring-slate-200"
-        : "text-slate-600 hover:bg-white/60 hover:text-slate-900"
+        ? "bg-white text-cyan-800 shadow-sm ring-1 ring-slate-200"
+        : "text-slate-500 hover:bg-white hover:text-slate-900"
     }`}
   >
     {label}
   </button>
 );
 
-const metricTones = {
-  sky: "bg-sky-50 text-sky-700 ring-sky-100",
-  violet: "bg-violet-50 text-violet-700 ring-violet-100",
-  amber: "bg-amber-50 text-amber-700 ring-amber-100",
-  emerald: "bg-emerald-50 text-emerald-700 ring-emerald-100",
-};
-
 const HistoryMetric = ({
   label,
   value,
   detail,
   icon,
-  tone,
 }: {
   label: string;
   value: string;
   detail: string;
   icon: React.ReactNode;
-  tone: keyof typeof metricTones;
 }) => (
-  <article className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+  <article className="insights-panel min-w-0 p-4 sm:p-5">
     <div className="flex items-start justify-between gap-3">
-      <div className="text-xs font-extrabold uppercase tracking-[0.1em] text-slate-500">
+      <div className="text-xs font-semibold text-slate-500">
         {label}
       </div>
       <span
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset ${metricTones[tone]}`}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-50 text-cyan-700 ring-1 ring-inset ring-cyan-100"
       >
         {icon}
       </span>
     </div>
-    <div className="mt-3 break-words text-xl font-extrabold tracking-tight tabular-nums text-slate-950 sm:text-2xl">
+    <div className="mt-3 break-words text-xl font-bold tracking-tight tabular-nums text-slate-950 sm:text-2xl">
       {value}
     </div>
     <div className="mt-1 text-sm font-medium text-slate-500">{detail}</div>

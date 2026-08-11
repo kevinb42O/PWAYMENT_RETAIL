@@ -170,7 +170,7 @@ export const LoginScreen: React.FC = () => {
         style={{ backgroundImage: 'url("/login_bg.png")' }}
       />
 
-      <div className="relative z-10">
+      <div className="relative z-20">
         <SiteHeader mobileOpen={mobileNavigationOpen} setMobileOpen={setMobileNavigationOpen} />
       </div>
 

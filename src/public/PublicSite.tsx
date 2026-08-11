@@ -1,4 +1,4 @@
-import React, { FormEvent, useEffect, useMemo, useState } from 'react';
+import React, { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight,
   BarChart3,
@@ -280,46 +280,79 @@ const PublicSite: React.FC = () => {
   );
 };
 
-export const SiteHeader = ({ mobileOpen, setMobileOpen }: { mobileOpen: boolean; setMobileOpen: (value: boolean) => void }) => (
-  <>
-    <motion.header className="pw-header" initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .55, ease: motionEase }}>
+export const SiteHeader = ({ mobileOpen, setMobileOpen }: { mobileOpen: boolean; setMobileOpen: (value: boolean) => void }) => {
+  const [activeMenu, setActiveMenu] = useState<string | null>(null);
+  const navigationRef = useRef<HTMLDivElement>(null);
+  const closeNavigation = () => {
+    setActiveMenu(null);
+    setMobileOpen(false);
+  };
+
+  useEffect(() => {
+    const closeOnPointerDown = (event: PointerEvent) => {
+      if (!navigationRef.current?.contains(event.target as Node)) closeNavigation();
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeNavigation();
+    };
+    document.addEventListener('pointerdown', closeOnPointerDown);
+    document.addEventListener('keydown', closeOnEscape);
+    window.addEventListener('scroll', closeNavigation, { passive: true });
+    window.addEventListener('resize', closeNavigation);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnPointerDown);
+      document.removeEventListener('keydown', closeOnEscape);
+      window.removeEventListener('scroll', closeNavigation);
+      window.removeEventListener('resize', closeNavigation);
+    };
+  }, []);
+
+  const toggleMenu = (label: string) => {
+    setMobileOpen(false);
+    setActiveMenu((current) => (current === label ? null : label));
+  };
+
+  return (
+    <div ref={navigationRef} className="pw-navigation-layer">
+      <motion.header className="pw-header" initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .55, ease: motionEase }}>
       <div className="pw-header-inner">
-        <a href="/" className="pw-logo" aria-label="PWAYMENT home">
+        <a href="/" className="pw-logo" aria-label="PWAYMENT home" onClick={closeNavigation}>
           <img src="/branding/pwayment-logo.svg" alt="PWAYMENT" />
         </a>
         <nav className="pw-nav" aria-label="Hoofdnavigatie">
           <NavGroup label="Product" links={[
             ['/product', 'Overzicht', 'Alles in één retailflow'], ['/pos', 'POS & betalingen', 'Snel en betrouwbaar verkopen'], ['/inventory', 'Producten & voorraad', 'Van barcode tot besteladvies'], ['/insights', 'Inzichten', 'Van data naar actie'], ['/customers', 'Klanten & loyaliteit', 'Bouw duurzame relaties'], ['/webshop', 'Webshop', 'Fysiek en online verbonden'], ['/integrations', 'Integraties & API', 'Koppel je retailstack'],
-          ]} />
+          ]} active={activeMenu === 'Product'} onToggle={() => toggleMenu('Product')} onNavigate={closeNavigation} />
           <NavGroup label="Oplossingen" links={[
             ['/solutions/independent-retail', 'Onafhankelijke retail', 'Professioneel zonder complexiteit'], ['/solutions/specialist-retail', 'Speciaalzaken', 'Varianten, merken en advies'], ['/solutions/multi-location', 'Enterprise & ketens', 'Centraal sturen, lokaal verkopen'], ['/solutions/accountants', 'Accountants & partners', 'Schone data en minder handwerk'],
-          ]} />
-          <a href="/pricing">Prijzen</a>
-          <a href="/resources">Resources</a>
+          ]} active={activeMenu === 'Oplossingen'} onToggle={() => toggleMenu('Oplossingen')} onNavigate={closeNavigation} />
+          <a href="/pricing" onClick={closeNavigation}>Prijzen</a>
+          <a href="/resources" onClick={closeNavigation}>Resources</a>
         </nav>
         <div className="pw-header-actions">
-          <a href="/login" className="pw-login">Log in</a>
-          <a href="/register" className="pw-button pw-button-dark pw-button-small">Start gratis <ArrowRight size={15} /></a>
+          <a href="/login" className="pw-login" onClick={closeNavigation}>Log in</a>
+          <a href="/register" className="pw-button pw-button-dark pw-button-small" onClick={closeNavigation}>Start gratis <ArrowRight size={15} /></a>
         </div>
-        <button className="pw-mobile-toggle" onClick={() => setMobileOpen(!mobileOpen)} aria-expanded={mobileOpen} aria-label="Navigatie openen">
+        <button className="pw-mobile-toggle" onClick={() => { setActiveMenu(null); setMobileOpen(!mobileOpen); }} aria-expanded={mobileOpen} aria-label={mobileOpen ? 'Navigatie sluiten' : 'Navigatie openen'}>
           {mobileOpen ? <X /> : <Menu />}
         </button>
       </div>
-    </motion.header>
-    {mobileOpen && (
-      <nav className="pw-mobile-nav" aria-label="Mobiele navigatie">
-        <a href="/product">Product</a><a href="/pos">POS & betalingen</a><a href="/inventory">Voorraad</a><a href="/insights">Inzichten</a><a href="/customers">Klanten</a><a href="/webshop">Webshop</a><a href="/integrations">Integraties</a><a href="/pricing">Prijzen</a><a href="/resources">Resources</a>
-        <div className="pw-mobile-actions"><a href="/login">Log in</a><a href="/register" className="pw-button pw-button-dark">Start gratis</a></div>
-      </nav>
-    )}
-  </>
-);
+      </motion.header>
+      {mobileOpen && (
+        <nav className="pw-mobile-nav" aria-label="Mobiele navigatie">
+          <a href="/product" onClick={closeNavigation}>Product</a><a href="/pos" onClick={closeNavigation}>POS & betalingen</a><a href="/inventory" onClick={closeNavigation}>Voorraad</a><a href="/insights" onClick={closeNavigation}>Inzichten</a><a href="/customers" onClick={closeNavigation}>Klanten</a><a href="/webshop" onClick={closeNavigation}>Webshop</a><a href="/integrations" onClick={closeNavigation}>Integraties</a><a href="/pricing" onClick={closeNavigation}>Prijzen</a><a href="/resources" onClick={closeNavigation}>Resources</a>
+          <div className="pw-mobile-actions"><a href="/login" onClick={closeNavigation}>Log in</a><a href="/register" className="pw-button pw-button-dark" onClick={closeNavigation}>Start gratis</a></div>
+        </nav>
+      )}
+    </div>
+  );
+};
 
-const NavGroup = ({ label, links }: { label: string; links: string[][] }) => (
+const NavGroup = ({ label, links, active, onToggle, onNavigate }: { label: string; links: string[][]; active: boolean; onToggle: () => void; onNavigate: () => void }) => (
   <div className="pw-nav-group">
-    <button>{label} <ChevronDown size={14} /></button>
-    <div className="pw-mega">
-      {links.map(([href, title, description]) => <a href={href} key={href}><strong>{title}</strong><span>{description}</span></a>)}
+    <button type="button" aria-expanded={active} aria-controls={`pw-menu-${label.toLowerCase()}`} onClick={onToggle}>{label} <ChevronDown size={14} /></button>
+    <div id={`pw-menu-${label.toLowerCase()}`} className={`pw-mega${active ? ' is-open' : ''}`}>
+      {links.map(([href, title, description]) => <a href={href} key={href} onClick={onNavigate}><strong>{title}</strong><span>{description}</span></a>)}
     </div>
   </div>
 );
