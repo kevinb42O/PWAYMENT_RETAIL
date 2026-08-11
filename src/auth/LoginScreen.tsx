@@ -9,6 +9,7 @@ import {
   subscribeLoadingProgress,
 } from "../services/loadingProgress";
 import {
+  ArrowLeft,
   ArrowRight,
   Check,
   Crown,
@@ -168,8 +169,8 @@ export const LoginScreen: React.FC = () => {
       />
 
       {/* Top Header */}
-      <header className="relative z-10 w-full px-6 sm:px-10 lg:px-12 py-7 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <header className="relative z-10 flex w-full items-center justify-between gap-5 border-b border-zinc-200/70 bg-white/65 px-6 py-4 backdrop-blur-xl sm:px-10 lg:px-12">
+        <div className="hidden items-center gap-3">
           {/* P Monogram Icon */}
           <svg
             viewBox="0 0 60 60"
@@ -242,6 +243,22 @@ export const LoginScreen: React.FC = () => {
             </span>
           </div>
         </div>
+
+        <a href="/" className="group flex shrink-0 items-center gap-2" aria-label="Naar de Pwayment-website">
+          <img src="/branding/pwayment-logo.svg" alt="PWAYMENT" className="h-7 w-auto transition-transform duration-300 group-hover:scale-[1.03]" />
+          <span className="hidden border-l border-zinc-300 pl-3 text-xs font-semibold text-zinc-500 sm:inline">Retail intelligence</span>
+        </a>
+
+        <nav className="hidden items-center gap-6 text-sm font-semibold text-zinc-600 lg:flex" aria-label="Website navigatie">
+          <a href="/product" className="transition-colors hover:text-zinc-950">Product</a>
+          <a href="/pricing" className="transition-colors hover:text-zinc-950">Prijzen</a>
+          <a href="/resources" className="transition-colors hover:text-zinc-950">Resources</a>
+        </nav>
+
+        <a href="/" className="ml-auto inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold text-zinc-600 transition-all hover:bg-zinc-950 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 sm:px-4">
+          <ArrowLeft size={14} />
+          <span className="hidden sm:inline">Website</span>
+        </a>
 
         {pinLoginEnabled && (
           <button
@@ -598,17 +615,15 @@ export const LoginScreen: React.FC = () => {
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className="w-full h-12 bg-zinc-950 hover:bg-black active:scale-[0.99] text-white font-bold rounded-xl text-sm shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-2"
+                      className="group relative mt-3 flex h-13 w-full items-center justify-center gap-2 overflow-hidden rounded-2xl border border-cyan-300/30 bg-gradient-to-r from-slate-950 via-slate-900 to-cyan-950 text-sm font-extrabold text-white shadow-[0_12px_28px_-12px_rgba(8,47,73,0.7)] transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-0 before:-left-1/2 before:w-1/3 before:-skew-x-12 before:bg-white/15 before:blur-md before:transition-transform before:duration-700 hover:-translate-y-0.5 hover:border-cyan-200/70 hover:shadow-[0_20px_36px_-14px_rgba(8,145,178,0.72)] hover:before:translate-x-[420%] active:translate-y-0 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 disabled:cursor-wait disabled:translate-y-0 disabled:opacity-70 disabled:shadow-none"
                     >
                       {isLoading ? (
-                        <>
+                        <span className="relative z-10 flex items-center gap-2">
                           <LoaderCircle size={16} className="animate-spin" />
                           Aanmelden…
-                        </>
+                        </span>
                       ) : (
-                        <>
-                          Inloggen <ArrowRight size={15} />
-                        </>
+                        <span className="relative z-10 flex items-center gap-2">Inloggen <ArrowRight size={16} className="transition-transform duration-300 group-hover:translate-x-1" /></span>
                       )}
                     </button>
                   </form>
@@ -780,17 +795,15 @@ export const LoginScreen: React.FC = () => {
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className="w-full h-12 bg-zinc-950 hover:bg-black active:scale-[0.99] text-white font-bold rounded-xl text-sm shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-3"
+                      className="group relative mt-3 flex h-13 w-full items-center justify-center gap-2 overflow-hidden rounded-2xl border border-cyan-300/30 bg-gradient-to-r from-slate-950 via-slate-900 to-cyan-950 text-sm font-extrabold text-white shadow-[0_12px_28px_-12px_rgba(8,47,73,0.7)] transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-0 before:-left-1/2 before:w-1/3 before:-skew-x-12 before:bg-white/15 before:blur-md before:transition-transform before:duration-700 hover:-translate-y-0.5 hover:border-cyan-200/70 hover:shadow-[0_20px_36px_-14px_rgba(8,145,178,0.72)] hover:before:translate-x-[420%] active:translate-y-0 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 disabled:cursor-wait disabled:translate-y-0 disabled:opacity-70 disabled:shadow-none"
                     >
                       {isLoading ? (
-                        <>
+                        <span className="relative z-10 flex items-center gap-2">
                           <LoaderCircle size={16} className="animate-spin" />
                           Account maken…
-                        </>
+                        </span>
                       ) : (
-                        <>
-                          Account Aanmaken <Check size={15} />
-                        </>
+                        <span className="relative z-10 flex items-center gap-2">Account aanmaken <Check size={16} className="transition-transform duration-300 group-hover:scale-110" /></span>
                       )}
                     </button>
                   </form>

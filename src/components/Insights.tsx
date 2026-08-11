@@ -61,7 +61,9 @@ import {
   SectionCard,
   SegmentControl,
   DonutBreakdown,
+  ChartTooltip,
   TextLink,
+  tooltipPositionFromElement,
   VerticalBars,
 } from "./insights/InsightPrimitives";
 
@@ -2363,6 +2365,7 @@ const TeamWeekdayChart = ({
     seller: string;
     day: string;
     count: number;
+    position: { x: number; y: number };
   } | null>(null);
   const employees: [string, string][] = users.map(user => [user.id, user.name]);
 
@@ -2409,11 +2412,6 @@ const TeamWeekdayChart = ({
     );
   return (
     <div>
-      <div className="mb-4 min-h-14 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3" role="status" aria-live="polite">
-        {activeSegment ? (
-          <p className="text-sm text-slate-700"><strong className="font-extrabold text-slate-950">{activeSegment.seller}</strong> verwerkte <strong className="font-extrabold tabular-nums text-slate-950">{activeSegment.count}</strong> {activeSegment.count === 1 ? "verkoop" : "verkopen"} op {activeSegment.day}.</p>
-        ) : <p className="text-sm text-slate-500">Wijs een gekleurd segment aan voor de exacte verdeling per verkoper.</p>}
-      </div>
       <div className="overflow-x-auto">
         <div className="flex h-72 min-w-[620px] items-end gap-4">
           {rows.map((row) => (
@@ -2436,9 +2434,10 @@ const TeamWeekdayChart = ({
                       key={employees[index][0]}
                       type="button"
                       aria-label={`${employees[index][1]}, ${row.label}: ${count} ${count === 1 ? "verkoop" : "verkopen"}`}
-                      onPointerEnter={() => setActiveSegment({ seller: employees[index][1], day: row.label, count })}
+                      onPointerEnter={(event) => setActiveSegment({ seller: employees[index][1], day: row.label, count, position: { x: event.clientX, y: event.clientY } })}
+                      onPointerMove={(event) => setActiveSegment({ seller: employees[index][1], day: row.label, count, position: { x: event.clientX, y: event.clientY } })}
                       onPointerLeave={() => setActiveSegment(null)}
-                      onFocus={() => setActiveSegment({ seller: employees[index][1], day: row.label, count })}
+                      onFocus={(event) => setActiveSegment({ seller: employees[index][1], day: row.label, count, position: tooltipPositionFromElement(event.currentTarget) })}
                       onBlur={() => setActiveSegment(null)}
                       className="block w-full cursor-crosshair outline-none ring-inset focus-visible:ring-2 focus-visible:ring-slate-950 hover:brightness-110"
                       style={{
@@ -2456,6 +2455,7 @@ const TeamWeekdayChart = ({
           ))}
         </div>
       </div>
+      {activeSegment && <ChartTooltip label={`${activeSegment.seller} · ${activeSegment.day}`} value={`${activeSegment.count} ${activeSegment.count === 1 ? "verkoop" : "verkopen"}`} detail="Verkochte transacties" position={activeSegment.position} />}
       <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 border-t border-slate-100 pt-4">
         {employees.map(([userId, name], index) => (
           <span
@@ -2534,7 +2534,7 @@ const TrendChart = ({
   previous: SalesChartPoint[];
   metric: ChartMetric;
 }) => {
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [activeIndex, setActiveIndex] = useState<{ index: number; position: { x: number; y: number } } | null>(null);
   const values = current.map((point) =>
     metric === "revenue" ? point.revenueCents : point.grossProfitCents,
   );
@@ -2617,8 +2617,8 @@ const TrendChart = ({
         />
         {values.map((value, index) => (
           <g key={current[index].key}>
-            {activeIndex === index && <line x1={x(index)} x2={x(index)} y1={padding.top} y2={height - padding.bottom} stroke="#0f172a" strokeDasharray="3 4" strokeOpacity="0.38" />}
-            <circle cx={x(index)} cy={y(value)} r={activeIndex === index ? 5 : 3} fill="#0891b2" />
+            {activeIndex?.index === index && <line x1={x(index)} x2={x(index)} y1={padding.top} y2={height - padding.bottom} stroke="#0f172a" strokeDasharray="3 4" strokeOpacity="0.38" />}
+            <circle cx={x(index)} cy={y(value)} r={activeIndex?.index === index ? 5 : 3} fill="#0891b2" />
             <circle
               cx={x(index)}
               cy={y(value)}
@@ -2627,9 +2627,10 @@ const TrendChart = ({
               tabIndex={0}
               role="button"
               aria-label={`${current[index].label}: ${formatEUR(value)}, voorafgaande periode ${formatEUR(previousValues[index] ?? 0)}`}
-              onPointerEnter={() => setActiveIndex(index)}
+              onPointerEnter={(event) => setActiveIndex({ index, position: { x: event.clientX, y: event.clientY } })}
+              onPointerMove={(event) => setActiveIndex({ index, position: { x: event.clientX, y: event.clientY } })}
               onPointerLeave={() => setActiveIndex(null)}
-              onFocus={() => setActiveIndex(index)}
+              onFocus={(event) => setActiveIndex({ index, position: tooltipPositionFromElement(event.currentTarget) })}
               onBlur={() => setActiveIndex(null)}
             />
           </g>
@@ -2650,9 +2651,7 @@ const TrendChart = ({
           ) : null,
         )}
       </svg>
-      <div className="mt-3 min-h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm" role="status" aria-live="polite">
-        {activeIndex == null ? <span className="text-slate-500">Wijs een punt aan voor de exacte dagwaarde en vergelijking.</span> : <span className="text-slate-700"><strong className="font-extrabold text-slate-950">{current[activeIndex].label}</strong> · geselecteerd: <strong className="font-extrabold tabular-nums text-slate-950">{formatEUR(values[activeIndex])}</strong> · voorafgaand: <strong className="font-extrabold tabular-nums text-slate-950">{formatEUR(previousValues[activeIndex] ?? 0)}</strong></span>}
-      </div>
+      {activeIndex && <ChartTooltip label={current[activeIndex.index].label} value={formatEUR(values[activeIndex.index])} detail={`Voorafgaande periode: ${formatEUR(previousValues[activeIndex.index] ?? 0)}`} position={activeIndex.position} />}
       <div className="mt-1 flex justify-end gap-4 text-[11px] font-semibold text-slate-500">
         <span className="inline-flex items-center gap-1.5">
           <i className="h-0.5 w-5 bg-cyan-600" />
