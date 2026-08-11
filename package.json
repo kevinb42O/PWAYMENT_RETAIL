@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
+    "prebuild": "npm run generate:site",
     "build": "vite build && node scripts/build-sites-worker.mjs",
     "preview": "vite preview",
     "preview:e2e": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
@@ -23,9 +24,11 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
     "supabase:generate-demo": "tsx scripts/generate-supabase-demo-migration.ts supabase/migrations/20260811071000_seed_kevin_demo.sql",
+    "generate:site": "node scripts/generate-public-site-assets.mjs",
+    "check:site": "node scripts/check-public-site.mjs",
     "check:bundle": "node scripts/check-bundle-budget.mjs",
     "check:security": "npm audit --audit-level=high",
-    "check": "npm run lint && npm run test:coverage && npm run build && npm run check:bundle"
+    "check": "npm run lint && npm run test:coverage && npm run build && npm run check:site && npm run check:bundle"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",

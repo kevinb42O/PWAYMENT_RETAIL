@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /app
+Disallow: /login
+Disallow: /register
+Disallow: /shop/checkout
+
+Sitemap: https://pwayment.be/sitemap.xml

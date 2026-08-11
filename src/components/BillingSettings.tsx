@@ -44,6 +44,7 @@ import {
   trialDaysRemaining,
   useEntitlements,
 } from '../billing/entitlements';
+import { formatPlanMonthlyPrice } from '../billing/planCatalog';
 
 export type BillingSubTab = 'plan' | 'invoices' | 'payment' | 'addons';
 
@@ -213,7 +214,7 @@ export const BillingSettings: React.FC<BillingSettingsProps> = ({
 
                 <div>
                   <div className="text-3xl font-black text-slate-900">
-                    € 0
+                    {formatPlanMonthlyPrice('basic', billingCycle)}
                     <span className="text-xs font-medium text-slate-500"> / maand</span>
                   </div>
                   <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed">
@@ -296,7 +297,7 @@ export const BillingSettings: React.FC<BillingSettingsProps> = ({
 
                 <div>
                   <div className="text-3xl font-black text-slate-900">
-                    {billingCycle === 'yearly' ? '€ 55' : '€ 69'}
+                    {formatPlanMonthlyPrice('pro', billingCycle)}
                     <span className="text-xs font-medium text-slate-500"> / maand</span>
                   </div>
                   <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed">
@@ -390,7 +391,7 @@ export const BillingSettings: React.FC<BillingSettingsProps> = ({
 
                 <div>
                   <div className="text-3xl font-black text-slate-900">
-                    {billingCycle === 'yearly' ? '€ 119' : '€ 149'}
+                    {formatPlanMonthlyPrice('enterprise', billingCycle)}
                     <span className="text-xs font-medium text-slate-500"> / maand</span>
                   </div>
                   <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed">
