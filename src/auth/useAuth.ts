@@ -10,6 +10,7 @@ import {
 import { hashCredential, verifyCredential } from "../utils/credentials";
 import { AuditAction, AuditEntry, Role, User } from "../types";
 import type { Json } from "../types/database.generated";
+import { useEntitlements } from "../billing/entitlements";
 
 interface AuthState {
   currentUserId: string | null;
@@ -280,6 +281,13 @@ export const useAuth = create<AuthState>()(
           .maybeSingle();
         await syncStoreFromSupabase(membership.store_id);
         startTenantSettingsPersistence(membership.store_id);
+        try {
+          await useEntitlements.getState().load(membership.store_id, true);
+        } catch (error) {
+          // Authentication and the core POS stay available on the safe Basis
+          // fallback when billing status cannot temporarily be refreshed.
+          console.error("Abonnementsstatus laden mislukt:", error);
+        }
         const storeName = Array.isArray(membership.stores)
           ? membership.stores[0]?.name
           : membership.stores?.name;
@@ -509,6 +517,7 @@ export const useAuth = create<AuthState>()(
       async logout() {
         await audit("logout");
         stopTenantSettingsPersistence();
+        useEntitlements.getState().clear();
         await supabase.auth.signOut();
         activateTenantDatabase(null);
         try {

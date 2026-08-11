@@ -64,6 +64,8 @@ import {
 import { Modal } from "./Modal";
 import { db } from "../db/db";
 import { isGiftCardExpired } from "../utils/giftCards";
+import { FEATURE_KEYS, useEntitlements } from "../billing/entitlements";
+import { useStore } from "../store/useStore";
 const parseCents = (txt: string): number => {
   const parsed = parseDecimalToCents(txt);
   return parsed.ok ? parsed.cents : 0;
@@ -87,6 +89,10 @@ const giftCardDirectionLabel = (
 };
 
 export const Customers: React.FC = () => {
+  const canIssueGiftCards = useEntitlements(
+    (state) => state.snapshot?.features[FEATURE_KEYS.giftCardsIssue] === true,
+  );
+  const setMainView = useStore((state) => state.setMainView);
   const {
     customers,
     giftCards,
@@ -437,6 +443,10 @@ export const Customers: React.FC = () => {
 
   const handleSaveGiftCard = async () => {
     if (!editingGiftCard) return;
+    if (!canIssueGiftCards) {
+      setFormError("Nieuwe cadeaubonnen uitgeven vereist Retail Professional.");
+      return;
+    }
     setFormError(null);
     const initialCents = parseCents(editingGiftCard.initialText || "0,00");
     if (initialCents <= 0) {
@@ -465,6 +475,10 @@ export const Customers: React.FC = () => {
 
   const handleRechargeGiftCard = async () => {
     if (!rechargeGC) return;
+    if (!canIssueGiftCards) {
+      setFormError("Cadeaubonnen opladen vereist Retail Professional.");
+      return;
+    }
     setFormError(null);
     const cents = parseCents(rechargeAmountText);
     if (cents <= 0) {
@@ -505,6 +519,10 @@ export const Customers: React.FC = () => {
             ) : (
               <button
                 onClick={() => {
+                  if (!canIssueGiftCards) {
+                    setMainView("profile");
+                    return;
+                  }
                   setFormError(null);
                   setGiftCardPaymentMethod("PIN");
                   setEditingGiftCard({
@@ -514,7 +532,8 @@ export const Customers: React.FC = () => {
                 }}
                 className="customer-primary-action flex items-center gap-2 px-4 py-2 rounded-lg font-semibold"
               >
-                <Plus size={18} /> Nieuwe cadeaubon
+                {canIssueGiftCards ? <Plus size={18} /> : <Lock size={18} />}
+                {canIssueGiftCards ? "Nieuwe cadeaubon" : "Pro vereist"}
               </button>
             )}
           </div>
@@ -1177,15 +1196,17 @@ export const Customers: React.FC = () => {
                               <History size={16} />
                             </button>
                             <button
+                              disabled={!canIssueGiftCards}
                               onClick={(event) => {
                                 event.stopPropagation();
+                                if (!canIssueGiftCards) return;
                                 setFormError(null);
                                 setRechargePaymentMethod("PIN");
                                 setRechargeGC(gc);
                                 setRechargeAmountText("0,00");
                               }}
-                              className="p-2 rounded-lg hover:bg-zinc-700 text-zinc-300"
-                              title="Opwaarderen"
+                              className="p-2 rounded-lg hover:bg-zinc-700 text-zinc-300 disabled:cursor-not-allowed disabled:opacity-35"
+                              title={canIssueGiftCards ? "Opwaarderen" : "Opwaarderen vereist Retail Professional"}
                             >
                               <BatteryCharging size={16} />
                             </button>

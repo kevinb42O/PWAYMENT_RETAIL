@@ -7,6 +7,7 @@ import { upsertSupabaseProducts } from '../services/supabaseMutations';
 import { FEATURES } from '../config/features';
 import { isSupportedVatRate, UnsupportedVatRateError } from '../utils/vat';
 import { findProductByScanCode, ProductScanMatch } from '../utils/productLookup';
+import { FEATURE_KEYS, featureLimit } from '../billing/entitlements';
 
 interface ProductsState {
   list: Product[];
@@ -122,6 +123,17 @@ export const useProducts = create<ProductsState>((set, get) => ({
     if (!isSupportedVatRate(p.vatRate)) throw new UnsupportedVatRateError(p.vatRate, p.name);
     const existing = await db.products.get(p.id);
     const next: Product = normalizeProduct({ ...p, isActive: p.isActive ?? true });
+    const productLimit = featureLimit(FEATURE_KEYS.activeProducts);
+    const activatesNewSlot = next.isActive !== false && existing?.isActive !== true;
+    if (
+      activatesNewSlot &&
+      productLimit != null &&
+      get().list.filter((product) => product.isActive !== false).length >= productLimit
+    ) {
+      throw new Error(
+        `Pwayment Basis ondersteunt maximaal ${productLimit} actieve producten. Archiveer eerst een product of activeer Retail Professional.`,
+      );
+    }
     await upsertSupabaseProducts(useAuth.getState().currentStoreId, [next]);
     await db.products.put(next);
     set((s) => {
@@ -143,6 +155,20 @@ export const useProducts = create<ProductsState>((set, get) => ({
       if (!isSupportedVatRate(p.vatRate)) throw new UnsupportedVatRateError(p.vatRate, p.name);
     }
     const next = products.map((p) => normalizeProduct({ ...p, isActive: p.isActive ?? true }));
+    const productLimit = featureLimit(FEATURE_KEYS.activeProducts);
+    if (productLimit != null) {
+      const existingById = new Map(get().list.map((product) => [product.id, product]));
+      const currentlyActive = get().list.filter((product) => product.isActive !== false).length;
+      const newActiveSlots = next.filter(
+        (product) =>
+          product.isActive !== false && existingById.get(product.id)?.isActive !== true,
+      ).length;
+      if (currentlyActive + newActiveSlots > productLimit) {
+        throw new Error(
+          `Deze import zou de limiet van ${productLimit} actieve producten in Pwayment Basis overschrijden. Bestaande producten blijven ongewijzigd.`,
+        );
+      }
+    }
     await upsertSupabaseProducts(useAuth.getState().currentStoreId, next);
     await db.transaction('rw', db.products, async () => {
       await db.products.bulkPut(next);
@@ -170,6 +196,15 @@ export const useProducts = create<ProductsState>((set, get) => ({
   restore: async (id) => {
     const cur = await db.products.get(id);
     if (!cur) return;
+    const productLimit = featureLimit(FEATURE_KEYS.activeProducts);
+    if (
+      productLimit != null &&
+      get().list.filter((product) => product.isActive !== false).length >= productLimit
+    ) {
+      throw new Error(
+        `Pwayment Basis ondersteunt maximaal ${productLimit} actieve producten. Uw gearchiveerde product blijft veilig bewaard.`,
+      );
+    }
     const next: Product = { ...cur, isActive: true };
     await upsertSupabaseProducts(useAuth.getState().currentStoreId, [next]);
     await db.products.put(next);

@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.15"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       audit_entries: {
@@ -82,6 +57,93 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      billing_features: {
+        Row: {
+          category: string
+          created_at: string
+          feature_key: string
+          name: string
+          value_type: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          feature_key: string
+          name: string
+          value_type?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          feature_key?: string
+          name?: string
+          value_type?: string
+        }
+        Relationships: []
+      }
+      billing_plan_features: {
+        Row: {
+          enabled: boolean
+          feature_key: string
+          limit_value: number | null
+          plan_code: string
+        }
+        Insert: {
+          enabled?: boolean
+          feature_key: string
+          limit_value?: number | null
+          plan_code: string
+        }
+        Update: {
+          enabled?: boolean
+          feature_key?: string
+          limit_value?: number | null
+          plan_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_plan_features_feature_key_fkey"
+            columns: ["feature_key"]
+            isOneToOne: false
+            referencedRelation: "billing_features"
+            referencedColumns: ["feature_key"]
+          },
+          {
+            foreignKeyName: "billing_plan_features_plan_code_fkey"
+            columns: ["plan_code"]
+            isOneToOne: false
+            referencedRelation: "billing_plans"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      billing_plans: {
+        Row: {
+          code: string
+          created_at: string
+          is_active: boolean
+          name: string
+          rank: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          is_active?: boolean
+          name: string
+          rank: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          is_active?: boolean
+          name?: string
+          rank?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       business_actions: {
         Row: {
@@ -1054,6 +1116,81 @@ export type Database = {
           },
         ]
       }
+      store_subscriptions: {
+        Row: {
+          activation_source: string
+          billing_cycle: string | null
+          cancel_at_period_end: boolean
+          created_at: string
+          current_period_ends_at: string | null
+          current_period_started_at: string | null
+          plan_code: string
+          provider: string | null
+          provider_customer_id: string | null
+          provider_subscription_id: string | null
+          status: string
+          store_id: string
+          test_mode: boolean
+          trial_ends_at: string | null
+          trial_started_at: string | null
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          activation_source?: string
+          billing_cycle?: string | null
+          cancel_at_period_end?: boolean
+          created_at?: string
+          current_period_ends_at?: string | null
+          current_period_started_at?: string | null
+          plan_code: string
+          provider?: string | null
+          provider_customer_id?: string | null
+          provider_subscription_id?: string | null
+          status: string
+          store_id: string
+          test_mode?: boolean
+          trial_ends_at?: string | null
+          trial_started_at?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          activation_source?: string
+          billing_cycle?: string | null
+          cancel_at_period_end?: boolean
+          created_at?: string
+          current_period_ends_at?: string | null
+          current_period_started_at?: string | null
+          plan_code?: string
+          provider?: string | null
+          provider_customer_id?: string | null
+          provider_subscription_id?: string | null
+          status?: string
+          store_id?: string
+          test_mode?: boolean
+          trial_ends_at?: string | null
+          trial_started_at?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_subscriptions_plan_code_fkey"
+            columns: ["plan_code"]
+            isOneToOne: false
+            referencedRelation: "billing_plans"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "store_subscriptions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stores: {
         Row: {
           address_line_1: string | null
@@ -1122,6 +1259,70 @@ export type Database = {
           website?: string | null
         }
         Relationships: []
+      }
+      subscription_events: {
+        Row: {
+          actor_user_id: string | null
+          event_type: string
+          id: string
+          metadata: Json
+          new_plan_code: string | null
+          new_status: string | null
+          occurred_at: string
+          previous_plan_code: string | null
+          previous_status: string | null
+          source: string
+          store_id: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json
+          new_plan_code?: string | null
+          new_status?: string | null
+          occurred_at?: string
+          previous_plan_code?: string | null
+          previous_status?: string | null
+          source: string
+          store_id: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json
+          new_plan_code?: string | null
+          new_status?: string | null
+          occurred_at?: string
+          previous_plan_code?: string | null
+          previous_status?: string | null
+          source?: string
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_events_new_plan_code_fkey"
+            columns: ["new_plan_code"]
+            isOneToOne: false
+            referencedRelation: "billing_plans"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "subscription_events_previous_plan_code_fkey"
+            columns: ["previous_plan_code"]
+            isOneToOne: false
+            referencedRelation: "billing_plans"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "subscription_events_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       transaction_lines: {
         Row: {
@@ -1718,6 +1919,10 @@ export type Database = {
         }
         Returns: string
       }
+      change_test_subscription: {
+        Args: { target_plan: string; target_store_id: string }
+        Returns: Json
+      }
       checkout_sale: {
         Args: { payload: Json; target_store_id: string }
         Returns: Json
@@ -1726,7 +1931,15 @@ export type Database = {
         Args: { payload: Json; target_store_id: string }
         Returns: Json
       }
+      get_store_entitlements: {
+        Args: { target_store_id: string }
+        Returns: Json
+      }
       mutate_gift_card: {
+        Args: { payload: Json; target_store_id: string }
+        Returns: Json
+      }
+      mutate_gift_card_internal: {
         Args: { payload: Json; target_store_id: string }
         Returns: Json
       }
@@ -1741,6 +1954,14 @@ export type Database = {
       save_purchase_order: {
         Args: { payload: Json; target_store_id: string }
         Returns: string
+      }
+      save_purchase_order_internal: {
+        Args: { payload: Json; target_store_id: string }
+        Returns: string
+      }
+      simulate_test_trial: {
+        Args: { days_remaining: number; target_store_id: string }
+        Returns: Json
       }
     }
     Enums: {
@@ -1870,9 +2091,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },

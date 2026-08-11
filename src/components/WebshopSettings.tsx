@@ -29,6 +29,7 @@ import { useProducts } from '../store/useProducts';
 import { WebshopPreviewModal } from './WebshopPreviewModal';
 import { Product } from '../types';
 import { WebshopOrders } from './WebshopOrders';
+import { FEATURE_KEYS, useEntitlements } from '../billing/entitlements';
 
 interface WebshopSettingsProps {
   activeTab: string;
@@ -41,6 +42,9 @@ export const WebshopSettings: React.FC<WebshopSettingsProps> = ({
 }) => {
   const webshop = useWebshopStore();
   const { list: products } = useProducts();
+  const canPublishWebshop = useEntitlements(
+    (state) => state.snapshot?.features[FEATURE_KEYS.webshopPublish] === true,
+  );
 
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -61,7 +65,7 @@ export const WebshopSettings: React.FC<WebshopSettingsProps> = ({
   const [newCouponMinOrder, setNewCouponMinOrder] = useState('0');
 
   // License restriction check: Webshop publish is ONLY in 'pro' or 'enterprise'
-  const isPlanWebshopEnabled = webshop.activePlan === 'pro' || webshop.activePlan === 'enterprise';
+  const isPlanWebshopEnabled = canPublishWebshop;
 
   // Catalog tab state
   const [productSearch, setProductSearch] = useState('');

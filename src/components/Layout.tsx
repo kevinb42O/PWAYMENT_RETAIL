@@ -5,6 +5,10 @@ import { useStore } from "../store/useStore";
 import { useAuth } from "../auth/useAuth";
 import { useProducts } from "../store/useProducts";
 import { matchesCatalogQuery } from "../utils/productLookup";
+import { FeatureGate } from "../billing/FeatureGate";
+import { TrialStatus } from "../billing/TrialStatus";
+import { FEATURE_KEYS, useEntitlements } from "../billing/entitlements";
+import { supabase } from "../lib/supabase";
 import {
   AlertCircle,
   CheckCircle2,
@@ -78,7 +82,8 @@ export const Layout: React.FC = () => {
     setMainView,
     scanCodeToCart,
   } = useStore();
-  const { currentUserName, currentRole, logout } = useAuth();
+  const { currentUserName, currentRole, currentStoreId, logout } = useAuth();
+  const refreshEntitlements = useEntitlements((state) => state.load);
   const products = useProducts((s) => s.list);
   const hydrateProducts = useProducts((s) => s.hydrate);
 
@@ -99,6 +104,26 @@ export const Layout: React.FC = () => {
   const userMenuButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const cartCount = cart.orders.reduce((acc, o) => acc + o.quantity, 0);
+
+  useEffect(() => {
+    if (!currentStoreId) return;
+    const channel = supabase
+      .channel(`billing:${currentStoreId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "store_subscriptions",
+          filter: `store_id=eq.${currentStoreId}`,
+        },
+        () => void refreshEntitlements(currentStoreId, true).catch(() => undefined),
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [currentStoreId, refreshEntitlements]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -432,6 +457,7 @@ export const Layout: React.FC = () => {
           className="relative flex items-center gap-2 shrink-0"
           ref={userMenuRef}
         >
+          <TrialStatus onOpenBilling={() => setMainView("profile")} />
           <div className="pos-user-badge hidden sm:flex flex-col items-end leading-tight px-3 py-1.5 select-none">
             <span className="text-xs font-bold text-slate-800">
               {currentUserName}
@@ -606,7 +632,16 @@ export const Layout: React.FC = () => {
         {mainView === "z-report" && <ZReportView />}
         {mainView === "audit-log" && <AuditLog />}
         {mainView === "customers" && <Customers />}
-        {mainView === "insights" && <Insights />}
+        {mainView === "insights" && (
+          <FeatureGate
+            feature={FEATURE_KEYS.insights}
+            title="Retail intelligence is beschikbaar in Retail Professional"
+            description="Uw verkoop- en voorraaddata blijft veilig bewaard. Upgrade om prognoses, marges, klantinzichten en actieadviezen opnieuw te openen."
+            onUpgrade={() => setMainView("profile")}
+          >
+            <Insights />
+          </FeatureGate>
+        )}
         {(mainView === "profile" || mainView === "admin") &&
           (currentRole === "owner" || currentRole === "manager" ? (
             <ProfileView />

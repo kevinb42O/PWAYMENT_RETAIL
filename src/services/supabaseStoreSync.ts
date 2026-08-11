@@ -638,8 +638,13 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
   });
 
   if (webshopResult.data?.settings) {
+    const remoteSettings = jsonObject<Record<string, Json>>(
+      webshopResult.data.settings,
+    );
+    const { activePlan: _legacyPlan, ...safeSettings } = remoteSettings;
+    void _legacyPlan;
     useWebshopStore.setState(
-      jsonObject(webshopResult.data.settings),
+      safeSettings as Partial<ReturnType<typeof useWebshopStore.getState>>,
       false,
     );
   } else {

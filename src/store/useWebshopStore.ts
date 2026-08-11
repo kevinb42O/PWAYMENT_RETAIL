@@ -65,9 +65,6 @@ export interface WebshopSettings {
   requireTermsCheckbox: boolean;
   enableOrderNotes: boolean;
 
-  // License & Plan
-  activePlan: 'free' | 'pro' | 'enterprise';
-
   // Socials & Notifications
   instagramUrl: string;
   facebookUrl: string;
@@ -77,7 +74,6 @@ export interface WebshopSettings {
 
 interface WebshopStoreState extends WebshopSettings {
   updateSettings: (newSettings: Partial<WebshopSettings>) => void;
-  setActivePlan: (plan: 'free' | 'pro' | 'enterprise') => void;
   toggleProductPublished: (productId: string) => void;
   toggleProductFeatured: (productId: string) => void;
   setAllProductsPublished: (productIds: string[], published: boolean) => void;
@@ -153,7 +149,6 @@ export const DEMO_WEBSHOP_SETTINGS: WebshopSettings = {
   requireTermsCheckbox: true,
   enableOrderNotes: true,
 
-  activePlan: 'free',
   instagramUrl: 'https://instagram.com/pwayment',
   facebookUrl: 'https://facebook.com/pwayment',
   orderNotificationEmail: 'bestellingen@pwayment-skateshop.be',
@@ -225,8 +220,6 @@ export const useWebshopStore = create<WebshopStoreState>()(
       updateSettings: (newSettings) => {
         set((state) => ({ ...state, ...newSettings }));
       },
-
-      setActivePlan: (plan) => set({ activePlan: plan }),
 
       toggleProductPublished: (productId) => {
         set((state) => {
@@ -311,9 +304,12 @@ export const useWebshopStore = create<WebshopStoreState>()(
     }),
     {
       name: 'pwayment_webshop_settings_v1',
-      version: 2,
+      version: 3,
       migrate: (persistedState) => {
-        const state = (persistedState || {}) as Partial<WebshopSettings>;
+        const persisted = (persistedState || {}) as Record<string, unknown>;
+        const { activePlan: _legacyPlan, ...withoutLegacyPlan } = persisted;
+        void _legacyPlan;
+        const state = withoutLegacyPlan as Partial<WebshopSettings>;
         return {
           ...state,
           featuredProductIds: remapProductIds(state.featuredProductIds),
@@ -322,6 +318,12 @@ export const useWebshopStore = create<WebshopStoreState>()(
           productImages: remapProductRecord(state.productImages),
           productVariants: {},
         };
+      },
+      merge: (persistedState, currentState) => {
+        const persisted = (persistedState || {}) as Record<string, unknown>;
+        const { activePlan: _legacyPlan, ...safePersisted } = persisted;
+        void _legacyPlan;
+        return { ...currentState, ...safePersisted } as WebshopStoreState;
       },
     },
   ),

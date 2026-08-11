@@ -5,6 +5,7 @@ import { FEATURES } from '../config/features';
 import { BELGIAN_RETAIL_VAT_RATE, productCategories } from '../data/categories';
 import { useAuth } from '../auth/useAuth';
 import { deleteSupabaseCategory, upsertSupabaseCategories } from '../services/supabaseMutations';
+import { FEATURE_KEYS, featureLimit } from '../billing/entitlements';
 
 interface CategoriesState {
   list: ProductCategory[];
@@ -63,6 +64,15 @@ export const useCategories = create<CategoriesState>((set, get) => ({
 
     const state = get();
     if (state.list.some((c) => c.name.toLowerCase() === name.toLowerCase())) return null;
+    const categoryLimit = featureLimit(FEATURE_KEYS.categories);
+    if (
+      categoryLimit != null &&
+      state.list.filter((category) => category.isActive !== false).length >= categoryLimit
+    ) {
+      throw new Error(
+        `Pwayment Basis ondersteunt maximaal ${categoryLimit} hoofdcategorieën. Uw bestaande categorieën blijven bewaard.`,
+      );
+    }
 
     const base = slugify(name) || 'category';
     let id = base;

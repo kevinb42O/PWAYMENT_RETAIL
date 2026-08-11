@@ -367,7 +367,7 @@ The yearly switch says **“Save €168/year”** for Professional and **“Save
 
 Hardware purchase/lease and third-party payment processing charges are shown separately from PWAYMENT software. All public software prices carry a clear **“excl. VAT”** note and the yearly view shows the full annual amount charged.
 
-Use a **14-day Retail Professional trial** with no payment card required, followed by an explicit choice: remain on Basis or activate a paid plan. Enterprise remains purchasable at the published price, while the demo/onboarding route helps configure locations, integrations, and rollout.
+Use a **30-day Retail Professional trial** with no payment card required, followed by an explicit choice: remain on Basis or activate a paid plan. Enterprise remains purchasable at the published price, while the demo/onboarding route helps configure locations, integrations, and rollout.
 
 Plan versions are permanent records. Existing customers retain their agreed `plan_version`; future commercial changes create a new version instead of silently mutating entitlements or old invoices.
 
@@ -867,7 +867,7 @@ Locked by this plan:
 1. Primary buyer: independent and specialist Belgian retail, with Enterprise & Chains fully represented.
 2. Dutch Belgium first, with French and English built into the permanent localization structure.
 3. Primary CTA: **Start free**; secondary CTA: **Plan a demo**; persistent **Log in**.
-4. Basis remains free; every new organization receives a 14-day Professional trial and can return to Basis.
+4. Basis remains free; every new organization receives a 30-day Professional trial and can return to Basis.
 5. Enterprise retains the published €149 monthly / €119 effective yearly price and the promised unlimited scope.
 6. Annual checkout shows €660 Professional and €1,428 Enterprise, with exact euro savings rather than an imprecise percentage.
 7. Native PWAYMENT Webshop and standard Exact/Peppol are included in Professional; external commerce sync and advanced accounting automation are the distinct paid add-ons defined above.

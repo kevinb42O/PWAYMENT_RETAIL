@@ -9,6 +9,8 @@ import { IntegrationsSettings } from './IntegrationsSettings';
 import { LoyaltySettings } from './LoyaltySettings';
 import { BillingSettings, BillingSubTab } from './BillingSettings';
 import { WebshopSettings } from './WebshopSettings';
+import { FeatureGate } from '../billing/FeatureGate';
+import { FEATURE_KEYS } from '../billing/entitlements';
 import {
   WorldlineLogo,
   CCVLogo,
@@ -111,12 +113,6 @@ export const ProfileView: React.FC = () => {
     return 'billing';
   });
 
-  // Billing state
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly');
-  const [activePlan, setActivePlan] = useState<'free' | 'retail' | 'pro'>('free');
-  const [isUpgrading, setIsUpgrading] = useState(false);
-  const [upgradeSuccessMessage, setUpgradeSuccessMessage] = useState<string | null>(null);
-
   // General Store Profile Form state
   const [storeName, setStoreName] = useState('Pwayment Retail Shop');
   const [email, setEmail] = useState('kevin@pwayment.com');
@@ -164,17 +160,6 @@ export const ProfileView: React.FC = () => {
   const triggerSaveNotification = (message: string) => {
     setSavedToast(message);
     setTimeout(() => setSavedToast(null), 3000);
-  };
-
-  const handleUpgrade = (plan: 'retail' | 'pro') => {
-    setIsUpgrading(true);
-    setTimeout(() => {
-      setActivePlan(plan);
-      setIsUpgrading(false);
-      const planName = plan === 'retail' ? 'Pwayment Retail Edition' : 'Pwayment Pro Multi-Store';
-      setUpgradeSuccessMessage(`Gefeliciteerd! Uw account is succesvol geüpgraded naar ${planName}. Alle functies zijn nu actief.`);
-      setTimeout(() => setUpgradeSuccessMessage(null), 5000);
-    }, 800);
   };
 
   return (
@@ -572,25 +557,6 @@ export const ProfileView: React.FC = () => {
           <div id="catalog-header-actions" className="flex items-center gap-2 shrink-0 ml-auto" />
         </div>
 
-        {/* Global Upgrade Toast Banner */}
-        {upgradeSuccessMessage && (
-          <div className="p-4 bg-emerald-500 text-white rounded-2xl shadow-lg border border-emerald-600 flex items-center justify-between animate-in fade-in duration-200">
-            <div className="flex items-center gap-3">
-              <Sparkles size={22} className="text-amber-200 shrink-0 animate-bounce" />
-              <div>
-                <div className="font-extrabold text-sm">{upgradeSuccessMessage}</div>
-                <div className="text-xs text-emerald-100">U heeft nu direct toegang tot alle geavanceerde rapporten & functies.</div>
-              </div>
-            </div>
-            <button
-              onClick={() => setUpgradeSuccessMessage(null)}
-              className="text-xs font-bold bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition-colors"
-            >
-              Sluiten
-            </button>
-          </div>
-        )}
-
         {/* Save Toast Banner */}
         {savedToast && (
           <div className="p-3 bg-slate-900 text-white rounded-xl shadow-md flex items-center gap-2 text-xs font-bold animate-in fade-in">
@@ -737,14 +703,26 @@ export const ProfileView: React.FC = () => {
 
         {/* TAB 5: BARCODE ETIKETTEN (REAL WORKING BARCODE PRINT COMPONENT) */}
         {activeTab === 'labels' && (
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-2xs">
-            <BarcodeLabelPrint />
-          </div>
+          <FeatureGate
+            feature={FEATURE_KEYS.labels}
+            title="Barcode-etiketten zijn beschikbaar in Retail Professional"
+            onUpgrade={() => setActiveTab('billing-plan')}
+          >
+            <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-2xs">
+              <BarcodeLabelPrint />
+            </div>
+          </FeatureGate>
         )}
 
         {/* TAB 6: KOPPELINGEN & API (PRO FEATURE) */}
         {activeTab === 'integrations' && (
-          <IntegrationsSettings />
+          <FeatureGate
+            feature={FEATURE_KEYS.integrations}
+            title="Koppelingen, API en webhooks vereisen Retail Professional"
+            onUpgrade={() => setActiveTab('billing-plan')}
+          >
+            <IntegrationsSettings />
+          </FeatureGate>
         )}
 
         {/* TAB 7: BTW & FISCALE REGELS */}
@@ -802,7 +780,13 @@ export const ProfileView: React.FC = () => {
 
         {/* TAB 8: CADEAUBONNEN & SPAARPROGRAMMA */}
         {activeTab === 'loyalty' && (
-          <LoyaltySettings />
+          <FeatureGate
+            feature={FEATURE_KEYS.loyalty}
+            title="Het spaarprogramma is beschikbaar in Retail Professional"
+            onUpgrade={() => setActiveTab('billing-plan')}
+          >
+            <LoyaltySettings />
+          </FeatureGate>
         )}
 
         {/* TAB 9: HARDWARE & KASSA APPARATUUR */}
@@ -989,6 +973,12 @@ export const ProfileView: React.FC = () => {
 
             {/* SECTION 4: SMART PAYMENT TERMINAL SELECTION & PAIRING */}
             {activeTab === 'hardware-terminal' && (
+              <FeatureGate
+                feature={FEATURE_KEYS.advancedHardware}
+                title="Geintegreerde betaalterminals zijn beschikbaar in Retail Professional"
+                description="Printer, scanner en kassalade blijven beschikbaar in Basis. Terminalkoppelingen worden bewaard en opnieuw actief zodra Retail Professional actief is."
+                onUpgrade={() => setActiveTab('billing-plan')}
+              >
               <div className="space-y-5">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1098,6 +1088,25 @@ export const ProfileView: React.FC = () => {
                   )}
                 </div>
               </div>
+              </FeatureGate>
+            )}
+
+            {activeTab === 'hardware-scale' && (
+              <FeatureGate
+                feature={FEATURE_KEYS.advancedHardware}
+                title="Weegschaalkoppelingen zijn beschikbaar in Retail Professional"
+                description="Bestaande hardware-instellingen blijven bewaard. Activeer Retail Professional om geavanceerde randapparatuur te koppelen."
+                onUpgrade={() => setActiveTab('billing-plan')}
+              >
+                <div className="space-y-4">
+                  <div className="text-xs font-black uppercase tracking-wider text-slate-400">
+                    5. Weegschaal & gewichtartikelen
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-xs font-medium text-slate-600">
+                    Weegschaalkoppelingen worden voorbereid voor Retail Professional en Enterprise.
+                  </div>
+                </div>
+              </FeatureGate>
             )}
           </div>
         )}

@@ -1,6 +1,7 @@
 import { supabase } from "../lib/supabase";
 import { useMerchantProfile } from "../store/useMerchantProfile";
 import { useWebshopStore } from "../store/useWebshopStore";
+import type { Json } from "../types/database.generated";
 
 let stopCurrentPersistence: (() => void) | null = null;
 
@@ -47,13 +48,16 @@ export const startTenantSettingsPersistence = (storeId: string): void => {
     window.clearTimeout(webshopTimer);
     webshopTimer = window.setTimeout(() => {
       const stateSnapshot = useWebshopStore.getState();
-      const settings = JSON.parse(JSON.stringify(stateSnapshot));
+      const settings = JSON.parse(JSON.stringify(stateSnapshot)) as Record<string, unknown>;
+      // Subscription state has its own protected table. Never persist a legacy
+      // client-controlled activePlan field back into tenant webshop settings.
+      delete settings.activePlan;
       void supabase
         .from("webshop_settings")
         .upsert(
           {
             store_id: storeId,
-            settings,
+            settings: settings as Json,
             is_enabled: stateSnapshot.isEnabled,
             subdomain: stateSnapshot.subdomain.trim() || null,
             custom_domain: stateSnapshot.customDomain.trim() || null,

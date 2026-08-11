@@ -37,8 +37,13 @@ import {
   DEFAULT_PWAYMENT_SELLER,
 } from '../utils/invoicePdfGenerator';
 import { useMerchantProfile } from '../store/useMerchantProfile';
-import { useWebshopStore } from '../store/useWebshopStore';
 import { InvoicePreviewModal } from './InvoicePreviewModal';
+import {
+  type PlanCode,
+  planLabel,
+  trialDaysRemaining,
+  useEntitlements,
+} from '../billing/entitlements';
 
 export type BillingSubTab = 'plan' | 'invoices' | 'payment' | 'addons';
 
@@ -52,9 +57,11 @@ export const BillingSettings: React.FC<BillingSettingsProps> = ({
   onSubTabChange,
 }) => {
   const merchantProfile = useMerchantProfile((state) => state.profile);
-  const webshopStore = useWebshopStore();
   const [previewInvoice, setPreviewInvoice] = useState<InvoiceData | null>(null);
-  const activePlan = webshopStore.activePlan;
+  const snapshot = useEntitlements((state) => state.snapshot);
+  const changeTestPlan = useEntitlements((state) => state.changeTestPlan);
+  const simulateTrial = useEntitlements((state) => state.simulateTrial);
+  const activePlan = snapshot?.effectivePlan ?? 'basic';
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly');
   const [isUpgrading, setIsUpgrading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -71,13 +78,43 @@ export const BillingSettings: React.FC<BillingSettingsProps> = ({
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  const handleUpgrade = (plan: 'pro' | 'enterprise') => {
+  const handlePlanChange = async (plan: PlanCode) => {
+    if (activePlan === plan && snapshot?.status !== 'trialing') return;
+    if (!snapshot?.canSimulateBilling) {
+      triggerToast('Online betaling wordt in een volgende stap gekoppeld. Uw huidige abonnement is niet gewijzigd.');
+      return;
+    }
     setIsUpgrading(true);
-    setTimeout(() => {
-      webshopStore.setActivePlan(plan);
+    try {
+      await changeTestPlan(plan);
+      triggerToast(
+        plan === 'basic'
+          ? 'Pwayment Basis is actief. Al uw bestaande gegevens en instellingen blijven bewaard.'
+          : `Testabonnement succesvol overgezet naar ${planLabel(plan)}. Er werd geen betaling uitgevoerd.`,
+      );
+    } catch (error) {
+      console.error('Testabonnement wijzigen mislukt:', error);
+      triggerToast('Het abonnement kon niet worden gewijzigd. Probeer opnieuw.');
+    } finally {
       setIsUpgrading(false);
-      triggerToast(`Gefeliciteerd! Account succesvol overgezet naar ${plan === 'pro' ? 'Retail Professional' : 'Enterprise & Ketens'}.`);
-    }, 800);
+    }
+  };
+
+  const handleTrialSimulation = async (days: number) => {
+    setIsUpgrading(true);
+    try {
+      await simulateTrial(days);
+      triggerToast(
+        days === 0
+          ? 'Testtrial is verlopen; Pwayment Basis is nu effectief actief.'
+          : `Testtrial ingesteld op ${days} resterende ${days === 1 ? 'dag' : 'dagen'}.`,
+      );
+    } catch (error) {
+      console.error('Trialsimulatie mislukt:', error);
+      triggerToast('De trial kon niet worden gesimuleerd.');
+    } finally {
+      setIsUpgrading(false);
+    }
   };
 
   return (
@@ -95,17 +132,56 @@ export const BillingSettings: React.FC<BillingSettingsProps> = ({
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2 font-bold text-slate-900">
             <CheckCircle2 size={15} className="text-emerald-600" />
-            <span>Pwayment {activePlan === 'free' ? 'Basis' : activePlan === 'pro' ? 'Retail Professional' : 'Enterprise'}</span>
+            <span>{planLabel(activePlan)}</span>
           </div>
           <div className="hidden md:block text-slate-300">•</div>
           <div>Btw-nr: <strong className="text-slate-900">BE 0123.456.789</strong></div>
           <div className="hidden md:block text-slate-300">•</div>
-          <div>Hernieuwing: <strong className="text-slate-900">1 september 2026</strong></div>
+          <div>
+            {snapshot?.status === 'trialing' ? 'Pro-trial eindigt' : 'Abonnementsstatus'}:{' '}
+            <strong className="text-slate-900">
+              {snapshot?.status === 'trialing' && snapshot.trialEndsAt
+                ? new Date(snapshot.trialEndsAt).toLocaleString('nl-BE', { dateStyle: 'long', timeStyle: 'short' })
+                : snapshot?.status === 'expired'
+                  ? 'Trial afgelopen'
+                  : 'Actief'}
+            </strong>
+          </div>
         </div>
         <div className="font-bold text-slate-900">
-          Facturatiestatus: <span className="text-emerald-600 font-black">In orde</span>
+          {snapshot?.status === 'trialing' ? (
+            <span className="text-sky-700 font-black">30 dagen gratis · nog {trialDaysRemaining(snapshot)} dagen</span>
+          ) : (
+            <>Facturatiestatus: <span className="text-emerald-600 font-black">{snapshot?.status === 'expired' ? 'Basis actief' : 'In orde'}</span></>
+          )}
         </div>
       </div>
+
+      {snapshot?.canSimulateBilling && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-950">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <div>
+              <div className="font-black">Billing-testmodus</div>
+              <p className="mt-0.5 font-medium text-amber-800">
+                Planwissels slaan betaling tijdelijk over tot de betaalprovider gekoppeld is. Alleen eigenaars kunnen dit uitvoeren.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {[30, 3, 1, 0].map((days) => (
+                <button
+                  key={days}
+                  type="button"
+                  disabled={isUpgrading}
+                  onClick={() => void handleTrialSimulation(days)}
+                  className="rounded-lg border border-amber-300 bg-white px-3 py-2 text-[10px] font-black hover:bg-amber-100 disabled:opacity-50"
+                >
+                  {days === 0 ? 'Trial verlopen' : `Nog ${days} ${days === 1 ? 'dag' : 'dagen'}`}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* SUB-TAB 1: PLAN & UPGRADES */}
       {subTab === 'plan' && (
@@ -144,7 +220,7 @@ export const BillingSettings: React.FC<BillingSettingsProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             {/* TIER 1: PWAYMENT BASIS */}
             <div className={`rounded-3xl border p-6 bg-white shadow-2xs flex flex-col justify-between space-y-6 transition-all ${
-              activePlan === 'free' ? 'border-slate-900 ring-2 ring-slate-900' : 'border-slate-200 hover:border-slate-300'
+              activePlan === 'basic' ? 'border-slate-900 ring-2 ring-slate-900' : 'border-slate-200 hover:border-slate-300'
             }`}>
               <div className="space-y-5">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -152,7 +228,7 @@ export const BillingSettings: React.FC<BillingSettingsProps> = ({
                     <span className="text-xs font-black uppercase tracking-wider text-slate-400">Instappakket</span>
                     <h4 className="text-lg font-black text-slate-900">Pwayment Basis</h4>
                   </div>
-                  {activePlan === 'free' && (
+                  {activePlan === 'basic' && (
                     <span className="px-2.5 py-1 bg-slate-900 text-white text-[10px] font-bold rounded-full">
                       Huidig abonnement
                     </span>
@@ -213,14 +289,11 @@ export const BillingSettings: React.FC<BillingSettingsProps> = ({
 
               <button
                 type="button"
-                disabled={activePlan === 'free'}
-                onClick={() => {
-                  webshopStore.setActivePlan('free');
-                  triggerToast('Account ingesteld op Pwayment Basis.');
-                }}
+                disabled={activePlan === 'basic' || isUpgrading}
+                onClick={() => void handlePlanChange('basic')}
                 className="w-full py-3 bg-slate-100 text-slate-700 text-xs font-bold rounded-xl disabled:opacity-60 cursor-default"
               >
-                {activePlan === 'free' ? 'Uw huidige pakket' : 'Overstappen naar Basis'}
+                {activePlan === 'basic' ? 'Uw huidige pakket' : 'Overstappen naar Basis'}
               </button>
             </div>
 
@@ -315,7 +388,7 @@ export const BillingSettings: React.FC<BillingSettingsProps> = ({
               <button
                 type="button"
                 disabled={activePlan === 'pro' || isUpgrading}
-                onClick={() => handleUpgrade('pro')}
+                onClick={() => void handlePlanChange('pro')}
                 className="w-full py-3 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
               >
                 {isUpgrading ? 'Activeren...' : activePlan === 'pro' ? 'Uw huidige pakket' : 'Kies Retail Professional'}
@@ -409,7 +482,7 @@ export const BillingSettings: React.FC<BillingSettingsProps> = ({
               <button
                 type="button"
                 disabled={activePlan === 'enterprise' || isUpgrading}
-                onClick={() => handleUpgrade('enterprise')}
+                onClick={() => void handlePlanChange('enterprise')}
                 className="w-full py-3 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
               >
                 {isUpgrading ? 'Activeren...' : activePlan === 'enterprise' ? 'Uw huidige pakket' : 'Kies Enterprise'}
