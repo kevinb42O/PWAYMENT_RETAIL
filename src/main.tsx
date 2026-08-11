@@ -101,10 +101,20 @@ root.render(
   <div 
     className="flex flex-col items-center justify-center min-h-dvh bg-[#f6f5f1] animate-in fade-in duration-1000 relative overflow-hidden"
     style={{
-      backgroundImage: 'radial-gradient(rgba(15, 23, 42, 0.05) 1px, transparent 1px)',
-      backgroundSize: '20px 20px'
+      backgroundImage: `
+        linear-gradient(to right, rgba(15, 23, 42, 0.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(15, 23, 42, 0.04) 1px, transparent 1px)
+      `,
+      backgroundSize: '32px 32px'
     }}
   >
+    <style>{`
+      @keyframes loading-sweep {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(200%); }
+      }
+    `}</style>
+    
     <div className="flex flex-col items-center gap-8 z-10">
       <div className="flex items-center justify-center">
         <img
@@ -125,13 +135,16 @@ root.render(
             ? "Webshop wordt klaargezet"
             : "Pwayment wordt klaargezet"}
         </div>
-        <div className="w-16 h-[1px] bg-slate-200 overflow-hidden relative rounded-full">
-          <div className="absolute inset-0 w-full h-full bg-slate-500 animate-pulse"></div>
+        <div className="w-24 h-[2px] bg-slate-200 overflow-hidden relative rounded-full">
+          <div 
+            className="absolute top-0 bottom-0 left-0 w-1/2 bg-slate-500 rounded-full"
+            style={{ animation: 'loading-sweep 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite' }}
+          ></div>
         </div>
       </div>
     </div>
 
-    <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between text-[8px] font-extrabold tracking-widest text-slate-300 uppercase select-none pointer-events-none px-2 sm:px-6">
+    <div className="absolute bottom-8 left-8 right-8 flex items-center justify-between text-[9px] font-bold tracking-widest text-slate-400 uppercase select-none pointer-events-none">
       <div>System Init</div>
       <div>Retail OS // v2.4</div>
     </div>
