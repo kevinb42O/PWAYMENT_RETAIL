@@ -59,8 +59,7 @@ const customerImage = '/website/pwayment-giftcards-current.png';
 const webshopImage = '/website/pwayment-webshop-orders-current.png';
 const integrationsImage = '/website/pwayment-integrations-current.jpg';
 const plansImage = '/website/pwayment-plans-current.jpg';
-const posFlowVideo = '/website/pwayment-pos-flow.mp4?v=3';
-const posFlowPoster = '/website/pwayment-pos-flow-poster.jpg?v=3';
+const heroVideo = '/website/hero_video1.mp4';
 
 interface PricingPlan {
   name: string;
@@ -544,13 +543,22 @@ const HeroProductVideo = () => {
       autoPlay={!reducedMotion}
       loop={!reducedMotion}
       muted
+      controls={false}
       playsInline
       preload="auto"
-      poster={posFlowPoster}
-      aria-label="PWAYMENT kassaflow van categorie en productkeuze tot PIN-betaling en ticket"
+      aria-label="Stille PWAYMENT merkvideo voor moderne retail"
       disablePictureInPicture
+      onLoadedMetadata={(event) => {
+        event.currentTarget.defaultMuted = true;
+        event.currentTarget.muted = true;
+        event.currentTarget.volume = 0;
+      }}
+      onPlay={(event) => {
+        event.currentTarget.muted = true;
+        event.currentTarget.volume = 0;
+      }}
     >
-      <source src={posFlowVideo} type="video/mp4" />
+      <source src={heroVideo} type="video/mp4" />
     </video>
   );
 };
