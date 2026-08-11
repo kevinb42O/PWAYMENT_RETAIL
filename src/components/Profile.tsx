@@ -102,6 +102,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 }) => {
   const currentStoreIsDemo = useAuth((s) => s.currentStoreIsDemo);
   const currentRole = useAuth((s) => s.currentRole);
+  const currentUserName = useAuth((s) => s.currentUserName);
 
   const [teamUsers, setTeamUsers] = useState<any[]>([]);
   useEffect(() => {
