@@ -2359,6 +2359,11 @@ const TeamWeekdayChart = ({
   transactions: Transaction[];
   users: { id: string; name: string }[];
 }) => {
+  const [activeSegment, setActiveSegment] = useState<{
+    seller: string;
+    day: string;
+    count: number;
+  } | null>(null);
   const employees: [string, string][] = users.map(user => [user.id, user.name]);
 
   // Still add anyone found in transactions just in case (e.g. deleted users)
@@ -2404,6 +2409,11 @@ const TeamWeekdayChart = ({
     );
   return (
     <div>
+      <div className="mb-4 min-h-14 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3" role="status" aria-live="polite">
+        {activeSegment ? (
+          <p className="text-sm text-slate-700"><strong className="font-extrabold text-slate-950">{activeSegment.seller}</strong> verwerkte <strong className="font-extrabold tabular-nums text-slate-950">{activeSegment.count}</strong> {activeSegment.count === 1 ? "verkoop" : "verkopen"} op {activeSegment.day}.</p>
+        ) : <p className="text-sm text-slate-500">Wijs een gekleurd segment aan voor de exacte verdeling per verkoper.</p>}
+      </div>
       <div className="overflow-x-auto">
         <div className="flex h-72 min-w-[620px] items-end gap-4">
           {rows.map((row) => (
@@ -2422,13 +2432,19 @@ const TeamWeekdayChart = ({
               >
                 {row.counts.map((count, index) =>
                   count > 0 ? (
-                    <span
+                    <button
                       key={employees[index][0]}
+                      type="button"
+                      aria-label={`${employees[index][1]}, ${row.label}: ${count} ${count === 1 ? "verkoop" : "verkopen"}`}
+                      onPointerEnter={() => setActiveSegment({ seller: employees[index][1], day: row.label, count })}
+                      onPointerLeave={() => setActiveSegment(null)}
+                      onFocus={() => setActiveSegment({ seller: employees[index][1], day: row.label, count })}
+                      onBlur={() => setActiveSegment(null)}
+                      className="block w-full cursor-crosshair outline-none ring-inset focus-visible:ring-2 focus-visible:ring-slate-950 hover:brightness-110"
                       style={{
                         height: `${(count / row.total) * 100}%`,
                         backgroundColor: colors[index % colors.length],
                       }}
-                      title={`${employees[index][1]}: ${count} ${count === 1 ? "verkoop" : "verkopen"}`}
                     />
                   ) : null,
                 )}
@@ -2518,6 +2534,7 @@ const TrendChart = ({
   previous: SalesChartPoint[];
   metric: ChartMetric;
 }) => {
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const values = current.map((point) =>
     metric === "revenue" ? point.revenueCents : point.grossProfitCents,
   );
@@ -2599,17 +2616,23 @@ const TrendChart = ({
           strokeLinejoin="round"
         />
         {values.map((value, index) => (
-          <circle
-            key={current[index].key}
-            cx={x(index)}
-            cy={y(value)}
-            r={3}
-            fill="#0891b2"
-          >
-            <title>
-              {current[index].label}: {formatEUR(value)}
-            </title>
-          </circle>
+          <g key={current[index].key}>
+            {activeIndex === index && <line x1={x(index)} x2={x(index)} y1={padding.top} y2={height - padding.bottom} stroke="#0f172a" strokeDasharray="3 4" strokeOpacity="0.38" />}
+            <circle cx={x(index)} cy={y(value)} r={activeIndex === index ? 5 : 3} fill="#0891b2" />
+            <circle
+              cx={x(index)}
+              cy={y(value)}
+              r={14}
+              fill="transparent"
+              tabIndex={0}
+              role="button"
+              aria-label={`${current[index].label}: ${formatEUR(value)}, voorafgaande periode ${formatEUR(previousValues[index] ?? 0)}`}
+              onPointerEnter={() => setActiveIndex(index)}
+              onPointerLeave={() => setActiveIndex(null)}
+              onFocus={() => setActiveIndex(index)}
+              onBlur={() => setActiveIndex(null)}
+            />
+          </g>
         ))}
         {current.map((point, index) =>
           index % labelStep === 0 || index === current.length - 1 ? (
@@ -2627,6 +2650,9 @@ const TrendChart = ({
           ) : null,
         )}
       </svg>
+      <div className="mt-3 min-h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm" role="status" aria-live="polite">
+        {activeIndex == null ? <span className="text-slate-500">Wijs een punt aan voor de exacte dagwaarde en vergelijking.</span> : <span className="text-slate-700"><strong className="font-extrabold text-slate-950">{current[activeIndex].label}</strong> · geselecteerd: <strong className="font-extrabold tabular-nums text-slate-950">{formatEUR(values[activeIndex])}</strong> · voorafgaand: <strong className="font-extrabold tabular-nums text-slate-950">{formatEUR(previousValues[activeIndex] ?? 0)}</strong></span>}
+      </div>
       <div className="mt-1 flex justify-end gap-4 text-[11px] font-semibold text-slate-500">
         <span className="inline-flex items-center gap-1.5">
           <i className="h-0.5 w-5 bg-cyan-600" />

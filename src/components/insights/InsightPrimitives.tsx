@@ -49,6 +49,15 @@ export const EmptyChart = ({ label }: { label: string }) => (
   </div>
 );
 
+const ChartTooltip = ({ label, value, detail }: { label: string; value: string; detail?: string }) => (
+  <div role="status" className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-max max-w-[calc(100%-1rem)] -translate-x-1/2 rounded-xl border border-slate-200 bg-slate-950 px-3 py-2 text-left text-white shadow-xl">
+    <div className="truncate text-xs font-semibold text-slate-300">{label}</div>
+    <div className="mt-0.5 text-sm font-extrabold tabular-nums">{value}</div>
+    {detail && <div className="mt-0.5 truncate text-[11px] text-slate-300">{detail}</div>}
+    <i className="absolute -bottom-1 left-5 h-2 w-2 rotate-45 bg-slate-950" />
+  </div>
+);
+
 export const HorizontalBars = ({
   rows,
   formatValue = (value) => String(Math.round(value)),
@@ -60,23 +69,27 @@ export const HorizontalBars = ({
   onSelect?: (key: string) => void;
   emptyLabel?: string;
 }) => {
+  const [activeKey, setActiveKey] = useState<string | null>(null);
   const max = Math.max(1, ...rows.map((row) => row.value));
   if (rows.length === 0 || rows.every((row) => row.value === 0)) return <EmptyChart label={emptyLabel} />;
   return (
     <div className="space-y-4">
       {rows.map((row) => {
+        const active = activeKey === row.key;
         const content = <>
           <div className="flex items-center justify-between gap-3 text-sm"><span className="min-w-0 truncate font-semibold text-slate-700" title={row.label}>{row.label}</span><span className="shrink-0 font-bold text-slate-900">{row.valueLabel ?? formatValue(row.value)}</span></div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-cyan-600" style={{ width: `${Math.max(0, (row.value / max) * 100)}%` }} /></div>
           {row.secondary && <div className="mt-1.5 text-xs text-slate-500">{row.secondary}</div>}
         </>;
-        return onSelect ? <button key={row.key} type="button" onClick={() => onSelect(row.key)} className="group block w-full cursor-pointer rounded-lg p-1 text-left outline-none hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-cyan-600">{content}</button> : <div key={row.key}>{content}</div>;
+        const tooltip = active ? <ChartTooltip label={row.label} value={row.valueLabel ?? formatValue(row.value)} detail={row.secondary} /> : null;
+        return onSelect ? <button key={row.key} type="button" onClick={() => onSelect(row.key)} onPointerEnter={() => setActiveKey(row.key)} onPointerLeave={() => setActiveKey(null)} onFocus={() => setActiveKey(row.key)} onBlur={() => setActiveKey(null)} className="group relative block w-full cursor-pointer rounded-lg p-1 text-left outline-none hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-cyan-600">{tooltip}{content}</button> : <div key={row.key} tabIndex={0} role="group" onPointerEnter={() => setActiveKey(row.key)} onPointerLeave={() => setActiveKey(null)} onFocus={() => setActiveKey(row.key)} onBlur={() => setActiveKey(null)} className="relative rounded-lg p-1 outline-none hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-cyan-600" aria-label={`${row.label}: ${row.valueLabel ?? formatValue(row.value)}`}>{tooltip}{content}</div>;
       })}
     </div>
   );
 };
 
 export const VerticalBars = ({ rows, metric, onSelect }: { rows: Array<{ key: string; label: string; revenueCents: number; transactionCount: number; averageSaleCents: number }>; metric: 'revenue' | 'transactions' | 'average'; onSelect?: (key: string) => void }) => {
+  const [activeKey, setActiveKey] = useState<string | null>(null);
   const valueFor = (row: typeof rows[number]) => metric === 'revenue' ? row.revenueCents : metric === 'transactions' ? row.transactionCount : row.averageSaleCents;
   const max = Math.max(1, ...rows.map(valueFor));
   const formatValue = (value: number) => metric === 'transactions' ? String(value) : formatEUR(value);
@@ -85,14 +98,15 @@ export const VerticalBars = ({ rows, metric, onSelect }: { rows: Array<{ key: st
   const minimumChartWidth = Math.max(560, rows.length * 96);
   if (rows.length === 0 || rows.every((row) => valueFor(row) === 0)) return <EmptyChart label="Nog geen verkoopmomenten in deze periode." />;
   return (
-    <div className="overflow-x-auto pb-1">
+    <div className="relative overflow-x-auto pb-1">
       <div className="flex items-end gap-2" style={{ height: 264, minWidth: minimumChartWidth }}>
         {rows.map((row) => {
           const value = valueFor(row);
           const valueLabel = formatValue(value);
           const isMaximum = value === max;
           return (
-            <button key={row.key} type="button" onClick={() => onSelect?.(row.key)} aria-label={`${row.label}: ${metric === 'transactions' ? `${value} verkopen` : valueLabel}`} className="group flex h-full min-w-0 flex-1 flex-col justify-end rounded-md outline-none focus-visible:ring-2 focus-visible:ring-cyan-600" title={`${row.label}: ${valueLabel}`}>
+            <button key={row.key} type="button" onClick={() => onSelect?.(row.key)} onPointerEnter={() => setActiveKey(row.key)} onPointerLeave={() => setActiveKey(null)} onFocus={() => setActiveKey(row.key)} onBlur={() => setActiveKey(null)} aria-label={`${row.label}: ${metric === 'transactions' ? `${value} verkopen` : valueLabel}`} className="group relative flex h-full min-w-0 flex-1 flex-col justify-end rounded-md outline-none focus-visible:ring-2 focus-visible:ring-cyan-600">
+              {activeKey === row.key && <ChartTooltip label={row.label} value={valueLabel} detail={metric === 'transactions' ? `${value} verkopen` : undefined} />}
               <span className={`mb-2 whitespace-nowrap text-xs font-bold tabular-nums ${isMaximum ? 'text-slate-950' : 'text-slate-600'}`}>{valueLabel}</span>
               <span className={`mx-auto w-full max-w-12 rounded-t-md transition-colors ${isMaximum ? 'bg-cyan-700' : 'bg-cyan-600 group-hover:bg-cyan-700'}`} style={{ height: `${Math.max(2, (value / max) * 196)}px` }} />
               <span className="mt-2 text-[11px] font-semibold text-slate-500">{row.label}</span>
@@ -117,6 +131,7 @@ export const DonutBreakdown = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
+  const [activeKey, setActiveKey] = useState<string | null>(null);
   const visibleRows = rows.filter((row) => row.value > 0);
   const total = visibleRows.reduce((sum, row) => sum + row.value, 0);
 
@@ -140,6 +155,7 @@ export const DonutBreakdown = ({
   if (total <= 0) return <EmptyChart label="Nog geen verdeling beschikbaar." />;
 
   const colors = ['#0e7490', '#06b6d4', '#94a3b8', '#f59e0b'];
+  const activeRow = visibleRows.find((row) => row.key === activeKey) ?? null;
   const radius = 58;
   const circumference = 2 * Math.PI * radius;
   let offset = 0;
@@ -166,26 +182,32 @@ export const DonutBreakdown = ({
                   transition: 'stroke-dasharray 760ms cubic-bezier(0.22, 1, 0.36, 1)',
                   transitionDelay: `${index * 110}ms`,
                 }}
-              >
-                <title>{row.label}: {Math.round((row.value / total) * 100)}% · {valueFormatter(row.value)}</title>
-              </circle>
+                tabIndex={0}
+                role="button"
+                aria-label={`${row.label}: ${valueFormatter(row.value)}, ${Math.round((row.value / total) * 100)}%`}
+                onPointerEnter={() => setActiveKey(row.key)}
+                onPointerLeave={() => setActiveKey(null)}
+                onFocus={() => setActiveKey(row.key)}
+                onBlur={() => setActiveKey(null)}
+              />
             );
             offset += length;
             return segment;
           })}
         </svg>
         <div className={`absolute inset-0 flex flex-col items-center justify-center text-center px-4 transition duration-500 ${visible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}>
-          <span className="max-w-[100px] text-[10px] sm:text-[11px] font-bold leading-tight uppercase tracking-[0.12em] text-slate-400 [word-break:break-word]">{centerLabel}</span>
-          <strong className="mt-1 max-w-[100px] truncate text-xl font-bold tracking-tight text-slate-950">{valueFormatter(total)}</strong>
+          <span className="max-w-[100px] text-[10px] sm:text-[11px] font-bold leading-tight uppercase tracking-[0.12em] text-slate-400 [word-break:break-word]">{activeRow?.label ?? centerLabel}</span>
+          <strong className="mt-1 max-w-[100px] truncate text-xl font-bold tracking-tight text-slate-950">{valueFormatter(activeRow?.value ?? total)}</strong>
+          {activeRow && <span className="mt-1 text-[10px] font-bold text-slate-500">{Math.round((activeRow.value / total) * 100)}%</span>}
         </div>
       </div>
       <div className="w-full max-w-sm space-y-3">
         {visibleRows.map((row, index) => (
-          <div key={row.key} className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-slate-100 pb-3 transition duration-500 last:border-0 last:pb-0 ${visible ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0'}`} style={{ transitionDelay: `${180 + index * 80}ms` }}>
+          <button key={row.key} type="button" onPointerEnter={() => setActiveKey(row.key)} onPointerLeave={() => setActiveKey(null)} onFocus={() => setActiveKey(row.key)} onBlur={() => setActiveKey(null)} className={`grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border-b border-slate-100 pb-3 text-left outline-none transition duration-500 last:border-0 last:pb-0 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-cyan-600 ${visible ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0'}`} style={{ transitionDelay: `${180 + index * 80}ms` }}>
             <span className="h-3 w-3 rounded-full" style={{ backgroundColor: colors[index % colors.length] }} />
             <div className="min-w-0"><div className="truncate text-sm font-semibold text-slate-700">{row.label}</div><div className="mt-0.5 text-xs text-slate-500">{valueFormatter(row.value)}</div></div>
             <strong className="text-base text-slate-950">{Math.round((row.value / total) * 100)}%</strong>
-          </div>
+          </button>
         ))}
       </div>
     </div>

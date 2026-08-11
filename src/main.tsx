@@ -1,6 +1,11 @@
-import { StrictMode } from "react";
+import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
+import {
+  getLoadingProgress,
+  reportLoadingProgress,
+  subscribeLoadingProgress,
+} from "./services/loadingProgress";
 
 const searchParams = new URLSearchParams(window.location.search);
 const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
@@ -97,15 +102,16 @@ const configureServiceWorker = async () => {
 
 const root = createRoot(document.getElementById("root")!);
 
-root.render(
+const StartupScreen = () => {
+  const [loadingProgress, setLoadingProgress] = useState(getLoadingProgress);
+
+  useEffect(
+    () => subscribeLoadingProgress(setLoadingProgress),
+    [],
+  );
+
+  return (
   <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-[#f6f5f1] px-6 text-slate-950 animate-in fade-in duration-500">
-    <style>{`
-      @keyframes pwayment-loading-sweep {
-        0% { transform: translateX(-100%); }
-        100% { transform: translateX(200%); }
-      }
-    `}</style>
-    
     <div className="z-10 flex w-full max-w-sm flex-col items-center rounded-[2rem] border border-white/80 bg-white/70 px-8 py-10 text-center shadow-[0_32px_90px_-42px_rgba(15,23,42,0.45)] backdrop-blur-xl sm:px-10">
       <div className="flex items-center justify-center sm:translate-x-3">
         <img
@@ -124,22 +130,26 @@ root.render(
         <div className="text-[10px] uppercase tracking-[0.24em] font-bold text-slate-400">
           {storefrontRoute
             ? "Webshop wordt klaargezet"
-            : "Pwayment wordt klaargezet"}
+            : loadingProgress.title}
         </div>
-        <p className="text-sm font-semibold text-slate-800">Een ogenblik, we maken alles klaar.</p>
+        <p className="text-sm font-semibold text-slate-800">{loadingProgress.detail}</p>
         <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
-          <div 
-            className="absolute top-0 bottom-0 left-0 w-1/2 rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600"
-            style={{ animation: 'pwayment-loading-sweep 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite' }}
-          ></div>
+          <div
+            className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 transition-[width] duration-500 ease-out"
+            style={{ width: `${storefrontRoute ? 38 : loadingProgress.progress}%` }}
+          />
         </div>
       </div>
-      <p className="mt-5 text-xs leading-5 text-slate-500">Beveiligde sessie · lokale gegevens worden veilig gesynchroniseerd</p>
+      <p className="mt-5 text-xs leading-5 text-slate-500">{storefrontRoute ? "Even de etalage netjes zetten." : `${loadingProgress.progress}% · beveiligde sessie en lokale gegevens`}</p>
     </div>
-  </div>,
-);
+  </div>
+  );
+};
+
+root.render(<StartupScreen />);
 
 const start = async () => {
+  reportLoadingProgress("starting");
   if (await configureServiceWorker()) return;
 
   if (passwordSetupFlow) {
@@ -213,7 +223,12 @@ const start = async () => {
   // before development/presentation fixture accounts exist. Production is a
   // no-op unless an explicitly gated fixture build is requested.
   await ensureSeedUsers();
-  await useAuth.getState().initialize();
+  try {
+    await useAuth.getState().initialize();
+  } catch (error) {
+    reportLoadingProgress("error");
+    console.error("Sessie initialiseren mislukt:", error);
+  }
   void useProducts.getState().hydrate();
   void useCustomers.getState().hydrate();
 

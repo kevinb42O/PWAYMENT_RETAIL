@@ -1,8 +1,13 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "./useAuth";
 import { db } from "../db/db";
 import { User, Role } from "../types";
 import { supabase } from "../lib/supabase";
+import {
+  getLoadingProgress,
+  reportLoadingProgress,
+  subscribeLoadingProgress,
+} from "../services/loadingProgress";
 import {
   ArrowRight,
   Check,
@@ -58,8 +63,7 @@ export const LoginScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingLabel, setLoadingLabel] = useState("Aanmelden…");
-  const loadingTimer = useRef<number | null>(null);
+  const [loadingProgress, setLoadingProgress] = useState(getLoadingProgress);
   const pinLoginEnabled =
     import.meta.env.DEV ||
     import.meta.env.VITE_PRESENTATION_BUILD === "true" ||
@@ -69,28 +73,14 @@ export const LoginScreen: React.FC = () => {
     void db.users.toArray().then(setStaffUsers);
   }, []);
 
-  useEffect(
-    () => () => {
-      if (loadingTimer.current != null) window.clearTimeout(loadingTimer.current);
-    },
-    [],
-  );
+  useEffect(() => subscribeLoadingProgress(setLoadingProgress), []);
 
-  const beginLoading = (initialLabel: string) => {
-    if (loadingTimer.current != null) window.clearTimeout(loadingTimer.current);
-    setLoadingLabel(initialLabel);
+  const beginLoading = () => {
+    reportLoadingProgress("session");
     setIsLoading(true);
-    loadingTimer.current = window.setTimeout(
-      () => setLoadingLabel("Je winkelgegevens worden geladen…"),
-      550,
-    );
   };
 
   const stopLoading = () => {
-    if (loadingTimer.current != null) {
-      window.clearTimeout(loadingTimer.current);
-      loadingTimer.current = null;
-    }
     setIsLoading(false);
   };
 
@@ -98,14 +88,15 @@ export const LoginScreen: React.FC = () => {
     e.preventDefault();
     setError(null);
     setNotice(null);
-    beginLoading("Aanmelden…");
+    beginLoading();
     const res = await loginWithEmail(email, password);
     if (!res.success) {
+      reportLoadingProgress("error");
       stopLoading();
       setError(res.message || "Aanmelden mislukt");
       return;
     }
-    setLoadingLabel("Je winkel wordt geopend…");
+    reportLoadingProgress("ready");
     window.history.replaceState(window.history.state, "", "/app");
   };
 
@@ -134,7 +125,7 @@ export const LoginScreen: React.FC = () => {
       return;
     }
 
-    beginLoading("Account wordt aangemaakt…");
+    beginLoading();
     const res = await registerAccount({
       email,
       password,
@@ -144,6 +135,7 @@ export const LoginScreen: React.FC = () => {
       pin: pinCode,
     });
     if (!res.success) {
+      reportLoadingProgress("error");
       stopLoading();
       setError(res.message || "Registratie mislukt");
       return;
@@ -157,9 +149,10 @@ export const LoginScreen: React.FC = () => {
 
   const handlePinSubmit = async (uId: string, candidatePin: string) => {
     setError(null);
-    beginLoading("PIN wordt gecontroleerd…");
+    beginLoading();
     const ok = await loginWithPin(uId, candidatePin);
     if (!ok) {
+      reportLoadingProgress("error");
       stopLoading();
       setError("Ongeldige PIN code");
       setEnteredPin("");
@@ -790,7 +783,10 @@ export const LoginScreen: React.FC = () => {
                       className="w-full h-12 bg-zinc-950 hover:bg-black active:scale-[0.99] text-white font-bold rounded-xl text-sm shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-3"
                     >
                       {isLoading ? (
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <>
+                          <LoaderCircle size={16} className="animate-spin" />
+                          Account maken…
+                        </>
                       ) : (
                         <>
                           Account Aanmaken <Check size={15} />
@@ -818,17 +814,18 @@ export const LoginScreen: React.FC = () => {
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/28 px-6 backdrop-blur-sm"
           role="status"
           aria-live="polite"
-          aria-label={loadingLabel}
+          aria-label={loadingProgress.detail}
         >
           <div className="w-full max-w-sm rounded-3xl border border-white/70 bg-white/95 p-7 text-center shadow-[0_32px_100px_-30px_rgba(15,23,42,0.55)]">
             <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-lg">
               <LoaderCircle size={25} className="animate-spin" />
             </div>
-            <p className="text-base font-extrabold tracking-tight text-slate-950">Even geduld</p>
-            <p className="mt-1.5 text-sm leading-6 text-slate-500">{loadingLabel}</p>
+            <p className="text-base font-extrabold tracking-tight text-slate-950">{loadingProgress.title}</p>
+            <p className="mt-1.5 text-sm leading-6 text-slate-500">{loadingProgress.detail}</p>
             <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-slate-100">
-              <div className="h-full w-1/2 animate-[pwayment-loading-sweep_1.15s_ease-in-out_infinite] rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600" />
+              <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 transition-[width] duration-500" style={{ width: `${Math.max(8, loadingProgress.progress)}%` }} />
             </div>
+            <p className="mt-2 text-xs font-semibold tabular-nums text-slate-400">{loadingProgress.progress}% klaar</p>
           </div>
         </div>
       )}

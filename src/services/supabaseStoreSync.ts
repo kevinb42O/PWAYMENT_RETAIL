@@ -3,6 +3,7 @@ import { activateTenantDatabase, db } from "../db/db";
 import { DEFAULT_MERCHANT, type MerchantInfo } from "../data/merchant";
 import { supabase } from "../lib/supabase";
 import { useMerchantProfile } from "../store/useMerchantProfile";
+import { reportLoadingProgress } from "./loadingProgress";
 import {
   EMPTY_WEBSHOP_SETTINGS,
   useWebshopStore,
@@ -70,6 +71,7 @@ const blankMerchant = (name: string): MerchantInfo => ({
  */
 export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
   activateTenantDatabase(storeId);
+  reportLoadingProgress("store-data");
   const [
     categoryRows,
     productRows,
@@ -637,6 +639,7 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
       : undefined,
   }));
 
+  reportLoadingProgress("local-cache");
   await db.transaction("rw", db.tables, async () => {
     for (const table of db.tables) await table.clear();
     if (users.length) await db.users.bulkPut(users);

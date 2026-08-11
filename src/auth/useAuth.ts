@@ -11,6 +11,7 @@ import { hashCredential, verifyCredential } from "../utils/credentials";
 import { AuditAction, AuditEntry, Role, User } from "../types";
 import type { Json } from "../types/database.generated";
 import { useEntitlements } from "../billing/entitlements";
+import { reportLoadingProgress } from "../services/loadingProgress";
 
 interface AuthState {
   currentUserId: string | null;
@@ -262,48 +263,58 @@ export const useAuth = create<AuthState>()(
       unlocked: false,
       async initialize() {
         if (!import.meta.env.VITE_SUPABASE_URL) return;
-        const { data, error } = await supabase.auth.getSession();
-        if (error || !data.session?.user) return;
-
-        const { data: membership, error: membershipError } = await supabase
-          .from("store_memberships")
-          .select("store_id, role, status, stores(name, is_demo)")
-          .eq("user_id", data.session.user.id)
-          .eq("status", "active")
-          .limit(1)
-          .maybeSingle();
-        if (membershipError || !membership) return;
-
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("display_name")
-          .eq("id", data.session.user.id)
-          .maybeSingle();
-        await syncStoreFromSupabase(membership.store_id);
-        startTenantSettingsPersistence(membership.store_id);
         try {
-          await useEntitlements.getState().load(membership.store_id, true);
+          reportLoadingProgress("session");
+          const { data, error } = await supabase.auth.getSession();
+          if (error || !data.session?.user) return;
+
+          reportLoadingProgress("membership");
+          const { data: membership, error: membershipError } = await supabase
+            .from("store_memberships")
+            .select("store_id, role, status, stores(name, is_demo)")
+            .eq("user_id", data.session.user.id)
+            .eq("status", "active")
+            .limit(1)
+            .maybeSingle();
+          if (membershipError || !membership) return;
+
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("display_name")
+            .eq("id", data.session.user.id)
+            .maybeSingle();
+          reportLoadingProgress("store-data");
+          await syncStoreFromSupabase(membership.store_id);
+          startTenantSettingsPersistence(membership.store_id);
+          reportLoadingProgress("finishing");
+          try {
+            await useEntitlements.getState().load(membership.store_id, true);
+          } catch (error) {
+            // Authentication and the core POS stay available on the safe Basis
+            // fallback when billing status cannot temporarily be refreshed.
+            console.error("Abonnementsstatus laden mislukt:", error);
+          }
+          const storeName = Array.isArray(membership.stores)
+            ? membership.stores[0]?.name
+            : membership.stores?.name;
+          const storeIsDemo = Array.isArray(membership.stores)
+            ? membership.stores[0]?.is_demo
+            : membership.stores?.is_demo;
+          set({
+            currentUserId: data.session.user.id,
+            currentUserName:
+              profile?.display_name ?? data.session.user.email ?? "Gebruiker",
+            currentRole: membership.role as Role,
+            currentStoreId: membership.store_id,
+            currentStoreName: storeName ?? null,
+            currentStoreIsDemo: storeIsDemo ?? false,
+            unlocked: true,
+          });
+          reportLoadingProgress("ready");
         } catch (error) {
-          // Authentication and the core POS stay available on the safe Basis
-          // fallback when billing status cannot temporarily be refreshed.
-          console.error("Abonnementsstatus laden mislukt:", error);
+          reportLoadingProgress("error");
+          throw error;
         }
-        const storeName = Array.isArray(membership.stores)
-          ? membership.stores[0]?.name
-          : membership.stores?.name;
-        const storeIsDemo = Array.isArray(membership.stores)
-          ? membership.stores[0]?.is_demo
-          : membership.stores?.is_demo;
-        set({
-          currentUserId: data.session.user.id,
-          currentUserName:
-            profile?.display_name ?? data.session.user.email ?? "Gebruiker",
-          currentRole: membership.role as Role,
-          currentStoreId: membership.store_id,
-          currentStoreName: storeName ?? null,
-          currentStoreIsDemo: storeIsDemo ?? false,
-          unlocked: true,
-        });
       },
       async login(userId, pin) {
         const fixturePinLogin =
