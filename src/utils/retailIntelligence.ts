@@ -18,6 +18,29 @@ export interface EmployeePerformance {
   revenueCents: number;
 }
 
+/**
+ * A completed sale may retain a historical seller name after that person no
+ * longer has an Auth account. Demo fixtures deliberately use this shape: they
+ * demonstrate team performance without creating login-capable fake staff.
+ */
+export const getTransactionSellerIdentity = (
+  transaction: Pick<Transaction, 'userId' | 'userName'>,
+): { id: string; name: string } | null => {
+  if (transaction.userId) {
+    return {
+      id: transaction.userId,
+      name: transaction.userName ?? 'Onbekende medewerker',
+    };
+  }
+
+  const name = transaction.userName?.trim();
+  if (!name) return null;
+  return {
+    id: `historical-seller:${name.toLocaleLowerCase('nl-BE')}`,
+    name,
+  };
+};
+
 export interface RetailIntelligenceSnapshot {
   transactionCount: number;
   revenueCents: number;
@@ -82,16 +105,17 @@ export const buildRetailIntelligence = (
     });
   }
   for (const transaction of transactions) {
-    if (!transaction.userId) continue;
-    const current = employees.get(transaction.userId) ?? {
-      userId: transaction.userId,
-      name: transaction.userName ?? 'Onbekende medewerker',
+    const seller = getTransactionSellerIdentity(transaction);
+    if (!seller) continue;
+    const current = employees.get(seller.id) ?? {
+      userId: seller.id,
+      name: seller.name,
       transactionCount: 0,
       revenueCents: 0,
     };
     current.transactionCount += 1;
     current.revenueCents += transaction.totalCents;
-    employees.set(transaction.userId, current);
+    employees.set(seller.id, current);
   }
   const employeePerformance = [...employees.values()].sort((a, b) => b.revenueCents - a.revenueCents);
 

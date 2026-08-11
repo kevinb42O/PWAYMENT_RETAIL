@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { Customer, Product, Transaction } from '../types';
-import { buildRetailIntelligence } from './retailIntelligence';
+import {
+  buildRetailIntelligence,
+  getTransactionSellerIdentity,
+} from './retailIntelligence';
 
 const product: Product = {
   id: 'shirt',
@@ -67,5 +70,25 @@ describe('buildRetailIntelligence', () => {
     expect(result.actions).toHaveLength(1);
     expect(result.actions[0].id).toBe('collect-data');
     expect(result.grossMarginPercent).toBeNull();
+  });
+
+  it('keeps historical demo sellers separate when no Auth account remains', () => {
+    const historicalSale: Transaction = {
+      ...transaction,
+      userId: undefined,
+      userName: 'Lina',
+    };
+
+    expect(getTransactionSellerIdentity(historicalSale)).toEqual({
+      id: 'historical-seller:lina',
+      name: 'Lina',
+    });
+    expect(
+      buildRetailIntelligence([historicalSale], [product], [], Date.UTC(2026, 7, 5)),
+    ).toMatchObject({
+      employeePerformance: [
+        { userId: 'historical-seller:lina', name: 'Lina', transactionCount: 1 },
+      ],
+    });
   });
 });

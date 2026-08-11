@@ -266,6 +266,9 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
       firstName: p?.first_name || undefined,
       lastName: p?.last_name || undefined,
       role: row.role as any,
+      // Store memberships are Auth identities, not POS-PIN records. PIN
+      // verification is intentionally not hydrated into the browser cache.
+      pinHash: "",
       createdAt: new Date().toISOString(),
     };
   });

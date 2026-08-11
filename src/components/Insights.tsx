@@ -7,7 +7,10 @@ import { useCustomers } from "../store/useCustomers";
 import { useCategories } from "../store/useCategories";
 import { useProducts } from "../store/useProducts";
 import { formatEUR } from "../utils/money";
-import { buildRetailIntelligence } from "../utils/retailIntelligence";
+import {
+  buildRetailIntelligence,
+  getTransactionSellerIdentity,
+} from "../utils/retailIntelligence";
 import {
   InsightPeriod,
   SalesChartPoint,
@@ -2360,9 +2363,10 @@ const TeamWeekdayChart = ({
 
   // Still add anyone found in transactions just in case (e.g. deleted users)
   const transactionUsers = new Map(
-    transactions
-      .filter((row) => row.userId)
-      .map((row) => [row.userId!, row.userName ?? "Onbekende medewerker"])
+    transactions.flatMap((row) => {
+      const seller = getTransactionSellerIdentity(row);
+      return seller ? [[seller.id, seller.name] as const] : [];
+    }),
   );
   
   for (const [id, name] of transactionUsers.entries()) {
@@ -2376,7 +2380,8 @@ const TeamWeekdayChart = ({
       const counts = employees.map(
         ([userId]) =>
           transactions.filter((transaction) => {
-            if (transaction.userId !== userId) return false;
+            if (getTransactionSellerIdentity(transaction)?.id !== userId)
+              return false;
             const parts = getZonedDateParts(transaction.timestamp);
             const day = new Date(
               Date.UTC(parts.year, parts.month - 1, parts.day),
