@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   ScanLine,
   ShoppingCart,
+  ShoppingBag,
   FileText,
   History,
   Monitor,
@@ -84,6 +85,9 @@ export const Layout: React.FC = () => {
   } = useStore();
   const { currentUserName, currentRole, currentStoreId, logout } = useAuth();
   const refreshEntitlements = useEntitlements((state) => state.load);
+  const canUseWebshop = useEntitlements(
+    (state) => state.snapshot?.features[FEATURE_KEYS.webshopPublish] === true,
+  );
   const products = useProducts((s) => s.list);
   const hydrateProducts = useProducts((s) => s.hydrate);
 
@@ -95,6 +99,9 @@ export const Layout: React.FC = () => {
   );
   const [isNavDropdownOpen, setIsNavDropdownOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [profileInitialTab, setProfileInitialTab] = useState<
+    "billing" | "webshop-general"
+  >("billing");
 
   const scanInputRef = useRef<HTMLInputElement | null>(null);
   const scanBufferRef = useRef("");
@@ -104,6 +111,11 @@ export const Layout: React.FC = () => {
   const userMenuButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const cartCount = cart.orders.reduce((acc, o) => acc + o.quantity, 0);
+
+  const openProfile = (tab: "billing" | "webshop-general" = "billing") => {
+    setProfileInitialTab(tab);
+    setMainView("profile");
+  };
 
   useEffect(() => {
     if (!currentStoreId) return;
@@ -434,12 +446,31 @@ export const Layout: React.FC = () => {
               Icon: Lightbulb,
               title: "Inzichten (Alt+5)",
             },
-          ].map(({ view, label, Icon, title }) => {
-            const active = mainView === view;
+            ...(canUseWebshop
+              ? [
+                  {
+                    view: "profile" as const,
+                    label: "Webshop",
+                    Icon: ShoppingBag,
+                    title: "Webshopbeheer",
+                    profileTab: "webshop-general" as const,
+                  },
+                ]
+              : []),
+          ].map(({ view, label, Icon, title, profileTab }) => {
+            const active =
+              mainView === view &&
+              (view !== "profile" || profileTab === profileInitialTab);
             return (
               <button
                 key={view}
-                onClick={() => setMainView(view)}
+                onClick={() => {
+                  if (profileTab) {
+                    openProfile(profileTab);
+                    return;
+                  }
+                  setMainView(view);
+                }}
                 title={title}
                 aria-label={label}
                 aria-current={active ? "page" : undefined}
@@ -457,7 +488,7 @@ export const Layout: React.FC = () => {
           className="relative flex items-center gap-2 shrink-0"
           ref={userMenuRef}
         >
-          <TrialStatus onOpenBilling={() => setMainView("profile")} />
+          <TrialStatus onOpenBilling={() => openProfile("billing")} />
           <div className="pos-user-badge hidden sm:flex flex-col items-end leading-tight px-3 py-1.5 select-none">
             <span className="text-xs font-bold text-slate-800">
               {currentUserName}
@@ -528,7 +559,7 @@ export const Layout: React.FC = () => {
               <button
                 role="menuitem"
                 onClick={() => {
-                  setMainView("profile");
+                  openProfile("billing");
                   setIsUserMenuOpen(false);
                 }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
@@ -637,14 +668,14 @@ export const Layout: React.FC = () => {
             feature={FEATURE_KEYS.insights}
             title="Retail intelligence is beschikbaar in Retail Professional"
             description="Uw verkoop- en voorraaddata blijft veilig bewaard. Upgrade om prognoses, marges, klantinzichten en actieadviezen opnieuw te openen."
-            onUpgrade={() => setMainView("profile")}
+            onUpgrade={() => openProfile("billing")}
           >
             <Insights />
           </FeatureGate>
         )}
         {(mainView === "profile" || mainView === "admin") &&
           (currentRole === "owner" || currentRole === "manager" ? (
-            <ProfileView />
+            <ProfileView initialTab={profileInitialTab} />
           ) : (
             <div className="flex-1 flex items-center justify-center text-slate-500 font-medium">
               Onvoldoende rechten.

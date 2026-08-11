@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../auth/useAuth';
 import { useStore } from '../store/useStore';
 import { ProductAdmin } from './ProductAdmin';
@@ -90,7 +90,11 @@ type WorkspaceTab =
   | 'security'
   | 'team';
 
-export const ProfileView: React.FC = () => {
+interface ProfileViewProps {
+  initialTab?: WorkspaceTab;
+}
+
+export const ProfileView: React.FC<ProfileViewProps> = ({ initialTab }) => {
   const { currentUserName, currentRole } = useAuth();
   const { setMainView } = useStore();
 
@@ -139,6 +143,12 @@ export const ProfileView: React.FC = () => {
   const [catalogExpanded, setCatalogExpanded] = useState(false);
   const [webshopExpanded, setWebshopExpanded] = useState(activeTab.startsWith('webshop'));
   const [hardwareExpanded, setHardwareExpanded] = useState(false);
+
+  useEffect(() => {
+    if (!initialTab || initialTab === activeTab) return;
+    setActiveTab(initialTab);
+    if (initialTab.startsWith('webshop')) setWebshopExpanded(true);
+  }, [activeTab, initialTab]);
 
   const getBillingSubTab = (tab: WorkspaceTab): BillingSubTab => {
     if (tab === 'billing-invoices') return 'invoices';
@@ -582,10 +592,17 @@ export const ProfileView: React.FC = () => {
 
         {/* TAB 2.5: WEBSHOP MANAGEMENT & LIVE STORE */}
         {activeTab.startsWith('webshop') && (
-          <WebshopSettings
-            activeTab={activeTab}
-            onTabChange={(tab) => setActiveTab(tab as WorkspaceTab)}
-          />
+          <FeatureGate
+            feature={FEATURE_KEYS.webshopPublish}
+            title="Webshopbeheer is beschikbaar in Retail Professional"
+            description="Uw webshopinstellingen, assortiment, bestellingen en ontwerpdata blijven bewaard. Activeer Retail Professional of Enterprise om webshopbeheer opnieuw te openen."
+            onUpgrade={() => setActiveTab('billing-plan')}
+          >
+            <WebshopSettings
+              activeTab={activeTab}
+              onTabChange={(tab) => setActiveTab(tab as WorkspaceTab)}
+            />
+          </FeatureGate>
         )}
 
         {/* TAB 3: WINKEL & BEDRIJFSPROFIEL (FORM) */}
