@@ -37,11 +37,7 @@ export const mutateSupabaseGiftCard = async (
     note: mutation.event.note,
     payment_tenders: mutation.paymentTenders ?? [],
   };
-  const rpc = supabase.rpc as unknown as (
-    functionName: string,
-    args: { target_store_id: string; payload: Json },
-  ) => Promise<{ error: { message: string } | null }>;
-  const { error } = await rpc("mutate_gift_card", {
+  const { error } = await supabase.rpc("mutate_gift_card", {
     target_store_id: storeId,
     payload: payload as unknown as Json,
   });

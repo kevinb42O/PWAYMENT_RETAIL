@@ -36,12 +36,8 @@ export const saveSupabasePurchaseOrders = async (
   storeId: string,
   orders: PurchaseOrder[],
 ): Promise<void> => {
-  const rpc = supabase.rpc as unknown as (
-    functionName: string,
-    args: { target_store_id: string; payload: Json },
-  ) => Promise<{ error: { message: string } | null }>;
   for (const order of orders) {
-    const { error } = await rpc("save_purchase_order", {
+    const { error } = await supabase.rpc("save_purchase_order", {
       target_store_id: storeId,
       payload: orderPayload(order) as unknown as Json,
     });

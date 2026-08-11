@@ -39,7 +39,7 @@ import { InvoicePreviewModal } from "./InvoicePreviewModal";
 import { transactionTenders } from "../utils/financial";
 import { Modal } from "./Modal";
 import { createRefund } from "../services/refunds";
-import { DEMO_ACCOUNT_ID, useAuth } from "../auth/useAuth";
+import { useAuth } from "../auth/useAuth";
 
 type Tab = "sales" | "reports" | "audit";
 type SalesRange = "30d" | "12m" | "all";
@@ -91,7 +91,7 @@ export const AuditLog: React.FC = () => {
   const [tab, setTab] = useState<Tab>("sales");
   const [salesRange, setSalesRange] = useState<SalesRange>("12m");
   const [salesSource, setSalesSource] = useState<"live" | "all">(() =>
-    auth.currentUserId === DEMO_ACCOUNT_ID ? "all" : "live",
+    auth.currentStoreIsDemo ? "all" : "live",
   );
   const [reports, setReports] = useState<DailyReport[]>([]);
   const [auditRows, setAuditRows] = useState<AuditEntry[]>([]);
@@ -102,6 +102,10 @@ export const AuditLog: React.FC = () => {
   useEffect(() => {
     void load();
   }, []);
+
+  useEffect(() => {
+    setSalesSource(auth.currentStoreIsDemo ? "all" : "live");
+  }, [auth.currentStoreId, auth.currentStoreIsDemo]);
 
   const load = async () => {
     const [nextReports, nextAuditRows, nextTransactions] = await Promise.all([

@@ -40,7 +40,7 @@ import {
 import { InventoryForecast } from "./InventoryForecast";
 import { Modal } from "./Modal";
 import { getZonedDateParts } from "../utils/time";
-import { DEMO_ACCOUNT_ID, useAuth } from "../auth/useAuth";
+import { useAuth } from "../auth/useAuth";
 import {
   InsightsMobileNavigation,
   InsightsPage,
@@ -176,9 +176,7 @@ export const Insights = () => {
   const presentationMode =
     new URLSearchParams(window.location.search).get("presentation") === "1" &&
     (import.meta.env.DEV || import.meta.env.VITE_PRESENTATION_BUILD === "true");
-  const demoAccount = useAuth(
-    (state) => state.currentUserId === DEMO_ACCOUNT_ID,
-  );
+  const demoStore = useAuth((state) => state.currentStoreIsDemo);
   const products = useProducts((state) => state.list);
   const hydrateProducts = useProducts((state) => state.hydrate);
   const customers = useCustomers((state) => state.customers);
@@ -234,10 +232,10 @@ export const Insights = () => {
       transactions.filter(
         (transaction) =>
           presentationMode ||
-          demoAccount ||
+          demoStore ||
           (transaction.source ?? "live") !== "demo",
       ),
-    [demoAccount, presentationMode, transactions],
+    [demoStore, presentationMode, transactions],
   );
   const periodTransactions = useMemo(
     () => filterTransactionsForPeriod(analysisTransactions, period, now),
@@ -415,7 +413,7 @@ export const Insights = () => {
                   actions={actions}
                   workflow={workflow}
                   now={workflowClock}
-                  demoMode={demoAccount || presentationMode}
+                  demoMode={demoStore || presentationMode}
                   onSnooze={(id, until) =>
                     setWorkflow((current) => {
                       const next = { ...current };

@@ -435,11 +435,7 @@ const generateSupabaseZReport = async (
       "Een verkoop mist een serverreferentie. Vernieuw de gegevens.",
     );
   }
-  const rpc = supabase.rpc as unknown as (
-    functionName: string,
-    args: { target_store_id: string; payload: Json },
-  ) => Promise<{ error: { message: string } | null }>;
-  const { error } = await rpc("finalize_daily_report", {
+  const { error } = await supabase.rpc("finalize_daily_report", {
     target_store_id: storeId,
     payload: {
       register_id: registerId,

@@ -314,11 +314,7 @@ const createSupabaseRefund = async (
     method: input.method,
     reason: input.reason.trim(),
   };
-  const rpc = supabase.rpc as unknown as (
-    functionName: string,
-    args: { target_store_id: string; payload: Json },
-  ) => Promise<{ error: { message: string } | null }>;
-  const { error } = await rpc("refund_sale", {
+  const { error } = await supabase.rpc("refund_sale", {
     target_store_id: storeId,
     payload: payload as unknown as Json,
   });

@@ -17,6 +17,7 @@ interface AuthState {
   currentRole: Role | null;
   currentStoreId: string | null;
   currentStoreName: string | null;
+  currentStoreIsDemo: boolean;
   unlocked: boolean;
   initialize: () => Promise<void>;
   login: (userId: string, pin: string) => Promise<boolean>;
@@ -159,15 +160,7 @@ export const audit = async (
   }
   if (currentStoreId) {
     try {
-      const rpc = supabase.rpc as unknown as (
-        functionName: string,
-        args: {
-          target_store_id: string;
-          event_action: string;
-          event_detail: Json | null;
-        },
-      ) => Promise<{ error: { message: string } | null }>;
-      const { error } = await rpc("append_audit", {
+      const { error } = await supabase.rpc("append_audit", {
         target_store_id: currentStoreId,
         event_action: action,
         event_detail: detail == null ? null : (detail as unknown as Json),
@@ -264,6 +257,7 @@ export const useAuth = create<AuthState>()(
       currentRole: null,
       currentStoreId: null,
       currentStoreName: null,
+      currentStoreIsDemo: false,
       unlocked: false,
       async initialize() {
         if (!import.meta.env.VITE_SUPABASE_URL) return;
@@ -272,7 +266,7 @@ export const useAuth = create<AuthState>()(
 
         const { data: membership, error: membershipError } = await supabase
           .from("store_memberships")
-          .select("store_id, role, status, stores(name)")
+          .select("store_id, role, status, stores(name, is_demo)")
           .eq("user_id", data.session.user.id)
           .eq("status", "active")
           .limit(1)
@@ -289,6 +283,9 @@ export const useAuth = create<AuthState>()(
         const storeName = Array.isArray(membership.stores)
           ? membership.stores[0]?.name
           : membership.stores?.name;
+        const storeIsDemo = Array.isArray(membership.stores)
+          ? membership.stores[0]?.is_demo
+          : membership.stores?.is_demo;
         set({
           currentUserId: data.session.user.id,
           currentUserName:
@@ -296,6 +293,7 @@ export const useAuth = create<AuthState>()(
           currentRole: membership.role as Role,
           currentStoreId: membership.store_id,
           currentStoreName: storeName ?? null,
+          currentStoreIsDemo: storeIsDemo ?? false,
           unlocked: true,
         });
       },
@@ -324,6 +322,7 @@ export const useAuth = create<AuthState>()(
           currentRole: user.role,
           currentStoreId: null,
           currentStoreName: user.storeName || null,
+          currentStoreIsDemo: user.id === DEMO_ACCOUNT_ID,
           unlocked: true,
         });
         await audit("login", { userId: user.id });
@@ -362,6 +361,7 @@ export const useAuth = create<AuthState>()(
             currentRole: user.role,
             currentStoreId: null,
             currentStoreName: user.storeName ?? null,
+            currentStoreIsDemo: user.id === DEMO_ACCOUNT_ID,
             unlocked: true,
           });
           return { success: true };
@@ -461,6 +461,7 @@ export const useAuth = create<AuthState>()(
             currentRole: newUser.role,
             currentStoreId: null,
             currentStoreName: newUser.storeName ?? null,
+            currentStoreIsDemo: false,
             unlocked: true,
           });
           return { success: true };
@@ -524,6 +525,7 @@ export const useAuth = create<AuthState>()(
           currentRole: null,
           currentStoreId: null,
           currentStoreName: null,
+          currentStoreIsDemo: false,
           unlocked: false,
         });
       },
@@ -567,10 +569,12 @@ export const useAuth = create<AuthState>()(
         currentRole: s.currentRole,
         currentStoreId: s.currentStoreId,
         currentStoreName: s.currentStoreName,
+        currentStoreIsDemo: s.currentStoreIsDemo,
         unlocked: false,
       }),
       migrate: (persisted: unknown) => ({
         ...(persisted as object),
+        currentStoreIsDemo: false,
         unlocked: false,
       }),
     },

@@ -7,11 +7,7 @@ export const recordSupabaseVoid = async (
   requestId: string,
   entry: VoidEntry,
 ): Promise<void> => {
-  const rpc = supabase.rpc as unknown as (
-    functionName: string,
-    args: { target_store_id: string; payload: Json },
-  ) => Promise<{ error: { message: string } | null }>;
-  const { error } = await rpc("record_void", {
+  const { error } = await supabase.rpc("record_void", {
     target_store_id: storeId,
     payload: {
       client_request_id: requestId,
