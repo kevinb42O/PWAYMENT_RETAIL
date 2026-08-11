@@ -157,31 +157,7 @@ export const BillingSettings: React.FC<BillingSettingsProps> = ({
         </div>
       </div>
 
-      {snapshot?.canSimulateBilling && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-950">
-          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-            <div>
-              <div className="font-black">Billing-testmodus</div>
-              <p className="mt-0.5 font-medium text-amber-800">
-                Planwissels slaan betaling tijdelijk over tot de betaalprovider gekoppeld is. Alleen eigenaars kunnen dit uitvoeren.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {[30, 3, 1, 0].map((days) => (
-                <button
-                  key={days}
-                  type="button"
-                  disabled={isUpgrading}
-                  onClick={() => void handleTrialSimulation(days)}
-                  className="rounded-lg border border-amber-300 bg-white px-3 py-2 text-[10px] font-black hover:bg-amber-100 disabled:opacity-50"
-                >
-                  {days === 0 ? 'Trial verlopen' : `Nog ${days} ${days === 1 ? 'dag' : 'dagen'}`}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* SUB-TAB 1: PLAN & UPGRADES */}
       {subTab === 'plan' && (
