@@ -508,12 +508,12 @@ export const Layout: React.FC = () => {
           ref={userMenuRef}
         >
           <TrialStatus onOpenBilling={() => openProfile("billing")} />
-          <div className="pos-user-badge hidden sm:flex flex-col items-end leading-tight px-3 py-1.5 select-none">
-            <span className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-              <span className="max-w-32 truncate">{currentUserName}</span>
+          <div className="pos-user-badge hidden min-w-0 sm:flex flex-col items-end leading-tight px-2 py-1 select-none">
+            <span className="flex max-w-48 items-center justify-end gap-1.5 text-xs font-bold text-slate-800">
+              <span className="min-w-0 truncate">{currentUserName}</span>
               {activePlanBadge && (
                 <span
-                  className="rounded-full border border-slate-200 bg-white/75 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-slate-500"
+                  className="pos-plan-chip"
                   title={activePlanTitle}
                 >
                   {activePlanBadge}
