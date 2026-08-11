@@ -88,6 +88,7 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
     auditRows,
     dailyReportRows,
     dailyReportTransactionRows,
+    membershipRows,
     storeResult,
     webshopResult,
   ] = await Promise.all([
@@ -226,6 +227,14 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
         .eq("store_id", storeId)
         .range(from, to),
     ),
+    fetchAll<any>((from, to) =>
+      supabase
+        .from("store_memberships")
+        .select("role, user_id, profiles(display_name, first_name, last_name, phone)")
+        .eq("store_id", storeId)
+        .eq("status", "active")
+        .range(from, to),
+    ),
     supabase.from("stores").select("*").eq("id", storeId).single(),
     supabase
       .from("webshop_settings")
@@ -236,6 +245,18 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
 
   if (storeResult.error) throw storeResult.error;
   if (webshopResult.error) throw webshopResult.error;
+
+  const users = membershipRows.map((row) => {
+    const p = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+    return {
+      id: row.user_id,
+      name: p?.display_name || "Gebruiker",
+      firstName: p?.first_name || undefined,
+      lastName: p?.last_name || undefined,
+      role: row.role as any,
+      createdAt: new Date().toISOString(),
+    };
+  });
 
   const categories: ProductCategory[] = categoryRows.map((row) => ({
     id: row.external_id ?? row.id,
@@ -603,6 +624,7 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
 
   await db.transaction("rw", db.tables, async () => {
     for (const table of db.tables) await table.clear();
+    if (users.length) await db.users.bulkPut(users);
     if (categories.length) await db.categories.bulkPut(categories);
     if (products.length) await db.products.bulkPut(products);
     if (customers.length) await db.customers.bulkPut(customers);
