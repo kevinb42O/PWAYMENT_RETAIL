@@ -8,6 +8,8 @@ import {
 } from "../types";
 import { db } from "../db/db";
 import { audit, useAuth } from "../auth/useAuth";
+import { upsertSupabaseCustomers } from "../services/supabaseMutations";
+import { mutateSupabaseGiftCard } from "../services/supabaseGiftCards";
 
 interface CustomersState {
   customers: Customer[];
@@ -138,6 +140,7 @@ export const useCustomers = create<CustomersState>((set, get) => ({
       address: c.address?.trim() || undefined,
       notes: c.notes?.trim() || undefined,
     };
+    await upsertSupabaseCustomers(useAuth.getState().currentStoreId, [next]);
     await db.customers.put(next);
     set((s) => {
       const idx = s.customers.findIndex((x) => x.id === c.id);
@@ -157,6 +160,7 @@ export const useCustomers = create<CustomersState>((set, get) => ({
     const cur = await db.customers.get(id);
     if (!cur) return;
     const next: Customer = { ...cur, isActive: false };
+    await upsertSupabaseCustomers(useAuth.getState().currentStoreId, [next]);
     await db.customers.put(next);
     set((s) => ({
       customers: s.customers.map((x) => (x.id === id ? next : x)),
@@ -168,6 +172,7 @@ export const useCustomers = create<CustomersState>((set, get) => ({
     const cur = await db.customers.get(id);
     if (!cur) return;
     const next: Customer = { ...cur, isActive: true };
+    await upsertSupabaseCustomers(useAuth.getState().currentStoreId, [next]);
     await db.customers.put(next);
     set((s) => ({
       customers: s.customers.map((x) => (x.id === id ? next : x)),
@@ -214,6 +219,16 @@ export const useCustomers = create<CustomersState>((set, get) => ({
       next.initialCents,
       paymentTenders,
     );
+    const storeId = useAuth.getState().currentStoreId;
+    if (storeId) {
+      await mutateSupabaseGiftCard(storeId, {
+        action: "issue",
+        card: next,
+        event,
+        paymentTenders: event.paymentTenders,
+      });
+      return;
+    }
     await db.transaction("rw", db.gift_cards, db.gift_card_events, async () => {
       const normalized = normalizeGiftCardCode(next.code);
       const duplicate = await db.gift_cards
@@ -248,6 +263,16 @@ export const useCustomers = create<CustomersState>((set, get) => ({
       next.balanceCents,
     );
     event.paymentTenders = validatedPaymentTenders(amountCents, paymentTenders);
+    const storeId = useAuth.getState().currentStoreId;
+    if (storeId) {
+      await mutateSupabaseGiftCard(storeId, {
+        action: "recharge",
+        card: cur,
+        event,
+        paymentTenders: event.paymentTenders,
+      });
+      return;
+    }
     await db.transaction("rw", db.gift_cards, db.gift_card_events, async () => {
       await db.gift_cards.put(next);
       await db.gift_card_events.add(event);
@@ -275,6 +300,15 @@ export const useCustomers = create<CustomersState>((set, get) => ({
       cur.balanceCents,
     );
     event.note = reason?.trim() || undefined;
+    const storeId = useAuth.getState().currentStoreId;
+    if (storeId) {
+      await mutateSupabaseGiftCard(storeId, {
+        action: "deactivate",
+        card: cur,
+        event,
+      });
+      return;
+    }
     await db.transaction("rw", db.gift_cards, db.gift_card_events, async () => {
       await db.gift_cards.put(next);
       await db.gift_card_events.add(event);
@@ -297,6 +331,15 @@ export const useCustomers = create<CustomersState>((set, get) => ({
       cur.balanceCents,
     );
     event.note = reason?.trim() || undefined;
+    const storeId = useAuth.getState().currentStoreId;
+    if (storeId) {
+      await mutateSupabaseGiftCard(storeId, {
+        action: "activate",
+        card: cur,
+        event,
+      });
+      return;
+    }
     await db.transaction("rw", db.gift_cards, db.gift_card_events, async () => {
       await db.gift_cards.put(next);
       await db.gift_card_events.add(event);

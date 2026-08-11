@@ -2,7 +2,8 @@ import { create } from 'zustand';
 import { Product } from '../types';
 import { db } from '../db/db';
 import { products as seedProducts } from '../data/products';
-import { audit } from '../auth/useAuth';
+import { audit, useAuth } from '../auth/useAuth';
+import { upsertSupabaseProducts } from '../services/supabaseMutations';
 import { FEATURES } from '../config/features';
 import { isSupportedVatRate, UnsupportedVatRateError } from '../utils/vat';
 import { findProductByScanCode, ProductScanMatch } from '../utils/productLookup';
@@ -121,6 +122,7 @@ export const useProducts = create<ProductsState>((set, get) => ({
     if (!isSupportedVatRate(p.vatRate)) throw new UnsupportedVatRateError(p.vatRate, p.name);
     const existing = await db.products.get(p.id);
     const next: Product = normalizeProduct({ ...p, isActive: p.isActive ?? true });
+    await upsertSupabaseProducts(useAuth.getState().currentStoreId, [next]);
     await db.products.put(next);
     set((s) => {
       const idx = s.list.findIndex((x) => x.id === p.id);
@@ -141,6 +143,7 @@ export const useProducts = create<ProductsState>((set, get) => ({
       if (!isSupportedVatRate(p.vatRate)) throw new UnsupportedVatRateError(p.vatRate, p.name);
     }
     const next = products.map((p) => normalizeProduct({ ...p, isActive: p.isActive ?? true }));
+    await upsertSupabaseProducts(useAuth.getState().currentStoreId, next);
     await db.transaction('rw', db.products, async () => {
       await db.products.bulkPut(next);
     });
@@ -158,6 +161,7 @@ export const useProducts = create<ProductsState>((set, get) => ({
     const cur = await db.products.get(id);
     if (!cur) return;
     const next: Product = { ...cur, isActive: false };
+    await upsertSupabaseProducts(useAuth.getState().currentStoreId, [next]);
     await db.products.put(next);
     set((s) => ({ list: s.list.map((x) => (x.id === id ? next : x)) }));
     void audit('product.delete', { productId: id, name: cur.name });
@@ -167,6 +171,7 @@ export const useProducts = create<ProductsState>((set, get) => ({
     const cur = await db.products.get(id);
     if (!cur) return;
     const next: Product = { ...cur, isActive: true };
+    await upsertSupabaseProducts(useAuth.getState().currentStoreId, [next]);
     await db.products.put(next);
     set((s) => ({ list: s.list.map((x) => (x.id === id ? next : x)) }));
     void audit('product.restore', { productId: id, name: cur.name });

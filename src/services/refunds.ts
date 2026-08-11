@@ -1,4 +1,8 @@
 import { db } from "../db/db";
+import { useAuth } from "../auth/useAuth";
+import { supabase } from "../lib/supabase";
+import type { Json } from "../types/database.generated";
+import { syncStoreFromSupabase } from "./supabaseStoreSync";
 import {
   GiftCard,
   GiftCardEvent,
@@ -59,6 +63,9 @@ export const createRefund = async (
     throw new RefundError("Een retourreden is verplicht.");
   if (input.lines.length === 0)
     throw new RefundError("Selecteer minstens één retourregel.");
+
+  const storeId = useAuth.getState().currentStoreId;
+  if (storeId) return createSupabaseRefund(storeId, input);
 
   return db.transaction(
     "rw",
@@ -287,4 +294,50 @@ export const createRefund = async (
       return persisted;
     },
   );
+};
+
+const createSupabaseRefund = async (
+  storeId: string,
+  input: RefundInput,
+): Promise<Transaction> => {
+  const original = await db.transactions.get(input.originalTransactionId);
+  if (!original?.clientRequestId) {
+    throw new RefundError("De oorspronkelijke verkoop bestaat niet.");
+  }
+  const payload = {
+    client_request_id: input.clientRequestId,
+    original_client_request_id: original.clientRequestId,
+    lines: input.lines.map((line) => ({
+      line_id: line.lineId,
+      quantity: line.quantity,
+    })),
+    method: input.method,
+    reason: input.reason.trim(),
+  };
+  const rpc = supabase.rpc as unknown as (
+    functionName: string,
+    args: { target_store_id: string; payload: Json },
+  ) => Promise<{ error: { message: string } | null }>;
+  const { error } = await rpc("refund_sale", {
+    target_store_id: storeId,
+    payload: payload as unknown as Json,
+  });
+  if (error) {
+    const match = error.message.match(/refund:[a-z-]+:(.+)/s);
+    throw new RefundError(
+      match?.[1]?.trim() ||
+        "De retour kon niet veilig worden opgeslagen. Probeer opnieuw.",
+    );
+  }
+  await syncStoreFromSupabase(storeId);
+  const refund = await db.transactions
+    .where("clientRequestId")
+    .equals(input.clientRequestId)
+    .first();
+  if (!refund) {
+    throw new RefundError(
+      "De retour is opgeslagen, maar kon niet lokaal worden geladen. Herlaad de pagina.",
+    );
+  }
+  return refund;
 };

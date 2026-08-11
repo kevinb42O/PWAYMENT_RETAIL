@@ -1,5 +1,9 @@
 import Dexie from "dexie";
 import { db } from "../db/db";
+import { useAuth } from "../auth/useAuth";
+import { supabase } from "../lib/supabase";
+import { syncStoreFromSupabase } from "../services/supabaseStoreSync";
+import type { Json } from "../types/database.generated";
 import {
   DailyReport,
   GiftCardEvent,
@@ -235,6 +239,8 @@ export const generateZReport = async (
   opts: FinalizeOptions = {},
 ): Promise<DailyReport | null> => {
   const registerId = opts.registerId ?? DEFAULT_REGISTER_ID;
+  const storeId = useAuth.getState().currentStoreId;
+  if (storeId) return generateSupabaseZReport(storeId, registerId, opts);
   return db.transaction(
     "rw",
     [
@@ -346,5 +352,116 @@ export const generateZReport = async (
       });
       return { ...report, id: reportId };
     },
+  );
+};
+
+const generateSupabaseZReport = async (
+  storeId: string,
+  registerId: string,
+  opts: FinalizeOptions,
+): Promise<DailyReport | null> => {
+  const transactions = await getUnfinalizedTransactions(registerId);
+  const events = await db.gift_card_events
+    .filter(
+      (event) =>
+        event.dailyReportId == null &&
+        event.source !== "demo" &&
+        (event.type === "issue" || event.type === "recharge"),
+    )
+    .toArray();
+  if (transactions.length === 0 && events.length === 0) return null;
+
+  const reportData = calculateReportData(transactions, events);
+  const lastReport = await db.daily_reports.orderBy("reportNumber").last();
+  const reportNumber = (lastReport?.reportNumber ?? 0) + 1;
+  const prevHash = lastReport?.hash ?? null;
+  const timestamp = Date.now();
+  const openingFloatCents = opts.openingFloatCents ?? 0;
+  const cashReceivedCents =
+    reportData.paymentTotalsCents.Cash +
+    reportData.giftCardLiabilityPaymentTotalsCents.Cash;
+  const expectedCashCents = openingFloatCents + cashReceivedCents;
+  const countedCashCents = opts.countedCashCents;
+  const cashDifferenceCents =
+    countedCashCents == null
+      ? undefined
+      : countedCashCents - expectedCashCents;
+  const reportWithoutHash: Omit<DailyReport, "hash"> = {
+    reportNumber,
+    timestamp,
+    totalRevenueCents: reportData.totalRevenueCents,
+    totalCostCents: reportData.totalCostCents,
+    grossProfitCents: reportData.grossProfitCents,
+    totalVat12Cents: reportData.totalVat12Cents,
+    totalVat21Cents: reportData.totalVat21Cents,
+    totalExclVat12Cents: reportData.totalExclVat12Cents,
+    totalExclVat21Cents: reportData.totalExclVat21Cents,
+    totalDiscountCents: reportData.totalDiscountCents,
+    paymentTotalsCents: reportData.paymentTotalsCents,
+    giftCardLiabilityAddedCents: reportData.giftCardLiabilityAddedCents,
+    giftCardLiabilityPaymentTotalsCents:
+      reportData.giftCardLiabilityPaymentTotalsCents,
+    giftCardEventIds: reportData.giftCardEventIds,
+    transactionIds: reportData.transactionIds,
+    prevHash,
+    closedByUserId: opts.closedByUserId,
+    closedByUserName: opts.closedByUserName,
+    registerId,
+    shiftId: opts.shiftId,
+    openingFloatCents,
+    countedCashCents,
+    expectedCashCents,
+    cashDifferenceCents,
+    cashDifferenceReason: opts.cashDifferenceReason,
+    hashPayloadVersion: 2,
+  };
+  const hashPayload = JSON.stringify({
+    version: 2,
+    report: { ...reportWithoutHash, hash: undefined },
+    transactions: transactions
+      .sort((a, b) => (a.id ?? 0) - (b.id ?? 0))
+      .map(canonicalTransaction),
+    giftCardEvents: events.sort((a, b) => a.id.localeCompare(b.id)),
+  });
+  const report: DailyReport = {
+    ...reportWithoutHash,
+    hash: await generateHash(hashPayload),
+  };
+  const transactionRequestIds = transactions.map(
+    (transaction) => transaction.clientRequestId,
+  );
+  if (transactionRequestIds.some((id) => !id)) {
+    throw new ReportIntegrityError(
+      "Een verkoop mist een serverreferentie. Vernieuw de gegevens.",
+    );
+  }
+  const rpc = supabase.rpc as unknown as (
+    functionName: string,
+    args: { target_store_id: string; payload: Json },
+  ) => Promise<{ error: { message: string } | null }>;
+  const { error } = await rpc("finalize_daily_report", {
+    target_store_id: storeId,
+    payload: {
+      register_id: registerId,
+      report: {
+        ...report,
+        timestamp: new Date(report.timestamp).toISOString(),
+      },
+      transaction_request_ids: transactionRequestIds as string[],
+      gift_card_event_ids: events.map((event) => event.id),
+    } as unknown as Json,
+  });
+  if (error) {
+    const match = error.message.match(/report:[a-z-]+:(.+)/s);
+    throw new ReportIntegrityError(
+      match?.[1]?.trim() || "Het Z-rapport kon niet veilig worden gesloten.",
+    );
+  }
+  await syncStoreFromSupabase(storeId);
+  return (
+    (await db.daily_reports
+      .where("reportNumber")
+      .equals(reportNumber)
+      .first()) ?? null
   );
 };

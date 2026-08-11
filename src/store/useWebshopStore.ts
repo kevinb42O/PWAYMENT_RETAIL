@@ -89,7 +89,7 @@ interface WebshopStoreState extends WebshopSettings {
   toggleCouponActive: (code: string) => void;
 }
 
-const defaultSettings: WebshopSettings = {
+export const DEMO_WEBSHOP_SETTINGS: WebshopSettings = {
   isEnabled: true,
   shopName: 'Pwayment Skate Shop',
   shopTagline: 'De nummer 1 winkel voor skateboards, apparel en accessoires.',
@@ -160,6 +160,49 @@ const defaultSettings: WebshopSettings = {
   autoConfirmOrders: true,
 };
 
+export const EMPTY_WEBSHOP_SETTINGS: WebshopSettings = {
+  ...DEMO_WEBSHOP_SETTINGS,
+  isEnabled: false,
+  shopName: '',
+  shopTagline: '',
+  subdomain: '',
+  customDomain: '',
+  domainStatus: 'none',
+  contactEmail: '',
+  contactPhone: '',
+  seoDescription: '',
+  announcementActive: false,
+  announcementText: '',
+  heroTitle: '',
+  heroSubtitle: '',
+  heroImageUrl: '',
+  unpublishedProductIds: [],
+  featuredProductIds: [],
+  productDescriptions: {},
+  productImages: {},
+  productVariants: {},
+  coupons: [],
+  freeShippingThresholdCents: 0,
+  shippingFeeCents: 0,
+  pickupEnabled: false,
+  pickupAddress: '',
+  pickupInstructions: '',
+  paymentMethods: {
+    bancontact: false,
+    ideal: false,
+    creditcard: false,
+    applepay: false,
+    klarna: false,
+    payOnPickup: false,
+  },
+  requireTermsCheckbox: false,
+  enableOrderNotes: false,
+  instagramUrl: '',
+  facebookUrl: '',
+  orderNotificationEmail: '',
+  autoConfirmOrders: false,
+};
+
 const legacyProductIdMap: Record<string, string> = {
   'deck-popsicle-825-maple': 'skateboards-decks-street-antwerp-skate-co-popsicle-maple-deck-8-25-8-25-inch',
   'hoodie-logo-black': 'apparel-truien-hoodies-antwerp-skate-co-heavy-logo-hoodie-black-m',
@@ -177,7 +220,7 @@ const remapProductRecord = <T,>(record: Record<string, T> = {}) =>
 export const useWebshopStore = create<WebshopStoreState>()(
   persist(
     (set, get) => ({
-      ...defaultSettings,
+      ...EMPTY_WEBSHOP_SETTINGS,
 
       updateSettings: (newSettings) => {
         set((state) => ({ ...state, ...newSettings }));

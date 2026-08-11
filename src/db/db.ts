@@ -38,6 +38,9 @@ import {
  */
 export const DB_NAME = "PwaymentRetailPOS";
 
+const tenantDatabaseName = (storeId: string | null): string =>
+  storeId ? `${DB_NAME}:${storeId}` : DB_NAME;
+
 export class POSDatabase extends Dexie {
   transactions!: Table<Transaction, number>;
   daily_reports!: Table<DailyReport, number>;
@@ -56,8 +59,8 @@ export class POSDatabase extends Dexie {
   stock_movements!: Table<StockMovement, number>;
   webshop_orders!: Table<WebshopOrder, string>;
 
-  constructor() {
-    super(DB_NAME);
+  constructor(databaseName = DB_NAME) {
+    super(databaseName);
 
     this.version(1).stores({
       transactions: "++id, tableId, paymentMethod, timestamp",
@@ -441,4 +444,17 @@ export class POSDatabase extends Dexie {
   }
 }
 
-export const db = new POSDatabase();
+export let db = new POSDatabase();
+
+let activeTenantStoreId: string | null = null;
+
+/** Switch the complete offline cache to a physical database for one store. */
+export const activateTenantDatabase = (storeId: string | null): POSDatabase => {
+  if (storeId === activeTenantStoreId) return db;
+  db.close();
+  activeTenantStoreId = storeId;
+  db = new POSDatabase(tenantDatabaseName(storeId));
+  return db;
+};
+
+export const getActiveTenantStoreId = (): string | null => activeTenantStoreId;

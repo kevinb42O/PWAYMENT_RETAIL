@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "./useAuth";
 import { db } from "../db/db";
 import { User, Role } from "../types";
+import { supabase } from "../lib/supabase";
 import {
   ArrowRight,
   Check,
@@ -54,7 +55,12 @@ export const LoginScreen: React.FC = () => {
 
   // UI status
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const pinLoginEnabled =
+    import.meta.env.DEV ||
+    import.meta.env.VITE_PRESENTATION_BUILD === "true" ||
+    import.meta.env.VITE_E2E_BUILD === "true";
 
   useEffect(() => {
     void db.users.toArray().then(setStaffUsers);
@@ -63,6 +69,7 @@ export const LoginScreen: React.FC = () => {
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setNotice(null);
     setIsLoading(true);
     const res = await loginWithEmail(email, password);
     setIsLoading(false);
@@ -76,6 +83,7 @@ export const LoginScreen: React.FC = () => {
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setNotice(null);
 
     if (!firstName.trim() || !lastName.trim()) {
       setError("Vul alstublieft zowel uw voornaam als familienaam in");
@@ -92,7 +100,7 @@ export const LoginScreen: React.FC = () => {
       return;
     }
 
-    if (!/^\d{6}$/.test(pinCode)) {
+    if (pinLoginEnabled && !/^\d{6}$/.test(pinCode)) {
       setError("Kies een snel-PIN van exact 6 cijfers");
       return;
     }
@@ -109,6 +117,11 @@ export const LoginScreen: React.FC = () => {
     setIsLoading(false);
     if (!res.success) {
       setError(res.message || "Registratie mislukt");
+      return;
+    }
+    if (res.message) {
+      setNotice(res.message);
+      setMode("login");
     }
   };
 
@@ -207,16 +220,18 @@ export const LoginScreen: React.FC = () => {
           </div>
         </div>
 
-        <button
-          onClick={() => {
-            setShowPinDrawer(!showPinDrawer);
-            setError(null);
-          }}
-          className="text-xs font-semibold text-zinc-800 hover:text-zinc-950 bg-white/80 backdrop-blur-md border border-zinc-200/80 hover:border-zinc-300 rounded-full px-5 py-2.5 transition-all shadow-2xs hover:shadow-xs flex items-center gap-2"
-        >
-          <KeyRound size={14} className="text-zinc-600" />
-          {showPinDrawer ? "E-mail Inloggen" : "Medewerker Snel-PIN"}
-        </button>
+        {pinLoginEnabled && (
+          <button
+            onClick={() => {
+              setShowPinDrawer(!showPinDrawer);
+              setError(null);
+            }}
+            className="text-xs font-semibold text-zinc-800 hover:text-zinc-950 bg-white/80 backdrop-blur-md border border-zinc-200/80 hover:border-zinc-300 rounded-full px-5 py-2.5 transition-all shadow-2xs hover:shadow-xs flex items-center gap-2"
+          >
+            <KeyRound size={14} className="text-zinc-600" />
+            {showPinDrawer ? "E-mail Inloggen" : "Medewerker Snel-PIN"}
+          </button>
+        )}
       </header>
 
       {/* Main Container - Alive High-Fashion Editorial Layout */}
@@ -285,7 +300,7 @@ export const LoginScreen: React.FC = () => {
 
           {/* Right Form Card Panel */}
           <div className="lg:col-span-6 w-full max-w-[440px] mx-auto lg:ml-auto">
-            {showPinDrawer ? (
+            {showPinDrawer && pinLoginEnabled ? (
               /* Medewerker Snel-PIN Terminal Drawer */
               <div className="bg-white/90 backdrop-blur-xl rounded-3xl border border-zinc-200/80 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.08)] p-8 sm:p-10 transition-all">
                 <div className="text-center mb-8">
@@ -302,7 +317,6 @@ export const LoginScreen: React.FC = () => {
                     {error}
                   </div>
                 )}
-
                 {!selectedStaff ? (
                   <div className="grid grid-cols-2 gap-3">
                     {staffUsers.map((u) => (
@@ -457,6 +471,11 @@ export const LoginScreen: React.FC = () => {
                     {error}
                   </div>
                 )}
+                {notice && (
+                  <div className="mb-5 p-3.5 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-medium">
+                    {notice}
+                  </div>
+                )}
 
                 {mode === "login" ? (
                   /* LOGIN FORM */
@@ -482,10 +501,30 @@ export const LoginScreen: React.FC = () => {
                         </label>
                         <a
                           href="#forgot"
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.preventDefault();
-                            alert(
-                              "Neem contact op met uw beheerdersaccount om uw wachtwoord te herstellen.",
+                            setError(null);
+                            setNotice(null);
+                            const cleanEmail = email.trim().toLowerCase();
+                            if (!cleanEmail) {
+                              setError("Vul eerst je e-mailadres in.");
+                              return;
+                            }
+                            const { error: resetError } =
+                              await supabase.auth.resetPasswordForEmail(
+                                cleanEmail,
+                                {
+                                  redirectTo: `${window.location.origin}/auth/set-password?type=recovery`,
+                                },
+                              );
+                            if (resetError) {
+                              setError(
+                                "De herstellink kon niet worden verstuurd. Probeer later opnieuw.",
+                              );
+                              return;
+                            }
+                            setNotice(
+                              "Als dit account bestaat, ontvang je een beveiligde herstellink per e-mail.",
                             );
                           }}
                           className="text-xs font-medium text-zinc-500 hover:text-zinc-950 transition-colors"
@@ -667,6 +706,7 @@ export const LoginScreen: React.FC = () => {
                       </div>
                     </div>
 
+                    {pinLoginEnabled && (
                     <div>
                       <label className="block text-xs font-semibold text-zinc-800 mb-1.5">
                         Kassa Snel-PIN (6 cijfers)
@@ -702,6 +742,7 @@ export const LoginScreen: React.FC = () => {
                         </div>
                       </div>
                     </div>
+                    )}
 
                     <button
                       type="submit"

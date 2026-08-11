@@ -10,6 +10,7 @@ import {
 import { audit, useAuth } from '../auth/useAuth';
 import { db } from '../db/db';
 import { useProducts } from './useProducts';
+import { recordSupabaseVoid } from '../services/supabaseAudit';
 
 interface CartDiscount {
   amountCents: number;
@@ -213,6 +214,10 @@ export const useStore = create<POSState>()(
           byUserName: auth.currentUserName ?? 'onbekend',
         };
         try {
+          if (auth.currentStoreId) {
+            const requestId = globalThis.crypto?.randomUUID?.() ?? `${entry.timestamp}-${lineId}`;
+            await recordSupabaseVoid(auth.currentStoreId, requestId, entry);
+          }
           await db.voids.add(entry);
         } catch (e) {
           console.warn('void persistence failed', e);

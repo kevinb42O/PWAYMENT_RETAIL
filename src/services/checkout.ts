@@ -1,4 +1,7 @@
 import { db } from "../db/db";
+import { isSupabaseConfigured, supabase } from "../lib/supabase";
+import { useAuth } from "../auth/useAuth";
+import { syncStoreFromSupabase } from "./supabaseStoreSync";
 import {
   AuditEntry,
   Customer,
@@ -14,6 +17,7 @@ import { calculateTotals, Totals, UnsupportedVatRateError } from "../utils/vat";
 import { isGiftCardExpired } from "../utils/giftCards";
 import { getMerchantProfileSnapshot } from "../store/useMerchantProfile";
 import { DEFAULT_REGISTER_ID, isGiftCardProduct } from "../utils/financial";
+import type { Json } from "../types/database.generated";
 
 export type CheckoutErrorCode =
   | "empty-cart"
@@ -27,7 +31,12 @@ export type CheckoutErrorCode =
   | "gift-card-insufficient-balance"
   | "gift-card-exceeds-total"
   | "gift-card-product"
-  | "insufficient-stock";
+  | "insufficient-stock"
+  | "product-not-found"
+  | "customer-not-found"
+  | "not-authenticated"
+  | "forbidden"
+  | "invalid-request";
 
 export class CheckoutError extends Error {
   readonly code: CheckoutErrorCode;
@@ -111,11 +120,122 @@ export const finalizeCheckout = (
       new CheckoutError("busy", "Er loopt al een afrekening."),
     );
   }
-  const promise = runCheckout(input).finally(() => {
+  const storeId = useAuth.getState().currentStoreId;
+  const promise = (
+    storeId && isSupabaseConfigured
+      ? runSupabaseCheckout(storeId, input)
+      : runCheckout(input)
+  ).finally(() => {
     inFlight = null;
   });
   inFlight = { clientRequestId: input.clientRequestId, promise };
   return promise;
+};
+
+const remoteErrorCodes = new Set<CheckoutErrorCode>([
+  "empty-cart",
+  "unsupported-vat",
+  "invalid-tender",
+  "gift-card-not-found",
+  "gift-card-inactive",
+  "gift-card-expired",
+  "gift-card-invalid-amount",
+  "gift-card-insufficient-balance",
+  "gift-card-exceeds-total",
+  "gift-card-product",
+  "insufficient-stock",
+  "product-not-found",
+  "customer-not-found",
+  "not-authenticated",
+  "forbidden",
+  "invalid-request",
+]);
+
+const toRemoteCheckoutError = (message: string): CheckoutError => {
+  const match = message.match(/checkout:([a-z-]+):(.+)/s);
+  const code = match?.[1] as CheckoutErrorCode | undefined;
+  if (code && remoteErrorCodes.has(code)) {
+    return new CheckoutError(code, match?.[2]?.trim() || "Afrekenen mislukt.");
+  }
+  return new CheckoutError(
+    "invalid-request",
+    "Afrekenen kon niet veilig worden opgeslagen. Probeer opnieuw.",
+  );
+};
+
+/**
+ * Authenticated checkouts commit to Supabase first. The RPC is the financial
+ * write boundary and performs every mutation in one PostgreSQL transaction.
+ * The isolated browser database is refreshed only after the server commits.
+ */
+const runSupabaseCheckout = async (
+  storeId: string,
+  input: CheckoutInput,
+): Promise<CheckoutResult> => {
+  const merchantSnapshot = { ...getMerchantProfileSnapshot() };
+  const payload = {
+    client_request_id: input.clientRequestId,
+    cart_id: input.cartId,
+    items: input.items.map((item) => ({
+      line_id: item.lineId,
+      product: { id: item.product.id },
+      quantity: item.quantity,
+      notes: item.notes,
+      modifiers: item.modifiers ?? [],
+    })),
+    discount_cents: input.discountCents,
+    discount_reason: input.discountReason,
+    discount_approved_by_user_id: input.discountApprovedByUserId,
+    gift_cards: dedupeGiftCards(input.giftCards).map((card) => ({
+      id: card.id,
+      code: card.code,
+      amount_cents: card.amountCents,
+    })),
+    method: input.method,
+    tendered_cents: input.tenderedCents,
+    customer_id: input.customerId,
+    merchant_snapshot: merchantSnapshot,
+  };
+
+  const { data, error } = await supabase.rpc("checkout_sale", {
+    target_store_id: storeId,
+    payload: payload as unknown as Json,
+  });
+  if (error) throw toRemoteCheckoutError(error.message);
+
+  await syncStoreFromSupabase(storeId);
+  const transaction = await db.transactions
+    .where("clientRequestId")
+    .equals(input.clientRequestId)
+    .first();
+  if (!transaction) {
+    throw new CheckoutError(
+      "invalid-request",
+      "De verkoop is opgeslagen, maar kon niet lokaal worden geladen. Herlaad de pagina.",
+    );
+  }
+
+  const productIds = [...new Set(input.items.map((item) => item.product.id))];
+  const giftCardIds = [...new Set(input.giftCards.map((card) => card.id))];
+  const updatedProducts = (
+    await Promise.all(productIds.map((id) => db.products.get(id)))
+  ).filter((product): product is Product => Boolean(product));
+  const updatedGiftCards = (
+    await Promise.all(giftCardIds.map((id) => db.gift_cards.get(id)))
+  ).filter((card): card is GiftCard => Boolean(card));
+  const updatedCustomer = input.customerId
+    ? await db.customers.get(input.customerId)
+    : undefined;
+
+  return {
+    transaction,
+    duplicate: Boolean(
+      data && typeof data === "object" && !Array.isArray(data) && data.duplicate,
+    ),
+    updatedProducts,
+    updatedGiftCards,
+    updatedCustomer,
+  };
 };
 
 const runCheckout = async (input: CheckoutInput): Promise<CheckoutResult> => {

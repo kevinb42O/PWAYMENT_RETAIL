@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { audit, useAuth } from '../auth/useAuth';
 import { db } from '../db/db';
+import { saveSupabasePurchaseOrders } from '../services/supabasePurchaseOrders';
 import { PurchaseOrder, PurchaseOrderStatus } from '../types';
 import { formatEUR } from '../utils/money';
 import {
@@ -100,22 +101,31 @@ export const PurchaseOrderWorkflow = ({ refreshKey, onInventoryChanged }: Purcha
       reference: references[order.id],
       expectedDeliveryAt: parseDateInput(deliveryDates[order.id] ?? ''),
     });
-    await db.purchase_orders.put(updated);
-    await audit('purchase_order.update', { orderId: order.id, status: updated.status, supplier: order.supplier });
+    if (auth.currentStoreId) await saveSupabasePurchaseOrders(auth.currentStoreId, [updated]);
+    else {
+      await db.purchase_orders.put(updated);
+      await audit('purchase_order.update', { orderId: order.id, status: updated.status, supplier: order.supplier });
+    }
     setFeedback(`De bestelling bij ${order.supplier} staat nu als besteld. Er is niets automatisch verzonden.`);
   });
 
   const saveDraft = (order: PurchaseOrder) => runOrderAction(order.id, async () => {
     const updated = updatePurchaseOrderDraftQuantities(order, draftQuantities[order.id] ?? {});
-    await db.purchase_orders.put(updated);
-    await audit('purchase_order.update', { orderId: order.id, status: updated.status, supplier: order.supplier, quantitiesUpdated: true });
+    if (auth.currentStoreId) await saveSupabasePurchaseOrders(auth.currentStoreId, [updated]);
+    else {
+      await db.purchase_orders.put(updated);
+      await audit('purchase_order.update', { orderId: order.id, status: updated.status, supplier: order.supplier, quantitiesUpdated: true });
+    }
     setFeedback(`Het concept voor ${order.supplier} is bijgewerkt.`);
   });
 
   const cancelDraft = (order: PurchaseOrder) => runOrderAction(order.id, async () => {
     const updated = cancelPurchaseOrder(order);
-    await db.purchase_orders.put(updated);
-    await audit('purchase_order.cancel', { orderId: order.id, supplier: order.supplier });
+    if (auth.currentStoreId) await saveSupabasePurchaseOrders(auth.currentStoreId, [updated]);
+    else {
+      await db.purchase_orders.put(updated);
+      await audit('purchase_order.cancel', { orderId: order.id, supplier: order.supplier });
+    }
     setExpandedOrderId(null);
     setFeedback(`Het concept voor ${order.supplier} is geannuleerd en blijft in de historiek bewaard.`);
   });
@@ -127,17 +137,21 @@ export const PurchaseOrderWorkflow = ({ refreshKey, onInventoryChanged }: Purcha
       userId: auth.currentUserId ?? undefined,
       userName: auth.currentUserName ?? undefined,
     });
-    await db.transaction('rw', db.purchase_orders, db.products, db.stock_movements, async () => {
-      await db.purchase_orders.put(result.order);
-      await db.products.bulkPut(result.updatedProducts);
-      await db.stock_movements.bulkAdd(result.movements);
-    });
-    await audit('purchase_order.receive', {
-      orderId: order.id,
-      supplier: order.supplier,
-      status: result.order.status,
-      received: result.movements.map((movement) => ({ productId: movement.productId, quantity: movement.quantityDelta })),
-    });
+    if (auth.currentStoreId) {
+      await saveSupabasePurchaseOrders(auth.currentStoreId, [result.order]);
+    } else {
+      await db.transaction('rw', db.purchase_orders, db.products, db.stock_movements, async () => {
+        await db.purchase_orders.put(result.order);
+        await db.products.bulkPut(result.updatedProducts);
+        await db.stock_movements.bulkAdd(result.movements);
+      });
+      await audit('purchase_order.receive', {
+        orderId: order.id,
+        supplier: order.supplier,
+        status: result.order.status,
+        received: result.movements.map((movement) => ({ productId: movement.productId, quantity: movement.quantityDelta })),
+      });
+    }
     setReceipts((current) => ({ ...current, [order.id]: {} }));
     setFeedback(result.order.status === 'received'
       ? `De bestelling van ${order.supplier} is volledig ontvangen en de voorraad is bijgewerkt.`

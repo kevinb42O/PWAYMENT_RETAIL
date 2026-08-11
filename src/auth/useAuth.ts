@@ -1,15 +1,24 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { db } from "../db/db";
+import { activateTenantDatabase, db } from "../db/db";
+import { requireSupabaseConfiguration, supabase } from "../lib/supabase";
+import { syncStoreFromSupabase } from "../services/supabaseStoreSync";
+import {
+  startTenantSettingsPersistence,
+  stopTenantSettingsPersistence,
+} from "../services/tenantSettingsPersistence";
 import { hashCredential, verifyCredential } from "../utils/credentials";
 import { AuditAction, AuditEntry, Role, User } from "../types";
+import type { Json } from "../types/database.generated";
 
 interface AuthState {
   currentUserId: string | null;
   currentUserName: string | null;
   currentRole: Role | null;
+  currentStoreId: string | null;
   currentStoreName: string | null;
   unlocked: boolean;
+  initialize: () => Promise<void>;
   login: (userId: string, pin: string) => Promise<boolean>;
   loginWithEmail: (
     email: string,
@@ -35,14 +44,12 @@ interface AuthState {
 /** Hash a PIN identical to how seed users are stored. */
 const hashPin = (pin: string): Promise<string> => hashCredential(pin, "pin");
 
-/** Hash a password for account login. */
+/** Used only by explicitly flagged E2E fixture accounts. */
 const hashPassword = (password: string): Promise<string> =>
   hashCredential(password, "password");
 
 export const DEMO_ACCOUNT_ID = "u-demo-kevin";
 const DEMO_ACCOUNT_EMAIL = "kevin@webaanzee.be";
-const DEMO_ACCOUNT_PASSWORD_HASH =
-  "pbkdf2-sha256$120000$52e83ca7bf08ac7fb1d70002c49962a8$bc09b0f5f1539ac4bf890db2d7e7e2951feb0b8be8adb82e67545939015d776d";
 const DEMO_ACCOUNT_PIN_HASH =
   "pbkdf2-sha256$120000$d2d295c66516d097883068ad223ad29f$8966efbc8d08770914305eb59c67e7dcf459ff6b0d1fce1d0b90f70fc658128b";
 
@@ -56,7 +63,6 @@ const ensureDemoAccount = async (): Promise<void> => {
     role: "owner",
     pinHash: DEMO_ACCOUNT_PIN_HASH,
     email: DEMO_ACCOUNT_EMAIL,
-    passwordHash: DEMO_ACCOUNT_PASSWORD_HASH,
     storeName: "PWAYMENT Demo Store",
     createdAt: existing?.createdAt ?? new Date().toISOString(),
   };
@@ -137,7 +143,7 @@ export const audit = async (
   action: AuditAction,
   detail?: unknown,
 ): Promise<void> => {
-  const { currentUserId, currentUserName } = useAuth.getState();
+  const { currentUserId, currentUserName, currentStoreId } = useAuth.getState();
   const entry: AuditEntry = {
     timestamp: Date.now(),
     userId: currentUserId,
@@ -151,17 +157,39 @@ export const audit = async (
     // eslint-disable-next-line no-console
     console.warn("audit write failed", err);
   }
+  if (currentStoreId) {
+    try {
+      const rpc = supabase.rpc as unknown as (
+        functionName: string,
+        args: {
+          target_store_id: string;
+          event_action: string;
+          event_detail: Json | null;
+        },
+      ) => Promise<{ error: { message: string } | null }>;
+      const { error } = await rpc("append_audit", {
+        target_store_id: currentStoreId,
+        event_action: action,
+        event_detail: detail == null ? null : (detail as unknown as Json),
+      });
+      if (error) throw error;
+    } catch (err) {
+      // The local tenant log remains available if the network is temporarily down.
+      // eslint-disable-next-line no-console
+      console.warn("remote audit write failed", err);
+    }
+  }
 };
 
 /** Seed default users on first boot if none exist. PINs are 6 digits. */
 export const ensureSeedUsers = async (): Promise<void> => {
-  await ensureDemoAccount();
-
   const fixtureMode =
     import.meta.env.DEV ||
     import.meta.env.VITE_PRESENTATION_BUILD === "true" ||
     import.meta.env.VITE_E2E_BUILD === "true";
   if (!fixtureMode) return;
+
+  await ensureDemoAccount();
 
   const SEED_VERSION = "5";
   const SEED_KEY = "pwayment:seedVersion";
@@ -218,7 +246,7 @@ export const ensureSeedUsers = async (): Promise<void> => {
       role: u.role,
       pinHash: await hashPin(u.pin),
       email: u.email,
-      passwordHash: await hashPassword("password123"),
+      passwordHash: await hashCredential("password123", "password"),
       storeName: u.storeName,
       createdAt: new Date().toISOString(),
     };
@@ -234,9 +262,49 @@ export const useAuth = create<AuthState>()(
       currentUserId: null,
       currentUserName: null,
       currentRole: null,
+      currentStoreId: null,
       currentStoreName: null,
       unlocked: false,
+      async initialize() {
+        if (!import.meta.env.VITE_SUPABASE_URL) return;
+        const { data, error } = await supabase.auth.getSession();
+        if (error || !data.session?.user) return;
+
+        const { data: membership, error: membershipError } = await supabase
+          .from("store_memberships")
+          .select("store_id, role, status, stores(name)")
+          .eq("user_id", data.session.user.id)
+          .eq("status", "active")
+          .limit(1)
+          .maybeSingle();
+        if (membershipError || !membership) return;
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("display_name")
+          .eq("id", data.session.user.id)
+          .maybeSingle();
+        await syncStoreFromSupabase(membership.store_id);
+        startTenantSettingsPersistence(membership.store_id);
+        const storeName = Array.isArray(membership.stores)
+          ? membership.stores[0]?.name
+          : membership.stores?.name;
+        set({
+          currentUserId: data.session.user.id,
+          currentUserName:
+            profile?.display_name ?? data.session.user.email ?? "Gebruiker",
+          currentRole: membership.role as Role,
+          currentStoreId: membership.store_id,
+          currentStoreName: storeName ?? null,
+          unlocked: true,
+        });
+      },
       async login(userId, pin) {
+        const fixturePinLogin =
+          import.meta.env.DEV ||
+          import.meta.env.VITE_PRESENTATION_BUILD === "true" ||
+          import.meta.env.VITE_E2E_BUILD === "true";
+        if (!fixturePinLogin) return false;
         const attemptKey = `pin:${userId}`;
         if (isBlocked(attemptKey)) return false;
         const user = await db.users.get(userId);
@@ -254,6 +322,7 @@ export const useAuth = create<AuthState>()(
           currentUserId: user.id,
           currentUserName: user.name,
           currentRole: user.role,
+          currentStoreId: null,
           currentStoreName: user.storeName || null,
           unlocked: true,
         });
@@ -271,56 +340,63 @@ export const useAuth = create<AuthState>()(
         if (!cleanEmail || !password) {
           return { success: false, message: "Vul alstublieft alle velden in" };
         }
-        const users = await db.users.toArray();
-        const user = users.find((u) => u.email?.toLowerCase() === cleanEmail);
-        if (!user) {
-          return {
-            success: false,
-            message: "Geen account gevonden met dit e-mailadres",
-          };
-        }
-        if (!user.passwordHash) {
-          return {
-            success: false,
-            message:
-              "Account heeft geen wachtwoord ingesteld. Gebruik je PIN code.",
-          };
-        }
-        const passwordCheck = await verifyCredential(
-          password,
-          "password",
-          user.passwordHash,
-        );
-        if (!passwordCheck.valid) {
-          recordFailure(attemptKey);
-          return { success: false, message: "Ongeldig wachtwoord" };
-        }
-        if (passwordCheck.needsUpgrade) {
-          await db.users.update(user.id, {
-            passwordHash: await hashPassword(password),
+        if (import.meta.env.VITE_E2E_BUILD === "true") {
+          const users = await db.users.toArray();
+          const user = users.find(
+            (candidate) => candidate.email?.toLowerCase() === cleanEmail,
+          );
+          if (!user?.passwordHash) {
+            return { success: false, message: "Ongeldige inloggegevens" };
+          }
+          const check = await verifyCredential(
+            password,
+            "password",
+            user.passwordHash,
+          );
+          if (!check.valid) {
+            return { success: false, message: "Ongeldige inloggegevens" };
+          }
+          set({
+            currentUserId: user.id,
+            currentUserName: user.name,
+            currentRole: user.role,
+            currentStoreId: null,
+            currentStoreName: user.storeName ?? null,
+            unlocked: true,
           });
+          return { success: true };
         }
-        if (user.id === DEMO_ACCOUNT_ID) {
-          try {
-            await prepareDemoPresentation();
-          } catch (error) {
-            console.error("Demo-omgeving voorbereiden mislukt:", error);
+        try {
+          requireSupabaseConfiguration();
+          const { error } = await supabase.auth.signInWithPassword({
+            email: cleanEmail,
+            password,
+          });
+          if (error) {
+            recordFailure(attemptKey);
             return {
               success: false,
-              message: "De demo-omgeving kon niet worden klaargezet. Probeer opnieuw.",
+              message: "De combinatie van e-mailadres en wachtwoord is ongeldig.",
             };
           }
+          await get().initialize();
+          if (!get().unlocked) {
+            await supabase.auth.signOut();
+            return {
+              success: false,
+              message: "Er is geen actieve winkel aan dit account gekoppeld.",
+            };
+          }
+          clearFailures(attemptKey);
+          await audit("login", { email: cleanEmail });
+          return { success: true };
+        } catch (error) {
+          console.error("Supabase login mislukt:", error);
+          return {
+            success: false,
+            message: "Aanmelden is tijdelijk niet mogelijk. Probeer opnieuw.",
+          };
         }
-        clearFailures(attemptKey);
-        set({
-          currentUserId: user.id,
-          currentUserName: user.name,
-          currentRole: user.role,
-          currentStoreName: user.storeName || null,
-          unlocked: true,
-        });
-        await audit("login", { userId: user.id, email: cleanEmail });
-        return { success: true };
       },
       async registerAccount({
         email,
@@ -356,60 +432,97 @@ export const useAuth = create<AuthState>()(
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
           return { success: false, message: "Vul een geldig e-mailadres in" };
         }
-        if (!/^\d{6}$/.test(pin)) {
+        if (
+          import.meta.env.VITE_E2E_BUILD === "true" &&
+          !/^\d{6}$/.test(pin)
+        ) {
           return {
             success: false,
             message: "De snel-PIN moet exact 6 cijfers bevatten",
           };
         }
-        const users = await db.users.toArray();
-        const exists = users.some((u) => u.email?.toLowerCase() === cleanEmail);
-        if (exists) {
+        if (import.meta.env.VITE_E2E_BUILD === "true") {
+          const newUser: User = {
+            id: `u-e2e-${globalThis.crypto.randomUUID()}`,
+            name: `${cleanFirst} ${cleanLast}`,
+            firstName: cleanFirst,
+            lastName: cleanLast,
+            role: "owner",
+            email: cleanEmail,
+            passwordHash: await hashPassword(password),
+            pinHash: await hashPin(pin),
+            storeName: cleanStore,
+            createdAt: new Date().toISOString(),
+          };
+          await db.users.put(newUser);
+          set({
+            currentUserId: newUser.id,
+            currentUserName: newUser.name,
+            currentRole: newUser.role,
+            currentStoreId: null,
+            currentStoreName: newUser.storeName ?? null,
+            unlocked: true,
+          });
+          return { success: true };
+        }
+        try {
+          requireSupabaseConfiguration();
+          const { data, error } = await supabase.auth.signUp({
+            email: cleanEmail,
+            password,
+            options: {
+              data: {
+                first_name: cleanFirst,
+                last_name: cleanLast,
+                store_name: cleanStore,
+              },
+            },
+          });
+          if (error) {
+            return {
+              success: false,
+              message:
+                error.status === 429
+                  ? "Te veel registratiepogingen. Probeer later opnieuw."
+                  : "Registratie is niet gelukt. Controleer de gegevens.",
+            };
+          }
+          if (data.session) {
+            await get().initialize();
+            await audit("register", { email: cleanEmail, storeName: cleanStore });
+            return { success: true };
+          }
+          return {
+            success: true,
+            message:
+              "Controleer je e-mail om je account te bevestigen en meld daarna aan.",
+          };
+        } catch (error) {
+          console.error("Supabase registratie mislukt:", error);
           return {
             success: false,
-            message: "Er bestaat al een account met dit e-mailadres",
+            message: "Registratie is tijdelijk niet mogelijk. Probeer opnieuw.",
           };
         }
-
-        const userId = `u-acc-${globalThis.crypto.randomUUID()}`;
-        const pinHash = await hashPin(pin);
-        const passwordHash = await hashPassword(password);
-
-        const fullName = `${cleanFirst} ${cleanLast}`;
-        const newUser: User = {
-          id: userId,
-          name: fullName,
-          firstName: cleanFirst,
-          lastName: cleanLast,
-          role: "owner",
-          email: cleanEmail,
-          passwordHash,
-          pinHash,
-          storeName: cleanStore,
-          createdAt: new Date().toISOString(),
-        };
-
-        await db.users.put(newUser);
-        set({
-          currentUserId: newUser.id,
-          currentUserName: newUser.name,
-          currentRole: newUser.role,
-          currentStoreName: newUser.storeName,
-          unlocked: true,
-        });
-        await audit("register", {
-          userId: newUser.id,
-          email: cleanEmail,
-          storeName: newUser.storeName,
-        });
-        return { success: true };
       },
       async logout() {
         await audit("logout");
+        stopTenantSettingsPersistence();
+        await supabase.auth.signOut();
+        activateTenantDatabase(null);
+        try {
+          localStorage.removeItem("pwayment-storage-v5");
+          localStorage.removeItem("pwayment:merchant-profile");
+          localStorage.removeItem("pwayment_webshop_settings_v1");
+          localStorage.removeItem("pwayment-integrations-v1");
+        } catch {
+          // In-memory logout remains complete when storage is unavailable.
+        }
         set({
           currentUserId: null,
           currentUserName: null,
           currentRole: null,
+          currentStoreId: null,
           currentStoreName: null,
           unlocked: false,
         });
@@ -452,6 +565,7 @@ export const useAuth = create<AuthState>()(
         currentUserId: s.currentUserId,
         currentUserName: s.currentUserName,
         currentRole: s.currentRole,
+        currentStoreId: s.currentStoreId,
         currentStoreName: s.currentStoreName,
         unlocked: false,
       }),

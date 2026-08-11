@@ -3,6 +3,12 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 
 const searchParams = new URLSearchParams(window.location.search);
+const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+const authFlowType = hashParams.get("type") ?? searchParams.get("type");
+const passwordSetupFlow =
+  authFlowType === "invite" ||
+  authFlowType === "recovery" ||
+  window.location.pathname.startsWith("/auth/set-password");
 const presentationRequested = searchParams.get("presentation") === "1";
 const previewMode = searchParams.get("preview") === "1";
 const presentationBuild = import.meta.env.VITE_PRESENTATION_BUILD === "true";
@@ -18,7 +24,11 @@ const accountRoute = ["/app", "/login", "/register"].some(
     window.location.pathname.startsWith(`${route}/`),
 );
 const publicWebsiteRoute =
-  !storefrontRoute && !accountRoute && !presentationMode && !presentationBuild;
+  !passwordSetupFlow &&
+  !storefrontRoute &&
+  !accountRoute &&
+  !presentationMode &&
+  !presentationBuild;
 const serviceWorkerCleanupKey = "pwayment-service-worker-cleanup-v1";
 
 const removeServiceWorkers = async () => {
@@ -98,6 +108,18 @@ root.render(
 const start = async () => {
   if (await configureServiceWorker()) return;
 
+  if (passwordSetupFlow) {
+    const { default: SetPasswordScreen } = await import(
+      "./auth/SetPasswordScreen"
+    );
+    root.render(
+      <StrictMode>
+        <SetPasswordScreen />
+      </StrictMode>,
+    );
+    return;
+  }
+
   if (publicWebsiteRoute) {
     document.documentElement.dataset.theme = "light";
     document.documentElement.classList.add("theme-light");
@@ -130,7 +152,7 @@ const start = async () => {
 
   const [
     { default: App },
-    { ensureSeedUsers },
+    { ensureSeedUsers, useAuth },
     { migrateLegacyDatabase },
     { useCustomers },
     { useProducts },
@@ -157,6 +179,7 @@ const start = async () => {
   // before development/presentation fixture accounts exist. Production is a
   // no-op unless an explicitly gated fixture build is requested.
   await ensureSeedUsers();
+  await useAuth.getState().initialize();
   void useProducts.getState().hydrate();
   void useCustomers.getState().hydrate();
 

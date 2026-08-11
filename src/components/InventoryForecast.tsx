@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { audit, useAuth } from '../auth/useAuth';
 import { db } from '../db/db';
+import { saveSupabasePurchaseOrders } from '../services/supabasePurchaseOrders';
 import {
   InventoryForecastConfidence,
   InventoryForecastModel,
@@ -154,14 +155,18 @@ export const InventoryForecast = ({ rows, recommendations, products, onInventory
         userName: auth.currentUserName ?? undefined,
         productSkus,
       });
-      await db.purchase_orders.bulkAdd(orders);
-      for (const order of orders) {
-        await audit('purchase_order.create', {
-          orderId: order.id,
-          supplier: order.supplier,
-          itemCount: order.items.length,
-          totalCents: order.items.reduce((sum, item) => sum + (item.unitCostCents ?? 0) * item.orderedQty, 0),
-        });
+      if (auth.currentStoreId) {
+        await saveSupabasePurchaseOrders(auth.currentStoreId, orders);
+      } else {
+        await db.purchase_orders.bulkAdd(orders);
+        for (const order of orders) {
+          await audit('purchase_order.create', {
+            orderId: order.id,
+            supplier: order.supplier,
+            itemCount: order.items.length,
+            totalCents: order.items.reduce((sum, item) => sum + (item.unitCostCents ?? 0) * item.orderedQty, 0),
+          });
+        }
       }
       setSelectedIds(new Set());
       setFeedback(`${orders.length} ${orders.length === 1 ? 'concept-inkooporder is' : 'concept-inkooporders zijn'} aangemaakt. Er is niets verzonden en de voorraad is niet aangepast.`);
