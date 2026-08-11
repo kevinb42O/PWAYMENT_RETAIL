@@ -31,7 +31,6 @@ export interface CustomerInsightSnapshot {
   repeatRate: number;
   averageCustomerValueCents: number;
   averageDaysToSecondPurchase: number | null;
-  medianDaysToSecondPurchase: number | null;
   returnBuckets: Array<{ label: string; customers: number }>;
   valueBuckets: Array<{
     label: string;
@@ -352,10 +351,10 @@ export const buildCustomerInsights = (
   let totalCustomerRevenueCents = 0;
   const secondPurchaseDays: number[] = [];
   const returnBuckets = [
-    { label: "≤ 30 dagen", customers: 0 },
-    { label: "31–60 dagen", customers: 0 },
-    { label: "61–90 dagen", customers: 0 },
-    { label: "> 90 dagen", customers: 0 },
+    { label: "Binnen 30 dagen", customers: 0 },
+    { label: "Na 31–60 dagen", customers: 0 },
+    { label: "Na 61–90 dagen", customers: 0 },
+    { label: "Na meer dan 90 dagen", customers: 0 },
   ];
   const valueRows: Array<{ revenueCents: number; purchases: number }> = [];
   const gateway = new Map<
@@ -445,7 +444,6 @@ export const buildCustomerInsights = (
               secondPurchaseDays.length,
           )
         : null,
-    medianDaysToSecondPurchase: median(secondPurchaseDays),
     returnBuckets,
     valueBuckets,
     gatewayProducts: [...gateway.values()]
@@ -466,14 +464,6 @@ export const buildCustomerInsights = (
   };
 };
 
-const median = (values: number[]) => {
-  if (values.length === 0) return null;
-  const sorted = [...values].sort((a, b) => a - b);
-  const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 1
-    ? sorted[middle]
-    : Math.round((sorted[middle - 1] + sorted[middle]) / 2);
-};
 
 const percentage = (value: number, total: number) =>
   total > 0 ? Math.round((value / total) * 100) : 0;

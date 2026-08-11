@@ -1655,7 +1655,7 @@ const CustomerOverviewPage = ({
     <>
       <PageHeader
         title="Klantoverzicht"
-        subtitle="Herhaalaankopen op basis van verkopen met een gekoppeld klantprofiel"
+        subtitle="Zie hoeveel klanten worden herkend bij de kassa en hoeveel daarvan terugkomen"
       />
       <SectionCard
         title="Klantregistratie"
@@ -1676,9 +1676,9 @@ const CustomerOverviewPage = ({
         </div>
       </SectionCard>
       <div className="mt-4 rounded-lg border border-slate-200 bg-white px-4 py-3 text-xs font-semibold text-slate-600">
-        <strong className="text-slate-900">Lifetime-klantanalyse:</strong>{" "}
-        onderstaande resultaten gebruiken alle liveverkopen en volgen niet de
-        registratieperiode hierboven.
+        <strong className="text-slate-900">Volledige klantgeschiedenis:</strong>{" "}
+        de cijfers hieronder gebruiken alle gekoppelde verkopen, niet alleen de
+        gekozen periode hierboven.
       </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <MetricCard
@@ -1687,18 +1687,18 @@ const CustomerOverviewPage = ({
           detail="Met minstens één gekoppelde aankoop"
         />
         <MetricCard
-          label="Klanten met 2+ aankopen"
+          label="Klanten die terugkwamen"
           value={String(snapshot.returningCustomers)}
-          detail={`${snapshot.repeatRate.toFixed(0)}% van ${snapshot.recognizedCustomers} herkende klanten`}
+          detail={`${snapshot.returningCustomers} van ${snapshot.recognizedCustomers} klanten met een klantprofiel (${snapshot.repeatRate.toFixed(0)}%)`}
         />
         <MetricCard
-          label="Mediane tijd tot tweede aankoop"
+          label="Gemiddelde tijd tot tweede aankoop"
           value={
-            snapshot.medianDaysToSecondPurchase == null
+            snapshot.averageDaysToSecondPurchase == null
               ? "—"
-              : `${snapshot.medianDaysToSecondPurchase} dagen`
+              : `${snapshot.averageDaysToSecondPurchase} dagen`
           }
-          detail={`${snapshot.returningCustomers} klanten met herhaalaankoop`}
+          detail={`Berekend over ${snapshot.returningCustomers} klanten die minstens twee keer kochten`}
         />
       </div>
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
@@ -1731,18 +1731,18 @@ const CustomerOverviewPage = ({
           />
         </SectionCard>
         <SectionCard
-          title="Latere aankoop per product in de eerste mand"
-          subtitle="Beschrijvende samenhang, geen bewezen producteffect · minimaal 5 klanten"
+          title="Welke producten kochten terugkerende klanten eerst?"
+          subtitle="Per product uit de eerste aankoop zie je hoeveel klanten later nog eens kochten. Alleen producten met minstens 5 klanten."
         >
           <HorizontalBars
             rows={snapshot.gatewayProducts.slice(0, 5).map((row) => ({
               key: row.productName,
               label: row.productName,
               value: row.returned,
-              secondary: `${row.returned} van ${row.customers} klanten · ${row.returnRate.toFixed(0)}% kocht opnieuw`,
+              secondary: `${row.returned} van ${row.customers} klanten kwamen later terug (${row.returnRate.toFixed(0)}%)`,
             }))}
             formatValue={(value) => `${value} klanten`}
-            emptyLabel="Nog geen eerste manden met minstens 5 gekoppelde klanten."
+            emptyLabel="Nog te weinig klantgegevens om eerste aankopen te vergelijken."
           />
         </SectionCard>
       </div>
@@ -1754,64 +1754,71 @@ const CustomerReturnPage = ({
   snapshot,
 }: {
   snapshot: CustomerInsightSnapshot;
-}) => (
-  <>
-    <PageHeader
-      title="Herhaalaankopen"
-      subtitle="Alle aankopen met een gekoppeld klantprofiel"
-    />
-    <div className="grid gap-3 sm:grid-cols-3">
-      <MetricCard
-        label="Klanten met 2+ aankopen"
-        value={String(snapshot.returningCustomers)}
-        detail={`${snapshot.repeatRate.toFixed(0)}% van ${snapshot.recognizedCustomers} herkende klanten`}
+}) => {
+  const loyalRate =
+    snapshot.recognizedCustomers > 0
+      ? (snapshot.loyalCustomers / snapshot.recognizedCustomers) * 100
+      : 0;
+  return (
+    <>
+      <PageHeader
+        title="Herhaalaankopen"
+        subtitle="Hoeveel klanten komen terug, hoe snel en hoe vaak?"
       />
-      <MetricCard
-        label="Mediane tijd tot tweede aankoop"
-        value={
-          snapshot.medianDaysToSecondPurchase == null
-            ? "—"
-            : `${snapshot.medianDaysToSecondPurchase} dagen`
-        }
-        detail="Middelste klant; minder gevoelig voor uitschieters"
-      />
-      <MetricCard
-        label="Klanten met 3+ aankopen"
-        value={String(snapshot.loyalCustomers)}
-      />
-    </div>
-    <div className="mt-4 grid gap-4 xl:grid-cols-2">
-      <SectionCard
-        title="Klanten per tijd tot tweede aankoop"
-        subtitle={`${snapshot.returningCustomers} klanten met minstens twee aankopen`}
-      >
-        <HorizontalBars
-          rows={snapshot.returnBuckets.map((row) => ({
-            key: row.label,
-            label: row.label,
-            value: row.customers,
-          }))}
-          formatValue={(value) => `${value} klanten`}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <MetricCard
+          label="Klanten die terugkwamen"
+          value={String(snapshot.returningCustomers)}
+          detail={`${snapshot.returningCustomers} van ${snapshot.recognizedCustomers} klanten met een klantprofiel (${snapshot.repeatRate.toFixed(0)}%)`}
         />
-      </SectionCard>
-      <SectionCard
-        title="Latere aankoop per product in de eerste mand"
-        subtitle="Beschrijvende samenhang, geen causaliteit · minimaal 5 gekoppelde klanten"
-      >
-        <HorizontalBars
-          rows={snapshot.gatewayProducts.map((row) => ({
-            key: row.productName,
-            label: row.productName,
-            value: row.returned,
-            secondary: `${row.returned} van ${row.customers} · ${row.returnRate.toFixed(0)}% kocht opnieuw`,
-          }))}
-          formatValue={(value) => `${value} klanten`}
-          emptyLabel="Nog geen eerste manden met minstens 5 gekoppelde klanten."
+        <MetricCard
+          label="Gemiddelde tijd tot tweede aankoop"
+          value={
+            snapshot.averageDaysToSecondPurchase == null
+              ? "—"
+              : `${snapshot.averageDaysToSecondPurchase} dagen`
+          }
+          detail={`Berekend over ${snapshot.returningCustomers} klanten die minstens twee keer kochten`}
         />
-      </SectionCard>
-    </div>
-  </>
-);
+        <MetricCard
+          label="Klanten met 3 of meer aankopen"
+          value={String(snapshot.loyalCustomers)}
+          detail={`${snapshot.loyalCustomers} van ${snapshot.recognizedCustomers} klanten met een klantprofiel (${loyalRate.toFixed(0)}%)`}
+        />
+      </div>
+      <div className="mt-4 grid gap-4 xl:grid-cols-2">
+        <SectionCard
+          title="Wanneer doen klanten hun tweede aankoop?"
+          subtitle={`Verdeling van ${snapshot.returningCustomers} klanten op basis van de tijd tussen hun eerste en tweede aankoop`}
+        >
+          <HorizontalBars
+            rows={snapshot.returnBuckets.map((row) => ({
+              key: row.label,
+              label: row.label,
+              value: row.customers,
+            }))}
+            formatValue={(value) => `${value} klanten`}
+          />
+        </SectionCard>
+        <SectionCard
+          title="Welke producten kochten terugkerende klanten eerst?"
+          subtitle="Per product uit de eerste aankoop zie je hoeveel klanten later nog eens kochten. Alleen producten met minstens 5 klanten."
+        >
+          <HorizontalBars
+            rows={snapshot.gatewayProducts.map((row) => ({
+              key: row.productName,
+              label: row.productName,
+              value: row.returned,
+              secondary: `${row.returned} van ${row.customers} klanten kwamen later terug (${row.returnRate.toFixed(0)}%)`,
+            }))}
+            formatValue={(value) => `${value} klanten`}
+            emptyLabel="Nog te weinig klantgegevens om eerste aankopen te vergelijken."
+          />
+        </SectionCard>
+      </div>
+    </>
+  );
+};
 
 const CustomerValuePage = ({
   snapshot,
@@ -2742,16 +2749,16 @@ const buildOwnerActions = ({
       tone: "opportunity",
       label: "Klanten · gekoppelde aankopen",
       title: `${customerInsights.returningCustomers} klanten kochten minstens twee keer`,
-      metricLabel: "Klanten met 2+ aankopen",
+      metricLabel: "Klanten die terugkwamen",
       metricValue: String(customerInsights.returningCustomers),
-      secondaryLabel: "Aandeel van herkende klanten",
+      secondaryLabel: "Aandeel van gekoppelde klanten",
       secondaryValue: `${customerInsights.repeatRate.toFixed(0)}%`,
-      chartTitle: "Latere aankoop per product in de eerste mand",
+      chartTitle: "Welke producten kochten terugkerende klanten eerst?",
       chartRows: customerInsights.gatewayProducts.slice(0, 5).map((row) => ({
         key: row.productName,
         label: row.productName,
         value: row.returned,
-        secondary: `${row.returned} van ${row.customers} kocht opnieuw`,
+        secondary: `${row.returned} van ${row.customers} klanten kwamen later terug`,
       })),
       chartFormat: "number",
       destination: {

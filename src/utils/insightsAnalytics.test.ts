@@ -63,19 +63,20 @@ describe('insights analytics', () => {
     expect(snapshot.returnBuckets[0].customers).toBe(1);
   });
 
-  it('uses a true median and hides unreliable product return cohorts', () => {
+  it('uses the average return time and hides unreliable product return cohorts', () => {
     const rows = [
       sale('2026-01-01T10:00:00', { customerId: 'c1' }),
       sale('2026-01-11T10:00:00', { customerId: 'c1' }),
       sale('2026-01-01T10:00:00', { customerId: 'c2' }),
       sale('2026-01-21T10:00:00', { customerId: 'c2' }),
       sale('2026-01-01T10:00:00', { customerId: 'c3' }),
+      sale('2026-04-11T10:00:00', { customerId: 'c3' }),
     ];
     const snapshot = buildCustomerInsights(rows, [
       { id: 'c1', name: 'Ada', totalSpentCents: 0, visitCount: 0, createdAt: '', isActive: true },
       { id: 'c2', name: 'Bram', totalSpentCents: 0, visitCount: 0, createdAt: '', isActive: true },
     ]);
-    expect(snapshot.medianDaysToSecondPurchase).toBe(15);
+    expect(snapshot.averageDaysToSecondPurchase).toBe(43);
     expect(snapshot.gatewayProducts).toEqual([]);
     expect(snapshot.customerRows[0]).toMatchObject({ customerId: 'c1', customerName: 'Ada', purchases: 2 });
   });
