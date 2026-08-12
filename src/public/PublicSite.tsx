@@ -583,8 +583,7 @@ const HomePage = () => (
         <motion.div className="pw-hero-proof" variants={fadeUp}><span>Basis blijft gratis</span><span>30 dagen Professional</span><span>Offline-first kassa</span></motion.div>
       </motion.div>
       <a className="pw-scroll-badge" href="#home-story" aria-label="Scroll naar beneden">
-        <span>Scroll</span>
-        <ChevronDown size={22} strokeWidth={1.8} />
+        <ChevronDown size={20} strokeWidth={1.8} />
       </a>
     </section>
 
