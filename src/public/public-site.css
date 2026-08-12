@@ -54,6 +54,7 @@
 .pw-site-home .pw-logo img { filter: brightness(0) invert(1); }
 .pw-site-home .pw-nav > a, .pw-site-home .pw-nav-group > button, .pw-site-home .pw-login { color: rgba(255,255,255,.9) !important; }
 .pw-site-home .pw-nav > a:hover, .pw-site-home .pw-nav-group > button:hover, .pw-site-home .pw-nav-group > button[aria-expanded="true"] { background: rgba(255,255,255,.12); color: white; }
+.pw-site-home .pw-mega { color: var(--pw-ink); }
 .pw-site-home .pw-header-actions .pw-button-dark { background: white; color: #101114 !important; box-shadow: 0 8px 28px rgba(0,0,0,.16); }
 .pw-site-home .pw-mobile-toggle { color: white; }
 .pw-header-inner { width: min(1360px, calc(100% - 36px)); height: 68px; margin: auto; display: flex; align-items: center; gap: 34px; }
