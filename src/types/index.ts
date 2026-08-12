@@ -359,6 +359,8 @@ export interface BusinessAction {
 
 export interface DailyReport {
   id?: number;
+  /** Canonical Supabase UUID; local `id` remains the Dexie cache key. */
+  serverId?: string;
   reportNumber: number;
   timestamp: number;
   totalRevenueCents: number;
@@ -395,6 +397,8 @@ export interface DailyReport {
   cashDifferenceReason?: string;
   /** Canonical data that the hash was calculated from. */
   hashPayloadVersion?: number;
+  /** Exact canonical payload used by server-authoritative reports (v3+). */
+  serverHashPayload?: string;
 }
 
 export interface RegisterShift {

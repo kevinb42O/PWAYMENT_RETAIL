@@ -30,6 +30,7 @@ import { Product } from '../types';
 import { useProducts } from '../store/useProducts';
 import { DiscountCoupon, useWebshopStore } from '../store/useWebshopStore';
 import { webshopCommerce } from '../services/webshopCommerce';
+import { loadPublicWebshop } from '../services/publicWebshop';
 
 type CheckoutStep = 'details' | 'payment' | 'success';
 type DeliveryMode = 'shipping' | 'pickup';
@@ -303,9 +304,10 @@ const Storefront: React.FC = () => {
   const webshop = useWebshopStore();
   const products = useProducts((state) => state.list);
   const hydrated = useProducts((state) => state.hydrated);
-  const hydrateProducts = useProducts((state) => state.hydrate);
   const refreshProducts = useProducts((state) => state.refresh);
   const syncPersistedProducts = useProducts((state) => state.syncPersisted);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
   const [route, setRoute] = useState(getRoute);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -347,11 +349,19 @@ const Storefront: React.FC = () => {
   });
 
   useEffect(() => {
-    void hydrateProducts();
-  }, [hydrateProducts]);
+    let active = true;
+    void loadPublicWebshop()
+      .catch((error) => {
+        if (active) setCatalogError(error instanceof Error ? error.message : 'De webshop kon niet worden geladen.');
+      })
+      .finally(() => {
+        if (active) setCatalogLoading(false);
+      });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
-    const onOrderChange = () => void refreshProducts();
+    const onOrderChange = () => void loadPublicWebshop().catch(() => refreshProducts());
     window.addEventListener('pwayment:webshop-orders-changed', onOrderChange);
     const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('pwayment-webshop-orders') : null;
     if (channel) channel.onmessage = onOrderChange;
@@ -643,7 +653,7 @@ const Storefront: React.FC = () => {
       setCheckoutStep('success');
     } catch (error) {
       setErrors({ order: error instanceof Error ? error.message : 'De bestelling kon niet worden geplaatst. Probeer opnieuw.' });
-      await refreshProducts();
+      await loadPublicWebshop().catch(() => refreshProducts());
     } finally {
       setPlacingOrder(false);
     }
@@ -705,7 +715,15 @@ const Storefront: React.FC = () => {
     </div>
   );
 
-  if (!webshop.isEnabled) {
+  if (catalogLoading) {
+    return (
+      <div className="storefront sf-page grid min-h-dvh place-items-center px-6" data-shop-theme={webshop.themeStyle} style={themeStyle}>
+        <div className="text-center"><Store size={32} className="sf-text-muted mx-auto" /><p className="sf-heading mt-4 text-sm font-black">Webshop wordt geladen…</p></div>
+      </div>
+    );
+  }
+
+  if (!webshop.isEnabled || catalogError) {
     return (
       <div className="storefront sf-page min-h-dvh" data-shop-theme={webshop.themeStyle} style={themeStyle}>
         <header className="sf-header border-b">
@@ -718,7 +736,7 @@ const Storefront: React.FC = () => {
           <div>
             <Store size={34} className="sf-text-muted mx-auto" />
             <h1 className="sf-heading mt-5 text-3xl font-black tracking-tight">We zijn zo weer terug.</h1>
-            <p className="sf-text-muted mt-3 text-sm font-medium leading-6">De webshop is tijdelijk niet beschikbaar. Neem voor vragen contact op via {webshop.contactEmail}.</p>
+            <p className="sf-text-muted mt-3 text-sm font-medium leading-6">De webshop is tijdelijk niet beschikbaar.{webshop.contactEmail ? ` Neem voor vragen contact op via ${webshop.contactEmail}.` : ''}</p>
           </div>
         </main>
       </div>
@@ -830,7 +848,7 @@ const Storefront: React.FC = () => {
                 >
                   <img src={CATEGORY_IMAGES[item]} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105" />
                   <span className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent" />
-                  <span className="absolute inset-x-4 bottom-3 flex items-center justify-between text-sm font-black text-white sm:bottom-4">
+                  <span className="sf-category-card-label absolute inset-x-4 bottom-3 flex items-center justify-between text-sm font-black sm:bottom-4">
                     {CATEGORY_LABELS[item] || item}<ArrowRight size={16} />
                   </span>
                 </button>
@@ -1216,7 +1234,6 @@ const Storefront: React.FC = () => {
                   <button type="button" onClick={() => setCheckoutStep('details')} className="sf-text-muted mb-4 inline-flex min-h-10 items-center gap-1 text-xs font-bold hover:underline"><ArrowLeft size={14} /> Gegevens wijzigen</button>
                   <h1 className="sf-heading text-2xl font-black tracking-tight">Betaalmethode</h1>
                   <p className="sf-text-muted mt-1 text-xs">Kies hoe u deze bestelling wilt betalen.</p>
-                  <div className="sf-accent-soft mt-4 flex items-start gap-2 rounded-xl p-3 text-[11px] font-semibold leading-5"><Info size={15} className="mt-0.5 shrink-0" /><span><strong>Demomodus:</strong> de betaalstatus wordt realistisch verwerkt, maar er wordt geen echt bedrag afgeschreven.</span></div>
                   <div className="mt-5 space-y-2">
                     {availablePayments.map((method) => (
                       <button key={method} type="button" onClick={() => setSelectedPayment(method)} aria-pressed={selectedPayment === method} className={`sf-choice flex min-h-16 w-full items-center justify-between rounded-2xl p-4 text-left text-xs font-black ${selectedPayment === method ? 'is-active' : ''}`}>
@@ -1239,14 +1256,14 @@ const Storefront: React.FC = () => {
                   <div className="mx-auto grid h-18 w-18 place-items-center rounded-full bg-emerald-100 text-emerald-700"><CheckCircle2 size={38} /></div>
                   <p className="mt-5 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">Bestelling bevestigd</p>
                   <h1 className="sf-heading mt-2 text-3xl font-black tracking-tight">Bedankt, {form.firstName}.</h1>
-                  <p className="sf-text-muted mx-auto mt-3 max-w-sm text-xs font-medium leading-5">De demo-bestelling is opgeslagen en de bevestigingsmail is aangemaakt voor {order.email}.</p>
+                  <p className="sf-text-muted mx-auto mt-3 max-w-sm text-xs font-medium leading-5">Uw bestelling is opgeslagen. De bevestiging voor {order.email} wordt verwerkt.</p>
                   <div className="sf-muted mx-auto mt-6 max-w-md rounded-2xl p-5 text-left text-xs">
                     <div className="sf-divider flex justify-between border-b pb-3"><span className="sf-text-muted">Bestelnummer</span><strong className="font-mono">{order.number}</strong></div>
                     <div className="mt-3 flex justify-between"><span className="sf-text-muted">Ontvangst</span><strong>{order.delivery === 'pickup' ? 'Afhalen in winkel' : 'Thuisbezorging'}</strong></div>
                     <div className="mt-2 flex justify-between"><span className="sf-text-muted">Betaalmethode</span><strong>{PAYMENT_LABELS[order.payment]}</strong></div>
-                    <div className="mt-2 flex justify-between"><span className="sf-text-muted">Betaling</span><strong>{order.paymentStatus === 'paid' ? 'Demo betaald' : 'Te betalen bij afhalen'}</strong></div>
+                    <div className="mt-2 flex justify-between"><span className="sf-text-muted">Betaling</span><strong>{order.paymentStatus === 'paid' ? 'Bevestigd' : 'Te betalen bij afhalen'}</strong></div>
                     <div className="mt-2 flex justify-between"><span className="sf-text-muted">Voorraad</span><strong>{order.inventoryStatus === 'reserved' ? 'Gereserveerd' : order.inventoryStatus}</strong></div>
-                    <div className="mt-2 flex justify-between"><span className="sf-text-muted">E-mail</span><strong>{order.emailStatus === 'sent-demo' ? 'Demo verzonden' : 'In wachtrij'}</strong></div>
+                    <div className="mt-2 flex justify-between"><span className="sf-text-muted">E-mail</span><strong>{order.emailStatus === 'failed' ? 'Niet verzonden' : 'In verwerking'}</strong></div>
                     <div className="sf-divider mt-3 flex justify-between border-t pt-3 text-base font-black"><span>Totaal</span><span>{formatPrice(order.totalCents)}</span></div>
                   </div>
                   <button type="button" onClick={closeCompletedOrder} className="sf-button-primary mt-6 min-h-13 w-full max-w-md rounded-xl text-sm font-black">Verder winkelen</button>

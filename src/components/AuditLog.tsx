@@ -40,6 +40,11 @@ import { transactionTenders } from "../utils/financial";
 import { Modal } from "./Modal";
 import { createRefund } from "../services/refunds";
 import { useAuth } from "../auth/useAuth";
+import { ZReportHistoryDetail } from "./ZReportHistoryDetail";
+import {
+  DailyReportDaySummary,
+  loadDailyReportDaySummaries,
+} from "../services/dailyReportDetail";
 
 type Tab = "sales" | "reports" | "audit";
 type SalesRange = "30d" | "12m" | "all";
@@ -91,6 +96,7 @@ export const AuditLog: React.FC = () => {
   const [tab, setTab] = useState<Tab>("sales");
   const [salesRange, setSalesRange] = useState<SalesRange>("12m");
   const [reports, setReports] = useState<DailyReport[]>([]);
+  const [selectedReport, setSelectedReport] = useState<DailyReport | null>(null);
   const [auditRows, setAuditRows] = useState<AuditEntry[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [refundTransaction, setRefundTransaction] =
@@ -377,7 +383,11 @@ export const AuditLog: React.FC = () => {
             onRefund={setRefundTransaction}
           />
         ) : tab === "reports" ? (
-          <ReportsTable reports={reports} />
+          <ReportsTable
+            reports={reports}
+            storeId={auth.currentStoreId}
+            onOpen={setSelectedReport}
+          />
         ) : (
           <AuditTable rows={auditRows} />
         )}
@@ -394,6 +404,28 @@ export const AuditLog: React.FC = () => {
           onDone={async () => {
             setRefundTransaction(null);
             await load();
+          }}
+        />
+      )}
+      {selectedReport && (
+        <ZReportHistoryDetail
+          report={selectedReport}
+          transactions={transactions}
+          storeId={auth.currentStoreId}
+          merchant={merchantProfile}
+          onClose={() => setSelectedReport(null)}
+          onOpenTransaction={(documentNumber) => {
+            const transaction = transactions.find(
+              (row) => row.documentNumber === documentNumber,
+            );
+            if (!transaction) return;
+            setSelectedReport(null);
+            setPreviewInvoice(
+              convertTransactionToInvoiceData(
+                transaction,
+                transaction.merchantSnapshot ?? merchantProfile,
+              ),
+            );
           }}
         />
       )}
@@ -1376,11 +1408,31 @@ const auditDetailSummary = (detail: unknown): string => {
     : "Technische details beschikbaar in beveiligde export";
 };
 
-const ReportsTable = ({ reports }: { reports: DailyReport[] }) => {
+const ReportsTable = ({
+  reports,
+  storeId,
+  onOpen,
+}: {
+  reports: DailyReport[];
+  storeId?: string | null;
+  onOpen: (report: DailyReport) => void;
+}) => {
+  const [view, setView] = useState<"reports" | "days">("reports");
+  const [daySummaries, setDaySummaries] = useState<DailyReportDaySummary[]>([]);
   const [sort, setSort] = useState<{
     key: ReportSortKey;
     direction: SortDirection;
   }>({ key: "date", direction: "desc" });
+
+  useEffect(() => {
+    let active = true;
+    void loadDailyReportDaySummaries(reports, storeId).then((rows) => {
+      if (active) setDaySummaries(rows);
+    });
+    return () => {
+      active = false;
+    };
+  }, [reports, storeId]);
 
   const sortedReports = useMemo(() => {
     const valueFor = (report: DailyReport): number => {
@@ -1418,7 +1470,7 @@ const ReportsTable = ({ reports }: { reports: DailyReport[] }) => {
 
   return (
     <section className="insights-panel overflow-hidden">
-      <div className="border-b border-slate-100 px-5 py-5 sm:px-6">
+      <div className="flex flex-col gap-4 border-b border-slate-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div className="flex items-start gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-cyan-50 text-cyan-700">
             <CalendarDays size={20} />
@@ -1428,12 +1480,23 @@ const ReportsTable = ({ reports }: { reports: DailyReport[] }) => {
               Z-rapporten
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Officiële financiële afsluitingen per werkdag.
+              Officiële afsluitingen per kassa/shift, met een apart geconsolideerd dagoverzicht.
             </p>
           </div>
         </div>
+        <div className="inline-flex w-fit rounded-lg border border-slate-200 bg-slate-50 p-1" role="group" aria-label="Z-rapportweergave">
+          <button type="button" aria-pressed={view === "reports"} onClick={() => setView("reports")} className={`rounded-md px-3 py-2 text-sm font-bold transition ${view === "reports" ? "bg-white text-cyan-800 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>Z-rapporten</button>
+          <button type="button" aria-pressed={view === "days"} onClick={() => setView("days")} className={`rounded-md px-3 py-2 text-sm font-bold transition ${view === "days" ? "bg-white text-cyan-800 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>Dagtotalen</button>
+        </div>
       </div>
-      <div className="overflow-x-auto">
+      {view === "days" ? (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[900px] text-left text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-bold uppercase tracking-[0.07em] text-slate-500"><tr><th className="px-6 py-3">Werkdag</th><th className="px-4 py-3 text-right">Z-rapporten</th><th className="px-4 py-3 text-right">Transacties</th><th className="px-4 py-3 text-right">Omzet</th><th className="px-4 py-3 text-right">Cash</th><th className="px-4 py-3 text-right">Kaart</th><th className="px-4 py-3 text-right">BTW</th><th className="px-6 py-3 text-right">Brutowinst</th></tr></thead>
+            <tbody className="divide-y divide-slate-100">{daySummaries.length === 0 ? <tr><td colSpan={8} className="px-6 py-14 text-center text-slate-500">Nog geen afgesloten werkdagen.</td></tr> : daySummaries.map((day) => <tr key={day.date} className="hover:bg-slate-50"><td className="px-6 py-4"><div className="font-bold text-slate-900">{format(new Date(`${day.date}T12:00:00`), "dd/MM/yyyy")}</div><div className="mt-0.5 text-xs text-slate-500">Rapport #{day.firstReportNumber}{day.lastReportNumber !== day.firstReportNumber ? `–#${day.lastReportNumber}` : ""}</div></td><td className="px-4 py-4 text-right font-semibold tabular-nums">{day.reportCount}</td><td className="px-4 py-4 text-right font-semibold tabular-nums">{day.transactionCount}</td><td className="px-4 py-4 text-right font-extrabold tabular-nums">{formatEUR(day.totalRevenueCents)}</td><td className="px-4 py-4 text-right tabular-nums">{formatEUR(day.cashCents)}</td><td className="px-4 py-4 text-right tabular-nums">{formatEUR(day.pinCents)}</td><td className="px-4 py-4 text-right tabular-nums">{formatEUR(day.totalVat12Cents + day.totalVat21Cents)}</td><td className="px-6 py-4 text-right font-bold tabular-nums text-emerald-700">{formatEUR(day.grossProfitCents)}</td></tr>)}</tbody>
+          </table>
+        </div>
+      ) : <div className="overflow-x-auto">
         <table className="w-full min-w-[760px] text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs font-bold uppercase tracking-[0.07em] text-slate-500">
             <tr>
@@ -1487,13 +1550,14 @@ const ReportsTable = ({ reports }: { reports: DailyReport[] }) => {
                 align="right"
                 className="px-6"
               />
+              <th className="px-5 py-3 text-right">Actie</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {reports.length === 0 ? (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={9}
                   className="px-6 py-14 text-center text-slate-500"
                 >
                   Nog geen Z-rapporten gegenereerd. Sluit eerst een
@@ -1502,7 +1566,11 @@ const ReportsTable = ({ reports }: { reports: DailyReport[] }) => {
               </tr>
             ) : (
               sortedReports.map((report) => (
-                <tr key={report.id} className="hover:bg-slate-50">
+                <tr
+                  key={report.id}
+                  className="cursor-pointer hover:bg-cyan-50/50 focus-within:bg-cyan-50/50"
+                  onClick={() => onOpen(report)}
+                >
                   <td className="px-6 py-4 font-mono text-xs font-bold text-cyan-800">
                     #{report.reportNumber}
                   </td>
@@ -1529,12 +1597,15 @@ const ReportsTable = ({ reports }: { reports: DailyReport[] }) => {
                   <td className="px-6 py-4 text-right tabular-nums text-slate-600">
                     {formatEUR(report.totalVat21Cents)}
                   </td>
+                  <td className="px-5 py-4 text-right">
+                    <button type="button" onClick={(event) => { event.stopPropagation(); onOpen(report); }} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-cyan-50 px-3 py-2 text-xs font-extrabold text-cyan-800 transition hover:bg-cyan-100 focus:outline-none focus:ring-2 focus:ring-cyan-600" aria-label={`Bekijk Z-rapport ${report.reportNumber}`}><Eye size={15} /> Bekijken</button>
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
-      </div>
+      </div>}
     </section>
   );
 };

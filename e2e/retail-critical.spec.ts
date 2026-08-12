@@ -208,6 +208,33 @@ test("Z-closing finalizes the sale and records cash reconciliation", async ({
     (await readStore<StoredTransaction>(appPage, "transactions"))[0]
       .isFinalized,
   ).toBe(1);
+
+  await appPage.getByRole("button", { name: "Historiek" }).click();
+  await appPage.getByRole("button", { name: /^Z-rapporten/ }).click();
+  await expect(appPage.getByText("#1", { exact: true })).toBeVisible();
+  await appPage.getByRole("button", { name: "Bekijk Z-rapport 1" }).click();
+
+  const reportDialog = appPage.getByRole("dialog", { name: "Z-rapport 1" });
+  await expect(reportDialog).toBeVisible();
+  await expect(reportDialog.getByRole("heading", { name: /Wat werd er verkocht/ })).toBeVisible();
+  await expect(reportDialog.getByText("Allen Hardware Bolts 1 inch").first()).toBeVisible();
+  await expect(reportDialog.getByText(/Historisch rapport/).first()).toBeVisible();
+
+  await reportDialog
+    .locator("section")
+    .filter({ hasText: "Transacties in dit Z-rapport" })
+    .getByRole("button")
+    .first()
+    .click();
+  await expect(reportDialog.getByRole("button", { name: "Open verkoopdocument" })).toBeVisible();
+
+  const pdfDownload = appPage.waitForEvent("download");
+  await reportDialog.getByRole("button", { name: "A4 PDF" }).click();
+  expect((await pdfDownload).suggestedFilename()).toMatch(/^Z-rapport-0001-.*\.pdf$/);
+
+  await reportDialog.getByRole("button", { name: "Terug naar historiek" }).click();
+  await appPage.getByRole("button", { name: "Dagtotalen" }).click();
+  await expect(appPage.getByRole("cell", { name: "1", exact: true }).first()).toBeVisible();
 });
 
 test("open cart survives a full reload without duplicating lines", async ({

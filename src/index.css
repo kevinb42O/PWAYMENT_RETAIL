@@ -1528,6 +1528,14 @@ body {
   box-shadow: var(--sf-shadow);
 }
 
+/* Category labels sit on photos and must stay white. The global light-theme
+   compatibility rules intentionally recolor Tailwind's text-white utility. */
+.theme-light .storefront .sf-category-card-label,
+.storefront .sf-category-card-label {
+  color: #ffffff !important;
+  text-shadow: 0 1px 8px rgba(2, 6, 23, 0.72);
+}
+
 .sf-product-visual {
   background: var(--sf-muted-surface);
 }
@@ -1815,6 +1823,27 @@ body {
 @media print {
   body {
     background: white !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  body.z-report-history-printing * {
+    visibility: hidden !important;
+  }
+
+  body.z-report-history-printing .z-report-history-print,
+  body.z-report-history-printing .z-report-history-print * {
+    visibility: visible !important;
+  }
+
+  body.z-report-history-printing .z-report-history-print {
+    display: block !important;
+    position: absolute;
+    inset: 0;
+    width: 100%;
   }
 
   .print\:hidden {

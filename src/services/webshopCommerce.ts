@@ -1,4 +1,8 @@
 import { db } from '../db/db';
+import { isSupabaseConfigured, supabase } from '../lib/supabase';
+import { useAuth } from '../auth/useAuth';
+import { useWebshopStore } from '../store/useWebshopStore';
+import type { Database, Json } from '../types/database.generated';
 import {
   AuditEntry,
   OutboxEntry,
@@ -70,9 +74,8 @@ export interface UpdateWebshopOrderInput {
 }
 
 /**
- * Boundary used by the UI. The demo implementation below writes to IndexedDB;
- * a live version can implement this contract with HTTP calls without changing
- * the storefront or order-management components.
+ * Boundary used by the UI. Production uses the central Supabase order ledger;
+ * local development keeps an IndexedDB fallback.
  */
 export interface WebshopCommerceGateway {
   placeOrder(input: PlaceWebshopOrderInput): Promise<PlaceWebshopOrderResult>;
@@ -95,7 +98,7 @@ const orderNumber = (now: number) => {
 const auditEntry = (action: AuditEntry['action'], detail: unknown): AuditEntry => ({
   timestamp: Date.now(),
   userId: null,
-  userName: 'Webshop demo',
+  userName: 'Webshop',
   action,
   detail,
 });
@@ -132,7 +135,7 @@ const notifyOrderChange = () => {
   }
 };
 
-const placeDemoOrder = async (input: PlaceWebshopOrderInput): Promise<PlaceWebshopOrderResult> => {
+const placeLocalOrder = async (input: PlaceWebshopOrderInput): Promise<PlaceWebshopOrderResult> => {
   assertCheckoutInput(input);
   const existing = await db.webshop_orders.where('clientRequestId').equals(input.clientRequestId).first();
   if (existing) return { order: existing, duplicate: true, updatedProducts: [] };
@@ -171,7 +174,7 @@ const placeDemoOrder = async (input: PlaceWebshopOrderInput): Promise<PlaceWebsh
           reason: 'webshop-reservation',
           timestamp: now,
           purchaseOrderId: input.clientRequestId,
-          userName: 'Webshop demo',
+          userName: 'Webshop',
         });
       }
 
@@ -182,7 +185,7 @@ const placeDemoOrder = async (input: PlaceWebshopOrderInput): Promise<PlaceWebsh
         id,
         clientRequestId: input.clientRequestId,
         number,
-        source: 'demo',
+        source: 'live',
         createdAt: now,
         updatedAt: now,
         status: input.autoConfirm ? 'confirmed' : 'pending',
@@ -190,7 +193,7 @@ const placeDemoOrder = async (input: PlaceWebshopOrderInput): Promise<PlaceWebsh
         fulfillmentStatus: 'unfulfilled',
         inventoryStatus: 'reserved',
         paymentMethod: input.paymentMethod,
-        paymentReference: paidOnline ? createId('demo-pay') : createId('demo-pickup'),
+        paymentReference: paidOnline ? createId('pay') : createId('pickup'),
         deliveryMode: input.deliveryMode,
         customer: { ...input.customer },
         shippingAddress: input.deliveryMode === 'shipping' ? input.shippingAddress : undefined,
@@ -207,7 +210,7 @@ const placeDemoOrder = async (input: PlaceWebshopOrderInput): Promise<PlaceWebsh
         totalCents: input.totalCents,
         confirmationEmail: {
           to: input.customer.email,
-          status: 'sent-demo',
+          status: 'queued',
           sentAt: now,
           subject: `Bevestiging ${number} · ${input.shopName}`,
         },
@@ -226,7 +229,7 @@ const placeDemoOrder = async (input: PlaceWebshopOrderInput): Promise<PlaceWebsh
           subject: order.confirmationEmail.subject,
           orderId: order.id,
           orderNumber: order.number,
-          demoDeliveredAt: now,
+          queuedAt: now,
         }),
       ]);
       return { order, duplicate: false, updatedProducts };
@@ -236,9 +239,9 @@ const placeDemoOrder = async (input: PlaceWebshopOrderInput): Promise<PlaceWebsh
   return result;
 };
 
-const listDemoOrders = () => db.webshop_orders.orderBy('createdAt').reverse().toArray();
+const listLocalOrders = () => db.webshop_orders.orderBy('createdAt').reverse().toArray();
 
-const updateDemoOrder = async (id: string, update: UpdateWebshopOrderInput) => {
+const updateLocalOrder = async (id: string, update: UpdateWebshopOrderInput) => {
   const result = await db.transaction(
     'rw',
     [db.webshop_orders, db.products, db.stock_movements, db.audit, db.outbox],
@@ -270,7 +273,7 @@ const updateDemoOrder = async (id: string, update: UpdateWebshopOrderInput) => {
             reason: 'webshop-release',
             timestamp: now,
             purchaseOrderId: current.id,
-            userName: 'Webshop demo',
+            userName: 'Webshop',
           });
         }
         next.inventoryStatus = 'released';
@@ -296,11 +299,159 @@ const updateDemoOrder = async (id: string, update: UpdateWebshopOrderInput) => {
   return result;
 };
 
-export const demoWebshopCommerceGateway: WebshopCommerceGateway = {
-  placeOrder: placeDemoOrder,
-  listOrders: listDemoOrders,
-  updateOrder: updateDemoOrder,
+type RemoteOrderRow = Database['public']['Tables']['webshop_orders']['Row'];
+type RemoteOrderLineRow = Database['public']['Tables']['webshop_order_lines']['Row'];
+
+const jsonRecord = (value: Json | null | undefined): Record<string, Json | undefined> =>
+  value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, Json | undefined> : {};
+
+const mapRemoteOrder = (row: RemoteOrderRow, lines: RemoteOrderLineRow[]): WebshopOrder => {
+  const customer = jsonRecord(row.customer_snapshot);
+  const shippingAddress = jsonRecord(row.shipping_address);
+  const confirmationEmail = jsonRecord(row.confirmation_email);
+  return {
+    id: row.id,
+    clientRequestId: row.client_request_id,
+    number: row.order_number,
+    source: row.source as WebshopOrder['source'],
+    createdAt: Date.parse(row.created_at),
+    updatedAt: Date.parse(row.updated_at),
+    status: row.status as WebshopOrderStatus,
+    paymentStatus: row.payment_status as WebshopPaymentStatus,
+    fulfillmentStatus: row.fulfillment_status as WebshopFulfillmentStatus,
+    inventoryStatus: row.inventory_status as WebshopOrder['inventoryStatus'],
+    paymentMethod: row.payment_method,
+    paymentReference: row.payment_reference ?? '',
+    deliveryMode: row.delivery_mode as WebshopDeliveryMode,
+    customer: {
+      firstName: String(customer.firstName ?? ''),
+      lastName: String(customer.lastName ?? ''),
+      email: String(customer.email ?? ''),
+      phone: String(customer.phone ?? ''),
+    },
+    shippingAddress: row.shipping_address ? {
+      street: String(shippingAddress.street ?? ''),
+      number: String(shippingAddress.number ?? ''),
+      postal: String(shippingAddress.postal ?? ''),
+      city: String(shippingAddress.city ?? ''),
+      country: String(shippingAddress.country ?? ''),
+    } : undefined,
+    pickupAddress: row.pickup_address ?? undefined,
+    note: row.note ?? undefined,
+    couponCode: row.coupon_code ?? undefined,
+    lines: lines.map((line) => ({
+      productId: line.product_external_id ?? line.product_id ?? '',
+      productName: line.product_name,
+      variant: line.variant ?? undefined,
+      sku: line.sku ?? undefined,
+      quantity: line.quantity,
+      unitPriceCents: Number(line.unit_price_cents),
+      lineTotalCents: Number(line.line_total_cents),
+    })),
+    subtotalCents: Number(row.subtotal_cents),
+    discountCents: Number(row.discount_cents),
+    shippingCents: Number(row.shipping_cents),
+    totalCents: Number(row.total_cents),
+    confirmationEmail: {
+      to: String(confirmationEmail.to ?? customer.email ?? ''),
+      status: confirmationEmail.status === 'failed' ? 'failed' : 'queued',
+      sentAt: typeof confirmationEmail.sentAt === 'number' ? confirmationEmail.sentAt : undefined,
+      subject: String(confirmationEmail.subject ?? `Bevestiging ${row.order_number}`),
+    },
+  };
 };
 
-/** Swap this export for an API-backed implementation when the backend is available. */
-export const webshopCommerce: WebshopCommerceGateway = demoWebshopCommerceGateway;
+const mapRemotePayload = (value: Json): WebshopOrder => {
+  const payload = jsonRecord(value);
+  const row = payload.order as unknown as RemoteOrderRow;
+  const lines = Array.isArray(payload.lines) ? payload.lines as unknown as RemoteOrderLineRow[] : [];
+  if (!row?.id) throw new Error('De centrale orderopslag gaf geen geldige bestelling terug.');
+  return mapRemoteOrder(row, lines);
+};
+
+export const resolveWebshopStoreIdentifier = async (): Promise<string | null> => {
+  const fromUrl = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('shop')?.trim()
+    : null;
+  if (fromUrl) return fromUrl;
+
+  const configuredIdentifier = import.meta.env.VITE_PUBLIC_WEBSHOP_IDENTIFIER?.trim();
+  if (configuredIdentifier) return configuredIdentifier;
+
+  const activeStoreId = useAuth.getState().currentStoreId;
+  if (activeStoreId) return activeStoreId;
+
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (sessionData.session?.user) {
+    const { data: membership } = await supabase
+      .from('store_memberships')
+      .select('store_id')
+      .eq('user_id', sessionData.session.user.id)
+      .eq('status', 'active')
+      .limit(1)
+      .maybeSingle();
+    if (membership?.store_id) return membership.store_id;
+  }
+
+  const settings = useWebshopStore.getState();
+  if (settings.subdomain.trim()) return settings.subdomain.trim();
+  if (settings.customDomain.trim()) return settings.customDomain.trim();
+  return typeof window !== 'undefined' ? window.location.hostname : null;
+};
+
+const placeRemoteOrder = async (input: PlaceWebshopOrderInput): Promise<PlaceWebshopOrderResult> => {
+  assertCheckoutInput(input);
+  const storeIdentifier = await resolveWebshopStoreIdentifier();
+  if (!storeIdentifier) throw new Error('De webshop kon niet aan een winkel worden gekoppeld.');
+  const { data, error } = await supabase.rpc('place_public_webshop_order', {
+    store_identifier: storeIdentifier,
+    payload: JSON.parse(JSON.stringify(input)) as Json,
+  });
+  if (error) throw new Error(`De bestelling kon niet centraal worden opgeslagen: ${error.message}`);
+  const response = jsonRecord(data);
+  const order = mapRemotePayload(data);
+  notifyOrderChange();
+  return { order, duplicate: response.duplicate === true, updatedProducts: [] };
+};
+
+const listRemoteOrders = async (storeId: string): Promise<WebshopOrder[]> => {
+  const [{ data: rows, error: ordersError }, { data: lines, error: linesError }] = await Promise.all([
+    supabase.from('webshop_orders').select('*').eq('store_id', storeId).order('created_at', { ascending: false }),
+    supabase.from('webshop_order_lines').select('*').eq('store_id', storeId).order('created_at'),
+  ]);
+  if (ordersError) throw ordersError;
+  if (linesError) throw linesError;
+  const linesByOrder = new Map<string, RemoteOrderLineRow[]>();
+  (lines ?? []).forEach((line) => linesByOrder.set(line.webshop_order_id, [...(linesByOrder.get(line.webshop_order_id) ?? []), line]));
+  return (rows ?? []).map((row) => mapRemoteOrder(row, linesByOrder.get(row.id) ?? []));
+};
+
+const updateRemoteOrder = async (storeId: string, id: string, update: UpdateWebshopOrderInput) => {
+  const { data, error } = await supabase.rpc('update_webshop_order', {
+    target_store_id: storeId,
+    target_order_id: id,
+    payload: JSON.parse(JSON.stringify(update)) as Json,
+  });
+  if (error) throw error;
+  const order = mapRemotePayload(data);
+  notifyOrderChange();
+  return { order, updatedProducts: [] };
+};
+
+export const localWebshopCommerceGateway: WebshopCommerceGateway = {
+  placeOrder: placeLocalOrder,
+  listOrders: listLocalOrders,
+  updateOrder: updateLocalOrder,
+};
+
+export const webshopCommerce: WebshopCommerceGateway = {
+  placeOrder: (input) => isSupabaseConfigured ? placeRemoteOrder(input) : placeLocalOrder(input),
+  listOrders: () => {
+    const storeId = useAuth.getState().currentStoreId;
+    return isSupabaseConfigured && storeId ? listRemoteOrders(storeId) : listLocalOrders();
+  },
+  updateOrder: (id, update) => {
+    const storeId = useAuth.getState().currentStoreId;
+    return isSupabaseConfigured && storeId ? updateRemoteOrder(storeId, id, update) : updateLocalOrder(id, update);
+  },
+};

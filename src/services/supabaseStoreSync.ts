@@ -554,6 +554,7 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
     return {
       ...totals,
       id: index + 1,
+      serverId: row.id,
       reportNumber: Number(row.report_number),
       timestamp: Date.parse(row.occurred_at),
       totalRevenueCents: Number(totals.totalRevenueCents ?? 0),

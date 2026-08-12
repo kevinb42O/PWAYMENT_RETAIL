@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { calculateReportData, ReportIntegrityError } from "./report";
+import {
+  calculateReportData,
+  ReportIntegrityError,
+  verifyZReport,
+} from "./report";
 import { Transaction } from "../types";
+import { generateHash } from "./crypto";
 
 const tx = (
   id: number,
@@ -93,5 +98,28 @@ describe("calculateReportData", () => {
     expect(report.grossProfitCents).toBe(0);
     expect(report.giftCardLiabilityAddedCents).toBe(2500);
     expect(report.paymentTotalsCents.PIN).toBe(2500);
+  });
+
+  it("verifies the exact canonical payload of a server-authoritative report", async () => {
+    const serverHashPayload = JSON.stringify({
+      version: 3,
+      reportNumber: 42,
+      totalRevenueCents: 1210,
+      previousHash: "previous-server-hash",
+    });
+    const report = {
+      ...calculateReportData([tx(1, 1210, "PIN")]),
+      reportNumber: 42,
+      transactionIds: [1],
+      prevHash: "previous-server-hash",
+      hashPayloadVersion: 3,
+      serverHashPayload,
+      hash: await generateHash(serverHashPayload),
+    };
+
+    await expect(verifyZReport(report, [])).resolves.toBe(true);
+    await expect(
+      verifyZReport({ ...report, serverHashPayload: `${serverHashPayload}tampered` }, []),
+    ).resolves.toBe(false);
   });
 });

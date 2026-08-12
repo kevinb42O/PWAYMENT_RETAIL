@@ -1931,8 +1931,20 @@ export type Database = {
         Args: { payload: Json; target_store_id: string }
         Returns: Json
       }
+      get_daily_report_day_summaries: {
+        Args: { business_timezone?: string; target_store_id: string }
+        Returns: Json
+      }
+      get_daily_report_detail: {
+        Args: { target_daily_report_id: string; target_store_id: string }
+        Returns: Json
+      }
       get_store_entitlements: {
         Args: { target_store_id: string }
+        Returns: Json
+      }
+      get_public_webshop: {
+        Args: { store_identifier: string }
         Returns: Json
       }
       mutate_gift_card: {
@@ -1941,6 +1953,10 @@ export type Database = {
       }
       mutate_gift_card_internal: {
         Args: { payload: Json; target_store_id: string }
+        Returns: Json
+      }
+      place_public_webshop_order: {
+        Args: { payload: Json; store_identifier: string }
         Returns: Json
       }
       record_void: {
@@ -1961,6 +1977,14 @@ export type Database = {
       }
       simulate_test_trial: {
         Args: { days_remaining: number; target_store_id: string }
+        Returns: Json
+      }
+      update_webshop_order: {
+        Args: {
+          payload: Json
+          target_order_id: string
+          target_store_id: string
+        }
         Returns: Json
       }
     }

@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { WebshopFulfillmentStatus, WebshopOrder } from '../types';
 import { useWebshopOrders } from '../store/useWebshopOrders';
+import { isSupabaseConfigured, supabase } from '../lib/supabase';
+import { useAuth } from '../auth/useAuth';
 
 const money = (cents: number) => new Intl.NumberFormat('nl-BE', { style: 'currency', currency: 'EUR' }).format(cents / 100);
 const dateTime = (timestamp: number) => new Intl.DateTimeFormat('nl-BE', { dateStyle: 'medium', timeStyle: 'short' }).format(timestamp);
@@ -36,6 +38,7 @@ const StatusPill = ({ tone, children }: { tone: 'green' | 'amber' | 'slate' | 'r
 
 export const WebshopOrders: React.FC = () => {
   const { orders, loading, error, refresh, updateOrder } = useWebshopOrders();
+  const currentStoreId = useAuth((state) => state.currentStoreId);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [filter, setFilter] = useState<'open' | 'completed' | 'cancelled' | 'all'>('open');
   const [updating, setUpdating] = useState<string | null>(null);
@@ -46,11 +49,24 @@ export const WebshopOrders: React.FC = () => {
     window.addEventListener('pwayment:webshop-orders-changed', onChange);
     const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('pwayment-webshop-orders') : null;
     if (channel) channel.onmessage = onChange;
+    const pollingTimer = window.setInterval(onChange, 30_000);
+    const remoteChannel = isSupabaseConfigured && currentStoreId
+      ? supabase
+        .channel(`webshop-orders-${currentStoreId}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'webshop_orders', filter: `store_id=eq.${currentStoreId}` },
+          onChange,
+        )
+        .subscribe()
+      : null;
     return () => {
       window.removeEventListener('pwayment:webshop-orders-changed', onChange);
       channel?.close();
+      window.clearInterval(pollingTimer);
+      if (remoteChannel) void supabase.removeChannel(remoteChannel);
     };
-  }, [refresh]);
+  }, [currentStoreId, refresh]);
 
   const visibleOrders = useMemo(() => orders.filter((order) => {
     if (filter === 'open') return order.status !== 'completed' && order.status !== 'cancelled';
@@ -69,9 +85,9 @@ export const WebshopOrders: React.FC = () => {
     <div className="space-y-5">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          { label: 'Demo-orders', value: orders.length, detail: 'Duurzaam lokaal opgeslagen', icon: ShoppingBag },
+          { label: 'Bestellingen', value: orders.length, detail: 'Centraal opgeslagen', icon: ShoppingBag },
           { label: 'Te verwerken', value: open, detail: 'Actieve werkvoorraad', icon: Box },
-          { label: 'Betaalde omzet', value: money(revenue), detail: 'Gesimuleerde betalingen', icon: CircleDollarSign },
+          { label: 'Betaalde omzet', value: money(revenue), detail: 'Bevestigde betalingen', icon: CircleDollarSign },
           { label: 'Betaling open', value: pendingPayment, detail: 'Meestal betalen bij afhalen', icon: Clock3 },
         ].map(({ label, value, detail, icon: Icon }) => (
           <div key={label} className="rounded-xl border border-slate-200 bg-white p-4">
@@ -86,7 +102,7 @@ export const WebshopOrders: React.FC = () => {
         <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="text-base font-black text-slate-950">Webshopbestellingen</h3>
-            <p className="mt-0.5 text-xs font-medium text-slate-500">Order, betaling, voorraadreservering en demo-e-mail blijven als één flow traceerbaar.</p>
+            <p className="mt-0.5 text-xs font-medium text-slate-500">Order, betaling, voorraadreservering en bevestiging blijven als één flow traceerbaar.</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="flex rounded-lg bg-slate-100 p-1">
@@ -100,7 +116,7 @@ export const WebshopOrders: React.FC = () => {
 
         {error && <div className="border-b border-rose-200 bg-rose-50 px-4 py-3 text-xs font-bold text-rose-700">{error}</div>}
         {!loading && visibleOrders.length === 0 && (
-          <div className="px-6 py-16 text-center"><ShoppingBag size={30} className="mx-auto text-slate-300" /><div className="mt-3 text-sm font-black text-slate-700">Nog geen bestellingen in deze weergave</div><p className="mt-1 text-xs text-slate-500">Plaats een bestelling via de webshoppreview om de volledige demo-flow te zien.</p></div>
+          <div className="px-6 py-16 text-center"><ShoppingBag size={30} className="mx-auto text-slate-300" /><div className="mt-3 text-sm font-black text-slate-700">Nog geen bestellingen in deze weergave</div><p className="mt-1 text-xs text-slate-500">Nieuwe webshopbestellingen verschijnen hier automatisch.</p></div>
         )}
 
         <div className="divide-y divide-slate-200">
@@ -113,7 +129,7 @@ export const WebshopOrders: React.FC = () => {
                   <button type="button" onClick={() => setExpanded(isExpanded ? null : order.id)} className="flex min-w-0 flex-1 items-start gap-3 text-left">
                     <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-600"><PackageCheck size={18} /></span>
                     <span className="min-w-0">
-                      <span className="flex flex-wrap items-center gap-2"><strong className="font-mono text-sm text-slate-950">{order.number}</strong><StatusPill tone="blue">DEMO</StatusPill></span>
+                      <span className="flex flex-wrap items-center gap-2"><strong className="font-mono text-sm text-slate-950">{order.number}</strong></span>
                       <span className="mt-1 block truncate text-xs font-bold text-slate-700">{order.customer.firstName} {order.customer.lastName} · {order.customer.email}</span>
                       <span className="mt-1 block text-[10px] font-semibold text-slate-500">{dateTime(order.createdAt)} · {order.lines.reduce((sum, line) => sum + line.quantity, 0)} artikelen</span>
                     </span>
@@ -135,7 +151,7 @@ export const WebshopOrders: React.FC = () => {
                       <div className="grid gap-3 sm:grid-cols-3">
                         <div className="rounded-xl bg-slate-50 p-3"><div className="text-[9px] font-black uppercase text-slate-400">Voorraad</div><div className="mt-1 text-xs font-black text-slate-800">{order.inventoryStatus === 'reserved' ? 'Gereserveerd' : order.inventoryStatus === 'committed' ? 'Definitief afgeboekt' : 'Vrijgegeven'}</div></div>
                         <div className="rounded-xl bg-slate-50 p-3"><div className="text-[9px] font-black uppercase text-slate-400">Betaling</div><div className="mt-1 text-xs font-black text-slate-800">{paymentLabel[order.paymentMethod] || order.paymentMethod}</div><div className="mt-0.5 truncate font-mono text-[9px] text-slate-400">{order.paymentReference}</div></div>
-                        <div className="rounded-xl bg-slate-50 p-3"><div className="flex items-center gap-1 text-[9px] font-black uppercase text-slate-400"><MailCheck size={11} /> E-mail</div><div className="mt-1 text-xs font-black text-emerald-700">Demo verzonden</div><div className="mt-0.5 truncate text-[9px] text-slate-400">{order.confirmationEmail.to}</div></div>
+                        <div className="rounded-xl bg-slate-50 p-3"><div className="flex items-center gap-1 text-[9px] font-black uppercase text-slate-400"><MailCheck size={11} /> E-mail</div><div className="mt-1 text-xs font-black text-emerald-700">{order.confirmationEmail.status === 'failed' ? 'Niet verzonden' : 'In verwerking'}</div><div className="mt-0.5 truncate text-[9px] text-slate-400">{order.confirmationEmail.to}</div></div>
                       </div>
                       {(order.shippingAddress || order.pickupAddress || order.note) && <div className="rounded-xl border border-slate-200 p-4 text-xs"><strong className="text-slate-900">{order.deliveryMode === 'pickup' ? 'Afhalen' : 'Levering'}</strong><div className="mt-1 text-slate-600">{order.deliveryMode === 'pickup' ? order.pickupAddress : `${order.shippingAddress?.street} ${order.shippingAddress?.number}, ${order.shippingAddress?.postal} ${order.shippingAddress?.city}`}</div>{order.note && <div className="mt-2 border-t border-slate-100 pt-2 text-slate-500">Opmerking: {order.note}</div>}</div>}
                     </div>
