@@ -457,7 +457,7 @@ const PublicSite: React.FC = () => {
   else page = <NotFoundPage />;
 
   return (
-    <div className="pw-site">
+    <div className={`pw-site${path === '/' ? ' pw-site-home' : ''}`}>
       <a className="pw-skip" href="#main">Ga naar inhoud</a>
       <SiteHeader mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
       <main id="main">{page}</main>
@@ -582,9 +582,13 @@ const HomePage = () => (
         </motion.div>
         <motion.div className="pw-hero-proof" variants={fadeUp}><span>Basis blijft gratis</span><span>30 dagen Professional</span><span>Offline-first kassa</span></motion.div>
       </motion.div>
+      <a className="pw-scroll-badge" href="#home-story" aria-label="Scroll naar beneden">
+        <span>Scroll</span>
+        <ChevronDown size={22} strokeWidth={1.8} />
+      </a>
     </section>
 
-    <section className="pw-trust-line"><motion.div className="pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>{['Offline-first', 'Belgische retail', 'Multi-store', 'Peppol-ready', 'Open API'].map(item => <motion.span key={item} variants={fadeUp}>{item}</motion.span>)}</motion.div></section>
+    <section className="pw-trust-line" id="home-story"><motion.div className="pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>{['Offline-first', 'Belgische retail', 'Multi-store', 'Peppol-ready', 'Open API'].map(item => <motion.span key={item} variants={fadeUp}>{item}</motion.span>)}</motion.div></section>
 
     <motion.section className="pw-statement pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>
       <motion.p variants={fadeUp}>Van eerste scan tot volgende beslissing.</motion.p>
