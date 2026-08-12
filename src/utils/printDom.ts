@@ -61,3 +61,126 @@ ${node.outerHTML}
     w.addEventListener('load', () => setTimeout(trigger, 50));
   }
 }
+
+export interface IsolatedPrintOptions {
+  title: string;
+  pageCss: string;
+}
+
+export const buildIsolatedPrintDocument = (
+  markup: string,
+  { title, pageCss }: IsolatedPrintOptions,
+  inheritedHead = '',
+): string => `<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8" />
+<title>${title}</title>
+${inheritedHead}
+<style>
+${pageCss}
+</style>
+</head>
+<body>
+${markup}
+</body>
+</html>`;
+
+/**
+ * Print one part of the application from an isolated iframe. Printing the live
+ * window makes the result depend on every layout ancestor (navigation,
+ * overflow containers and responsive widths), which is especially damaging
+ * for millimetre-sized labels.
+ */
+export function printDomInIsolatedFrame(
+  rootSelector: string,
+  { title, pageCss }: IsolatedPrintOptions,
+): boolean {
+  const node = document.querySelector(rootSelector) as HTMLElement | null;
+  if (!node) {
+    console.warn(`printDomInIsolatedFrame: node not found (${rootSelector})`);
+    return false;
+  }
+
+  const frame = document.createElement('iframe');
+  frame.title = title;
+  frame.setAttribute('aria-hidden', 'true');
+  Object.assign(frame.style, {
+    position: 'fixed',
+    right: '0',
+    bottom: '0',
+    width: '1px',
+    height: '1px',
+    border: '0',
+    opacity: '0',
+    pointerEvents: 'none',
+  });
+  document.body.appendChild(frame);
+
+  const printWindow = frame.contentWindow;
+  const printDocument = frame.contentDocument;
+  if (!printWindow || !printDocument) {
+    frame.remove();
+    return false;
+  }
+
+  const inheritedHead = Array.from(
+    document.querySelectorAll('link[rel="stylesheet"], style'),
+  )
+    .map((element) => element.outerHTML)
+    .join('\n');
+
+  printDocument.open();
+  printDocument.write(
+    buildIsolatedPrintDocument(node.outerHTML, { title, pageCss }, inheritedHead),
+  );
+  printDocument.close();
+
+  let started = false;
+  const startPrint = async () => {
+    if (started) return;
+    started = true;
+
+    const stylesheets = Array.from(
+      printDocument.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'),
+    );
+    await Promise.all(
+      stylesheets.map(
+        (stylesheet) =>
+          new Promise<void>((resolve) => {
+            let settled = false;
+            const settle = () => {
+              if (settled) return;
+              settled = true;
+              resolve();
+            };
+            if (stylesheet.sheet) {
+              settle();
+              return;
+            }
+            stylesheet.addEventListener('load', settle, { once: true });
+            stylesheet.addEventListener('error', settle, { once: true });
+            window.setTimeout(settle, 2_000);
+          }),
+      ),
+    );
+
+    if (printDocument.fonts) {
+      await printDocument.fonts.ready;
+    }
+
+    printWindow.requestAnimationFrame(() => {
+      printWindow.requestAnimationFrame(() => {
+        printWindow.addEventListener('afterprint', () => frame.remove(), {
+          once: true,
+        });
+        printWindow.focus();
+        printWindow.print();
+      });
+    });
+  };
+
+  frame.addEventListener('load', () => void startPrint(), { once: true });
+  window.setTimeout(() => void startPrint(), 0);
+  return true;
+}

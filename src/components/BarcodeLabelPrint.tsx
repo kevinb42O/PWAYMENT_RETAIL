@@ -4,6 +4,7 @@ import { useProducts } from '../store/useProducts';
 import { Product } from '../types';
 import { formatEUR } from '../utils/money';
 import { generateInternalEAN13, getPrintableBarcode, isValidEAN13 } from '../utils/barcode';
+import { printBarcodeLabels, type BarcodeLabelPreset } from '../utils/barcodeLabelPrint';
 import { BarcodeSvg } from './BarcodeSvg';
 
 const labelPresets = {
@@ -11,7 +12,7 @@ const labelPresets = {
   roll: { label: 'Labelprinter 58 x 32 mm', cls: 'grid-cols-1', style: { width: '58mm', height: '32mm' } },
 } as const;
 
-type LabelPreset = keyof typeof labelPresets;
+type LabelPreset = BarcodeLabelPreset;
 
 export const BarcodeLabelPrint: React.FC = () => {
   const list = useProducts((state) => state.list);
@@ -64,7 +65,7 @@ export const BarcodeLabelPrint: React.FC = () => {
         await upsert({ ...product, barcode: generateInternalEAN13(product.id) });
       }
     }
-    window.print();
+    printBarcodeLabels(preset);
   };
 
   const presetConfig = labelPresets[preset];
@@ -170,7 +171,7 @@ export const BarcodeLabelPrint: React.FC = () => {
         {labels.length === 0 ? (
           <div className="print:hidden text-center text-zinc-500 py-12">Nog geen labels geselecteerd.</div>
         ) : (
-          <div className={`grid ${presetConfig.cls} gap-2 print:gap-0 justify-start`}>
+          <div data-barcode-labels-root className={`grid ${presetConfig.cls} gap-2 justify-start`}>
             {labels.map(({ product, barcode, key }) => (
               <Label key={key} product={product} barcode={barcode} includePrice={includePrice} includeSku={includeSku} style={presetConfig.style} />
             ))}
