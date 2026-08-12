@@ -19,6 +19,7 @@ import {
 import { generateHash } from "./crypto";
 import { allocateCents } from "./money";
 import { calculateTotals } from "./vat";
+import { synchronizeFinancialLedgerBeforeReport } from "../services/outboxWorker";
 
 export class ReportIntegrityError extends Error {
   constructor(message: string) {
@@ -379,6 +380,14 @@ const generateSupabaseZReport = async (
   if (transactionRequestIds.some((id) => !id)) {
     throw new ReportIntegrityError(
       "Een verkoop mist een serverreferentie. Vernieuw de gegevens.",
+    );
+  }
+  try {
+    await synchronizeFinancialLedgerBeforeReport(storeId, transactions, events);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new ReportIntegrityError(
+      `De openstaande verkopen konden nog niet veilig met de server worden gesynchroniseerd. ${detail}`,
     );
   }
   const { data, error } = await supabase.rpc("finalize_daily_report", {

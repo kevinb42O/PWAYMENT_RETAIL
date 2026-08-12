@@ -5,7 +5,7 @@ import { syncStoreFromSupabase } from "./supabaseStoreSync";
 
 type GiftCardAction = "issue" | "recharge" | "activate" | "deactivate";
 
-interface GiftCardMutation {
+export interface GiftCardMutation {
   action: GiftCardAction;
   card: GiftCard;
   event: GiftCardEvent;
@@ -20,8 +20,8 @@ const friendlyGiftCardError = (message: string): Error => {
   );
 };
 
-/** Commit a gift-card mutation on the tenant's server ledger, then refresh cache. */
-export const mutateSupabaseGiftCard = async (
+/** Commit only the authoritative ledger mutation; callers control cache refresh. */
+export const pushSupabaseGiftCardMutation = async (
   storeId: string,
   mutation: GiftCardMutation,
 ): Promise<void> => {
@@ -42,5 +42,13 @@ export const mutateSupabaseGiftCard = async (
     payload: payload as unknown as Json,
   });
   if (error) throw friendlyGiftCardError(error.message);
+};
+
+/** Commit a gift-card mutation on the tenant's server ledger, then refresh cache. */
+export const mutateSupabaseGiftCard = async (
+  storeId: string,
+  mutation: GiftCardMutation,
+): Promise<void> => {
+  await pushSupabaseGiftCardMutation(storeId, mutation);
   await syncStoreFromSupabase(storeId);
 };
