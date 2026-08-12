@@ -544,21 +544,23 @@ const NavGroup = ({ label, links, active, onToggle, onNavigate }: { label: strin
 );
 
 const HeroProductVideo = () => {
-  const reducedMotion = useReducedMotion();
-
   return (
     <video
       className="pw-hero-video"
-      autoPlay={!reducedMotion}
-      loop={!reducedMotion}
+      autoPlay
+      loop
       muted
       controls={false}
       playsInline
       preload="auto"
-      aria-label="Stille PWAYMENT merkvideo voor moderne retail"
+      aria-hidden="true"
+      tabIndex={-1}
       disablePictureInPicture
+      disableRemotePlayback
+      controlsList="nodownload nofullscreen noremoteplayback"
       onLoadedMetadata={(event) => keepVideoSilent(event.currentTarget)}
       onPlay={(event) => keepVideoSilent(event.currentTarget)}
+      onVolumeChange={(event) => keepVideoSilent(event.currentTarget)}
     >
       <source src={heroVideo} type="video/mp4" />
     </video>
@@ -568,6 +570,8 @@ const HeroProductVideo = () => {
 const HomePage = () => (
   <>
     <section className="pw-hero pw-shell">
+      <HeroProductVideo />
+      <div className="pw-hero-shade" aria-hidden="true" />
       <motion.div className="pw-hero-copy" initial="hidden" animate="visible" variants={stagger}>
         <motion.div className="pw-kicker" variants={fadeUp}><span /> Retailplatform voor Belgische winkels</motion.div>
         <motion.h1 variants={fadeUp}>Minder losse systemen.<br /><em>Meer grip op je winkel.</em></motion.h1>
@@ -577,11 +581,6 @@ const HomePage = () => (
           <a href="/demo" className="pw-text-link">Plan een persoonlijke demo <ArrowRight size={15} /></a>
         </motion.div>
         <motion.div className="pw-hero-proof" variants={fadeUp}><span>Basis blijft gratis</span><span>30 dagen Professional</span><span>Offline-first kassa</span></motion.div>
-      </motion.div>
-      <motion.div className="pw-product-stage pw-product-video-stage" initial={{ opacity: 0, y: 48, scale: .975 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: .92, delay: .2, ease: motionEase }}>
-        <div className="pw-hero-media-head"><span>PWAYMENT in de winkel</span><b>10 seconden</b></div>
-        <HeroProductVideo />
-        <div className="pw-hero-media-caption"><strong>Rust op de winkelvloer.</strong><span>Grip achter de schermen.</span></div>
       </motion.div>
     </section>
 
