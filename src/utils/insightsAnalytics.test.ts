@@ -90,6 +90,24 @@ describe('insights analytics', () => {
     });
   });
 
+  it('counts historical seller names as employee assignments', () => {
+    const snapshot = buildDataQuality(
+      [product],
+      [
+        sale('2026-08-10T10:00:00', { userName: 'Lina' }),
+        sale('2026-08-10T11:00:00', { userId: 'u1', userName: 'Kevin' }),
+        sale('2026-08-10T12:00:00', { userName: '   ' }),
+      ],
+      [],
+    );
+
+    expect(snapshot.employeeLinkCoverage).toBe(67);
+    expect(snapshot.sources.find((source) => source.key === 'employee')).toMatchObject({
+      complete: 2,
+      total: 3,
+    });
+  });
+
   it('shows where discounts land and calculates margin after discount', () => {
     const snapshot = buildDiscountInsights([
       sale('2026-08-10T10:00:00', { totalCents: 8_000, discountCents: 2_000 }),

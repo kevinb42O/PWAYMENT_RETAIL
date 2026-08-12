@@ -1,6 +1,7 @@
 import { Customer, Product, Transaction } from "../types";
 import { allocateCents } from "./money";
 import { isGiftCardProduct } from "./financial";
+import { getTransactionSellerIdentity } from "./retailIntelligence";
 import { calendarDayDifference, getZonedDateParts } from "./time";
 
 export interface ProductInsightRow {
@@ -534,7 +535,7 @@ export const buildDataQuality = (
       label: "Medewerkertoewijzing",
       entityLabel: "verkopen",
       complete: finalizedTransactions.filter(
-        (transaction) => transaction.userId,
+        (transaction) => getTransactionSellerIdentity(transaction) !== null,
       ).length,
       total: finalizedTransactions.length,
     },
