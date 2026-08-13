@@ -14,6 +14,7 @@ export interface WorkforceEmployee {
   status: "active" | "inactive" | "leave";
   weeklyMinutes?: number;
   scheduledDays?: number;
+  competencyIds?: string[];
 }
 
 export interface LeaveType {
@@ -92,6 +93,7 @@ export interface CoverageRule {
 }
 
 export interface WorkforceBootstrap {
+  schemaVersion?: number;
   employee: WorkforceEmployee | null;
   canManage: boolean;
   leaveTypes: LeaveType[];
@@ -100,4 +102,122 @@ export interface WorkforceBootstrap {
   team: WorkforceEmployee[];
   competencies: WorkforceCompetency[];
   coverageRules: CoverageRule[];
+}
+
+export type RosterStatus = "draft" | "published" | "locked";
+export type RosterShiftSource = "manual" | "pattern" | "copied" | "imported";
+
+export interface WorkPattern {
+  id: string;
+  employeeId: string;
+  weekday: number;
+  scheduledMinutes: number;
+  startTime: string | null;
+  endTime: string | null;
+  breakMinutes: number;
+  roleLabel: string | null;
+  locationLabel: string | null;
+  effectiveFrom: string;
+  effectiveUntil: string | null;
+}
+
+export interface WorkforceRoster {
+  id: string;
+  weekStart: string;
+  status: RosterStatus;
+  version: number;
+  publishedAt: string | null;
+}
+
+export interface WorkforceShift {
+  id: string;
+  rosterId: string;
+  employeeId: string;
+  startsAt: string;
+  endsAt: string;
+  breakMinutes: number;
+  paidMinutes: number;
+  roleLabel: string | null;
+  locationLabel: string | null;
+  note: string | null;
+  source: RosterShiftSource;
+  version: number;
+  rosterStatus: RosterStatus;
+  rosterVersion: number;
+  weekStart: string;
+}
+
+export interface RosterLeave {
+  requestId: string;
+  employeeId: string;
+  startDate: string;
+  endDate: string;
+  status: "pending" | "approved";
+  leaveTypeName: string;
+  leaveTypeColor: string;
+  coverageRisk: CoverageRisk;
+}
+
+export interface WorkforceCalendarDay {
+  date: string;
+  name: string;
+  type: "public_holiday" | "closure" | "special_opening";
+  consumesLeave: boolean;
+}
+
+export interface WorkforceAvailability {
+  id: string;
+  employeeId: string;
+  startsAt: string;
+  endsAt: string;
+  availability: "available" | "unavailable" | "preferred";
+  note: string | null;
+}
+
+export interface RosterCoverageDay {
+  date: string;
+  scheduled: number;
+  minimum: number;
+  risk: Exclude<CoverageRisk, "unknown">;
+  missingCompetencies: string[];
+}
+
+export interface WorkforceRosterRange {
+  schemaVersion: number;
+  rangeStart: string;
+  rangeEnd: string;
+  timezone: string;
+  canManage: boolean;
+  employees: WorkforceEmployee[];
+  patterns: WorkPattern[];
+  rosters: WorkforceRoster[];
+  shifts: WorkforceShift[];
+  leave: RosterLeave[];
+  calendarDays: WorkforceCalendarDay[];
+  availability: WorkforceAvailability[];
+  coverage: RosterCoverageDay[];
+}
+
+export interface SaveShiftInput {
+  shiftId?: string;
+  employeeId: string;
+  startsAt: string;
+  endsAt: string;
+  breakMinutes: number;
+  roleLabel: string;
+  locationLabel: string;
+  note: string;
+  expectedRosterVersion?: number;
+  expectedShiftVersion?: number;
+}
+
+export interface SavePatternInput {
+  employeeId: string;
+  weekdays: number[];
+  startTime: string;
+  endTime: string;
+  breakMinutes: number;
+  roleLabel: string;
+  locationLabel: string;
+  effectiveFrom: string;
 }

@@ -57,7 +57,15 @@ export const tooltipPositionFromElement = (element: Element): ChartTooltipPositi
   return { x: bounds.left + bounds.width / 2, y: bounds.top + bounds.height / 2 };
 };
 
-export const ChartTooltip = ({ label, value, detail, position }: { label: string; value: string; detail?: string; position: ChartTooltipPosition }) => {
+export const FloatingTooltip = ({
+  position,
+  children,
+  variant = 'dark',
+}: {
+  position: ChartTooltipPosition;
+  children: ReactNode;
+  variant?: 'dark' | 'light';
+}) => {
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [resolved, setResolved] = useState({ ...position, below: false });
 
@@ -80,21 +88,35 @@ export const ChartTooltip = ({ label, value, detail, position }: { label: string
     <div
       ref={tooltipRef}
       role="tooltip"
-      className="pointer-events-none fixed z-[100] w-max max-w-[min(22rem,calc(100vw-1.5rem))] rounded-xl border border-white/10 bg-slate-950 px-3.5 py-2.5 text-left text-white shadow-[0_16px_42px_-12px_rgba(15,23,42,0.6)]"
+      className={`pointer-events-none fixed z-[100] w-max max-w-[min(22rem,calc(100vw-1.5rem))] rounded-xl border px-3.5 py-2.5 text-left shadow-lg ${
+        variant === 'light'
+          ? 'border-slate-200 bg-white text-slate-900'
+          : 'border-white/10 bg-slate-950 text-white'
+      }`}
       style={{
         left: resolved.x,
         top: resolved.y,
         transform: resolved.below ? 'translate(-50%, 16px)' : 'translate(-50%, calc(-100% - 16px))',
       }}
     >
-      <div className="truncate text-[11px] font-bold uppercase tracking-[0.08em] text-slate-300">{label}</div>
-      <div className="mt-0.5 text-sm font-extrabold tabular-nums">{value}</div>
-      {detail && <div className="mt-1 truncate text-[11px] text-slate-300">{detail}</div>}
-      <i className={`absolute left-1/2 h-2.5 w-2.5 -translate-x-1/2 rotate-45 bg-slate-950 ${resolved.below ? '-top-1' : '-bottom-1'}`} />
+      {children}
+      <i className={`absolute left-1/2 h-2.5 w-2.5 -translate-x-1/2 rotate-45 border ${
+        variant === 'light'
+          ? 'border-slate-200 bg-white'
+          : 'border-white/10 bg-slate-950'
+      } ${resolved.below ? '-top-1 border-b-0 border-r-0' : '-bottom-1 border-l-0 border-t-0'}`} />
     </div>,
     document.body,
   );
 };
+
+export const ChartTooltip = ({ label, value, detail, position }: { label: string; value: string; detail?: string; position: ChartTooltipPosition }) => (
+  <FloatingTooltip position={position}>
+    <div className="truncate text-[11px] font-bold uppercase tracking-[0.08em] text-slate-300">{label}</div>
+    <div className="mt-0.5 text-sm font-extrabold tabular-nums">{value}</div>
+    {detail && <div className="mt-1 truncate text-[11px] text-slate-300">{detail}</div>}
+  </FloatingTooltip>
+);
 
 export const HorizontalBars = ({
   rows,
