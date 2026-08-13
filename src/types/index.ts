@@ -28,6 +28,13 @@ export interface Product {
   brand?: string;
   supplier?: string;
   variant?: string;
+  /**
+   * Deterministic customer-group prices in integer cents. The standard price
+   * remains `priceCents`; a missing group always falls back to that value.
+   */
+  priceTiers?: Record<string, number>;
+  /** Merchant-defined import fields that are not part of the financial core. */
+  customFields?: Record<string, string | number | boolean | null>;
   /** Current on-hand stock. Undefined means stock not tracked for this product. */
   stockQty?: number;
   /** Low-stock threshold used for alerts in admin/menu. */
@@ -528,6 +535,8 @@ export interface Customer {
   phone?: string;
   address?: string;
   notes?: string;
+  /** Optional price-book/customer segment key, e.g. `telenet-klant` or `b2b`. */
+  priceGroup?: string;
   /** Cumulative amount spent in INTEGER CENTS (EUR). */
   totalSpentCents: number;
   /** Number of completed transactions. */

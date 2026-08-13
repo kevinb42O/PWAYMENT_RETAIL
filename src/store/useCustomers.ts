@@ -139,6 +139,7 @@ export const useCustomers = create<CustomersState>((set, get) => ({
       phone: c.phone?.trim() || undefined,
       address: c.address?.trim() || undefined,
       notes: c.notes?.trim() || undefined,
+      priceGroup: c.priceGroup?.trim() || undefined,
     };
     await enqueueOutbox("upsert_customer", [next]);
     await db.customers.put(next);

@@ -11,6 +11,7 @@ import { useTheme } from "./store/useTheme";
 import { applyThemeMode } from "./utils/theme";
 import { startOutboxWorker, stopOutboxWorker } from "./services/outboxWorker";
 import { startRealtimeSync, stopRealtimeSync } from "./services/realtimeSync";
+import { CustomerDisplayPublisher } from "./customer-display/CustomerDisplayPublisher";
 
 const RecordingCursor = () => {
   const [cursor, setCursor] = useState({
@@ -117,6 +118,7 @@ export default function App() {
 
   return unlocked ? (
     <>
+      <CustomerDisplayPublisher />
       <Layout />
       {recordingMode && <RecordingCursor />}
     </>
