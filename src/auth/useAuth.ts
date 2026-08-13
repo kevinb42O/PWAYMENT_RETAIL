@@ -12,6 +12,11 @@ import { AuditAction, AuditEntry, Role, User } from "../types";
 import type { Json } from "../types/database.generated";
 import { useEntitlements } from "../billing/entitlements";
 import { reportLoadingProgress } from "../services/loadingProgress";
+import {
+  recommendedStartView,
+  type StoreConfiguration,
+} from "../onboarding/storeConfiguration";
+import { useStoreConfiguration } from "../store/useStoreConfiguration";
 
 interface AuthState {
   currentUserId: string | null;
@@ -34,6 +39,7 @@ interface AuthState {
     lastName: string;
     storeName: string;
     pin: string;
+    onboardingConfiguration?: StoreConfiguration;
   }) => Promise<{ success: boolean; message?: string }>;
   logout: () => Promise<void>;
   hasRole: (...roles: Role[]) => boolean;
@@ -424,6 +430,7 @@ export const useAuth = create<AuthState>()(
         lastName,
         storeName,
         pin,
+        onboardingConfiguration,
       }) {
         const cleanEmail = email.trim().toLowerCase();
         const cleanFirst = firstName.trim();
@@ -474,6 +481,15 @@ export const useAuth = create<AuthState>()(
             createdAt: new Date().toISOString(),
           };
           await db.users.put(newUser);
+          if (onboardingConfiguration) {
+            const { useStore } = await import("../store/useStore");
+            await useStoreConfiguration
+              .getState()
+              .save(onboardingConfiguration, null);
+            useStore
+              .getState()
+              .setMainView(recommendedStartView(onboardingConfiguration));
+          }
           set({
             currentUserId: newUser.id,
             currentUserName: newUser.name,
@@ -495,6 +511,7 @@ export const useAuth = create<AuthState>()(
                 first_name: cleanFirst,
                 last_name: cleanLast,
                 store_name: cleanStore,
+                onboarding_config: onboardingConfiguration ?? null,
               },
             },
           });
@@ -536,6 +553,7 @@ export const useAuth = create<AuthState>()(
           localStorage.removeItem("pwayment:merchant-profile");
           localStorage.removeItem("pwayment_webshop_settings_v1");
           localStorage.removeItem("pwayment-integrations-v1");
+          localStorage.removeItem("pwayment:store-configuration-v1");
         } catch {
           // In-memory logout remains complete when storage is unavailable.
         }
@@ -548,6 +566,7 @@ export const useAuth = create<AuthState>()(
           currentStoreIsDemo: false,
           unlocked: false,
         });
+        useStoreConfiguration.getState().reset();
       },
       hasRole(...roles) {
         const r = get().currentRole;

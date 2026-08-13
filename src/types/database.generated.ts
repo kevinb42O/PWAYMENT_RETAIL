@@ -1213,10 +1213,13 @@ export type Database = {
           currency: string
           email: string | null
           id: string
+          industry_code: string
           is_demo: boolean
           legal_name: string | null
           locale: string
           name: string
+          onboarding_completed_at: string | null
+          onboarding_config: Json
           phone: string | null
           postal_code: string | null
           receipt_footer: string | null
@@ -1235,10 +1238,13 @@ export type Database = {
           currency?: string
           email?: string | null
           id?: string
+          industry_code?: string
           is_demo?: boolean
           legal_name?: string | null
           locale?: string
           name: string
+          onboarding_completed_at?: string | null
+          onboarding_config?: Json
           phone?: string | null
           postal_code?: string | null
           receipt_footer?: string | null
@@ -1257,10 +1263,13 @@ export type Database = {
           currency?: string
           email?: string | null
           id?: string
+          industry_code?: string
           is_demo?: boolean
           legal_name?: string | null
           locale?: string
           name?: string
+          onboarding_completed_at?: string | null
+          onboarding_config?: Json
           phone?: string | null
           postal_code?: string | null
           receipt_footer?: string | null

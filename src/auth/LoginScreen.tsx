@@ -4,6 +4,7 @@ import { db } from "../db/db";
 import { User, Role } from "../types";
 import { supabase } from "../lib/supabase";
 import { SiteHeader } from "../public/PublicSite";
+import { OnboardingWizard } from "../onboarding/OnboardingWizard";
 import {
   getLoadingProgress,
   reportLoadingProgress,
@@ -161,6 +162,21 @@ export const LoginScreen: React.FC = () => {
       setEnteredPin("");
     }
   };
+
+  if (mode === "register" && !showPinDrawer) {
+    return (
+      <OnboardingWizard
+        mode="registration"
+        pinLoginEnabled={pinLoginEnabled}
+        onExit={(registrationNotice) => {
+          setMode("login");
+          setError(null);
+          setNotice(registrationNotice ?? null);
+          window.history.replaceState(window.history.state, "", "/login");
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#FBFBFD] text-zinc-950 flex flex-col justify-between selection:bg-zinc-950 selection:text-white font-sans antialiased relative overflow-x-hidden">

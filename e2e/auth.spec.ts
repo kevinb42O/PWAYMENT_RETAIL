@@ -5,7 +5,7 @@ test("registration requires strong credentials and reload locks the session", as
 }) => {
   await appPage.goto("/register");
   await expect(
-    appPage.getByRole("heading", { name: "Nieuw account aanmaken" }),
+    appPage.getByRole("heading", { name: "Eerst uw veilige account" }),
   ).toBeVisible();
   await appPage.getByRole("textbox", { name: "Voornaam" }).fill("E2E");
   await appPage.getByRole("textbox", { name: "Familienaam" }).fill("Eigenaar");
@@ -23,11 +23,30 @@ test("registration requires strong credentials and reload locks the session", as
     .fill("CorrectHorseBattery12!");
   await appPage.getByLabel("Kassa Snel-PIN (6 cijfers)").fill("654321");
   await appPage
-    .getByRole("button", { name: "Account Aanmaken" })
-    .last()
+    .getByRole("button", { name: "Verder" })
+    .click();
+  await appPage.getByLabel("Welke zaak heeft u?").selectOption("telecom-it");
+  await appPage.getByRole("button", { name: "Verder" }).click();
+  await expect(
+    appPage.getByRole("checkbox", { name: /Hersteldienst/ }),
+  ).toBeChecked();
+  await appPage.getByRole("button", { name: "Verder" }).click();
+  await appPage
+    .getByLabel("Waar staan uw producten vandaag?")
+    .selectOption("spreadsheet");
+  await appPage.getByText("Meteen na aanmelden", { exact: true }).click();
+  await appPage
+    .getByLabel("Hoe werkt uw prijsvoering?")
+    .selectOption("customer-groups");
+  await appPage.getByRole("button", { name: "Verder" }).click();
+  await expect(
+    appPage.getByRole("heading", { name: "Dit zetten we voor u klaar" }),
+  ).toBeVisible();
+  await appPage
+    .getByRole("button", { name: "Account aanmaken en starten" })
     .click();
   await expect(
-    appPage.getByRole("searchbox", { name: "Scan barcode of zoek product" }),
+    appPage.getByRole("heading", { name: "Integration Hub" }),
   ).toBeVisible();
 
   await appPage.reload();

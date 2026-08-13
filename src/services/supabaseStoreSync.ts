@@ -3,6 +3,11 @@ import { activateTenantDatabase, db } from "../db/db";
 import { DEFAULT_MERCHANT, type MerchantInfo } from "../data/merchant";
 import { supabase } from "../lib/supabase";
 import { useMerchantProfile } from "../store/useMerchantProfile";
+import { useStoreConfiguration } from "../store/useStoreConfiguration";
+import {
+  normalizeStoreConfiguration,
+  recommendedStartView,
+} from "../onboarding/storeConfiguration";
 import { reportLoadingProgress } from "./loadingProgress";
 import {
   EMPTY_WEBSHOP_SETTINGS,
@@ -701,6 +706,15 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
   });
 
   const store = storeResult.data;
+  const storeConfiguration = normalizeStoreConfiguration(
+    store.onboarding_config,
+  );
+  const shouldOpenRecommendedStart =
+    Boolean(storeConfiguration.completedAt) &&
+    !storeConfiguration.firstRunCompleted;
+  useStoreConfiguration
+    .getState()
+    .applyRemote(storeConfiguration, storeId);
   useMerchantProfile.setState({
     profile: {
       ...blankMerchant(store.name),
@@ -745,6 +759,12 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
   pos.clearCart();
   pos.resetCartExtras();
   pos.unlinkCustomer();
+  if (shouldOpenRecommendedStart) {
+    pos.setMainView(recommendedStartView(storeConfiguration));
+    void useStoreConfiguration
+      .getState()
+      .markFirstRunCompleted(storeId);
+  }
   useIntegrations.setState({
     integrations: [],
     webhooks: [],

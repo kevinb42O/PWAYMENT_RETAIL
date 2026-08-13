@@ -9,6 +9,8 @@ import { FeatureGate } from "../billing/FeatureGate";
 import { TrialStatus } from "../billing/TrialStatus";
 import { FEATURE_KEYS, planLabel, useEntitlements } from "../billing/entitlements";
 import { supabase } from "../lib/supabase";
+import { useStoreConfiguration } from "../store/useStoreConfiguration";
+import { OnboardingWizard } from "../onboarding/OnboardingWizard";
 import {
   AlertCircle,
   CheckCircle2,
@@ -27,6 +29,7 @@ import {
   Cable,
   Maximize,
   Minimize,
+  SlidersHorizontal,
 } from "lucide-react";
 
 const ZReportView = React.lazy(() =>
@@ -99,6 +102,9 @@ export const Layout: React.FC = () => {
   );
   const products = useProducts((s) => s.list);
   const hydrateProducts = useProducts((s) => s.hydrate);
+  const modulePreferences = useStoreConfiguration(
+    (state) => state.configuration.modules,
+  );
 
   const [productQuery, setProductQuery] = useState("");
   const [scanFeedback, setScanFeedback] = useState<ScanFeedback | null>(null);
@@ -108,6 +114,8 @@ export const Layout: React.FC = () => {
   );
   const [isNavDropdownOpen, setIsNavDropdownOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isConfigurationOpen, setIsConfigurationOpen] = useState(false);
+  const [configurationNotice, setConfigurationNotice] = useState<string | null>(null);
   const [profileInitialTarget, setProfileInitialTarget] = useState<{
     tab: "billing" | "webshop-general";
     requestKey: number;
@@ -330,6 +338,21 @@ export const Layout: React.FC = () => {
   }, [scanFeedback]);
 
   useEffect(() => {
+    const hiddenView =
+      (mainView === "customers" && !modulePreferences.customers) ||
+      (mainView === "service" && !modulePreferences.service) ||
+      (mainView === "integration-hub" && !modulePreferences.catalog) ||
+      (mainView === "insights" && !modulePreferences.insights);
+    if (hiddenView) setMainView("pos");
+  }, [mainView, modulePreferences, setMainView]);
+
+  useEffect(() => {
+    if (!configurationNotice) return;
+    const timer = window.setTimeout(() => setConfigurationNotice(null), 3200);
+    return () => window.clearTimeout(timer);
+  }, [configurationNotice]);
+
+  useEffect(() => {
     const handleGlobalHotkeys = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
@@ -351,11 +374,11 @@ export const Layout: React.FC = () => {
           event.preventDefault();
           setMainView("audit-log");
           setIsNavDropdownOpen(false);
-        } else if (event.key === "4") {
+        } else if (event.key === "4" && modulePreferences.customers) {
           event.preventDefault();
           setMainView("customers");
           setIsNavDropdownOpen(false);
-        } else if (event.key === "5") {
+        } else if (event.key === "5" && modulePreferences.insights) {
           event.preventDefault();
           setMainView("insights");
           setIsNavDropdownOpen(false);
@@ -372,7 +395,7 @@ export const Layout: React.FC = () => {
 
     window.addEventListener("keydown", handleGlobalHotkeys);
     return () => window.removeEventListener("keydown", handleGlobalHotkeys);
-  }, [mainView, setMainView, currentRole]);
+  }, [mainView, setMainView, currentRole, modulePreferences]);
 
   useEffect(() => {
     if (mainView !== "pos") return undefined;
@@ -479,19 +502,24 @@ export const Layout: React.FC = () => {
               Icon: History,
               title: "Historiek (Alt+3)",
             },
-            {
-              view: "customers" as const,
-              label: "Klanten",
-              Icon: Users,
-              title: "Klanten (Alt+4)",
-            },
-            {
-              view: "service" as const,
-              label: "Herstellingen",
-              Icon: Wrench,
-              title: "Hersteldienst",
-            },
-            ...((currentRole === "owner" || currentRole === "manager")
+            ...(modulePreferences.customers
+              ? [{
+                  view: "customers" as const,
+                  label: "Klanten",
+                  Icon: Users,
+                  title: "Klanten (Alt+4)",
+                }]
+              : []),
+            ...(modulePreferences.service
+              ? [{
+                  view: "service" as const,
+                  label: "Herstellingen",
+                  Icon: Wrench,
+                  title: "Hersteldienst",
+                }]
+              : []),
+            ...((currentRole === "owner" || currentRole === "manager") &&
+            modulePreferences.catalog
               ? [
                   {
                     view: "integration-hub" as const,
@@ -501,13 +529,15 @@ export const Layout: React.FC = () => {
                   },
                 ]
               : []),
-            {
-              view: "insights" as const,
-              label: "Inzichten",
-              Icon: Lightbulb,
-              title: "Inzichten (Alt+5)",
-            },
-            ...(canUseWebshop
+            ...(modulePreferences.insights
+              ? [{
+                  view: "insights" as const,
+                  label: "Inzichten",
+                  Icon: Lightbulb,
+                  title: "Inzichten (Alt+5)",
+                }]
+              : []),
+            ...(canUseWebshop && modulePreferences.webshop
               ? [
                   {
                     view: "profile" as const,
@@ -615,6 +645,20 @@ export const Layout: React.FC = () => {
               <div className="px-2 py-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
                 Gebruiker & Apparaat
               </div>
+
+              {currentRole === "owner" && (
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    setIsConfigurationOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-sky-50 hover:text-sky-800 transition-colors"
+                >
+                  <SlidersHorizontal size={15} className="text-sky-600" />
+                  <span>Winkelconfiguratie</span>
+                </button>
+              )}
 
               {/* Instellingen Pagina Link */}
               <button
@@ -859,6 +903,23 @@ export const Layout: React.FC = () => {
             )}
           </div>
         </div>
+      )}
+      {configurationNotice && (
+        <div
+          role="status"
+          className="fixed bottom-5 left-1/2 z-[90] -translate-x-1/2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-bold text-white shadow-2xl"
+        >
+          {configurationNotice}
+        </div>
+      )}
+      {isConfigurationOpen && (
+        <OnboardingWizard
+          mode="settings"
+          onExit={(notice) => {
+            setIsConfigurationOpen(false);
+            if (notice) setConfigurationNotice(notice);
+          }}
+        />
       )}
     </div>
   );

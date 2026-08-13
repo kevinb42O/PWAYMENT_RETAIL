@@ -19,6 +19,8 @@ import { audit } from "../auth/useAuth";
 import { db } from "../db/db";
 import { useCategories } from "../store/useCategories";
 import { useProducts } from "../store/useProducts";
+import { useStoreConfiguration } from "../store/useStoreConfiguration";
+import { configuredVatFallback } from "../onboarding/storeConfiguration";
 import type {
   ImportFieldMapping,
   ImportJob,
@@ -122,6 +124,7 @@ const computePreview = (
   parsed: ParsedImportFile | null,
   mappings: ImportFieldMapping[],
   products: Product[],
+  vatFallback: number,
 ): ImportPreview => {
   if (!parsed) return { valid: 0, newCount: 0, updateCount: 0, issueCount: 0, priceGroups: [] };
   const existingKeys = new Set(
@@ -138,7 +141,10 @@ const computePreview = (
   parsed.rows.forEach((row) => {
     const name = valueFor(row, parsed, mappings, "core:name");
     const sellingPrice = readPrice(valueFor(row, parsed, mappings, "core:sellingPrice"));
-    const vat = parseVat(valueFor(row, parsed, mappings, "core:vatRate"), 21);
+    const vat = parseVat(
+      valueFor(row, parsed, mappings, "core:vatRate"),
+      vatFallback,
+    );
     const candidateKeys = [
       valueFor(row, parsed, mappings, "core:id"),
       valueFor(row, parsed, mappings, "core:sku"),
@@ -177,6 +183,10 @@ export const IntegrationHub: React.FC = () => {
   const categories = useCategories((state) => state.list);
   const hydrateCategories = useCategories((state) => state.hydrate);
   const addCategory = useCategories((state) => state.addCategory);
+  const storeConfiguration = useStoreConfiguration(
+    (state) => state.configuration,
+  );
+  const defaultVat = configuredVatFallback(storeConfiguration);
   const jobs = useLiveQuery(() => db.import_jobs.orderBy("createdAt").reverse().limit(8).toArray()) ?? [];
   const profiles = useLiveQuery(() => db.import_mapping_profiles.orderBy("updatedAt").reverse().toArray()) ?? [];
 
@@ -195,8 +205,8 @@ export const IntegrationHub: React.FC = () => {
   }, [hydrateCategories, hydrateProducts]);
 
   const preview = useMemo(
-    () => computePreview(parsed, mappings, products),
-    [mappings, parsed, products],
+    () => computePreview(parsed, mappings, products, defaultVat),
+    [defaultVat, mappings, parsed, products],
   );
   const discoveredGroups = useMemo(
     () =>
@@ -340,7 +350,7 @@ export const IntegrationHub: React.FC = () => {
         const costPrice = readPrice(valueFor(row, parsed, mappings, "core:costPrice"));
         const vatRate = parseVat(
           valueFor(row, parsed, mappings, "core:vatRate"),
-          existing?.vatRate ?? 21,
+          existing?.vatRate ?? defaultVat,
         );
         if (standardPrice === null || costPrice === null) {
           issues.push({ row: rowNumber, message: "Prijsformaat is ongeldig of dubbelzinnig." });
