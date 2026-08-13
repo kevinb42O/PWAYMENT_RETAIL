@@ -6,6 +6,9 @@ import {
   reportLoadingProgress,
   subscribeLoadingProgress,
 } from "./services/loadingProgress";
+import { installPreloadRecovery } from "./services/preloadRecovery";
+
+installPreloadRecovery();
 
 const searchParams = new URLSearchParams(window.location.search);
 const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));

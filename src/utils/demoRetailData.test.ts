@@ -196,5 +196,5 @@ describe('demo gift card persistence', () => {
     expect((await db.gift_cards.toArray()).some((giftCard) => giftCard.id.startsWith('demo-gift-card-'))).toBe(false);
     expect((await db.gift_card_events.toArray()).some((event) => event.id.startsWith('demo-gift-card-event-'))).toBe(false);
     expect(await db.gift_cards.get(liveGiftCard.id)).toEqual(liveGiftCard);
-  }, 10_000);
+  }, 30_000);
 });

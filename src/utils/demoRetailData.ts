@@ -589,24 +589,34 @@ export const buildDemoRetailDataset = (catalogue: Product[], now = new Date()): 
 
 export const clearDemoRetailData = async (): Promise<void> => {
   await db.transaction('rw', [db.transactions, db.customers, db.gift_cards, db.gift_card_events, db.users], async () => {
-    const transactionIds = (await db.transactions.where('source').equals('demo').toArray())
-      .map((transaction) => transaction.id)
-      .filter((id): id is number => id != null);
+    // Fetch keys only: loading hundreds of complete receipt objects solely to
+    // delete them wastes memory, while Collection.delete() issues one request
+    // per row in IndexedDB.
+    const transactionIds = await db.transactions
+      .where('source')
+      .equals('demo')
+      .primaryKeys() as number[];
+    const customerIds = await db.customers
+      .where('id')
+      .startsWith(DEMO_CUSTOMER_PREFIX)
+      .primaryKeys() as string[];
+    const giftCardEventIds = await db.gift_card_events
+      .where('id')
+      .startsWith(DEMO_GIFT_CARD_EVENT_PREFIX)
+      .primaryKeys() as string[];
+    const giftCardIds = await db.gift_cards
+      .where('id')
+      .startsWith(DEMO_GIFT_CARD_PREFIX)
+      .primaryKeys() as string[];
+    const demoUserIds = await db.users
+      .where('id')
+      .startsWith('demo-user-')
+      .primaryKeys() as string[];
+
     if (transactionIds.length > 0) await db.transactions.bulkDelete(transactionIds);
-
-    const customerIds = (await db.customers.where('id').startsWith(DEMO_CUSTOMER_PREFIX).toArray())
-      .map((customer) => customer.id);
     if (customerIds.length > 0) await db.customers.bulkDelete(customerIds);
-
-    const giftCardIds = (await db.gift_cards.where('id').startsWith(DEMO_GIFT_CARD_PREFIX).toArray())
-      .map((giftCard) => giftCard.id);
-    const giftCardEventIds = (await db.gift_card_events.where('id').startsWith(DEMO_GIFT_CARD_EVENT_PREFIX).toArray())
-      .map((event) => event.id);
     if (giftCardEventIds.length > 0) await db.gift_card_events.bulkDelete(giftCardEventIds);
     if (giftCardIds.length > 0) await db.gift_cards.bulkDelete(giftCardIds);
-
-    const demoUserIds = (await db.users.where('id').startsWith('demo-user-').toArray())
-      .map((user) => user.id);
     if (demoUserIds.length > 0) await db.users.bulkDelete(demoUserIds);
   });
 };
