@@ -11,6 +11,7 @@ import { IntegrationsSettings } from './IntegrationsSettings';
 import { LoyaltySettings } from './LoyaltySettings';
 import { BillingSettings, BillingSubTab } from './BillingSettings';
 import { WebshopSettings } from './WebshopSettings';
+import { CustomerDisplaySettings } from './CustomerDisplaySettings';
 import { FeatureGate } from '../billing/FeatureGate';
 import { FEATURE_KEYS } from '../billing/entitlements';
 import {
@@ -57,6 +58,7 @@ import {
   Globe,
   ShoppingBag,
   Truck,
+  Monitor,
 } from 'lucide-react';
 
 type WorkspaceTab =
@@ -89,6 +91,7 @@ type WorkspaceTab =
   | 'hardware-drawer'
   | 'hardware-terminal'
   | 'hardware-scale'
+  | 'hardware-display'
   | 'security'
   | 'team';
 
@@ -475,6 +478,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   { id: 'hardware-scanner', label: 'Barcodescanner', icon: <Scan size={13} /> },
                   { id: 'hardware-drawer', label: 'Kassalade', icon: <Zap size={13} /> },
                   { id: 'hardware-terminal', label: 'Betaalterminal', icon: <CreditCard size={13} /> },
+                  { id: 'hardware-display', label: 'Klantenscherm', icon: <Monitor size={13} /> },
                 ].map((sub) => {
                   const isSubActive = activeTab === sub.id || (activeTab === 'hardware' && sub.id === 'hardware-printer');
                   return (
@@ -828,7 +832,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900">Kassa Hardware & Randapparatuur</h3>
-                  <p className="text-xs text-slate-500 font-medium">Beheer uw thermische bonprinter, barcodescanner, kassalade en betaalterminal</p>
+                  <p className="text-xs text-slate-500 font-medium">Beheer uw bonprinter, barcodescanner, kassalade, betaalterminal en optioneel klantenscherm</p>
                 </div>
               </div>
 
@@ -1118,6 +1122,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 </div>
               </div>
               </FeatureGate>
+            )}
+
+            {activeTab === 'hardware-display' && (
+              <CustomerDisplaySettings />
             )}
 
             {activeTab === 'hardware-scale' && (

@@ -16,11 +16,7 @@ import {
 import { useStore } from "../store/useStore";
 import { useProducts } from "../store/useProducts";
 import { useAuth } from "../auth/useAuth";
-import {
-  calculateTotals,
-  findUnsupportedVatItems,
-  SUPPORTED_VAT_RATES,
-} from "../utils/vat";
+import { SUPPORTED_VAT_RATES } from "../utils/vat";
 import { formatEUR } from "../utils/money";
 import { FEATURES } from "../config/features";
 import {
@@ -45,7 +41,8 @@ import { GiftCardPaymentModal } from "./GiftCardPaymentModal";
 import { useCustomers } from "../store/useCustomers";
 import { isGiftCardExpired } from "../utils/giftCards";
 import { Modal } from "./Modal";
-import { withResolvedProductPrice } from "../utils/pricing";
+import { projectCart } from "../customer-display/cartProjection";
+import { useCustomerDisplayRuntime } from "../customer-display/runtime";
 
 const lineUnitCents = (o: OrderItem): number =>
   o.product.priceCents +
@@ -134,33 +131,25 @@ export const Cart: React.FC = () => {
     sendRaw,
   } = useThermalPrinter();
 
-  const itemsToCheckout: OrderItem[] = useMemo(
-    () =>
-      cart.orders.map((order) => ({
-        ...order,
-        product: withResolvedProductPrice(order.product, linkedCustomer),
-      })),
-    [cart.orders, linkedCustomer],
-  );
-
-  const hasItemsToCheckout = itemsToCheckout.length > 0;
   const manualDiscountCents = cartDiscount?.amountCents ?? 0;
-  const totalDiscountCents = manualDiscountCents;
-  const vatBlockers = useMemo(
-    () => findUnsupportedVatItems(itemsToCheckout),
-    [itemsToCheckout],
-  );
-  const totals = useMemo(
+  const cartProjection = useMemo(
     () =>
-      vatBlockers.length > 0
-        ? calculateTotals([], 0)
-        : calculateTotals(itemsToCheckout, totalDiscountCents),
-    [itemsToCheckout, totalDiscountCents, vatBlockers],
+      projectCart({
+        orders: cart.orders,
+        linkedCustomer,
+        discountCents: manualDiscountCents,
+        giftCards: cartGiftCards,
+      }),
+    [cart.orders, linkedCustomer, manualDiscountCents, cartGiftCards],
   );
+  const itemsToCheckout: OrderItem[] = cartProjection.items;
+  const hasItemsToCheckout = itemsToCheckout.length > 0;
+  const totalDiscountCents = manualDiscountCents;
+  const vatBlockers = cartProjection.vatBlockers;
+  const totals = cartProjection.totals;
   const grandTotal = totals.total;
 
-  const giftCardsTotal = cartGiftCards.reduce((s, gc) => s + gc.amountCents, 0);
-  const remainingTotal = Math.max(0, grandTotal - giftCardsTotal);
+  const remainingTotal = cartProjection.remainingCents;
   const checkoutBlocked =
     !hasItemsToCheckout || isProcessing || vatBlockers.length > 0;
 
@@ -230,7 +219,10 @@ export const Cart: React.FC = () => {
             {printerConnected ? "🖨️ Herdruk" : "🔌 Verbind & Druk"}
           </button>
           <button
-            onClick={() => setReceipt(null)}
+            onClick={() => {
+              useCustomerDisplayRuntime.getState().resetPayment();
+              setReceipt(null);
+            }}
             className="flex-1 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold"
           >
             Sluiten
@@ -258,6 +250,7 @@ export const Cart: React.FC = () => {
   ) => {
     if (checkoutBlocked) return;
     setIsProcessing(true);
+    useCustomerDisplayRuntime.getState().beginPayment(method);
     requestIdRef.current ??= crypto.randomUUID();
 
     try {
@@ -283,6 +276,9 @@ export const Cart: React.FC = () => {
       });
 
       requestIdRef.current = null;
+      useCustomerDisplayRuntime
+        .getState()
+        .completePayment(result.transaction);
       clearCart();
       setReceipt(result.transaction);
 
@@ -297,6 +293,7 @@ export const Cart: React.FC = () => {
         }
       }
     } catch (error) {
+      useCustomerDisplayRuntime.getState().failPayment(method);
       console.error("Checkout failed:", error);
       alert(
         error instanceof CheckoutError
@@ -683,6 +680,7 @@ export const Cart: React.FC = () => {
                   for (const line of lines)
                     await voidOrderItem(line.lineId, clearCartReason.trim());
                   resetCartExtras();
+                  useCustomerDisplayRuntime.getState().resetPayment();
                   setClearCartOpen(false);
                 })();
               }}

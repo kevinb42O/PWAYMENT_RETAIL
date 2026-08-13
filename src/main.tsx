@@ -24,6 +24,9 @@ const storefrontRoute =
   window.location.pathname === "/shop" ||
   window.location.pathname.startsWith("/shop/");
 const serviceTrackingRoute = window.location.pathname.startsWith("/service/");
+const customerDisplayRoute =
+  window.location.pathname === "/customer-display" ||
+  window.location.pathname.startsWith("/customer-display/");
 const accountRoute = ["/app", "/login", "/register"].some(
   (route) =>
     window.location.pathname === route ||
@@ -33,6 +36,7 @@ const publicWebsiteRoute =
   !passwordSetupFlow &&
   !storefrontRoute &&
   !serviceTrackingRoute &&
+  !customerDisplayRoute &&
   !accountRoute &&
   !presentationMode &&
   !presentationBuild;
@@ -161,6 +165,23 @@ const start = async () => {
     root.render(
       <StrictMode>
         <SetPasswordScreen />
+      </StrictMode>,
+    );
+    return;
+  }
+
+  if (customerDisplayRoute) {
+    document.documentElement.dataset.theme = "light";
+    document.documentElement.classList.add("theme-light");
+    document.documentElement.classList.remove("theme-dark");
+    document.documentElement.style.colorScheme = "light";
+
+    const { default: CustomerDisplayApp } = await import(
+      "./customer-display/CustomerDisplayApp"
+    );
+    root.render(
+      <StrictMode>
+        <CustomerDisplayApp />
       </StrictMode>,
     );
     return;
