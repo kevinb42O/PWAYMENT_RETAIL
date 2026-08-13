@@ -17,6 +17,7 @@ import {
   type StoreConfiguration,
 } from "../onboarding/storeConfiguration";
 import { useStoreConfiguration } from "../store/useStoreConfiguration";
+import { useWorkforce } from "../store/useWorkforce";
 
 interface AuthState {
   currentUserId: string | null;
@@ -567,6 +568,7 @@ export const useAuth = create<AuthState>()(
           unlocked: false,
         });
         useStoreConfiguration.getState().reset();
+        useWorkforce.getState().reset();
       },
       hasRole(...roles) {
         const r = get().currentRole;

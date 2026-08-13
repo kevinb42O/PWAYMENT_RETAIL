@@ -26,6 +26,7 @@ interface RetailCart {
 export type MainView =
   | 'pos'
   | 'service'
+  | 'workforce'
   | 'integration-hub'
   | 'insights'
   | 'z-report'

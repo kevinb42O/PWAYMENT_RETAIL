@@ -6,6 +6,7 @@ import {
   normalizeStoreConfiguration,
   recommendedModulesForIndustry,
   recommendedStartView,
+  withConfiguredModule,
 } from "./storeConfiguration";
 
 describe("store configuration", () => {
@@ -19,6 +20,7 @@ describe("store configuration", () => {
     const normalized = normalizeStoreConfiguration({ version: 999 });
     expect(normalized.modules.catalog).toBe(true);
     expect(normalized.modules.service).toBe(true);
+    expect(normalized.modules.workforce).toBe(true);
     expect(normalized.firstRunCompleted).toBe(true);
   });
 
@@ -45,6 +47,7 @@ describe("store configuration", () => {
           catalog: false,
           customers: true,
           service: true,
+          workforce: false,
           webshop: false,
           insights: false,
         },
@@ -56,5 +59,25 @@ describe("store configuration", () => {
     const draft = createStoreConfigurationDraft();
     expect(configuredVatFallback({ ...draft, defaultVat: "6" })).toBe(6);
     expect(configuredVatFallback({ ...draft, defaultVat: "mixed" })).toBe(21);
+  });
+
+  it("changes one navigation module without losing the rest of the store setup", () => {
+    const configured = completeStoreConfiguration(createStoreConfigurationDraft(), "2026-08-13T12:00:00.000Z");
+    const next = withConfiguredModule(configured, "service", false);
+
+    expect(next.modules.service).toBe(false);
+    expect(next.modules.catalog).toBe(configured.modules.catalog);
+    expect(next.industry).toBe(configured.industry);
+    expect(next.completedAt).toBe(configured.completedAt);
+  });
+
+  it("keeps workforce and Integration Hub independently configurable", () => {
+    const configured = createStoreConfigurationDraft();
+    const withoutWorkforce = withConfiguredModule(configured, "workforce", false);
+    const withoutHub = withConfiguredModule(withoutWorkforce, "catalog", false);
+
+    expect(withoutHub.modules.workforce).toBe(false);
+    expect(withoutHub.modules.catalog).toBe(false);
+    expect(withoutHub.modules.service).toBe(configured.modules.service);
   });
 });

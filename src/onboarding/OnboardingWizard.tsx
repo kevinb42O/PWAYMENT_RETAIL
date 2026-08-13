@@ -4,6 +4,7 @@ import {
   ArrowRight,
   BarChart3,
   Boxes,
+  CalendarClock,
   Check,
   CheckCircle2,
   Eye,
@@ -80,6 +81,7 @@ const moduleIcons: Record<ConfigurableModule, React.ElementType> = {
   catalog: Boxes,
   customers: Users,
   service: Wrench,
+  workforce: CalendarClock,
   webshop: ShoppingBag,
   insights: BarChart3,
 };

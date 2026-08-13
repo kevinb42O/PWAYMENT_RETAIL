@@ -4,6 +4,8 @@ import { supabase } from "../lib/supabase";
 import {
   DEFAULT_STORE_CONFIGURATION,
   normalizeStoreConfiguration,
+  withConfiguredModule,
+  type ConfigurableModule,
   type StoreConfiguration,
 } from "../onboarding/storeConfiguration";
 import type { Json } from "../types/database.generated";
@@ -19,6 +21,11 @@ interface StoreConfigurationState {
     configuration: StoreConfiguration,
     storeId?: string | null,
   ) => Promise<{ success: boolean; message?: string }>;
+  setModuleEnabled: (
+    module: ConfigurableModule,
+    enabled: boolean,
+    storeId?: string | null,
+  ) => Promise<{ success: boolean; message?: string }>;
   markFirstRunCompleted: (storeId?: string | null) => Promise<void>;
   reset: () => void;
 }
@@ -27,6 +34,12 @@ const cloneDefault = (): StoreConfiguration => ({
   ...DEFAULT_STORE_CONFIGURATION,
   modules: { ...DEFAULT_STORE_CONFIGURATION.modules },
 });
+
+let moduleSaveQueue: Promise<void> = Promise.resolve();
+let moduleSaveRevision = 0;
+
+const persistenceError =
+  "De modulekeuze kon niet worden bewaard. Controleer uw verbinding en probeer opnieuw.";
 
 export const useStoreConfiguration = create<StoreConfigurationState>()(
   persist(
@@ -82,6 +95,64 @@ export const useStoreConfiguration = create<StoreConfigurationState>()(
         set({ saving: false, error: null });
         return { success: true };
       },
+      async setModuleEnabled(module, enabled, requestedStoreId) {
+        const storeId = requestedStoreId ?? get().storeId;
+        const next = withConfiguredModule(get().configuration, module, enabled);
+        const revision = ++moduleSaveRevision;
+
+        set({
+          configuration: next,
+          storeId: storeId ?? null,
+          hydrated: true,
+          saving: Boolean(storeId),
+          error: null,
+        });
+
+        if (!storeId || import.meta.env.VITE_E2E_BUILD === "true") {
+          if (revision === moduleSaveRevision) {
+            set({
+              configuration: next,
+              storeId: storeId ?? null,
+              hydrated: true,
+              saving: false,
+              error: null,
+            });
+          }
+          return { success: true };
+        }
+
+        let result: { success: boolean; message?: string } = { success: true };
+        const persist = async () => {
+          const { error } = await supabase
+            .from("stores")
+            .update({
+              industry_code: next.industry,
+              onboarding_config: JSON.parse(JSON.stringify(next)) as Json,
+              onboarding_completed_at: next.completedAt,
+            })
+            .eq("id", storeId);
+
+          if (error) {
+            result = { success: false, message: persistenceError };
+            if (revision === moduleSaveRevision) {
+              set({ saving: false, error: persistenceError });
+            }
+            return;
+          }
+
+          if (revision === moduleSaveRevision) {
+            set({ saving: false, error: null });
+          }
+        };
+
+        const operation = moduleSaveQueue.then(persist, persist);
+        moduleSaveQueue = operation.then(
+          () => undefined,
+          () => undefined,
+        );
+        await operation;
+        return result;
+      },
       async markFirstRunCompleted(requestedStoreId) {
         const current = get().configuration;
         if (current.firstRunCompleted) return;
@@ -89,6 +160,7 @@ export const useStoreConfiguration = create<StoreConfigurationState>()(
         await get().save(next, requestedStoreId ?? get().storeId);
       },
       reset() {
+        moduleSaveRevision += 1;
         set({
           configuration: cloneDefault(),
           storeId: null,

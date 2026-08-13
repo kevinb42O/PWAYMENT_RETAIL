@@ -12,6 +12,8 @@ import { LoyaltySettings } from './LoyaltySettings';
 import { BillingSettings, BillingSubTab } from './BillingSettings';
 import { WebshopSettings } from './WebshopSettings';
 import { CustomerDisplaySettings } from './CustomerDisplaySettings';
+import { ModuleSettings } from './ModuleSettings';
+import { WorkforceSettings } from './WorkforceSettings';
 import { FeatureGate } from '../billing/FeatureGate';
 import { FEATURE_KEYS } from '../billing/entitlements';
 import {
@@ -59,6 +61,8 @@ import {
   ShoppingBag,
   Truck,
   Monitor,
+  LayoutGrid,
+  CalendarClock,
 } from 'lucide-react';
 
 type WorkspaceTab =
@@ -67,6 +71,8 @@ type WorkspaceTab =
   | 'billing-invoices'
   | 'billing-payment'
   | 'billing-addons'
+  | 'modules'
+  | 'workforce'
   | 'catalog'
   | 'catalog-products'
   | 'catalog-categories'
@@ -126,6 +132,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       'webshop-domain',
     ];
     if (requested === 'integrations') return 'integrations';
+    if (requested === 'modules') return 'modules';
+    if (requested === 'workforce') return 'workforce';
     if (directWebshopTabs.includes(requested as WorkspaceTab)) return requested as WorkspaceTab;
     return 'billing';
   });
@@ -195,6 +203,36 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           <div className="hidden md:block px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
             Instellingen & Licentie
           </div>
+
+          {currentRole === 'owner' && (
+            <button
+              onClick={() => setActiveTab('modules')}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                activeTab === 'modules'
+                  ? 'border border-sky-200 bg-sky-50 text-sky-800 shadow-xs'
+                  : 'border border-transparent text-slate-600 hover:border-sky-100 hover:bg-sky-50 hover:text-sky-800'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <LayoutGrid size={16} className={activeTab === 'modules' ? 'text-sky-600' : 'text-slate-500'} />
+                <span>Modules & navigatie</span>
+              </div>
+            </button>
+          )}
+
+          <button
+            onClick={() => setActiveTab('workforce')}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'workforce'
+                ? 'border border-sky-200 bg-sky-50 text-sky-800 shadow-xs'
+                : 'border border-transparent text-slate-600 hover:border-sky-100 hover:bg-sky-50 hover:text-sky-800'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <CalendarClock size={16} className={activeTab === 'workforce' ? 'text-sky-600' : 'text-slate-500'} />
+              <span>Personeel & verlof</span>
+            </div>
+          </button>
 
           {/* 1. ABONNEMENTEN & BILLING (EXPANDABLE ACCORDION MENU) */}
           <div className="space-y-1">
@@ -550,6 +588,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           <div>
             <h1 className="text-xl font-black text-slate-900 tracking-tight">
               {activeTab === 'billing-plan' && 'Licentieplan & Upgrades'}
+              {activeTab === 'modules' && 'Modules & navigatie'}
+              {activeTab === 'workforce' && 'Personeel, verlof & bezetting'}
               {activeTab === 'billing-invoices' && "Facturen & Creditnota's"}
               {activeTab === 'billing-payment' && 'Betaalmethode & SEPA Mandaat'}
               {activeTab === 'billing-addons' && 'Kassa Terminals & Add-on Modules'}
@@ -570,6 +610,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <p className="text-xs text-slate-500 font-medium mt-0.5">
               {activeTab.startsWith('billing')
                 ? 'Transparante tarieven per winkelpunt. Onbeperkte kassa-omzet zonder verborgen transactiekosten.'
+                : activeTab === 'modules'
+                ? 'Zet werkmodules rechtstreeks aan of uit. Uw navigatie volgt onmiddellijk en bewaren gebeurt automatisch.'
+                : activeTab === 'workforce'
+                ? 'Beheer medewerkers, verlofsaldi en de regels waarmee PWAYMENT de winkelbezetting controleert.'
                 : (activeTab === 'catalog' || activeTab.startsWith('catalog-'))
                 ? 'Beheer uw artikelbestand, inkoop-/verkoopprijzen, voorraad en Btw-tarieven.'
                 : activeTab.startsWith('webshop')
@@ -590,6 +634,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <span>{savedToast}</span>
           </div>
         )}
+
+        {activeTab === 'modules' && <ModuleSettings />}
+        {activeTab === 'workforce' && <WorkforceSettings />}
 
         {/* TAB 1: BILLING & ABONNEMENTEN (EXPANDED SUB-TABS) */}
         {activeTab.startsWith('billing') && (

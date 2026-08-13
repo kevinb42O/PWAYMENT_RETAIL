@@ -74,6 +74,7 @@ export type ConfigurableModule =
   | "catalog"
   | "customers"
   | "service"
+  | "workforce"
   | "webshop"
   | "insights";
 export type RecommendedStartView = "pos" | "integration-hub" | "service";
@@ -82,6 +83,7 @@ export interface StoreModulePreferences {
   catalog: boolean;
   customers: boolean;
   service: boolean;
+  workforce: boolean;
   webshop: boolean;
   insights: boolean;
 }
@@ -122,6 +124,11 @@ export const MODULE_DETAILS: Array<{
     description: "Intake, prijs, status, communicatie, bon en klanttracking.",
   },
   {
+    key: "workforce",
+    title: "Personeel & verlof",
+    description: "Werkuren, verlofsaldi, aanvragen en teambezetting beheren.",
+  },
+  {
     key: "webshop",
     title: "Webshop",
     description: "Online catalogus en verkoop voorbereiden vanuit dezelfde productdata.",
@@ -137,6 +144,7 @@ const broadModuleDefaults: StoreModulePreferences = {
   catalog: true,
   customers: true,
   service: true,
+  workforce: true,
   webshop: true,
   insights: true,
 };
@@ -147,6 +155,7 @@ const modulePreset = (
   catalog: enabled.includes("catalog"),
   customers: enabled.includes("customers"),
   service: enabled.includes("service"),
+  workforce: true,
   webshop: enabled.includes("webshop"),
   insights: enabled.includes("insights"),
 });
@@ -285,6 +294,19 @@ export const completeStoreConfiguration = (
   completedAt,
   firstRunCompleted: false,
 });
+
+export const withConfiguredModule = (
+  configuration: StoreConfiguration,
+  module: ConfigurableModule,
+  enabled: boolean,
+): StoreConfiguration =>
+  normalizeStoreConfiguration({
+    ...configuration,
+    modules: {
+      ...configuration.modules,
+      [module]: enabled,
+    },
+  });
 
 export const recommendedStartView = (
   configuration: StoreConfiguration,

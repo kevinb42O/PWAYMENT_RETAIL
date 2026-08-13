@@ -33,11 +33,13 @@ test("mobile catalog, cart and navigation remain usable without page overflow", 
   );
   expect(hasPageOverflow).toBe(false);
 
-  await appPage.getByRole("button", { name: "Historiek" }).click();
+  await appPage.getByRole("button", { name: "Navigatie openen" }).click();
+  await appPage.getByRole("menuitem", { name: "Historiek" }).click();
   await expect(
     appPage.getByRole("heading", { name: "Verkoopgeschiedenis" }),
   ).toBeVisible();
-  await appPage.getByRole("button", { name: "Inzichten" }).click();
+  await appPage.getByRole("button", { name: "Navigatie openen" }).click();
+  await appPage.getByRole("menuitem", { name: "Inzichten" }).click();
   await expect(
     appPage.getByRole("heading", { name: "Acties vandaag" }),
   ).toBeVisible();

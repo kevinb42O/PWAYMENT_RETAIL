@@ -77,3 +77,44 @@ test("seed owner can authenticate by email with upgraded credential hashing", as
     appPage.getByRole("searchbox", { name: "Scan barcode of zoek product" }),
   ).toBeVisible();
 });
+
+test("owner can switch navigation modules directly from settings", async ({
+  appPage,
+}) => {
+  await appPage.goto("/login");
+  await appPage
+    .getByRole("textbox", { name: "E-mailadres" })
+    .fill("eigenaar@pwayment.be");
+  await appPage
+    .getByRole("textbox", { name: "Wachtwoord", exact: true })
+    .fill("password123");
+  await appPage.getByRole("button", { name: "Inloggen", exact: true }).last().click();
+
+  await appPage.getByRole("button", { name: "Profiel en instellingen" }).click();
+  await appPage.getByRole("menuitem", { name: "Modules & navigatie" }).click();
+  await expect(appPage.getByRole("heading", { name: "Modules & navigatie" })).toBeVisible();
+
+  const topNavigation = appPage.locator("nav").first();
+  await expect(topNavigation.getByRole("button", { name: "Herstellingen" })).toBeVisible();
+  await expect(topNavigation.getByRole("button", { name: "Personeel & verlof" })).toBeVisible();
+  await expect(topNavigation.getByRole("button", { name: "Integration Hub" })).toBeVisible();
+
+  await appPage.getByRole("switch", { name: "Personeel & verlof uitschakelen" }).click();
+  await expect(topNavigation.getByRole("button", { name: "Personeel & verlof" })).toHaveCount(0);
+
+  await appPage.getByRole("switch", { name: "Integration Hub uitschakelen" }).click();
+  await expect(topNavigation.getByRole("button", { name: "Integration Hub" })).toHaveCount(0);
+
+  await appPage.getByRole("switch", { name: "Hersteldienst uitschakelen" }).click();
+  await expect(topNavigation.getByRole("button", { name: "Herstellingen" })).toHaveCount(0);
+  await expect(appPage.getByText("Automatisch bewaard")).toBeVisible();
+
+  await appPage.getByRole("switch", { name: "Hersteldienst inschakelen" }).click();
+  await expect(topNavigation.getByRole("button", { name: "Herstellingen" })).toBeVisible();
+
+  await appPage.getByRole("switch", { name: "Personeel & verlof inschakelen" }).click();
+  await expect(topNavigation.getByRole("button", { name: "Personeel & verlof" })).toBeVisible();
+
+  await appPage.getByRole("switch", { name: "Integration Hub inschakelen" }).click();
+  await expect(topNavigation.getByRole("button", { name: "Integration Hub" })).toBeVisible();
+});

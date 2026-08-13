@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Menu } from "./Menu";
 import { Cart } from "./Cart";
-import { useStore } from "../store/useStore";
+import { useStore, type MainView } from "../store/useStore";
 import { useAuth } from "../auth/useAuth";
 import { useProducts } from "../store/useProducts";
 import { matchesCatalogQuery } from "../utils/productLookup";
@@ -10,7 +10,6 @@ import { TrialStatus } from "../billing/TrialStatus";
 import { FEATURE_KEYS, planLabel, useEntitlements } from "../billing/entitlements";
 import { supabase } from "../lib/supabase";
 import { useStoreConfiguration } from "../store/useStoreConfiguration";
-import { OnboardingWizard } from "../onboarding/OnboardingWizard";
 import {
   AlertCircle,
   CheckCircle2,
@@ -26,10 +25,13 @@ import {
   Users,
   Lightbulb,
   Wrench,
+  CalendarClock,
   Cable,
   Maximize,
   Minimize,
   SlidersHorizontal,
+  ChevronDown,
+  type LucideIcon,
 } from "lucide-react";
 
 const ZReportView = React.lazy(() =>
@@ -52,6 +54,9 @@ const IntegrationHub = React.lazy(() =>
 );
 const ServiceDesk = React.lazy(() =>
   import("./ServiceDesk").then((module) => ({ default: module.ServiceDesk })),
+);
+const Workforce = React.lazy(() =>
+  import("./Workforce").then((module) => ({ default: module.Workforce })),
 );
 
 const ViewLoading = () => (
@@ -85,6 +90,14 @@ interface ScanFeedback {
   detail: string;
 }
 
+interface NavigationItem {
+  view: MainView;
+  label: string;
+  Icon: LucideIcon;
+  title: string;
+  profileTab?: "webshop-general";
+}
+
 export const Layout: React.FC = () => {
   const {
     mobileView,
@@ -97,9 +110,6 @@ export const Layout: React.FC = () => {
   const { currentUserName, currentRole, currentStoreId, logout } = useAuth();
   const refreshEntitlements = useEntitlements((state) => state.load);
   const entitlementSnapshot = useEntitlements((state) => state.snapshot);
-  const canUseWebshop = useEntitlements(
-    (state) => state.snapshot?.features[FEATURE_KEYS.webshopPublish] === true,
-  );
   const products = useProducts((s) => s.list);
   const hydrateProducts = useProducts((s) => s.hydrate);
   const modulePreferences = useStoreConfiguration(
@@ -114,10 +124,8 @@ export const Layout: React.FC = () => {
   );
   const [isNavDropdownOpen, setIsNavDropdownOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isConfigurationOpen, setIsConfigurationOpen] = useState(false);
-  const [configurationNotice, setConfigurationNotice] = useState<string | null>(null);
   const [profileInitialTarget, setProfileInitialTarget] = useState<{
-    tab: "billing" | "webshop-general";
+    tab: "billing" | "webshop-general" | "modules" | "workforce";
     requestKey: number;
   }>({ tab: "billing", requestKey: 0 });
 
@@ -144,12 +152,55 @@ export const Layout: React.FC = () => {
       }`
     : undefined;
 
-  const openProfile = (tab: "billing" | "webshop-general" = "billing") => {
+  const openProfile = (
+    tab: "billing" | "webshop-general" | "modules" | "workforce" = "billing",
+  ) => {
     setProfileInitialTarget((current) => ({
       tab,
       requestKey: current.requestKey + 1,
     }));
     setMainView("profile");
+  };
+
+  const navigationItems = React.useMemo<NavigationItem[]>(
+    () => [
+      { view: "pos", label: "Kassa", Icon: Monitor, title: "Kassa (Alt+1)" },
+      { view: "z-report", label: "Dagafsluiting", Icon: FileText, title: "Dagafsluiting (Alt+2)" },
+      { view: "audit-log", label: "Historiek", Icon: History, title: "Historiek (Alt+3)" },
+      ...(modulePreferences.customers
+        ? [{ view: "customers" as const, label: "Klanten", Icon: Users, title: "Klanten (Alt+4)" }]
+        : []),
+      ...(modulePreferences.service
+        ? [{ view: "service" as const, label: "Herstellingen", Icon: Wrench, title: "Hersteldienst" }]
+        : []),
+      ...(modulePreferences.workforce
+        ? [{ view: "workforce" as const, label: "Personeel & verlof", Icon: CalendarClock, title: "Personeel, werkuren en verlof" }]
+        : []),
+      ...((currentRole === "owner" || currentRole === "manager") && modulePreferences.catalog
+        ? [{ view: "integration-hub" as const, label: "Integration Hub", Icon: Cable, title: "Integration Hub" }]
+        : []),
+      ...(modulePreferences.insights
+        ? [{ view: "insights" as const, label: "Inzichten", Icon: Lightbulb, title: "Inzichten (Alt+5)" }]
+        : []),
+      ...(modulePreferences.webshop
+        ? [{ view: "profile" as const, label: "Webshop", Icon: ShoppingBag, title: "Webshopbeheer", profileTab: "webshop-general" as const }]
+        : []),
+    ],
+    [currentRole, modulePreferences],
+  );
+
+  const isNavigationItemActive = (item: NavigationItem): boolean =>
+    mainView === item.view &&
+    (item.view !== "profile" || item.profileTab === profileInitialTarget.tab);
+
+  const activeNavigationItem =
+    navigationItems.find(isNavigationItemActive) ?? navigationItems[0];
+  const ActiveNavigationIcon = activeNavigationItem.Icon;
+
+  const openNavigationItem = (item: NavigationItem) => {
+    if (item.profileTab) openProfile(item.profileTab);
+    else setMainView(item.view);
+    setIsNavDropdownOpen(false);
   };
 
   useEffect(() => {
@@ -202,27 +253,6 @@ export const Layout: React.FC = () => {
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [isUserMenuOpen]);
-
-  const activeViewLabel = React.useMemo(() => {
-    switch (mainView) {
-      case "z-report":
-        return { title: "Dagafsluiting", Icon: FileText };
-      case "audit-log":
-        return { title: "Historiek", Icon: History };
-      case "customers":
-        return { title: "Klanten", Icon: Users };
-      case "service":
-        return { title: "Hersteldienst", Icon: Wrench };
-      case "integration-hub":
-        return { title: "Integration Hub", Icon: Cable };
-      case "insights":
-        return { title: "Inzichten", Icon: Lightbulb };
-      case "admin":
-        return { title: "Beheer", Icon: Settings };
-      default:
-        return null;
-    }
-  }, [mainView]);
 
   const focusScanInput = () => {
     if (typeof window === "undefined") return;
@@ -310,6 +340,7 @@ export const Layout: React.FC = () => {
       "customers",
       "profile",
       "service",
+      "workforce",
       "integration-hub",
     ];
     if (requestedView && allowedViews.includes(requestedView)) {
@@ -341,16 +372,11 @@ export const Layout: React.FC = () => {
     const hiddenView =
       (mainView === "customers" && !modulePreferences.customers) ||
       (mainView === "service" && !modulePreferences.service) ||
+      (mainView === "workforce" && !modulePreferences.workforce) ||
       (mainView === "integration-hub" && !modulePreferences.catalog) ||
       (mainView === "insights" && !modulePreferences.insights);
     if (hiddenView) setMainView("pos");
   }, [mainView, modulePreferences, setMainView]);
-
-  useEffect(() => {
-    if (!configurationNotice) return;
-    const timer = window.setTimeout(() => setConfigurationNotice(null), 3200);
-    return () => window.clearTimeout(timer);
-  }, [configurationNotice]);
 
   useEffect(() => {
     const handleGlobalHotkeys = (event: KeyboardEvent) => {
@@ -482,97 +508,58 @@ export const Layout: React.FC = () => {
           />
         </div>
 
-        <nav className="pos-main-nav flex items-center gap-1 mx-auto">
-          {[
-            {
-              view: "pos" as const,
-              label: "Kassa",
-              Icon: Monitor,
-              title: "Kassa (Alt+1)",
-            },
-            {
-              view: "z-report" as const,
-              label: "Dagafsluiting",
-              Icon: FileText,
-              title: "Dagafsluiting (Alt+2)",
-            },
-            {
-              view: "audit-log" as const,
-              label: "Historiek",
-              Icon: History,
-              title: "Historiek (Alt+3)",
-            },
-            ...(modulePreferences.customers
-              ? [{
-                  view: "customers" as const,
-                  label: "Klanten",
-                  Icon: Users,
-                  title: "Klanten (Alt+4)",
-                }]
-              : []),
-            ...(modulePreferences.service
-              ? [{
-                  view: "service" as const,
-                  label: "Herstellingen",
-                  Icon: Wrench,
-                  title: "Hersteldienst",
-                }]
-              : []),
-            ...((currentRole === "owner" || currentRole === "manager") &&
-            modulePreferences.catalog
-              ? [
-                  {
-                    view: "integration-hub" as const,
-                    label: "Integration Hub",
-                    Icon: Cable,
-                    title: "Integration Hub",
-                  },
-                ]
-              : []),
-            ...(modulePreferences.insights
-              ? [{
-                  view: "insights" as const,
-                  label: "Inzichten",
-                  Icon: Lightbulb,
-                  title: "Inzichten (Alt+5)",
-                }]
-              : []),
-            ...(canUseWebshop && modulePreferences.webshop
-              ? [
-                  {
-                    view: "profile" as const,
-                    label: "Webshop",
-                    Icon: ShoppingBag,
-                    title: "Webshopbeheer",
-                    profileTab: "webshop-general" as const,
-                  },
-                ]
-              : []),
-          ].map(({ view, label, Icon, title, profileTab }) => {
-            const active =
-              mainView === view &&
-              (view !== "profile" || profileTab === profileInitialTarget.tab);
+        <nav className="pos-main-nav mx-auto hidden items-center gap-1 md:flex" aria-label="Hoofdnavigatie">
+          {navigationItems.map((item) => {
+            const active = isNavigationItemActive(item);
             return (
               <button
-                key={view}
-                onClick={() => {
-                  if (profileTab) {
-                    openProfile(profileTab);
-                    return;
-                  }
-                  setMainView(view);
-                }}
-                title={title}
-                aria-label={label}
+                key={`${item.view}-${item.profileTab ?? "main"}`}
+                onClick={() => openNavigationItem(item)}
+                title={item.title}
+                aria-label={item.label}
                 aria-current={active ? "page" : undefined}
-                className={`pos-nav-item flex items-center gap-1.5 px-2.5 py-2 text-xs font-bold transition-colors duration-150 sm:px-3.5 ${active ? "pos-nav-item--active" : ""}`}
+                className={`pos-nav-item flex items-center gap-1.5 px-2.5 py-2 text-xs font-bold transition-colors duration-150 lg:px-3 ${active ? "pos-nav-item--active" : ""}`}
               >
-                <Icon size={14} className="pos-nav-icon" />
-                <span className="hidden sm:inline">{label}</span>
+                <item.Icon size={14} className="pos-nav-icon" />
+                <span className="hidden xl:inline">{item.label}</span>
               </button>
             );
           })}
         </nav>
+
+        <div className="relative mx-auto md:hidden" ref={navDropdownRef}>
+          <button
+            type="button"
+            onClick={() => setIsNavDropdownOpen((open) => !open)}
+            className="pos-nav-item pos-nav-item--active flex max-w-44 items-center gap-2 px-3 py-2 text-xs font-extrabold"
+            aria-label="Navigatie openen"
+            aria-expanded={isNavDropdownOpen}
+          >
+            <ActiveNavigationIcon size={15} />
+            <span className="truncate">{activeNavigationItem.label}</span>
+            <ChevronDown size={14} className={`shrink-0 transition-transform ${isNavDropdownOpen ? "rotate-180" : ""}`} />
+          </button>
+          {isNavDropdownOpen && (
+            <div className="absolute left-1/2 top-full z-50 mt-2 w-64 -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl" role="menu">
+              {navigationItems.map((item) => {
+                const active = isNavigationItemActive(item);
+                return (
+                  <button
+                    key={`${item.view}-${item.profileTab ?? "main"}-mobile`}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => openNavigationItem(item)}
+                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-bold transition-colors ${active ? "bg-sky-50 text-sky-800" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"}`}
+                  >
+                    <item.Icon size={17} className={active ? "text-sky-600" : "text-slate-400"} />
+                    <span>{item.label}</span>
+                    {active && <span className="ml-auto h-2 w-2 rounded-full bg-sky-500" />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {/* Zone C: Gebruikersbadge + Moderne Cogwheel Met Systeem/Profiel Popover Menu */}
         <div
@@ -651,12 +638,12 @@ export const Layout: React.FC = () => {
                   role="menuitem"
                   onClick={() => {
                     setIsUserMenuOpen(false);
-                    setIsConfigurationOpen(true);
+                    openProfile("modules");
                   }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-sky-50 hover:text-sky-800 transition-colors"
                 >
                   <SlidersHorizontal size={15} className="text-sky-600" />
-                  <span>Winkelconfiguratie</span>
+                  <span>Modules & navigatie</span>
                 </button>
               )}
 
@@ -769,6 +756,16 @@ export const Layout: React.FC = () => {
         {mainView === "audit-log" && <AuditLog />}
         {mainView === "customers" && <Customers />}
         {mainView === "service" && <ServiceDesk />}
+        {mainView === "workforce" && (
+          <FeatureGate
+            feature={FEATURE_KEYS.workforce}
+            title="Personeel en verlof is niet actief in dit abonnement"
+            description="Werkuren, verlofsaldi en aanvragen blijven veilig bewaard. Pas uw abonnement aan om deze module opnieuw te openen."
+            onUpgrade={() => openProfile("billing")}
+          >
+            <Workforce />
+          </FeatureGate>
+        )}
         {mainView === "integration-hub" &&
           (currentRole === "owner" || currentRole === "manager" ? (
             <IntegrationHub />
@@ -903,23 +900,6 @@ export const Layout: React.FC = () => {
             )}
           </div>
         </div>
-      )}
-      {configurationNotice && (
-        <div
-          role="status"
-          className="fixed bottom-5 left-1/2 z-[90] -translate-x-1/2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-bold text-white shadow-2xl"
-        >
-          {configurationNotice}
-        </div>
-      )}
-      {isConfigurationOpen && (
-        <OnboardingWizard
-          mode="settings"
-          onExit={(notice) => {
-            setIsConfigurationOpen(false);
-            if (notice) setConfigurationNotice(notice);
-          }}
-        />
       )}
     </div>
   );

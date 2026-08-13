@@ -27,6 +27,7 @@ export const FEATURE_KEYS = {
   advancedHardware: "hardware.advanced",
   multiStore: "multi_store.manage",
   advancedTeam: "team.advanced",
+  workforce: "workforce.core",
 } as const;
 
 export type FeatureKey = (typeof FEATURE_KEYS)[keyof typeof FEATURE_KEYS];
@@ -108,6 +109,7 @@ const basicFallbackSnapshot = (): EntitlementSnapshot => ({
   features: {
     [FEATURE_KEYS.checkout]: true,
     [FEATURE_KEYS.zReport]: true,
+    [FEATURE_KEYS.workforce]: true,
   },
   limits: {
     [FEATURE_KEYS.activeProducts]: 250,
