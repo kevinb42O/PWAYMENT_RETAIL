@@ -177,11 +177,15 @@ export const ModuleSettings: React.FC = () => {
                       aria-checked={enabled}
                       aria-label={`${option.title} ${enabled ? "uitschakelen" : "inschakelen"}`}
                       onClick={() => toggle(option)}
-                      className={`relative h-8 w-14 shrink-0 rounded-full border transition-colors focus:outline-none focus:ring-4 focus:ring-sky-100 ${
-                        enabled ? "border-sky-500 bg-sky-500" : "border-slate-300 bg-slate-200"
+                      className={`relative h-8 w-14 shrink-0 overflow-hidden rounded-full border transition-colors focus:outline-none focus:ring-4 focus:ring-sky-100 ${
+                        enabled ? "border-sky-300 bg-sky-200" : "border-slate-300 bg-slate-200"
                       }`}
                     >
-                      <span className={`absolute top-1 h-5.5 w-5.5 rounded-full bg-white shadow-sm transition-transform ${enabled ? "translate-x-6" : "translate-x-1"}`} />
+                      <span
+                        className={`absolute left-1 top-1 h-6 w-6 rounded-full bg-white shadow-sm ring-1 transition-transform duration-200 ${
+                          enabled ? "translate-x-6 ring-sky-300" : "translate-x-0 ring-slate-300"
+                        }`}
+                      />
                     </button>
                   </div>
                   <p className="mt-3 text-sm leading-6 text-slate-600">{option.description}</p>
