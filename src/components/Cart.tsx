@@ -45,6 +45,7 @@ import { GiftCardPaymentModal } from "./GiftCardPaymentModal";
 import { useCustomers } from "../store/useCustomers";
 import { isGiftCardExpired } from "../utils/giftCards";
 import { Modal } from "./Modal";
+import { withResolvedProductPrice } from "../utils/pricing";
 
 const lineUnitCents = (o: OrderItem): number =>
   o.product.priceCents +
@@ -133,7 +134,14 @@ export const Cart: React.FC = () => {
     sendRaw,
   } = useThermalPrinter();
 
-  const itemsToCheckout: OrderItem[] = cart.orders;
+  const itemsToCheckout: OrderItem[] = useMemo(
+    () =>
+      cart.orders.map((order) => ({
+        ...order,
+        product: withResolvedProductPrice(order.product, linkedCustomer),
+      })),
+    [cart.orders, linkedCustomer],
+  );
 
   const hasItemsToCheckout = itemsToCheckout.length > 0;
   const manualDiscountCents = cartDiscount?.amountCents ?? 0;
@@ -329,6 +337,11 @@ export const Cart: React.FC = () => {
                   className="pos-soft-accent flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-medium transition-colors"
                 >
                   <User size={14} /> {linkedCustomer.name}
+                  {linkedCustomer.priceGroup && (
+                    <span className="rounded bg-sky-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-sky-800">
+                      {linkedCustomer.priceGroup}
+                    </span>
+                  )}
                 </button>
               ) : (
                 <button
@@ -387,8 +400,12 @@ export const Cart: React.FC = () => {
             </span>
           </div>
         ) : (
-          cart.orders.map((order) => {
+          itemsToCheckout.map((order) => {
             const unit = lineUnitCents(order);
+            const standardPrice = Number(
+              order.product.customFields?.standardPriceCents ??
+                order.product.priceCents,
+            );
             return (
               <div
                 key={order.lineId}
@@ -404,6 +421,11 @@ export const Cart: React.FC = () => {
                     </div>
                     <div className="text-zinc-400 text-sm mt-0.5">
                       {formatEUR(unit)}
+                      {standardPrice !== order.product.priceCents && (
+                        <span className="ml-1.5 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-bold text-sky-800">
+                          {String(order.product.customFields?.appliedPriceGroup)} · normaal {formatEUR(standardPrice)}
+                        </span>
+                      )}
                       {unit !== order.product.priceCents && (
                         <span className="text-zinc-500">
                           {" "}

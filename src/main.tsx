@@ -23,6 +23,7 @@ const presentationMode =
 const storefrontRoute =
   window.location.pathname === "/shop" ||
   window.location.pathname.startsWith("/shop/");
+const serviceTrackingRoute = window.location.pathname.startsWith("/service/");
 const accountRoute = ["/app", "/login", "/register"].some(
   (route) =>
     window.location.pathname === route ||
@@ -31,6 +32,7 @@ const accountRoute = ["/app", "/login", "/register"].some(
 const publicWebsiteRoute =
   !passwordSetupFlow &&
   !storefrontRoute &&
+  !serviceTrackingRoute &&
   !accountRoute &&
   !presentationMode &&
   !presentationBuild;
@@ -174,6 +176,21 @@ const start = async () => {
     root.render(
       <StrictMode>
         <PublicSite />
+      </StrictMode>,
+    );
+    return;
+  }
+
+  if (serviceTrackingRoute) {
+    document.documentElement.dataset.theme = "light";
+    document.documentElement.classList.add("theme-light");
+    document.documentElement.classList.remove("theme-dark");
+    document.documentElement.style.colorScheme = "light";
+
+    const { default: ServiceTracking } = await import("./public/ServiceTracking");
+    root.render(
+      <StrictMode>
+        <ServiceTracking />
       </StrictMode>,
     );
     return;

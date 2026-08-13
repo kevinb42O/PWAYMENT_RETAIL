@@ -6,11 +6,14 @@ import {
   DailyReport,
   GiftCard,
   GiftCardEvent,
+  ImportJob,
+  ImportMappingProfile,
   OutboxEntry,
   PurchaseOrder,
   Product,
   ProductCategory,
   RegisterShift,
+  ServiceOrder,
   StockMovement,
   Transaction,
   User,
@@ -58,6 +61,9 @@ export class POSDatabase extends Dexie {
   purchase_orders!: Table<PurchaseOrder, string>;
   stock_movements!: Table<StockMovement, number>;
   webshop_orders!: Table<WebshopOrder, string>;
+  import_jobs!: Table<ImportJob, string>;
+  import_mapping_profiles!: Table<ImportMappingProfile, string>;
+  service_orders!: Table<ServiceOrder, string>;
 
   constructor(databaseName = DB_NAME) {
     super(databaseName);
@@ -440,6 +446,36 @@ export class POSDatabase extends Dexie {
         "++id, productId, reason, timestamp, purchaseOrderId, transactionId",
       webshop_orders:
         "id, &clientRequestId, &number, createdAt, updatedAt, status, paymentStatus, fulfillmentStatus, source",
+    });
+
+    this.version(15).stores({
+      transactions:
+        "++id, tableId, paymentMethod, timestamp, isFinalized, userId, shiftId, registerId, kind, source, originalTransactionId, documentNumber, &clientRequestId",
+      daily_reports: "++id, &reportNumber, timestamp, shiftId, registerId",
+      audit: "++id, timestamp, userId, action",
+      users: "id, role",
+      outbox: "++id, timestamp, kind",
+      shifts:
+        "++id, &shiftNumber, registerId, status, openedAt, closedAt, [registerId+status]",
+      voids: "++id, timestamp, tableId, productId, byUserId",
+      products: "id, category, isActive, productType, supplierCode",
+      categories: "id, name, isActive",
+      customers: "id, email, phone, priceGroup, isActive",
+      gift_cards: "id, customerId, code, isActive",
+      gift_card_events:
+        "id, giftCardId, timestamp, type, source, transactionId, dailyReportId, [giftCardId+timestamp]",
+      business_actions:
+        "id, type, status, createdAt, updatedAt, dueAt, ownerUserId",
+      purchase_orders:
+        "id, supplier, status, createdAt, updatedAt, expectedDeliveryAt",
+      stock_movements:
+        "++id, productId, reason, timestamp, purchaseOrderId, transactionId",
+      webshop_orders:
+        "id, &clientRequestId, &number, createdAt, updatedAt, status, paymentStatus, fulfillmentStatus, source",
+      import_jobs: "id, createdAt, status, fileName, profileId",
+      import_mapping_profiles: "id, name, format, updatedAt, lastUsedAt",
+      service_orders:
+        "id, &number, &trackingToken, createdAt, updatedAt, status, substatus, route, customerId, customerEmail, customerPhone, identifierValue",
     });
   }
 }

@@ -427,6 +427,7 @@ export const Customers: React.FC = () => {
       phone: editingCustomer.phone,
       address: editingCustomer.address,
       notes: editingCustomer.notes,
+      priceGroup: editingCustomer.priceGroup?.trim() || undefined,
       totalSpentCents: editingCustomer.totalSpentCents || 0,
       visitCount: editingCustomer.visitCount || 0,
       lastVisitAt: editingCustomer.lastVisitAt,
@@ -1320,6 +1321,26 @@ export const Customers: React.FC = () => {
                 />
               </Field>
             </div>
+            <Field label="Prijsgroep">
+              <input
+                list="pwayment-price-groups"
+                value={editingCustomer.priceGroup || ""}
+                onChange={(event) =>
+                  setEditingCustomer({
+                    ...editingCustomer,
+                    priceGroup: event.target.value,
+                  })
+                }
+                placeholder="Bijv. telenet-klant, b2b of medewerker"
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2"
+              />
+              <datalist id="pwayment-price-groups">
+                <option value="telenet-klant" />
+                <option value="b2b" />
+                <option value="medewerker" />
+                <option value="contract" />
+              </datalist>
+            </Field>
             <Field label="Adres">
               <textarea
                 value={editingCustomer.address || ""}

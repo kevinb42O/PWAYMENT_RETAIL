@@ -10,6 +10,15 @@ const throwIfError = (error: { message: string } | null): void => {
   if (error) throw new Error(error.message);
 };
 
+const isMissingExtensionColumn = (
+  error: { message: string } | null,
+  columns: string[],
+): boolean =>
+  Boolean(
+    error &&
+      columns.some((column) => error.message.toLocaleLowerCase("en").includes(column)),
+  );
+
 export const upsertSupabaseCategories = async (
   storeId: string | null,
   categories: ProductCategory[],
@@ -80,7 +89,10 @@ export const upsertSupabaseProducts = async (
     vat_rate: product.vatRate,
     brand: product.brand ?? null,
     supplier: product.supplier ?? null,
+    supplier_code: product.supplierCode ?? null,
     variant: product.variant ?? null,
+    price_tiers: (product.priceTiers ?? {}) as Database["public"]["Tables"]["products"]["Insert"]["price_tiers"],
+    custom_fields: (product.customFields ?? {}) as Database["public"]["Tables"]["products"]["Insert"]["custom_fields"],
     stock_qty: product.stockQty ?? null,
     min_stock_qty: product.minStockQty ?? null,
     color: product.color ?? null,
@@ -91,7 +103,19 @@ export const upsertSupabaseProducts = async (
   const { error } = await supabase
     .from("products")
     .upsert(rows, { onConflict: "store_id,external_id" });
-  throwIfError(error);
+  if (!error) return;
+  if (!isMissingExtensionColumn(error, ["supplier_code", "price_tiers", "custom_fields"])) {
+    throwIfError(error);
+    return;
+  }
+
+  // Rolling-deploy compatibility: core product changes may safely reach an
+  // older backend while the extension migration is awaiting owner approval.
+  const legacyRows = rows.map(({ supplier_code: _supplierCode, price_tiers: _priceTiers, custom_fields: _customFields, ...row }) => row);
+  const { error: legacyError } = await supabase
+    .from("products")
+    .upsert(legacyRows, { onConflict: "store_id,external_id" });
+  throwIfError(legacyError);
 };
 
 export const upsertSupabaseCustomers = async (
@@ -107,6 +131,7 @@ export const upsertSupabaseCustomers = async (
     phone: customer.phone ?? null,
     address: customer.address ?? null,
     notes: customer.notes ?? null,
+    price_group: customer.priceGroup ?? null,
     total_spent_cents: customer.totalSpentCents,
     visit_count: customer.visitCount,
     last_visit_at: customer.lastVisitAt ?? null,
@@ -117,5 +142,14 @@ export const upsertSupabaseCustomers = async (
   const { error } = await supabase
     .from("customers")
     .upsert(rows, { onConflict: "store_id,external_id" });
-  throwIfError(error);
+  if (!error) return;
+  if (!isMissingExtensionColumn(error, ["price_group"])) {
+    throwIfError(error);
+    return;
+  }
+  const legacyRows = rows.map(({ price_group: _priceGroup, ...row }) => row);
+  const { error: legacyError } = await supabase
+    .from("customers")
+    .upsert(legacyRows, { onConflict: "store_id,external_id" });
+  throwIfError(legacyError);
 };

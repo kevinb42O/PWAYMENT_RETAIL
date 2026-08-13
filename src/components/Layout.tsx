@@ -23,6 +23,8 @@ import {
   Settings,
   Users,
   Lightbulb,
+  Wrench,
+  Cable,
   Maximize,
   Minimize,
 } from "lucide-react";
@@ -41,6 +43,12 @@ const Insights = React.lazy(() =>
 );
 const ProfileView = React.lazy(() =>
   import("./Profile").then((module) => ({ default: module.ProfileView })),
+);
+const IntegrationHub = React.lazy(() =>
+  import("./IntegrationHub").then((module) => ({ default: module.IntegrationHub })),
+);
+const ServiceDesk = React.lazy(() =>
+  import("./ServiceDesk").then((module) => ({ default: module.ServiceDesk })),
 );
 
 const ViewLoading = () => (
@@ -195,6 +203,10 @@ export const Layout: React.FC = () => {
         return { title: "Historiek", Icon: History };
       case "customers":
         return { title: "Klanten", Icon: Users };
+      case "service":
+        return { title: "Hersteldienst", Icon: Wrench };
+      case "integration-hub":
+        return { title: "Integration Hub", Icon: Cable };
       case "insights":
         return { title: "Inzichten", Icon: Lightbulb };
       case "admin":
@@ -289,6 +301,8 @@ export const Layout: React.FC = () => {
       "admin",
       "customers",
       "profile",
+      "service",
+      "integration-hub",
     ];
     if (requestedView && allowedViews.includes(requestedView)) {
       setMainView(requestedView as typeof mainView);
@@ -471,6 +485,22 @@ export const Layout: React.FC = () => {
               Icon: Users,
               title: "Klanten (Alt+4)",
             },
+            {
+              view: "service" as const,
+              label: "Herstellingen",
+              Icon: Wrench,
+              title: "Hersteldienst",
+            },
+            ...((currentRole === "owner" || currentRole === "manager")
+              ? [
+                  {
+                    view: "integration-hub" as const,
+                    label: "Integration Hub",
+                    Icon: Cable,
+                    title: "Integration Hub",
+                  },
+                ]
+              : []),
             {
               view: "insights" as const,
               label: "Inzichten",
@@ -694,6 +724,15 @@ export const Layout: React.FC = () => {
         {mainView === "z-report" && <ZReportView />}
         {mainView === "audit-log" && <AuditLog />}
         {mainView === "customers" && <Customers />}
+        {mainView === "service" && <ServiceDesk />}
+        {mainView === "integration-hub" &&
+          (currentRole === "owner" || currentRole === "manager" ? (
+            <IntegrationHub />
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-slate-500 font-medium">
+              Onvoldoende rechten.
+            </div>
+          ))}
         {mainView === "insights" && (
           <FeatureGate
             feature={FEATURE_KEYS.insights}

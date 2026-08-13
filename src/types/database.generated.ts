@@ -282,6 +282,7 @@ export type Database = {
           name: string
           notes: string | null
           phone: string | null
+          price_group: string | null
           store_id: string
           total_spent_cents: number
           updated_at: string
@@ -299,6 +300,7 @@ export type Database = {
           name: string
           notes?: string | null
           phone?: string | null
+          price_group?: string | null
           store_id: string
           total_spent_cents?: number
           updated_at?: string
@@ -316,6 +318,7 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string | null
+          price_group?: string | null
           store_id?: string
           total_spent_cents?: number
           updated_at?: string
@@ -636,6 +639,7 @@ export type Database = {
           color: string | null
           cost_price_cents: number | null
           created_at: string
+          custom_fields: Json
           external_id: string | null
           id: string
           is_active: boolean
@@ -643,12 +647,14 @@ export type Database = {
           min_stock_qty: number | null
           name: string
           price_cents: number
+          price_tiers: Json
           product_type: string
           sku: string | null
           stock_qty: number | null
           store_id: string
           subcategory: string | null
           supplier: string | null
+          supplier_code: string | null
           updated_at: string
           variant: string | null
           vat_rate: number
@@ -661,6 +667,7 @@ export type Database = {
           color?: string | null
           cost_price_cents?: number | null
           created_at?: string
+          custom_fields?: Json
           external_id?: string | null
           id?: string
           is_active?: boolean
@@ -668,12 +675,14 @@ export type Database = {
           min_stock_qty?: number | null
           name: string
           price_cents: number
+          price_tiers?: Json
           product_type?: string
           sku?: string | null
           stock_qty?: number | null
           store_id: string
           subcategory?: string | null
           supplier?: string | null
+          supplier_code?: string | null
           updated_at?: string
           variant?: string | null
           vat_rate: number
@@ -686,6 +695,7 @@ export type Database = {
           color?: string | null
           cost_price_cents?: number | null
           created_at?: string
+          custom_fields?: Json
           external_id?: string | null
           id?: string
           is_active?: boolean
@@ -693,12 +703,14 @@ export type Database = {
           min_stock_qty?: number | null
           name?: string
           price_cents?: number
+          price_tiers?: Json
           product_type?: string
           sku?: string | null
           stock_qty?: number | null
           store_id?: string
           subcategory?: string | null
           supplier?: string | null
+          supplier_code?: string | null
           updated_at?: string
           variant?: string | null
           vat_rate?: number

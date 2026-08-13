@@ -29,6 +29,7 @@ const normalizeProduct = (p: Product): Product => {
   const barcode = p.barcode?.trim();
   const brand = p.brand?.trim();
   const supplier = p.supplier?.trim();
+  const supplierCode = p.supplierCode?.trim();
   const variant = p.variant?.trim();
   const subCategory = p.subCategory?.trim();
   const costPriceCents =
@@ -50,6 +51,7 @@ const normalizeProduct = (p: Product): Product => {
     barcode: barcode ? barcode : undefined,
     brand: brand ? brand : undefined,
     supplier: supplier ? supplier : undefined,
+    supplierCode: supplierCode ? supplierCode : undefined,
     variant: variant ? variant : undefined,
     subCategory: subCategory ? subCategory : undefined,
     costPriceCents,

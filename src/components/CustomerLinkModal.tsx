@@ -89,6 +89,11 @@ export const CustomerLinkModal: React.FC<Props> = ({ open, onClose, onLink }) =>
                     <div className="text-xs text-zinc-500">
                       {[c.email, c.phone].filter(Boolean).join(' • ')}
                     </div>
+                    {c.priceGroup && (
+                      <span className="mt-1 inline-flex rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-300">
+                        Prijsgroep · {c.priceGroup}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="text-zinc-400">

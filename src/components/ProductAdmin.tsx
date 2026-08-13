@@ -188,7 +188,9 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
       vatRate: category.vatRate || BELGIAN_RETAIL_VAT_RATE,
       brand: '',
       supplier: '',
+      supplierCode: '',
       variant: '',
+      priceTiers: {},
       sku: '',
       barcode: '',
       stockQty: 0,
@@ -220,6 +222,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
     const barcode = editing.barcode?.trim();
     const brand = editing.brand?.trim();
     const supplier = editing.supplier?.trim();
+    const supplierCode = editing.supplierCode?.trim();
     const variant = editing.variant?.trim();
     const subCategory = editing.subCategory?.trim();
 
@@ -287,6 +290,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
       barcode: barcode || undefined,
       brand: brand || undefined,
       supplier: supplier || undefined,
+      supplierCode: supplierCode || undefined,
       variant: variant || undefined,
       subCategory: subCategory || undefined,
       costPriceCents,
@@ -860,7 +864,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                   />
                 </Field>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                   <Field label="Merk">
                     <input
                       value={editing.brand ?? ''}
@@ -875,6 +879,14 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                       onChange={(e) => setEditing({ ...editing, supplier: e.target.value })}
                       placeholder="bv. Footwear Distrib"
                       className="w-full bg-white border border-slate-300 focus:border-slate-900 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                    />
+                  </Field>
+                  <Field label="Leverancierscode">
+                    <input
+                      value={editing.supplierCode ?? ''}
+                      onChange={(e) => setEditing({ ...editing, supplierCode: e.target.value })}
+                      placeholder="bv. TEL-MOD-360"
+                      className="w-full bg-white border border-slate-300 focus:border-slate-900 rounded-xl px-3.5 py-2 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
                     />
                   </Field>
                   <Field label="Variant / Maat">
@@ -1023,6 +1035,61 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                       );
                     })()}
                   </Field>
+                </div>
+
+                <div className="rounded-2xl border border-violet-200 bg-violet-50/70 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-black text-violet-950">Klantprijzen</div>
+                      <div className="mt-0.5 text-[10px] font-semibold text-violet-700">De prijsgroep van de gekoppelde klant kiest automatisch het juiste tarief aan de kassa.</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const current = editing.priceTiers ?? {};
+                        let index = Object.keys(current).length + 1;
+                        let group = `prijsgroep-${index}`;
+                        while (group in current) group = `prijsgroep-${++index}`;
+                        setEditing({ ...editing, priceTiers: { ...current, [group]: editing.priceCents } });
+                      }}
+                      className="shrink-0 rounded-xl bg-violet-700 px-3 py-2 text-[11px] font-black text-white hover:bg-violet-800"
+                    >
+                      + Prijsgroep
+                    </button>
+                  </div>
+                  {Object.entries(editing.priceTiers ?? {}).length === 0 ? (
+                    <div className="mt-3 rounded-xl border border-dashed border-violet-200 bg-white/60 p-3 text-[11px] text-violet-700">Geen afwijkende klantprijzen. Iedereen betaalt de standaard verkoopprijs.</div>
+                  ) : (
+                    <div className="mt-3 space-y-2">
+                      {Object.entries(editing.priceTiers ?? {}).map(([group, cents]) => (
+                        <div key={group} className="grid grid-cols-[1fr_120px_32px] items-center gap-2">
+                          <input
+                            value={group}
+                            onChange={(event) => {
+                              const nextGroup = event.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+                              if (!nextGroup || nextGroup === group) return;
+                              const next = { ...(editing.priceTiers ?? {}) };
+                              delete next[group];
+                              next[nextGroup] = cents;
+                              setEditing({ ...editing, priceTiers: next });
+                            }}
+                            className="rounded-xl border border-violet-200 bg-white px-3 py-2 text-xs font-bold text-violet-950 focus:border-violet-500 focus:outline-none"
+                            aria-label="Naam prijsgroep"
+                          />
+                          <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">€</span><input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={(cents / 100).toFixed(2)}
+                            onChange={(event) => setEditing({ ...editing, priceTiers: { ...(editing.priceTiers ?? {}), [group]: Math.max(0, Math.round(Number(event.target.value || 0) * 100)) } })}
+                            className="w-full rounded-xl border border-violet-200 bg-white py-2 pl-7 pr-2 text-xs font-black text-slate-900 focus:border-violet-500 focus:outline-none"
+                            aria-label={`Prijs voor ${group}`}
+                          /></div>
+                          <button type="button" onClick={() => { const next = { ...(editing.priceTiers ?? {}) }; delete next[group]; setEditing({ ...editing, priceTiers: next }); }} className="flex h-8 w-8 items-center justify-center rounded-lg text-red-500 hover:bg-red-100" aria-label={`Verwijder ${group}`}><X size={14} /></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

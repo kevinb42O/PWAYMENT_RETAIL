@@ -27,7 +27,16 @@ export interface Product {
   vatRate: number;
   brand?: string;
   supplier?: string;
+  /** Product reference used by the primary supplier. */
+  supplierCode?: string;
   variant?: string;
+  /**
+   * Deterministic customer-group prices in integer cents. The standard price
+   * remains `priceCents`; a missing group always falls back to that value.
+   */
+  priceTiers?: Record<string, number>;
+  /** Merchant-defined import fields that are not part of the financial core. */
+  customFields?: Record<string, string | number | boolean | null>;
   /** Current on-hand stock. Undefined means stock not tracked for this product. */
   stockQty?: number;
   /** Low-stock threshold used for alerts in admin/menu. */
@@ -477,7 +486,14 @@ export type AuditAction =
   | "purchase_order.cancel"
   | "webshop_order.create"
   | "webshop_order.update"
-  | "webshop_order.cancel";
+  | "webshop_order.cancel"
+  | "import.preview"
+  | "import.complete"
+  | "import.rollback"
+  | "service_order.create"
+  | "service_order.update"
+  | "service_order.status"
+  | "service_order.communication";
 
 export interface AuditEntry {
   id?: number;
@@ -528,6 +544,8 @@ export interface Customer {
   phone?: string;
   address?: string;
   notes?: string;
+  /** Optional price-book/customer segment key, e.g. `telenet-klant` or `b2b`. */
+  priceGroup?: string;
   /** Cumulative amount spent in INTEGER CENTS (EUR). */
   totalSpentCents: number;
   /** Number of completed transactions. */
@@ -538,6 +556,130 @@ export interface Customer {
   createdAt: string;
   /** Soft-delete flag. */
   isActive: boolean;
+}
+
+export type ImportSourceFormat = "csv" | "tsv" | "xlsx" | "json";
+
+export type ImportJobStatus =
+  | "preview"
+  | "completed"
+  | "completed-with-errors"
+  | "failed"
+  | "rolled-back";
+
+export interface ImportFieldMapping {
+  source: string;
+  target: string;
+  confidence: number;
+}
+
+export interface ImportMappingProfile {
+  id: string;
+  name: string;
+  format: ImportSourceFormat;
+  mappings: ImportFieldMapping[];
+  createdAt: number;
+  updatedAt: number;
+  lastUsedAt?: number;
+}
+
+export interface ImportJob {
+  id: string;
+  fileName: string;
+  format: ImportSourceFormat;
+  status: ImportJobStatus;
+  createdAt: number;
+  completedAt?: number;
+  rowCount: number;
+  importedCount: number;
+  updatedCount: number;
+  skippedCount: number;
+  errorCount: number;
+  mappings: ImportFieldMapping[];
+  profileId?: string;
+  affectedProductIds: string[];
+  issues: Array<{ row: number; message: string }>;
+}
+
+export type ServiceOrderSystemStatus =
+  | "open"
+  | "in-progress"
+  | "blocked"
+  | "ready"
+  | "closed"
+  | "cancelled";
+
+export type ServiceOrderRoute =
+  | "internal-repair"
+  | "external-repair"
+  | "exchange"
+  | "warranty-return";
+
+export interface ServiceOrderEvent {
+  id: string;
+  timestamp: number;
+  type: "created" | "status" | "note" | "communication" | "payment";
+  label: string;
+  detail?: string;
+  userId?: string;
+  userName?: string;
+}
+
+export interface ServiceOrderAttachment {
+  id: string;
+  name: string;
+  contentType: string;
+  size: number;
+  /** Local fallback used until object storage has accepted the upload. */
+  dataUrl?: string;
+  remotePath?: string;
+  createdAt: number;
+}
+
+export interface ServiceOrder {
+  id: string;
+  number: string;
+  trackingToken: string;
+  createdAt: number;
+  updatedAt: number;
+  promisedAt?: number;
+  status: ServiceOrderSystemStatus;
+  substatus: string;
+  route: ServiceOrderRoute;
+  customerId?: string;
+  customerName: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  assetType: string;
+  brand?: string;
+  model?: string;
+  identifierType?: string;
+  identifierValue?: string;
+  accessories?: string;
+  issue: string;
+  intakeCondition?: string;
+  diagnosis?: string;
+  resolution?: string;
+  externalReference?: string;
+  internalNote?: string;
+  warranty: boolean;
+  noCureNoPay: boolean;
+  diagnosisFeeCents: number;
+  laborCents: number;
+  partsCents: number;
+  otherCents: number;
+  depositCents: number;
+  totalCents: number;
+  paidCents: number;
+  attachments: ServiceOrderAttachment[];
+  events: ServiceOrderEvent[];
+  merchantSnapshot: {
+    name: string;
+    phone?: string;
+    email?: string;
+    addressLine1?: string;
+    addressLine2?: string;
+  };
 }
 
 export interface GiftCard {

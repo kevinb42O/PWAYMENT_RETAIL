@@ -23,6 +23,17 @@ interface RetailCart {
   orders: OrderItem[];
 }
 
+export type MainView =
+  | 'pos'
+  | 'service'
+  | 'integration-hub'
+  | 'insights'
+  | 'z-report'
+  | 'audit-log'
+  | 'admin'
+  | 'customers'
+  | 'profile';
+
 export interface CartScanResult {
   status: 'empty' | 'matched' | 'not-found' | 'out-of-stock';
   code: string;
@@ -33,11 +44,11 @@ export interface CartScanResult {
 interface POSState {
   cart: RetailCart;
   mobileView: 'menu' | 'cart';
-  mainView: 'pos' | 'insights' | 'z-report' | 'audit-log' | 'admin' | 'customers' | 'profile';
+  mainView: MainView;
   /** Manual cart-level discount (manager-approved). */
   cartDiscount: CartDiscount | null;
 
-  setMainView: (view: 'pos' | 'insights' | 'z-report' | 'audit-log' | 'admin' | 'customers' | 'profile') => void;
+  setMainView: (view: MainView) => void;
   setMobileView: (view: 'menu' | 'cart') => void;
 
   addOrderItem: (product: Product) => void;

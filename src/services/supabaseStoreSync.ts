@@ -70,6 +70,12 @@ const blankMerchant = (name: string): MerchantInfo => ({
  * appearing while a new tenant is loading on the same browser.
  */
 export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
+  const [previousProducts, previousCustomers] = await Promise.all([
+    db.products.toArray(),
+    db.customers.toArray(),
+  ]);
+  const previousProductById = new Map(previousProducts.map((product) => [product.id, product]));
+  const previousCustomerById = new Map(previousCustomers.map((customer) => [customer.id, customer]));
   activateTenantDatabase(storeId);
   reportLoadingProgress("store-data");
   const [
@@ -283,8 +289,11 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
     isActive: row.is_active,
   }));
 
-  const products: Product[] = productRows.map((row) => ({
-    id: row.external_id ?? row.id,
+  const products: Product[] = productRows.map((row) => {
+    const id = row.external_id ?? row.id;
+    const previous = previousProductById.get(id);
+    return {
+    id,
     name: row.name,
     category: row.category_name,
     subCategory: row.subcategory ?? undefined,
@@ -296,30 +305,42 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
     vatRate: Number(row.vat_rate),
     brand: row.brand ?? undefined,
     supplier: row.supplier ?? undefined,
+    supplierCode: row.supplier_code === undefined ? previous?.supplierCode : row.supplier_code ?? undefined,
     variant: row.variant ?? undefined,
+    priceTiers: row.price_tiers === undefined
+      ? previous?.priceTiers
+      : jsonObject<Record<string, number>>(row.price_tiers),
+    customFields: row.custom_fields === undefined
+      ? previous?.customFields
+      : jsonObject<Product["customFields"]>(row.custom_fields),
     stockQty: row.stock_qty ?? undefined,
     minStockQty: row.min_stock_qty ?? undefined,
     color: row.color ?? undefined,
     productType: row.product_type as Product["productType"],
     isActive: row.is_active,
-  }));
+  }});
 
   const customerExternalId = new Map(
     customerRows.map((row) => [row.id, row.external_id ?? row.id]),
   );
-  const customers: Customer[] = customerRows.map((row) => ({
-    id: row.external_id ?? row.id,
+  const customers: Customer[] = customerRows.map((row) => {
+    const id = row.external_id ?? row.id;
+    return {
+    id,
     name: row.name,
     email: row.email ?? undefined,
     phone: row.phone ?? undefined,
     address: row.address ?? undefined,
     notes: row.notes ?? undefined,
+    priceGroup: row.price_group === undefined
+      ? previousCustomerById.get(id)?.priceGroup
+      : row.price_group ?? undefined,
     totalSpentCents: Number(row.total_spent_cents),
     visitCount: row.visit_count,
     lastVisitAt: row.last_visit_at ?? undefined,
     createdAt: row.created_at,
     isActive: row.is_active,
-  }));
+  }});
 
   const productExternalId = new Map(
     productRows.map((row) => [row.id, row.external_id ?? row.id]),
@@ -641,8 +662,25 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
   }));
 
   reportLoadingProgress("local-cache");
-  await db.transaction("rw", db.tables, async () => {
-    for (const table of db.tables) await table.clear();
+  const authoritativeTables = [
+    db.users,
+    db.categories,
+    db.products,
+    db.customers,
+    db.transactions,
+    db.gift_cards,
+    db.gift_card_events,
+    db.shifts,
+    db.stock_movements,
+    db.purchase_orders,
+    db.voids,
+    db.audit,
+    db.daily_reports,
+  ];
+  await db.transaction("rw", authoritativeTables, async () => {
+    // Integration mapping history and service orders have their own sync
+    // boundary. Never erase them merely because the POS cache is refreshed.
+    for (const table of authoritativeTables) await table.clear();
     if (users.length) await db.users.bulkPut(users);
     if (categories.length) await db.categories.bulkPut(categories);
     if (products.length) await db.products.bulkPut(products);
