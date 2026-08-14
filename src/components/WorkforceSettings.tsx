@@ -5,6 +5,8 @@ import { useWorkforce } from "../store/useWorkforce";
 import { formatMinutes, formatWorkdays, todayIso } from "../workforce/format";
 import { addDays, startOfIsoWeek } from "../workforce/roster";
 import { Modal } from "./Modal";
+import { db } from "../db/db";
+import { hashCredential } from "../utils/credentials";
 
 const fieldClass = "mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 font-medium";
 const buttonClass = "inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 disabled:opacity-50";
@@ -29,25 +31,28 @@ export const WorkforceSettings: React.FC = () => {
   });
   const [pattern, setPattern] = useState({
     employeeId: "",
-    weekdays: [1, 2, 3, 4, 5] as number[],
+    weekdays: [1, 2, 3, 4, 5],
     startTime: "09:00",
     endTime: "17:00",
-    breakMinutes: "30",
-    roleLabel: "",
-    locationLabel: "",
+    breakMinutes: 30,
+    roleLabel: "Verkoop",
+    locationLabel: "Winkelvloer",
     effectiveFrom: todayIso(),
   });
-  const weekStart = startOfIsoWeek(todayIso());
 
   useEffect(() => {
-    if (!storeId) return;
-    void workforce.load(storeId);
-    void workforce.loadRoster(storeId, weekStart, addDays(weekStart, 6));
-  }, [storeId, weekStart, workforce.load, workforce.loadRoster]);
+    if (storeId) {
+      void workforce.load(storeId);
+      const start = startOfIsoWeek(todayIso());
+      void workforce.loadRoster(storeId, start, addDays(start, 27));
+    }
+  }, [storeId, workforce]);
 
   useEffect(() => {
-    if (!pattern.employeeId && workforce.team[0]) setPattern((value) => ({ ...value, employeeId: workforce.team[0].id }));
-  }, [pattern.employeeId, workforce.team]);
+    if (!pattern.employeeId && workforce.team.length > 0) {
+      loadExistingPattern(workforce.team[0].id);
+    }
+  }, [workforce.team]);
 
   const currentYearBalances = useMemo(
     () => workforce.balances.filter((balance) => balance.year === new Date().getFullYear()),
@@ -58,20 +63,31 @@ export const WorkforceSettings: React.FC = () => {
   const selectedEmployee = workforce.team.find((employee) => employee.id === pattern.employeeId);
 
   const loadExistingPattern = (employeeId: string) => {
-    const existing = workforce.roster.patterns
-      .filter((item) => item.employeeId === employeeId && item.scheduledMinutes > 0)
-      .sort((left, right) => right.effectiveFrom.localeCompare(left.effectiveFrom));
-    const first = existing[0];
-    setPattern({
-      employeeId,
-      weekdays: [...new Set(existing.filter((item) => item.effectiveFrom === first?.effectiveFrom).map((item) => item.weekday))],
-      startTime: first?.startTime ?? "09:00",
-      endTime: first?.endTime ?? "17:00",
-      breakMinutes: String(first?.breakMinutes ?? 30),
-      roleLabel: first?.roleLabel ?? "",
-      locationLabel: first?.locationLabel ?? "",
-      effectiveFrom: first?.effectiveFrom ?? todayIso(),
-    });
+    const existing = workforce.roster.patterns.filter((item) => item.employeeId === employeeId);
+    if (existing.length > 0) {
+      const first = existing[0];
+      setPattern({
+        employeeId,
+        weekdays: existing.map((item) => item.weekday),
+        startTime: first.startTime,
+        endTime: first.endTime,
+        breakMinutes: first.breakMinutes,
+        roleLabel: first.roleLabel ?? "Verkoop",
+        locationLabel: first.locationLabel ?? "Winkelvloer",
+        effectiveFrom: first.effectiveFrom,
+      });
+    } else {
+      setPattern({
+        employeeId,
+        weekdays: [1, 2, 3, 4, 5],
+        startTime: "09:00",
+        endTime: "17:00",
+        breakMinutes: 30,
+        roleLabel: "Verkoop",
+        locationLabel: "Winkelvloer",
+        effectiveFrom: todayIso(),
+      });
+    }
   };
 
   const savePattern = async (event: React.FormEvent) => {
@@ -88,7 +104,22 @@ export const WorkforceSettings: React.FC = () => {
     e.preventDefault();
     if (!storeId || !newEmployee.displayName.trim()) return;
     const weeklyMinutes = Math.round(Number(newEmployee.weeklyHours.replace(",", ".")) * 60);
+    const newId = `usr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const defaultPinHash = await hashCredential("123456", "pin");
+    
+    // 1. Keep local POS users database in sync
+    await db.users.put({
+      id: newId,
+      name: newEmployee.displayName.trim(),
+      email: newEmployee.email.trim() || undefined,
+      role: "cashier",
+      pinHash: defaultPinHash,
+      createdAt: new Date().toISOString(),
+    });
+
+    // 2. Save in workforce planning and leave accounts
     const success = await workforce.saveEmployee(storeId, {
+      id: newId,
       displayName: newEmployee.displayName.trim(),
       employeeNumber: newEmployee.employeeNumber.trim() || undefined,
       email: newEmployee.email.trim() || undefined,
@@ -96,6 +127,7 @@ export const WorkforceSettings: React.FC = () => {
       startDate: newEmployee.startDate,
       competencyIds: newEmployee.competencyIds,
     });
+
     if (success) {
       setShowAddEmployeeModal(false);
       setMessage(`Medewerker ${newEmployee.displayName} succesvol toegevoegd.`);
