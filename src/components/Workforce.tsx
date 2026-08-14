@@ -26,13 +26,19 @@ import {
 import {
   activePatternForDate,
   addDays,
+  addMonths,
+  addYears,
+  endOfMonth,
   formatLongDate,
+  formatMonth,
   formatShortDay,
   formatTime,
   formatWeekRange,
   localDateForTimestamp,
   localDateTimeToIso,
   localTimeForTimestamp,
+  monthDates,
+  startOfMonth,
   startOfIsoWeek,
   weekDates,
 } from "../workforce/roster";
@@ -45,9 +51,10 @@ import type {
   WorkforceShift,
   WorkPattern,
 } from "../workforce/types";
+import { AnnualLeavePlanner, MonthlyRosterGrid } from "./workforce/WorkforcePlanningViews";
 
 type WorkforceTab = "roster" | "leave" | "balances";
-type RosterView = "week" | "day";
+type RosterView = "day" | "week" | "month" | "year";
 
 const controlClass = "inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-600 disabled:cursor-not-allowed disabled:opacity-50";
 const fieldClass = "mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100";
@@ -240,26 +247,66 @@ const ShiftEditor = ({
 
 const LeaveRequestDialog = ({
   leaveTypes,
+  balances,
+  employeeId,
+  patterns,
+  initialStartDate,
   busy,
   onClose,
   onSubmit,
 }: {
   leaveTypes: ReturnType<typeof useWorkforce.getState>["leaveTypes"];
+  balances: ReturnType<typeof useWorkforce.getState>["balances"];
+  employeeId?: string;
+  patterns: WorkPattern[];
+  initialStartDate: string;
   busy: boolean;
   onClose: () => void;
   onSubmit: (input: { leaveTypeId: string; startDate: string; endDate: string; note: string }) => Promise<boolean>;
 }) => {
-  const [form, setForm] = useState({ leaveTypeId: leaveTypes[0]?.id ?? "", startDate: todayIso(), endDate: todayIso(), note: "" });
+  const firstDate = initialStartDate >= todayIso() ? initialStartDate : todayIso();
+  const [form, setForm] = useState({ leaveTypeId: leaveTypes[0]?.id ?? "", startDate: firstDate, endDate: firstDate, note: "" });
+  const leaveType = leaveTypes.find((type) => type.id === form.leaveTypeId);
+  const minimumDate = addDays(todayIso(), leaveType?.minimumNoticeDays ?? 0);
+  const years = Array.from(new Set([Number(form.startDate.slice(0, 4)), Number(form.endDate.slice(0, 4))]));
+  const relevantBalances = balances.filter((balance) => balance.employeeId === employeeId && balance.leaveTypeId === form.leaveTypeId && years.includes(balance.year));
+  const requestedByYear: Record<number, number> = {};
+  let estimatedMinutes = 0;
+  for (let date = form.startDate; date <= form.endDate; date = addDays(date, 1)) {
+    const minutes = activePatternForDate(patterns, employeeId ?? "", date)?.scheduledMinutes ?? 0;
+    const year = Number(date.slice(0, 4));
+    estimatedMinutes += minutes;
+    requestedByYear[year] = (requestedByYear[year] ?? 0) + minutes;
+  }
+  const missingBalanceYears = leaveType?.requiresBalance
+    ? years.filter((year) => !relevantBalances.some((balance) => balance.year === year))
+    : [];
+  const insufficientYears = leaveType?.requiresBalance
+    ? years.filter((year) => {
+      const balance = relevantBalances.find((item) => item.year === year);
+      return Boolean(balance && balance.availableMinutes < (requestedByYear[year] ?? 0));
+    })
+    : [];
+  const balanceReady = missingBalanceYears.length === 0 && insufficientYears.length === 0;
   return (
     <Dialog title="Verlof aanvragen" onClose={onClose}>
       <form onSubmit={async (event) => { event.preventDefault(); if (await onSubmit(form)) onClose(); }} className="space-y-4 p-5">
-        <label className="block text-xs font-bold text-slate-600">Verloftype<select required value={form.leaveTypeId} onChange={(event) => setForm({ ...form, leaveTypeId: event.target.value })} className={fieldClass}>{leaveTypes.map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}</select></label>
+        <label className="block text-xs font-bold text-slate-600">Verloftype<select required value={form.leaveTypeId} onChange={(event) => { const type = leaveTypes.find((item) => item.id === event.target.value); const nextMinimum = addDays(todayIso(), type?.minimumNoticeDays ?? 0); const startDate = form.startDate < nextMinimum ? nextMinimum : form.startDate; setForm({ ...form, leaveTypeId: event.target.value, startDate, endDate: form.endDate < startDate ? startDate : form.endDate }); }} className={fieldClass}>{leaveTypes.map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}</select></label>
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="text-xs font-bold text-slate-600">Van<input aria-label="Van" type="date" required value={form.startDate} onChange={(event) => setForm({ ...form, startDate: event.target.value, endDate: event.target.value > form.endDate ? event.target.value : form.endDate })} className={fieldClass} /></label>
+          <label className="text-xs font-bold text-slate-600">Van<input aria-label="Van" type="date" min={minimumDate} required value={form.startDate} onChange={(event) => setForm({ ...form, startDate: event.target.value, endDate: event.target.value > form.endDate ? event.target.value : form.endDate })} className={fieldClass} /></label>
           <label className="text-xs font-bold text-slate-600">Tot en met<input aria-label="Tot en met" type="date" min={form.startDate} required value={form.endDate} onChange={(event) => setForm({ ...form, endDate: event.target.value })} className={fieldClass} /></label>
         </div>
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
+          <p className="text-xs font-bold text-slate-800">{formatLongDate(form.startDate)}{form.endDate !== form.startDate ? ` – ${formatLongDate(form.endDate)}` : ""}</p>
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-500">
+            {estimatedMinutes > 0 && <span>Volgens je werkpatroon: <strong className="text-slate-700">{formatMinutes(estimatedMinutes)}</strong></span>}
+            {relevantBalances.map((balance) => <span key={balance.accountId}>{balance.year}: <strong className="text-slate-700">{formatWorkdays(balance.availableMinutes)}</strong> beschikbaar</span>)}
+          </div>
+          {missingBalanceYears.length > 0 && <p className="mt-2 text-[11px] font-semibold text-amber-700">Voor {missingBalanceYears.join(" en ")} is nog geen verlofsaldo ingesteld.</p>}
+          {insufficientYears.length > 0 && <p className="mt-2 text-[11px] font-semibold text-rose-700">Onvoldoende beschikbaar verlofsaldo voor {insufficientYears.join(" en ")}.</p>}
+        </div>
         <label className="block text-xs font-bold text-slate-600">Toelichting<textarea aria-label="Toelichting" value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} rows={3} maxLength={2000} className={fieldClass} /></label>
-        <footer className="flex justify-end gap-2 border-t border-slate-100 pt-4"><button type="button" onClick={onClose} className={controlClass}>Annuleren</button><button type="submit" disabled={busy || !form.leaveTypeId} className={`${controlClass} border-cyan-200 bg-cyan-50 text-cyan-800 hover:bg-cyan-100`}><Send size={15} /> Aanvraag indienen</button></footer>
+        <footer className="flex justify-end gap-2 border-t border-slate-100 pt-4"><button type="button" onClick={onClose} className={controlClass}>Annuleren</button><button type="submit" disabled={busy || !form.leaveTypeId || !balanceReady} className={`${controlClass} border-cyan-200 bg-cyan-50 text-cyan-800 hover:bg-cyan-100`}><Send size={15} /> Aanvraag indienen</button></footer>
       </form>
     </Dialog>
   );
@@ -300,13 +347,15 @@ export const Workforce: React.FC = () => {
   const [employeeFilter, setEmployeeFilter] = useState("all");
   const [editor, setEditor] = useState<{ employee: WorkforceEmployee; date: string; shift: WorkforceShift | null; pattern: WorkPattern | null } | null>(null);
   const [leaveOpen, setLeaveOpen] = useState(false);
+  const [leaveStartDate, setLeaveStartDate] = useState(todayIso());
   const [decision, setDecision] = useState<{ request: LeaveRequest; type: "approved" | "rejected" } | null>(null);
   const [decisionNote, setDecisionNote] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [actionsOpen, setActionsOpen] = useState(false);
   const weekStart = startOfIsoWeek(selectedDate);
-  const rangeStart = view === "week" ? weekStart : selectedDate;
-  const rangeEnd = view === "week" ? addDays(weekStart, 6) : selectedDate;
+  const monthStart = startOfMonth(selectedDate);
+  const rangeStart = view === "week" ? weekStart : view === "day" ? selectedDate : monthStart;
+  const rangeEnd = view === "week" ? addDays(weekStart, 6) : view === "day" ? selectedDate : endOfMonth(monthStart);
   const canManage = workforce.roster.canManage && (currentRole === "owner" || currentRole === "manager");
 
   useEffect(() => {
@@ -336,10 +385,11 @@ export const Workforce: React.FC = () => {
     return () => window.clearTimeout(timer);
   }, [notice]);
 
-  const dates = view === "week" ? weekDates(weekStart) : [selectedDate];
+  const dates = view === "week" ? weekDates(weekStart) : view === "day" ? [selectedDate] : monthDates(monthStart);
   const employees = workforce.roster.employees.filter((employee) => employeeFilter === "all" || employee.id === employeeFilter);
   const roster = workforce.roster.rosters.find((item) => item.weekStart === weekStart);
-  const currentYearBalances = workforce.balances.filter((balance) => balance.year === new Date().getFullYear());
+  const planningYear = Number(selectedDate.slice(0, 4));
+  const currentYearBalances = workforce.balances.filter((balance) => balance.year === planningYear);
   const ownRequests = workforce.requests.filter((request) => request.employeeId === workforce.employee?.id);
   const requests = canManage ? workforce.requests : ownRequests;
 
@@ -353,7 +403,15 @@ export const Workforce: React.FC = () => {
     .filter((shift) => shift.employeeId === employeeId && shift.weekStart === weekStart)
     .reduce((total, shift) => total + shift.paidMinutes, 0);
 
-  const move = (days: number) => setSelectedDate(addDays(selectedDate, days));
+  const openLeave = (date = selectedDate) => {
+    setLeaveStartDate(date >= todayIso() ? date : todayIso());
+    setLeaveOpen(true);
+  };
+  const move = (direction: -1 | 1) => setSelectedDate(view === "year"
+    ? addYears(selectedDate, direction)
+    : view === "month"
+      ? addMonths(selectedDate, direction)
+      : addDays(selectedDate, direction * (view === "week" ? 7 : 1)));
   const refresh = () => storeId && Promise.all([
     workforce.load(storeId, true),
     workforce.loadRoster(storeId, rangeStart, rangeEnd, true),
@@ -374,7 +432,7 @@ export const Workforce: React.FC = () => {
           </div>
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => void refresh()} className={`${controlClass} w-9 px-0`} aria-label="Vernieuwen"><RefreshCw size={16} className={workforce.loading || workforce.rosterLoading ? "animate-spin" : ""} /></button>
-            <button type="button" onClick={() => setLeaveOpen(true)} className={controlClass}><CalendarDays size={16} /> Verlof aanvragen</button>
+            <button type="button" onClick={() => openLeave()} className={controlClass}><CalendarDays size={16} /> Verlof aanvragen</button>
             {canManage && <button type="button" onClick={() => setEditor({ employee: employees[0] ?? workforce.roster.employees[0], date: selectedDate, shift: null, pattern: null })} disabled={!workforce.roster.employees.length || roster?.status === "published" || roster?.status === "locked"} className={`${controlClass} border-cyan-200 bg-cyan-50 text-cyan-800 hover:bg-cyan-100`}><Plus size={16} /> Shift</button>}
           </div>
         </div>
@@ -385,16 +443,16 @@ export const Workforce: React.FC = () => {
       {tab === "roster" && <>
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-white px-4 py-2.5 sm:px-6">
           <div className="inline-flex rounded-lg border border-slate-200 bg-white">
-            <button type="button" onClick={() => move(view === "week" ? -7 : -1)} className="grid h-9 w-9 place-items-center text-slate-600 hover:bg-slate-50" aria-label={view === "week" ? "Vorige week" : "Vorige dag"}><ChevronLeft size={17} /></button>
+            <button type="button" onClick={() => move(-1)} className="grid h-9 w-9 place-items-center text-slate-600 hover:bg-slate-50" aria-label={`Vorige ${view === "year" ? "jaar" : view === "month" ? "maand" : view === "week" ? "week" : "dag"}`}><ChevronLeft size={17} /></button>
             <button type="button" onClick={() => setSelectedDate(todayIso())} className="border-x border-slate-200 px-3 text-xs font-bold text-slate-700 hover:bg-slate-50">Vandaag</button>
-            <button type="button" onClick={() => move(view === "week" ? 7 : 1)} className="grid h-9 w-9 place-items-center text-slate-600 hover:bg-slate-50" aria-label={view === "week" ? "Volgende week" : "Volgende dag"}><ChevronRight size={17} /></button>
+            <button type="button" onClick={() => move(1)} className="grid h-9 w-9 place-items-center text-slate-600 hover:bg-slate-50" aria-label={`Volgende ${view === "year" ? "jaar" : view === "month" ? "maand" : view === "week" ? "week" : "dag"}`}><ChevronRight size={17} /></button>
           </div>
           <label className="relative"><CalendarDays size={15} className="pointer-events-none absolute left-3 top-3 text-slate-400" /><input type="date" aria-label="Roosterdatum" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} className="h-9 rounded-lg border border-slate-200 bg-white pl-9 pr-2 text-xs font-bold text-slate-700 outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100" /></label>
-          <div className="min-w-36 text-sm font-bold capitalize text-slate-900">{view === "week" ? formatWeekRange(weekStart) : formatLongDate(selectedDate)}</div>
+          <div className="min-w-36 text-sm font-bold capitalize text-slate-900">{view === "year" ? planningYear : view === "month" ? formatMonth(selectedDate) : view === "week" ? formatWeekRange(weekStart) : formatLongDate(selectedDate)}</div>
           <div className="ml-auto flex items-center gap-2">
             <label className="relative hidden sm:block"><Filter size={14} className="pointer-events-none absolute left-3 top-3 text-slate-400" /><select aria-label="Medewerker filteren" value={employeeFilter} onChange={(event) => setEmployeeFilter(event.target.value)} className="h-9 rounded-lg border border-slate-200 bg-white pl-8 pr-8 text-xs font-bold text-slate-700 outline-none focus:border-cyan-500"><option value="all">Alle medewerkers</option>{workforce.roster.employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.displayName}</option>)}</select></label>
-            <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-0.5" aria-label="Roosterperiode">{([['week', 'Week'], ['day', 'Dag']] as [RosterView, string][]).map(([key, label]) => <button key={key} type="button" onClick={() => setView(key)} aria-pressed={view === key} className={`rounded-md px-3 py-1.5 text-xs font-bold ${view === key ? "border border-slate-200 bg-white text-slate-900 shadow-xs" : "text-slate-500"}`}>{label}</button>)}</div>
-            {canManage && <div className="relative"><button type="button" className={`${controlClass} w-9 px-0`} onClick={() => setActionsOpen((open) => !open)} aria-label="Roosteracties" aria-expanded={actionsOpen}><MoreHorizontal size={17} /></button>{actionsOpen && <div className="absolute right-0 top-11 z-40 w-60 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg" role="menu">
+            <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-0.5" aria-label="Roosterperiode">{([['day', 'Dag'], ['week', 'Week'], ['month', 'Maand'], ['year', 'Jaar']] as [RosterView, string][]).map(([key, label]) => <button key={key} type="button" onClick={() => setView(key)} aria-pressed={view === key} className={`rounded-md px-2.5 py-1.5 text-xs font-bold ${view === key ? "border border-slate-200 bg-white text-slate-900 shadow-xs" : "text-slate-500 hover:text-slate-800"}`}>{label}</button>)}</div>
+            {canManage && (view === "week" || view === "day") && <div className="relative"><button type="button" className={`${controlClass} w-9 px-0`} onClick={() => setActionsOpen((open) => !open)} aria-label="Roosteracties" aria-expanded={actionsOpen}><MoreHorizontal size={17} /></button>{actionsOpen && <div className="absolute right-0 top-11 z-40 w-60 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg" role="menu">
               <button type="button" role="menuitem" disabled={workforce.mutating || roster?.status === "published" || roster?.status === "locked"} onClick={() => { setActionsOpen(false); if (storeId) void setMessageAfter(workforce.applyPatterns(storeId, weekStart, roster), "Werkpatronen op deze week toegepast."); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40"><Settings2 size={15} /> Werkpatronen toepassen</button>
               <button type="button" role="menuitem" disabled={workforce.mutating || roster?.status === "published" || roster?.status === "locked"} onClick={() => { setActionsOpen(false); if (storeId) void setMessageAfter(workforce.copyWeek(storeId, addDays(weekStart, -7), weekStart, roster), "Vorige week gekopieerd."); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40"><Copy size={15} /> Vorige week kopiëren</button>
               <div className="my-1 border-t border-slate-100" />
@@ -403,7 +461,7 @@ export const Workforce: React.FC = () => {
           </div>
         </div>
 
-        <section className="min-h-0 flex-1 overflow-auto bg-white" aria-label={`Rooster ${formatWeekRange(weekStart)}`}>
+        {(view === "week" || view === "day") && <section className="min-h-0 flex-1 overflow-auto bg-white" aria-label={`Rooster ${view === "week" ? formatWeekRange(weekStart) : formatLongDate(selectedDate)}`}>
           {workforce.rosterLoading && !workforce.rosterHydrated ? <div className="grid min-h-80 place-items-center text-sm font-semibold text-slate-500">Rooster laden…</div> : <div style={{ minWidth: 226 + dates.length * rosterCellWidth }}>
             <div className="sticky top-0 z-30 grid border-b border-slate-200 bg-white" style={{ gridTemplateColumns: `226px repeat(${dates.length}, minmax(${rosterCellWidth}px, 1fr)) 108px` }}>
               <div className="sticky left-0 z-40 border-r border-slate-200 bg-white px-4 py-3 text-[11px] font-bold uppercase tracking-wide text-slate-400">Medewerker</div>
@@ -439,15 +497,40 @@ export const Workforce: React.FC = () => {
               <div className="px-3 py-3 text-right text-[10px] font-semibold text-slate-500">{roster?.status === "published" ? "Gepubliceerd" : "Concept"}</div>
             </div>}
           </div>}
-        </section>
+        </section>}
+        {view === "month" && <MonthlyRosterGrid
+          dates={dates}
+          employees={employees}
+          shifts={workforce.roster.shifts}
+          patterns={workforce.roster.patterns}
+          leave={workforce.roster.leave}
+          coverage={workforce.roster.coverage}
+          timeZone={workforce.roster.timezone}
+          canManage={canManage}
+          onOpenCell={(employee, date, shift, pattern) => {
+            setSelectedDate(date);
+            const dayRoster = workforce.roster.rosters.find((item) => item.weekStart === startOfIsoWeek(date));
+            if (canManage && dayRoster?.status !== "published" && dayRoster?.status !== "locked") setEditor({ employee, date, shift, pattern });
+            else setView("day");
+          }}
+          onOpenLeave={() => setTab("leave")}
+        />}
+        {view === "year" && <AnnualLeavePlanner
+          year={planningYear}
+          selectedDate={selectedDate}
+          employeeFilter={employeeFilter}
+          requests={requests}
+          onPlanDate={(date) => { setSelectedDate(date); openLeave(date); }}
+          onOpenMonth={(date) => { setSelectedDate(date); setView("month"); }}
+        />}
       </>}
 
-      {tab === "leave" && <section className="min-h-0 flex-1 overflow-auto p-4 sm:p-6"><div className="mx-auto max-w-6xl overflow-hidden rounded-xl border border-slate-200 bg-white"><div className="flex items-center justify-between border-b border-slate-200 px-4 py-3"><div><h2 className="text-sm font-bold text-slate-900">Verlofaanvragen</h2><p className="mt-0.5 text-xs text-slate-500">Aanvragen, beslissingen en bezettingsadvies.</p></div><button type="button" onClick={() => setLeaveOpen(true)} className={controlClass}><Plus size={15} /> Aanvraag</button></div>{requests.length ? <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left"><thead className="border-b border-slate-200 bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-2.5">Medewerker</th><th className="px-4 py-2.5">Periode</th><th className="px-4 py-2.5">Duur</th><th className="px-4 py-2.5">Status</th><th className="px-4 py-2.5 text-right">Acties</th></tr></thead><tbody>{requests.map((request) => <LeaveRow key={request.id} request={request} ownEmployeeId={workforce.employee?.id} canManage={canManage} busy={workforce.mutating} onDecision={(item, type) => { setDecision({ request: item, type }); setDecisionNote(""); }} onWithdraw={(item) => { if (storeId && window.confirm("Deze verlofaanvraag intrekken?")) void setMessageAfter(workforce.withdraw(storeId, item.id), "Aanvraag ingetrokken."); }} />)}</tbody></table></div> : <div className="grid min-h-48 place-items-center text-sm text-slate-500">Nog geen verlofaanvragen.</div>}</div></section>}
+      {tab === "leave" && <section className="min-h-0 flex-1 overflow-auto p-4 sm:p-6"><div className="mx-auto max-w-6xl overflow-hidden rounded-xl border border-slate-200 bg-white"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3"><div><h2 className="text-sm font-bold text-slate-900">Verlofaanvragen</h2><p className="mt-0.5 text-xs text-slate-500">Aanvragen, beslissingen en bezettingsadvies.</p></div><div className="flex gap-2"><button type="button" onClick={() => { setTab("roster"); setView("year"); }} className={controlClass}><CalendarDays size={15} /> Jaarplanning</button><button type="button" onClick={() => openLeave()} className={controlClass}><Plus size={15} /> Aanvraag</button></div></div>{requests.length ? <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left"><thead className="border-b border-slate-200 bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-2.5">Medewerker</th><th className="px-4 py-2.5">Periode</th><th className="px-4 py-2.5">Duur</th><th className="px-4 py-2.5">Status</th><th className="px-4 py-2.5 text-right">Acties</th></tr></thead><tbody>{requests.map((request) => <LeaveRow key={request.id} request={request} ownEmployeeId={workforce.employee?.id} canManage={canManage} busy={workforce.mutating} onDecision={(item, type) => { setDecision({ request: item, type }); setDecisionNote(""); }} onWithdraw={(item) => { if (storeId && window.confirm("Deze verlofaanvraag intrekken?")) void setMessageAfter(workforce.withdraw(storeId, item.id), "Aanvraag ingetrokken."); }} />)}</tbody></table></div> : <div className="grid min-h-48 place-items-center text-sm text-slate-500">Nog geen verlofaanvragen.</div>}</div></section>}
 
-      {tab === "balances" && <section className="min-h-0 flex-1 overflow-auto p-4 sm:p-6"><div className="mx-auto max-w-6xl overflow-hidden rounded-xl border border-slate-200 bg-white"><header className="border-b border-slate-200 px-4 py-3"><h2 className="text-sm font-bold text-slate-900">Verlofsaldi {new Date().getFullYear()}</h2></header><div className="divide-y divide-slate-100">{workforce.roster.employees.map((employee) => { const balances = currentYearBalances.filter((balance) => balance.employeeId === employee.id); return <div key={employee.id} className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_2fr] sm:items-center"><div><p className="text-sm font-bold text-slate-900">{employee.displayName}</p><p className="text-xs text-slate-500">{formatMinutes(employee.weeklyMinutes ?? 0)} contractweek</p></div><div className="flex flex-wrap gap-2">{balances.length ? balances.map((balance) => <span key={balance.accountId} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700">{balance.leaveTypeName}: {formatWorkdays(balance.availableMinutes)} <span className="font-normal text-slate-500">({formatMinutes(balance.availableMinutes)})</span></span>) : <span className="text-xs text-slate-400">Geen saldo ingesteld</span>}</div></div>; })}</div></div></section>}
+      {tab === "balances" && <section className="min-h-0 flex-1 overflow-auto p-4 sm:p-6"><div className="mx-auto max-w-6xl overflow-hidden rounded-xl border border-slate-200 bg-white"><header className="flex items-center justify-between border-b border-slate-200 px-4 py-3"><h2 className="text-sm font-bold text-slate-900">Verlofsaldi {planningYear}</h2><div className="inline-flex rounded-lg border border-slate-200 bg-white"><button type="button" onClick={() => setSelectedDate(addYears(selectedDate, -1))} className="grid h-8 w-8 place-items-center text-slate-600 hover:bg-slate-50" aria-label="Vorig saldojaar"><ChevronLeft size={15} /></button><button type="button" onClick={() => setSelectedDate(todayIso())} className="border-x border-slate-200 px-3 text-xs font-bold text-slate-700 hover:bg-slate-50">Dit jaar</button><button type="button" onClick={() => setSelectedDate(addYears(selectedDate, 1))} className="grid h-8 w-8 place-items-center text-slate-600 hover:bg-slate-50" aria-label="Volgend saldojaar"><ChevronRight size={15} /></button></div></header><div className="divide-y divide-slate-100">{workforce.roster.employees.map((employee) => { const balances = currentYearBalances.filter((balance) => balance.employeeId === employee.id); return <div key={employee.id} className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_2fr] sm:items-center"><div><p className="text-sm font-bold text-slate-900">{employee.displayName}</p><p className="text-xs text-slate-500">{formatMinutes(employee.weeklyMinutes ?? 0)} contractweek</p></div><div className="flex flex-wrap gap-2">{balances.length ? balances.map((balance) => <span key={balance.accountId} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700">{balance.leaveTypeName}: {formatWorkdays(balance.availableMinutes)} <span className="font-normal text-slate-500">({formatMinutes(balance.availableMinutes)})</span></span>) : <span className="text-xs text-slate-400">Geen saldo ingesteld voor {planningYear}</span>}</div></div>; })}</div></div></section>}
 
       {editor && storeId && <ShiftEditor {...editor} timeZone={workforce.roster.timezone} busy={workforce.mutating} onClose={() => setEditor(null)} onSave={(input) => workforce.saveShift(storeId, input)} onDelete={editor.shift ? () => workforce.deleteShift(storeId, editor.shift!) : null} />}
-      {leaveOpen && storeId && <LeaveRequestDialog leaveTypes={workforce.leaveTypes} busy={workforce.mutating} onClose={() => setLeaveOpen(false)} onSubmit={async (input) => { const success = await workforce.submit(storeId, input); if (success) { setNotice("Verlofaanvraag ingediend."); setTab("leave"); } return success; }} />}
+      {leaveOpen && storeId && <LeaveRequestDialog leaveTypes={workforce.leaveTypes} balances={workforce.balances} employeeId={workforce.employee?.id} patterns={workforce.roster.patterns} initialStartDate={leaveStartDate} busy={workforce.mutating} onClose={() => setLeaveOpen(false)} onSubmit={async (input) => { const success = await workforce.submit(storeId, input); if (success) { setNotice("Verlofaanvraag ingediend."); setSelectedDate(input.startDate); setTab("roster"); setView("year"); } return success; }} />}
       {decision && storeId && <Dialog title={decision.type === "approved" ? "Verlof goedkeuren" : "Verlof afwijzen"} onClose={() => setDecision(null)}><div className="p-5"><p className="text-sm text-slate-600">{decision.request.employeeName} · {decision.request.startDate} tot {decision.request.endDate}</p><label className="mt-4 block text-xs font-bold text-slate-600">Motivatie{decision.type === "rejected" ? " (verplicht)" : ""}<textarea value={decisionNote} onChange={(event) => setDecisionNote(event.target.value)} rows={3} className={fieldClass} /></label><footer className="mt-5 flex justify-end gap-2 border-t border-slate-100 pt-4"><button type="button" onClick={() => setDecision(null)} className={controlClass}>Annuleren</button><button type="button" disabled={workforce.mutating || (decision.type === "rejected" && !decisionNote.trim())} onClick={async () => { if (await workforce.decide(storeId, decision.request.id, decision.type, decisionNote)) { setNotice(decision.type === "approved" ? "Aanvraag goedgekeurd." : "Aanvraag afgewezen."); setDecision(null); } }} className={`${controlClass} ${decision.type === "approved" ? "border-cyan-200 bg-cyan-50 text-cyan-800" : "border-rose-200 text-rose-700"}`}>{decision.type === "approved" ? "Goedkeuren" : "Afwijzen"}</button></footer></div></Dialog>}
     </main>
   );

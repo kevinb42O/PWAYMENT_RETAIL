@@ -10,6 +10,17 @@ const nextMondayAndTuesday = (): { start: string; end: string } => {
   return { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) };
 };
 
+const nextSummerWeek = (): { start: string; end: string; year: number } => {
+  const year = new Date().getFullYear() + 1;
+  const start = new Date(year, 6, 1, 12, 0, 0, 0);
+  const daysUntilMonday = (8 - start.getDay()) % 7;
+  start.setDate(start.getDate() + daysUntilMonday);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 4);
+  const iso = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  return { start: iso(start), end: iso(end), year };
+};
+
 const openWorkforce = async (page: Parameters<typeof openApp>[0]) => {
   await openApp(page);
   await page.getByRole("button", { name: "Personeel & verlof", exact: true }).click();
@@ -67,5 +78,30 @@ test("employee submits exact leave dates and sees the canonical duration", async
   await dialog.getByRole("button", { name: "Aanvraag indienen" }).click();
   await expect(appPage.getByText("Verlofaanvraag ingediend.")).toBeVisible();
   await expect(appPage.getByText("E2E verloftest", { exact: false })).toHaveCount(0);
+  await appPage.getByRole("button", { name: "Verlof", exact: true }).click();
   await expect(appPage.getByText("15 u 12 min", { exact: true })).toBeVisible();
+});
+
+test("employee plans next summer directly from the annual calendar", async ({ appPage }) => {
+  await openWorkforce(appPage);
+  const summer = nextSummerWeek();
+
+  await appPage.getByRole("button", { name: "Jaar", exact: true }).click();
+  await appPage.getByRole("button", { name: "Volgende jaar" }).click();
+  await expect(appPage.getByRole("region", { name: `Jaarplanning ${summer.year}` })).toBeVisible();
+
+  await appPage.locator(`[data-date="${summer.start}"]`).click();
+  const dialog = appPage.getByRole("dialog", { name: "Verlof aanvragen" });
+  await expect(dialog.getByLabel("Van")).toHaveValue(summer.start);
+  await dialog.getByLabel("Tot en met").fill(summer.end);
+  await dialog.getByLabel("Toelichting").fill("Zomervakantie volgend jaar");
+  await expect(dialog.getByText(`${summer.year}:`, { exact: false })).toBeVisible();
+  await dialog.getByRole("button", { name: "Aanvraag indienen" }).click();
+
+  await expect(appPage.getByText("Verlofaanvraag ingediend.")).toBeVisible();
+  await expect(appPage.getByRole("region", { name: `Jaarplanning ${summer.year}` })).toBeVisible();
+  await expect(appPage.locator(`[data-date="${summer.start}"]`)).toHaveAttribute("aria-label", /1 verlofmelding/);
+
+  await appPage.getByRole("button", { name: "Maand", exact: true }).click();
+  await expect(appPage.getByRole("region", { name: "Maandrooster" })).toBeVisible();
 });

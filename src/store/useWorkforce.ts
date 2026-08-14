@@ -158,16 +158,16 @@ const fixtureBootstrap = (): WorkforceBootstrap => {
         minimumNoticeDays: 0,
       },
     ],
-    balances: fixtureEmployees.map((employee, index) => ({
-      accountId: `fixture-account-${employee.id}`,
+    balances: [year, year + 1].flatMap((balanceYear) => fixtureEmployees.map((employee, index) => ({
+      accountId: `fixture-account-${employee.id}-${balanceYear}`,
       employeeId: employee.id,
       leaveTypeId: "fixture-vacation",
       leaveTypeName: "Wettelijke vakantie",
-      year,
-      status: index === 0 ? "estimated" : "confirmed",
+      year: balanceYear,
+      status: balanceYear === year || index > 0 ? "confirmed" : "estimated",
       grantedMinutes: 9120,
       availableMinutes: 7296 - index * 456,
-    })),
+    }))),
     requests: [],
     team: fixtureEmployees,
     competencies: [
