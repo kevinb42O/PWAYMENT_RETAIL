@@ -68,6 +68,7 @@ import {
   Monitor,
   LayoutGrid,
   CalendarClock,
+  Clock,
   Edit2,
   Trash2,
   UserPlus,
@@ -1730,7 +1731,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                         }
                         className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition shadow-2xs cursor-pointer"
                       >
-                        ⚡ {preset.label}
+                        {preset.label}
                       </button>
                     ))}
                   </div>

@@ -298,7 +298,7 @@ export const WorkforceSettings: React.FC = () => {
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-sky-800 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-xl transition cursor-pointer disabled:opacity-50"
                   title="Genereert direct planning voor het hele lopende jaar"
                 >
-                  <span>📅 Doortrekken t/m dec {new Date().getFullYear()}</span>
+                  <span>Doortrekken t/m dec {new Date().getFullYear()}</span>
                 </button>
               </div>
             </div>
@@ -327,7 +327,7 @@ export const WorkforceSettings: React.FC = () => {
                     }
                     className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition shadow-2xs cursor-pointer"
                   >
-                    ⚡ {preset.label}
+                    {preset.label}
                   </button>
                 ))}
               </div>
@@ -399,7 +399,7 @@ export const WorkforceSettings: React.FC = () => {
                     {pattern.weekdays.length} dagen × {formatMinutes(dailyMin)} = <strong>{formatMinutes(weeklyMin)}</strong> per week
                   </span>
                   <span className="font-bold">
-                    Contract: {formatMinutes(contractMin)} {matches ? "✅ Sluit perfect aan" : `⚠️ Verschil: ${formatMinutes(Math.abs(weeklyMin - contractMin))}`}
+                    Contract: {formatMinutes(contractMin)} {matches ? "• Sluit exact aan" : `• Verschil: ${formatMinutes(Math.abs(weeklyMin - contractMin))}`}
                   </span>
                 </div>
               );
@@ -585,7 +585,7 @@ export const WorkforceSettings: React.FC = () => {
                   }
                   className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition shadow-2xs cursor-pointer"
                 >
-                  ⚡ {preset.label}
+                  {preset.label}
                 </button>
               ))}
             </div>
