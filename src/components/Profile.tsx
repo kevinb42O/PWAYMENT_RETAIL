@@ -1575,7 +1575,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                         key={tag}
                         type="button"
                         onClick={() => setTeamForm({ ...teamForm, jobTitle: tag })}
-                        className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-50 hover:bg-sky-50 text-slate-600 hover:text-sky-800 border border-slate-200 transition"
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 transition shadow-2xs"
                       >
                         + {tag}
                       </button>
@@ -1601,21 +1601,24 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       { id: 'cashier', label: 'Kassier', desc: 'Verkopen & retours' },
                       { id: 'manager', label: 'Manager', desc: 'Prijzen & Z-rapport' },
                       { id: 'owner', label: 'Eigenaar', desc: 'Volledig beheer' },
-                    ].map((r) => (
-                      <button
-                        key={r.id}
-                        type="button"
-                        onClick={() => setTeamForm({ ...teamForm, role: r.id as Role })}
-                        className={`p-2.5 rounded-xl border text-left transition-all ${
-                          teamForm.role === r.id
-                            ? 'border-sky-500 bg-sky-50/70 ring-1 ring-sky-500'
-                            : 'border-slate-200 bg-white hover:bg-slate-50'
-                        }`}
-                      >
-                        <div className="text-xs font-bold text-slate-900">{r.label}</div>
-                        <div className="text-[10px] text-slate-500 mt-0.5">{r.desc}</div>
-                      </button>
-                    ))}
+                    ].map((r) => {
+                      const isSelected = teamForm.role === r.id;
+                      return (
+                        <button
+                          key={r.id}
+                          type="button"
+                          onClick={() => setTeamForm({ ...teamForm, role: r.id as Role })}
+                          className={`p-2.5 rounded-xl border text-left transition-all ${
+                            isSelected
+                              ? 'border-sky-600 bg-sky-600 text-white shadow-xs'
+                              : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                          }`}
+                        >
+                          <div className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-slate-900'}`}>{r.label}</div>
+                          <div className={`text-[10px] mt-0.5 ${isSelected ? 'text-sky-100 font-medium' : 'text-slate-500'}`}>{r.desc}</div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 

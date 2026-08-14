@@ -162,8 +162,8 @@ export const WorkforceSettings: React.FC = () => {
                 onClick={() => loadExistingPattern(employee.id)}
                 className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left transition-all ${
                   pattern.employeeId === employee.id
-                    ? "border border-sky-200 bg-sky-50/70 text-sky-900"
-                    : "border border-transparent hover:bg-slate-50 text-slate-700"
+                    ? "border border-sky-500 bg-sky-50/50 ring-1 ring-sky-500"
+                    : "border border-slate-100 bg-white hover:bg-slate-50 text-slate-700"
                 }`}
               >
                 <span>
@@ -200,7 +200,7 @@ export const WorkforceSettings: React.FC = () => {
                         }))
                       }
                       className={`h-9 min-w-10 rounded-xl border px-3 text-xs font-bold transition-colors ${
-                        active ? "border-sky-200 bg-sky-50 text-sky-800" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                        active ? "border-sky-600 bg-sky-600 text-white shadow-xs" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                       }`}
                     >
                       {label}
@@ -410,8 +410,8 @@ export const WorkforceSettings: React.FC = () => {
                       }
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
                         active
-                          ? "bg-sky-50 border-sky-200 text-sky-800"
-                          : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                          ? "border-sky-600 bg-sky-600 text-white shadow-xs"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                       }`}
                     >
                       {comp.name}

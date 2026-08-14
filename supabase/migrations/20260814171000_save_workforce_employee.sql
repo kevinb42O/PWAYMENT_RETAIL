@@ -78,12 +78,12 @@ begin
 
   if statutory_type_id is not null then
     insert into public.leave_accounts (
-      store_id, employee_id, leave_type_id, year, status, granted_minutes, available_minutes
+      store_id, employee_id, leave_type_id, balance_year, entitlement_status, opening_minutes
     ) values
-      (target_store_id, employee_id, statutory_type_id, current_year, 'confirmed', (input_weekly_minutes * 4), (input_weekly_minutes * 4)),
-      (target_store_id, employee_id, statutory_type_id, current_year + 1, 'estimated', (input_weekly_minutes * 4), (input_weekly_minutes * 4))
-    on conflict (store_id, employee_id, leave_type_id, year) do update
-      set granted_minutes = excluded.granted_minutes;
+      (target_store_id, employee_id, statutory_type_id, current_year, 'confirmed', (input_weekly_minutes * 4)),
+      (target_store_id, employee_id, statutory_type_id, current_year + 1, 'estimated', (input_weekly_minutes * 4))
+    on conflict (store_id, employee_id, leave_type_id, balance_year) do update
+      set opening_minutes = excluded.opening_minutes;
   end if;
 
   -- Sync competencies if provided in payload
