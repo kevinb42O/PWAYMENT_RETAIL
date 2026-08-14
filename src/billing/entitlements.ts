@@ -28,6 +28,18 @@ export const FEATURE_KEYS = {
   multiStore: "multi_store.manage",
   advancedTeam: "team.advanced",
   workforce: "workforce.core",
+  customerDisplay: "customer_display.local",
+  serviceOrders: "service.orders",
+  serviceActiveOrders: "service.active_orders",
+  serviceAttachments: "service.attachments",
+  serviceSms: "service.notifications.sms",
+  serviceTechnicianAssignment: "service.technician_assignment",
+  customerCrm: "customers.crm",
+  auditViewer: "audit.viewer",
+  auditExport: "audit.export",
+  salesInsights: "insights.sales",
+  apiAccess: "api.access",
+  webhooksManage: "webhooks.manage",
 } as const;
 
 export type FeatureKey = (typeof FEATURE_KEYS)[keyof typeof FEATURE_KEYS];
@@ -109,7 +121,6 @@ const basicFallbackSnapshot = (): EntitlementSnapshot => ({
   features: {
     [FEATURE_KEYS.checkout]: true,
     [FEATURE_KEYS.zReport]: true,
-    [FEATURE_KEYS.workforce]: true,
   },
   limits: {
     [FEATURE_KEYS.activeProducts]: 250,
@@ -223,13 +234,39 @@ export const useEntitlements = create<EntitlementState>((set, get) => ({
 }));
 
 export const canUseFeature = (feature: FeatureKey): boolean =>
-  useEntitlements.getState().snapshot?.features[feature] === true;
+  isFeatureEnabledForSnapshot(useEntitlements.getState().snapshot, feature);
 
-export const featureLimit = (feature: FeatureKey): number | null =>
-  useEntitlements.getState().snapshot?.limits[feature] ?? null;
+export const featureLimit = (feature: FeatureKey): number | null => {
+  const snapshot = useEntitlements.getState().snapshot;
+  if (!snapshot || isTrialExpiredLocally(snapshot)) {
+    if (feature === FEATURE_KEYS.activeProducts) return 250;
+    if (feature === FEATURE_KEYS.categories) return 5;
+    return null;
+  }
+  return snapshot.limits[feature] ?? null;
+};
 
 export const entitlementNow = (): number =>
   Date.now() + useEntitlements.getState().serverOffsetMs;
+
+export const isTrialExpiredLocally = (
+  snapshot: EntitlementSnapshot | null,
+  now = entitlementNow(),
+): boolean =>
+  snapshot?.status === "trialing" &&
+  Boolean(snapshot.trialEndsAt) &&
+  Date.parse(snapshot.trialEndsAt as string) <= now;
+
+export const isFeatureEnabledForSnapshot = (
+  snapshot: EntitlementSnapshot | null,
+  feature: FeatureKey,
+  now = entitlementNow(),
+): boolean => {
+  if (!snapshot || isTrialExpiredLocally(snapshot, now)) {
+    return feature === FEATURE_KEYS.checkout || feature === FEATURE_KEYS.zReport;
+  }
+  return snapshot.features[feature] === true;
+};
 
 export const trialMillisecondsRemaining = (
   snapshot: EntitlementSnapshot | null,

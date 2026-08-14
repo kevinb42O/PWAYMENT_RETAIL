@@ -21,6 +21,12 @@ import {
   useCustomerDisplaySettings,
 } from "./settings";
 import { useCustomerDisplayRuntime } from "./runtime";
+import {
+  FEATURE_KEYS,
+  isFeatureEnabledForSnapshot,
+  useEntitlements,
+} from "../billing/entitlements";
+import { useEntitlementClock } from "../billing/useEntitlementClock";
 
 const REGISTER_ID = "retail-register-1";
 const HEARTBEAT_MS = 5_000;
@@ -71,6 +77,13 @@ export const CustomerDisplayPublisher = () => {
   const completedTransaction = useCustomerDisplayRuntime(
     (state) => state.completedTransaction,
   );
+  const entitlementSnapshot = useEntitlements((state) => state.snapshot);
+  const { now: entitlementNow } = useEntitlementClock();
+  const displayEntitled = isFeatureEnabledForSnapshot(
+    entitlementSnapshot,
+    FEATURE_KEYS.customerDisplay,
+    entitlementNow,
+  );
 
   const storeKey = customerDisplayStoreKey(currentStoreId);
   const config = configsByStore[storeKey] ?? DEFAULT_CUSTOMER_DISPLAY_CONFIG;
@@ -107,7 +120,7 @@ export const CustomerDisplayPublisher = () => {
   }
 
   const buildSnapshot = useCallback((): CustomerDisplaySnapshot => {
-    const enabled = config.enabled;
+    const enabled = config.enabled && displayEntitled;
     let phase: CustomerDisplaySnapshot["phase"] = enabled ? "idle" : "disabled";
     let lines = projectedCart.displayLines;
     let totals: CustomerDisplaySnapshot["totals"] = {
@@ -210,6 +223,7 @@ export const CustomerDisplayPublisher = () => {
     config,
     currentStoreId,
     currentStoreName,
+    displayEntitled,
     merchant.name,
     paymentMethod,
     paymentPhase,
@@ -230,6 +244,10 @@ export const CustomerDisplayPublisher = () => {
   }, []);
 
   useEffect(() => {
+    if (!displayEntitled) {
+      useCustomerDisplayRuntime.getState().setConnectionStatus("disconnected");
+      return;
+    }
     if (typeof BroadcastChannel === "undefined") {
       useCustomerDisplayRuntime
         .getState()
@@ -301,7 +319,7 @@ export const CustomerDisplayPublisher = () => {
       runtime.setConnectionStatus("disconnected");
       runtime.resetPayment();
     };
-  }, [publishSnapshot]);
+  }, [displayEntitled, publishSnapshot]);
 
   useEffect(() => {
     publishSnapshot();

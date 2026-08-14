@@ -1,11 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { AlertCircle, Clock3, Sparkles, X } from "lucide-react";
 import {
   entitlementNow,
-  trialDaysRemaining,
-  trialMillisecondsRemaining,
   useEntitlements,
 } from "./entitlements";
+import { useEntitlementClock } from "./useEntitlementClock";
 
 interface TrialStatusProps {
   onOpenBilling: () => void;
@@ -17,36 +16,11 @@ const notificationKey = (storeId: string, marker: string) =>
 export const TrialStatus: React.FC<TrialStatusProps> = ({ onOpenBilling }) => {
   const snapshot = useEntitlements((state) => state.snapshot);
   const storeId = useEntitlements((state) => state.storeId);
-  const load = useEntitlements((state) => state.load);
-  const [nowTick, setNowTick] = useState(() => entitlementNow());
   const [toastVisible, setToastVisible] = useState(false);
-
-  const days = useMemo(() => trialDaysRemaining(snapshot), [snapshot, nowTick]);
-  const remainingMs = useMemo(
-    () => trialMillisecondsRemaining(snapshot),
-    [snapshot, nowTick],
-  );
-
-  useEffect(() => {
-    if (!storeId) return;
-    const onFocus = () => void load(storeId, true).catch(() => undefined);
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onFocus);
-    return () => {
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onFocus);
-    };
-  }, [load, storeId]);
-
-  useEffect(() => {
-    if (remainingMs == null || !storeId) return;
-    const delay = Math.min(Math.max(remainingMs + 250, 1_000), 60 * 60_000);
-    const timer = window.setTimeout(() => {
-      setNowTick(entitlementNow());
-      void load(storeId, true).catch(() => undefined);
-    }, delay);
-    return () => window.clearTimeout(timer);
-  }, [load, remainingMs, storeId]);
+  const trialClock = useEntitlementClock();
+  const days = trialClock.remainingMs == null
+    ? null
+    : Math.max(0, Math.ceil(trialClock.remainingMs / 86_400_000));
 
   useEffect(() => {
     if (!storeId || days == null || days > 3) return;
@@ -63,8 +37,8 @@ export const TrialStatus: React.FC<TrialStatusProps> = ({ onOpenBilling }) => {
 
   if (!snapshot) return null;
 
-  const isTrial = snapshot.status === "trialing" && days != null;
-  const isExpired = snapshot.status === "expired";
+  const isTrial = snapshot.status === "trialing" && days != null && !trialClock.expired;
+  const isExpired = snapshot.status === "expired" || trialClock.expired;
 
   return (
     <>
@@ -79,7 +53,7 @@ export const TrialStatus: React.FC<TrialStatusProps> = ({ onOpenBilling }) => {
               : undefined
           }
         >
-          <Clock3 size={12} /> Pro trial · nog {days} {days === 1 ? "dag" : "dagen"}
+          <Clock3 size={12} /> Pro trial · {trialClock.label}
         </button>
       )}
 
@@ -128,4 +102,3 @@ export const TrialStatus: React.FC<TrialStatusProps> = ({ onOpenBilling }) => {
     </>
   );
 };
-

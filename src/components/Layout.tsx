@@ -753,9 +753,35 @@ export const Layout: React.FC = () => {
 
       <React.Suspense fallback={<ViewLoading />}>
         {mainView === "z-report" && <ZReportView />}
-        {mainView === "audit-log" && <AuditLog />}
-        {mainView === "customers" && <Customers />}
-        {mainView === "service" && <ServiceDesk />}
+        {mainView === "audit-log" && (
+          <FeatureGate
+            feature={FEATURE_KEYS.auditViewer}
+            title="Het volledige auditlogboek is beschikbaar in Enterprise"
+            description="Auditregistratie blijft altijd actief. Enterprise ontgrendelt de volledige viewer en export."
+            onUpgrade={() => openProfile("billing")}
+          >
+            <AuditLog />
+          </FeatureGate>
+        )}
+        {mainView === "customers" && (
+          <FeatureGate
+            feature={FEATURE_KEYS.customerCrm}
+            title="Klantenbeheer is beschikbaar in Retail Professional"
+            onUpgrade={() => openProfile("billing")}
+          >
+            <Customers />
+          </FeatureGate>
+        )}
+        {mainView === "service" && (
+          <FeatureGate
+            feature={FEATURE_KEYS.serviceOrders}
+            title="ServiceDesk is beschikbaar in Retail Professional"
+            description="Herstelgegevens blijven bewaard. Retail Professional ontgrendelt intake, opvolging en klanttracking."
+            onUpgrade={() => openProfile("billing")}
+          >
+            <ServiceDesk />
+          </FeatureGate>
+        )}
         {mainView === "workforce" && (
           <FeatureGate
             feature={FEATURE_KEYS.workforce}
@@ -768,7 +794,13 @@ export const Layout: React.FC = () => {
         )}
         {mainView === "integration-hub" &&
           (currentRole === "owner" || currentRole === "manager" ? (
-            <IntegrationHub />
+            <FeatureGate
+              feature={FEATURE_KEYS.integrations}
+              title="Integration Hub is beschikbaar in Retail Professional"
+              onUpgrade={() => openProfile("billing")}
+            >
+              <IntegrationHub />
+            </FeatureGate>
           ) : (
             <div className="flex-1 flex items-center justify-center text-slate-500 font-medium">
               Onvoldoende rechten.

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { canUseFeature, FEATURE_KEYS, type FeatureKey } from '../billing/entitlements';
 
 export type IntegrationCategory = 'supplier' | 'commerce' | 'accounting' | 'payment' | 'custom';
 export type IntegrationStatus = 'connected' | 'attention' | 'paused' | 'disconnected' | 'testing';
@@ -110,6 +111,12 @@ const id = (prefix: string) =>
 
 const now = () => new Date().toISOString();
 
+const requireIntegrationCapability = (feature: FeatureKey = FEATURE_KEYS.integrations) => {
+  if (!canUseFeature(feature)) {
+    throw new Error(`entitlement:plan-required:${feature}`);
+  }
+};
+
 const secretHint = (secret?: string) => {
   const value = secret?.trim();
   return value ? `•••• ${value.slice(-4)}` : undefined;
@@ -151,6 +158,7 @@ export const useIntegrations = create<IntegrationsState>()(
       logs: initialLogs,
 
       addIntegration: (input) => {
+        requireIntegrationCapability();
         const integrationId = id('int');
         const timestamp = now();
         const integration: IntegrationConfig = {
@@ -184,6 +192,7 @@ export const useIntegrations = create<IntegrationsState>()(
       },
 
       updateIntegration: (integrationId, input) => {
+        requireIntegrationCapability();
         set((state) => ({
           integrations: state.integrations.map((integration) => {
             if (integration.id !== integrationId) return integration;
@@ -221,6 +230,7 @@ export const useIntegrations = create<IntegrationsState>()(
       },
 
       removeIntegration: (integrationId) => {
+        requireIntegrationCapability();
         const integration = get().integrations.find((item) => item.id === integrationId);
         set((state) => ({
           integrations: state.integrations.filter((item) => item.id !== integrationId),
@@ -234,6 +244,7 @@ export const useIntegrations = create<IntegrationsState>()(
       },
 
       testConnection: async (integrationId) => {
+        requireIntegrationCapability();
         set((state) => ({
           integrations: state.integrations.map((item) =>
             item.id === integrationId ? { ...item, status: 'testing', lastError: undefined } : item,
@@ -273,6 +284,7 @@ export const useIntegrations = create<IntegrationsState>()(
       },
 
       runSync: async (integrationId) => {
+        requireIntegrationCapability();
         const integration = get().integrations.find((item) => item.id === integrationId);
         if (!integration || integration.status !== 'connected') return false;
         await wait(700);
@@ -297,6 +309,7 @@ export const useIntegrations = create<IntegrationsState>()(
       },
 
       toggleIntegration: (integrationId) => {
+        requireIntegrationCapability();
         set((state) => ({
           integrations: state.integrations.map((item) =>
             item.id === integrationId
@@ -307,6 +320,7 @@ export const useIntegrations = create<IntegrationsState>()(
       },
 
       addWebhook: (input) => {
+        requireIntegrationCapability(FEATURE_KEYS.webhooksManage);
         const webhook: WebhookConfig = {
           id: id('wh'),
           name: input.name.trim(),
@@ -327,6 +341,7 @@ export const useIntegrations = create<IntegrationsState>()(
       },
 
       toggleWebhook: (webhookId) => {
+        requireIntegrationCapability(FEATURE_KEYS.webhooksManage);
         set((state) => ({
           webhooks: state.webhooks.map((item) =>
             item.id === webhookId ? { ...item, active: !item.active } : item,
@@ -335,12 +350,14 @@ export const useIntegrations = create<IntegrationsState>()(
       },
 
       removeWebhook: (webhookId) => {
+        requireIntegrationCapability(FEATURE_KEYS.webhooksManage);
         set((state) => ({
           webhooks: state.webhooks.filter((item) => item.id !== webhookId),
         }));
       },
 
       testWebhook: async (webhookId) => {
+        requireIntegrationCapability(FEATURE_KEYS.webhooksManage);
         await wait(450);
         const webhook = get().webhooks.find((item) => item.id === webhookId);
         if (!webhook) return false;
@@ -364,6 +381,7 @@ export const useIntegrations = create<IntegrationsState>()(
       },
 
       createApiKey: (name, scopes, expiresAt) => {
+        requireIntegrationCapability(FEATURE_KEYS.apiAccess);
         const secret = `pw_live_${crypto.randomUUID().replaceAll('-', '')}`;
         const apiKey: ApiKeyConfig = {
           id: id('key'),
@@ -386,6 +404,7 @@ export const useIntegrations = create<IntegrationsState>()(
       },
 
       revokeApiKey: (apiKeyId) => {
+        requireIntegrationCapability(FEATURE_KEYS.apiAccess);
         set((state) => ({
           apiKeys: state.apiKeys.map((item) =>
             item.id === apiKeyId ? { ...item, active: false } : item,

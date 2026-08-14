@@ -141,7 +141,7 @@ refunds worden gesimuleerd; zie [Wat is echt en wat is demo?](#wat-is-echt-en-wa
 | Integratiebeheer | Persistente configuratie-UI en gesimuleerde tests/sync | Demo; er worden geen leverancier-, boekhouding- of commerce-API's aangeroepen |
 | Webhooks en REST API-sleutels | Lokale configuratierecords en gesimuleerde aflevering | Demo; er draait geen REST API of webhook-deliveryservice |
 | Login en rollen | Lokale gebruikers in IndexedDB, PBKDF2-SHA-256 credentials | Development scaffold; geen server-side sessies of centraal accountbeheer |
-| Billing, abonnementen en licenties | Interface en lokale instellingen | Demo; geen facturatieprovider of entitlement enforcement |
+| Billing, abonnementen en licenties | Supabase-planmatrix, trials en feature/limietgates; owner kan tijdelijk alle plannen simuleren | Testfase; entitlement enforcement actief, nog geen facturatieprovider of echte betaling |
 | Outbox | Checkout en webshop schrijven events naar IndexedDB | Nog geen worker/backend die de queue aflevert |
 
 ## Snel starten

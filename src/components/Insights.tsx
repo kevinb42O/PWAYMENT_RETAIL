@@ -42,6 +42,8 @@ import {
   buildWeekdayInsights,
 } from "../utils/insightsAnalytics";
 import { InventoryForecast } from "./InventoryForecast";
+import { FeatureGate } from "../billing/FeatureGate";
+import { FEATURE_KEYS } from "../billing/entitlements";
 import { Modal } from "./Modal";
 import { getZonedDateParts } from "../utils/time";
 import { useAuth } from "../auth/useAuth";
@@ -488,7 +490,11 @@ export const Insights = () => {
                 />
               )}
               {location.page === "inventory-reorder" && (
-                <>
+                <FeatureGate
+                  feature={FEATURE_KEYS.inventoryForecast}
+                  title="AI-voorraadprognose en inkoop zijn beschikbaar in Enterprise"
+                  description="Uw verkoop- en voorraadgegevens blijven behouden. Enterprise ontgrendelt prognoses, besteladvies en purchase orders."
+                >
                   <PageHeader
                     title="Besteladvies"
                     subtitle="Op basis van verkooptempo en minimumvoorraad · niets wordt automatisch besteld"
@@ -499,7 +505,7 @@ export const Insights = () => {
                     products={products}
                     onInventoryChanged={load}
                   />
-                </>
+                </FeatureGate>
               )}
               {location.page === "inventory-velocity" && (
                 <InventoryVelocityPage

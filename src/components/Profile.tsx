@@ -1172,7 +1172,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             )}
 
             {activeTab === 'hardware-display' && (
-              <CustomerDisplaySettings />
+              <FeatureGate
+                feature={FEATURE_KEYS.customerDisplay}
+                title="Het klantenscherm is beschikbaar in Retail Professional"
+                description="Uw configuratie blijft bewaard. Activeer Retail Professional om live kassadata op een tweede scherm te tonen."
+                onUpgrade={() => setActiveTab('billing-plan')}
+              >
+                <CustomerDisplaySettings />
+              </FeatureGate>
             )}
 
             {activeTab === 'hardware-scale' && (

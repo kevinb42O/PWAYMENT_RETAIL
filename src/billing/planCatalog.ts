@@ -13,6 +13,18 @@ export interface PlanCatalogEntry {
   features: string[];
 }
 
+export interface PlanComparisonRow {
+  label: string;
+  basic: string;
+  pro: string;
+  enterprise: string;
+}
+
+export interface PlanComparisonGroup {
+  category: string;
+  rows: PlanComparisonRow[];
+}
+
 export const PLAN_CATALOG: Record<PublicPlanCode, PlanCatalogEntry> = {
   basic: {
     code: 'basic',
@@ -33,7 +45,7 @@ export const PLAN_CATALOG: Record<PublicPlanCode, PlanCatalogEntry> = {
     cta: 'Probeer 30 dagen gratis',
     href: '/register?plan=professional',
     featured: true,
-    features: ['3 kassaschermen inbegrepen', 'Onbeperkte producten en varianten', 'Hardware volgens compatibiliteitsmatrix', 'Voorraad, labels en besteladvies', 'Loyaliteit en cadeaubonnen', 'PWAYMENT Webshop en live sync', 'Integraties volgens publieke statusmatrix', 'Prioriteit e-mail en chat'],
+    features: ['Onbeperkte producten en varianten', 'Dual-screen klantendisplay', 'ServiceDesk tot 50 actieve dossiers', 'Barcode-labels op Dymo en Zebra', 'CRM, loyaliteit, VIP en cadeaubonnen', 'PWAYMENT Webshop met live voorraad', 'Boekhouding en Peppol volgens connectorstatus', 'Prioriteit e-mail en chat'],
   },
   enterprise: {
     code: 'enterprise',
@@ -43,9 +55,58 @@ export const PLAN_CATALOG: Record<PublicPlanCode, PlanCatalogEntry> = {
     audience: 'Voor ketens, franchises en multichannel retail.',
     cta: 'Kies Enterprise',
     href: '/register?plan=enterprise',
-    features: ['Onbeperkte locaties en kassa’s', 'Transfers en lokale prijslijsten', 'Fijnmazige rechten en audit', 'Multi-storefront ecommerce', 'API en ERP volgens publieke statusmatrix', 'SLA en noodsupport volgens overeenkomst', 'Dedicated accountmanager', 'Begeleiding op locatie'],
+    features: ['Multi-store en voorraadoverdrachten', 'Workforce, planning, uren en verlof', 'AI-voorraadprognose en purchase orders', 'Onbeperkte ServiceDesk en geavanceerde workflow', 'Fijnmazige rechten en volledig auditlogboek', 'REST API en webhooks', 'Multi-storefront ecommerce', 'SLA en support volgens overeenkomst'],
   },
 };
+
+export const PLAN_COMPARISON_GROUPS: PlanComparisonGroup[] = [
+  {
+    category: 'Kassa & hardware',
+    rows: [
+      { label: 'POS-terminals inbegrepen', basic: '1', pro: '1', enterprise: 'Volgens contract' },
+      { label: 'Thermische printer & barcodescanner', basic: 'Basis', pro: 'Inbegrepen', enterprise: 'Inbegrepen' },
+      { label: 'Betaalterminal, weegschaal en kassalade', basic: '—', pro: 'Volgens compatibiliteitsstatus', enterprise: 'Inbegrepen' },
+      { label: 'Dual-screen klantendisplay', basic: '—', pro: 'Inbegrepen', enterprise: 'Inbegrepen' },
+    ],
+  },
+  {
+    category: 'Producten & voorraad',
+    rows: [
+      { label: 'Actieve producten', basic: '250', pro: 'Onbeperkt', enterprise: 'Onbeperkt' },
+      { label: 'Hoofdcategorieën', basic: '5', pro: 'Onbeperkt', enterprise: 'Onbeperkt' },
+      { label: 'Dymo/Zebra barcodelabels', basic: '—', pro: 'Inbegrepen', enterprise: 'Inbegrepen' },
+      { label: 'AI-voorraadprognose', basic: '—', pro: '—', enterprise: 'Inbegrepen' },
+      { label: 'Purchase orders & ontvangst', basic: '—', pro: '—', enterprise: 'Inbegrepen' },
+    ],
+  },
+  {
+    category: 'Klanten & ServiceDesk',
+    rows: [
+      { label: 'CRM, loyaliteit en VIP', basic: '—', pro: 'Inbegrepen', enterprise: 'Inbegrepen' },
+      { label: 'Cadeaubonnen uitgeven en opladen', basic: '—', pro: 'Inbegrepen', enterprise: 'Inbegrepen' },
+      { label: 'Actieve hersteldossiers', basic: '—', pro: 'Max. 50', enterprise: 'Onbeperkt' },
+      { label: 'Foto-intake, SMS en techniekertoewijzing', basic: '—', pro: '—', enterprise: 'Inbegrepen' },
+    ],
+  },
+  {
+    category: 'Webshop & integraties',
+    rows: [
+      { label: 'PWAYMENT Webshop', basic: '—', pro: '1 storefront', enterprise: 'Multi-storefront' },
+      { label: 'Boekhouding & Peppol', basic: '—', pro: 'Volgens connectorstatus', enterprise: 'Inbegrepen/maatwerk' },
+      { label: 'REST API & webhooks', basic: '—', pro: '—', enterprise: 'Inbegrepen' },
+    ],
+  },
+  {
+    category: 'Team, inzichten & controle',
+    rows: [
+      { label: 'Volledige transactiehistoriek', basic: '30 dagen', pro: 'Inbegrepen', enterprise: 'Inbegrepen' },
+      { label: 'Verkoop-, marge- en klantinzichten', basic: '—', pro: 'Inbegrepen', enterprise: 'Inbegrepen' },
+      { label: 'Workforce, planning, uren en verlof', basic: '—', pro: '—', enterprise: 'Inbegrepen' },
+      { label: 'Volledige auditviewer en export', basic: '—', pro: '—', enterprise: 'Inbegrepen' },
+      { label: 'Multi-store en transfers', basic: '—', pro: '—', enterprise: 'Inbegrepen' },
+    ],
+  },
+];
 
 export const PUBLIC_PLAN_ORDER: PublicPlanCode[] = ['basic', 'pro', 'enterprise'];
 

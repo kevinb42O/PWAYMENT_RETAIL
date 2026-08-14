@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from 'react';
+import { FeatureGate } from '../billing/FeatureGate';
+import { canUseFeature, FEATURE_KEYS } from '../billing/entitlements';
 import {
   Activity,
   AlertCircle,
@@ -585,7 +587,7 @@ export const IntegrationsSettings: React.FC = () => {
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
           <button onClick={() => { setSection('suppliers'); openTemplate(providerTemplates[0]); }} className="flex items-center gap-2 rounded-xl border border-slate-900 bg-slate-900 px-3.5 py-2 text-xs font-bold text-white shadow-2xs hover:bg-black cursor-pointer"><Truck size={14} /> Leverancier toevoegen</button>
-          <button onClick={() => { setSection('developer'); setModal('webhook'); }} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-800 hover:bg-slate-50 cursor-pointer"><Webhook size={14} /> Webhook maken</button>
+          <button onClick={() => { setSection('developer'); if (canUseFeature(FEATURE_KEYS.webhooksManage)) setModal('webhook'); }} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-800 hover:bg-slate-50 cursor-pointer"><Webhook size={14} /> Webhook maken</button>
         </div>
       </div>
 
@@ -673,6 +675,11 @@ export const IntegrationsSettings: React.FC = () => {
       )}
 
       {section === 'developer' && (
+        <FeatureGate
+          feature={FEATURE_KEYS.apiAccess}
+          title="REST API en webhooks zijn beschikbaar in Enterprise"
+          description="Uw bestaande configuratie blijft bewaard. Schakel tijdelijk naar Enterprise om deze ontwikkelaarsfuncties te testen."
+        >
         <div className="space-y-5">
           <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="flex items-center gap-2 text-base font-black"><Webhook size={18} className="text-slate-900" /> Uitgaande webhooks</h2><p className="mt-1 text-xs font-medium text-slate-500">Stuur gebeurtenissen realtime naar uw ERP, webshop, CRM of eigen backend.</p></div><button onClick={() => setModal('webhook')} className="flex items-center justify-center gap-2 rounded-xl border border-slate-900 bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-2xs hover:bg-black cursor-pointer"><Plus size={15} /> Webhook toevoegen</button></div>
@@ -694,6 +701,7 @@ export const IntegrationsSettings: React.FC = () => {
             {[{ icon: <Globe2 size={18} />, title: 'Basis-URL', value: '/api/v1', text: 'Versiebeheer voorkomt onverwachte breuken.' }, { icon: <ShieldCheck size={18} />, title: 'Authenticatie', value: 'Bearer token', text: 'Stuur de sleutel via de Authorization-header.' }, { icon: <BookOpen size={18} />, title: 'Documentatie', value: 'OpenAPI-ready', text: 'Resources voor producten, verkoop en klanten.' }].map((item) => <div key={item.title} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs"><div className="mb-3 inline-flex rounded-xl border border-slate-200 bg-slate-50 p-2 text-slate-900">{item.icon}</div><div className="text-[10px] font-black uppercase tracking-wide text-slate-400">{item.title}</div><div className="mt-1 text-sm font-black text-slate-900">{item.value}</div><p className="mt-1 text-[11px] font-medium leading-relaxed text-slate-500">{item.text}</p></div>)}
           </section>
         </div>
+        </FeatureGate>
       )}
 
       {section === 'activity' && (

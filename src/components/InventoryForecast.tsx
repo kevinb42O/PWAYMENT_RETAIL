@@ -28,6 +28,7 @@ import { formatEUR } from '../utils/money';
 import { buildPurchaseOrderDrafts } from '../utils/purchaseOrders';
 import { MISSING_SUPPLIER } from '../utils/retailActionEngine';
 import { PurchaseOrderWorkflow } from './PurchaseOrderWorkflow';
+import { canUseFeature, FEATURE_KEYS } from '../billing/entitlements';
 
 interface InventoryForecastProps {
   rows: ReorderActionItem[];
@@ -147,6 +148,10 @@ export const InventoryForecast = ({ rows, recommendations, products, onInventory
 
   const createDraftOrders = async () => {
     if (selectedRows.length === 0 || saving) return;
+    if (!canUseFeature(FEATURE_KEYS.purchaseOrdersCreate)) {
+      setFeedback('Nieuwe inkooporders zijn beschikbaar in Enterprise.');
+      return;
+    }
     setSaving(true);
     setFeedback(null);
     try {

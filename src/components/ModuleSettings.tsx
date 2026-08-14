@@ -12,11 +12,19 @@ import {
   ShoppingBag,
   Users,
   Wrench,
+  Lock,
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "../auth/useAuth";
 import type { ConfigurableModule } from "../onboarding/storeConfiguration";
 import { useStoreConfiguration } from "../store/useStoreConfiguration";
+import {
+  FEATURE_KEYS,
+  type FeatureKey,
+  isFeatureEnabledForSnapshot,
+  useEntitlements,
+} from "../billing/entitlements";
+import { useEntitlementClock } from "../billing/useEntitlementClock";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -79,6 +87,15 @@ const CORE_MODULES = [
   { label: "Historiek", Icon: History },
 ];
 
+const MODULE_ENTITLEMENTS: Record<ConfigurableModule, FeatureKey> = {
+  catalog: FEATURE_KEYS.integrations,
+  customers: FEATURE_KEYS.customerCrm,
+  service: FEATURE_KEYS.serviceOrders,
+  workforce: FEATURE_KEYS.workforce,
+  webshop: FEATURE_KEYS.webshopPublish,
+  insights: FEATURE_KEYS.insights,
+};
+
 export const ModuleSettings: React.FC = () => {
   const currentRole = useAuth((state) => state.currentRole);
   const currentStoreId = useAuth((state) => state.currentStoreId);
@@ -87,6 +104,8 @@ export const ModuleSettings: React.FC = () => {
   const saving = useStoreConfiguration((state) => state.saving);
   const storeError = useStoreConfiguration((state) => state.error);
   const setModuleEnabled = useStoreConfiguration((state) => state.setModuleEnabled);
+  const entitlementSnapshot = useEntitlements((state) => state.snapshot);
+  const { now } = useEntitlementClock();
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const latestRequest = useRef(0);
 
@@ -94,6 +113,7 @@ export const ModuleSettings: React.FC = () => {
 
   const toggle = (option: ModuleOption) => {
     if (currentRole !== "owner") return;
+    if (!isFeatureEnabledForSnapshot(entitlementSnapshot, MODULE_ENTITLEMENTS[option.key], now)) return;
     const request = ++latestRequest.current;
     setSaveState("saving");
     void setModuleEnabled(option.key, !modules[option.key], currentStoreId).then(
@@ -151,6 +171,7 @@ export const ModuleSettings: React.FC = () => {
       <div className="grid gap-3 md:grid-cols-2">
         {MODULE_OPTIONS.map((option) => {
           const enabled = modules[option.key];
+          const entitled = isFeatureEnabledForSnapshot(entitlementSnapshot, MODULE_ENTITLEMENTS[option.key], now);
           const { Icon } = option;
           return (
             <article
@@ -168,7 +189,7 @@ export const ModuleSettings: React.FC = () => {
                     <div>
                       <h3 className="font-extrabold text-slate-950">{option.title}</h3>
                       <p className={`mt-0.5 text-xs font-bold ${enabled ? "text-emerald-700" : "text-slate-400"}`}>
-                        {enabled ? "Actief in uw navigatie" : "Verborgen uit uw navigatie"}
+                        {!entitled ? "Niet inbegrepen in uw plan" : enabled ? "Actief in uw navigatie" : "Verborgen uit uw navigatie"}
                       </p>
                     </div>
                     <button
@@ -176,19 +197,21 @@ export const ModuleSettings: React.FC = () => {
                       role="switch"
                       aria-checked={enabled}
                       aria-label={`${option.title} ${enabled ? "uitschakelen" : "inschakelen"}`}
+                      disabled={!entitled}
                       onClick={() => toggle(option)}
                       className={`relative h-8 w-14 shrink-0 overflow-hidden rounded-full border transition-colors focus:outline-none focus:ring-4 focus:ring-sky-100 ${
-                        enabled ? "border-sky-300 bg-sky-200" : "border-slate-300 bg-slate-200"
+                        enabled && entitled ? "border-sky-300 bg-sky-200" : "border-slate-300 bg-slate-200"
                       }`}
                     >
                       <span
                         className={`absolute left-1 top-1 h-6 w-6 rounded-full bg-white shadow-sm ring-1 transition-transform duration-200 ${
-                          enabled ? "translate-x-6 ring-sky-300" : "translate-x-0 ring-slate-300"
+                          enabled && entitled ? "translate-x-6 ring-sky-300" : "translate-x-0 ring-slate-300"
                         }`}
                       />
                     </button>
                   </div>
                   <p className="mt-3 text-sm leading-6 text-slate-600">{option.description}</p>
+                  {!entitled && <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-extrabold text-slate-500"><Lock size={13} /> Bekijk Plan & Upgrades om deze module te testen.</p>}
                 </div>
               </div>
             </article>

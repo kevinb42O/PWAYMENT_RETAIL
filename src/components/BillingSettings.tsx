@@ -30,6 +30,7 @@ import {
   Eye,
   ShoppingBag,
   Globe,
+  Wrench,
 } from 'lucide-react';
 import {
   InvoiceData,
@@ -41,10 +42,10 @@ import { InvoicePreviewModal } from './InvoicePreviewModal';
 import {
   type PlanCode,
   planLabel,
-  trialDaysRemaining,
   useEntitlements,
 } from '../billing/entitlements';
-import { formatPlanMonthlyPrice } from '../billing/planCatalog';
+import { formatEuroCents, formatPlanMonthlyPrice, PLAN_COMPARISON_GROUPS } from '../billing/planCatalog';
+import { useEntitlementClock } from '../billing/useEntitlementClock';
 
 export type BillingSubTab = 'plan' | 'invoices' | 'payment' | 'addons';
 
@@ -67,12 +68,16 @@ export const BillingSettings: React.FC<BillingSettingsProps> = ({
   const [isUpgrading, setIsUpgrading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showMatrixTable, setShowMatrixTable] = useState(true);
+  const trialClock = useEntitlementClock();
 
   // Addons state
   const [terminalCount, setTerminalCount] = useState(1);
   const [webshopSyncActive, setWebshopSyncActive] = useState(false);
-  const [accountingSyncActive, setAccountingSyncActive] = useState(true);
-  const [biExportActive, setBiExportActive] = useState(false);
+  const [smsBundleCount, setSmsBundleCount] = useState(0);
+  const [hardwareQuoteActive, setHardwareQuoteActive] = useState(false);
+  const addOnMonthlyCents = Math.max(0, terminalCount - 1) * 2900
+    + (webshopSyncActive ? 1900 : 0)
+    + smsBundleCount * 1500;
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
@@ -151,7 +156,7 @@ export const BillingSettings: React.FC<BillingSettingsProps> = ({
         </div>
         <div className="font-bold text-slate-900">
           {snapshot?.status === 'trialing' ? (
-            <span className="text-sky-700 font-black">30 dagen gratis · nog {trialDaysRemaining(snapshot)} dagen</span>
+            <span className="text-sky-700 font-black">30 dagen gratis · {trialClock.label}</span>
           ) : (
             <>Facturatiestatus: <span className="text-emerald-600 font-black">{snapshot?.status === 'expired' ? 'Basis actief' : 'In orde'}</span></>
           )}
@@ -301,7 +306,7 @@ export const BillingSettings: React.FC<BillingSettingsProps> = ({
                     <span className="text-xs font-medium text-slate-500"> / maand</span>
                   </div>
                   <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed">
-                    Voor actieve boetieks, speciaalzaken en winkels met 1 tot 3 kassa-terminals.
+                    Voor actieve boetieks, speciaalzaken en servicewinkels die vanuit één locatie groeien.
                   </p>
                 </div>
 
@@ -312,7 +317,8 @@ export const BillingSettings: React.FC<BillingSettingsProps> = ({
                       <Printer size={15} className="text-slate-900" /> Kassa & Betaalterminals
                     </div>
                     <ul className="space-y-1.5 text-slate-800 font-semibold pl-5 list-disc">
-                      <li>Tot 3 Kassa-terminals inbegrepen</li>
+                      <li>1 Kassa-terminal inbegrepen; extra terminals als add-on</li>
+                      <li>Dual-screen klantendisplay inbegrepen</li>
                       <li>Geïntegreerde pinautomaten (Worldline, CCV, SumUp, Viva, Verifone)</li>
                       <li>Weegschaal & Automatisch bon snijden</li>
                     </ul>
@@ -326,6 +332,16 @@ export const BillingSettings: React.FC<BillingSettingsProps> = ({
                       <li>Onbeperkt aantal artikelen & varianten (maten/kleuren)</li>
                       <li>Barcode-etiketten afdrukken op Dymo & Zebra</li>
                       <li>Voorraadbeheer met min/max voorraadmeldingen</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <div className="font-bold text-slate-900 mb-1.5 flex items-center gap-1.5">
+                      <Wrench size={15} className="text-slate-900" /> ServiceDesk
+                    </div>
+                    <ul className="space-y-1.5 text-slate-800 font-semibold pl-5 list-disc">
+                      <li>Tot 50 actieve herstel- en servicedossiers</li>
+                      <li>Klantstatus via QR en e-mailflow</li>
                     </ul>
                   </div>
 
@@ -354,8 +370,6 @@ export const BillingSettings: React.FC<BillingSettingsProps> = ({
                       <Webhook size={15} className="text-slate-900" /> API & Boekhouding
                     </div>
                     <ul className="space-y-1.5 text-slate-800 font-semibold pl-5 list-disc">
-                      <li>Realtime uitgaande Webhooks</li>
-                      <li>REST API-toegang (5.000 verzoeken/dag)</li>
                       <li>Peppol e-facturatie & Exact Online koppeling</li>
                     </ul>
                   </div>
@@ -406,7 +420,7 @@ export const BillingSettings: React.FC<BillingSettingsProps> = ({
                       <Store size={15} className="text-slate-500" /> Multi-Store Management
                     </div>
                     <ul className="space-y-1.5 text-slate-600 font-medium pl-5 list-disc">
-                      <li>Onbeperkt aantal filialen & kassa-terminals</li>
+                      <li>Filialen & kassa-terminals volgens contract en add-ons</li>
                       <li>Interne voorraadoverdrachten tussen filialen</li>
                       <li>Filiaal-specifieke prijslijsten & acties</li>
                     </ul>
@@ -438,7 +452,7 @@ export const BillingSettings: React.FC<BillingSettingsProps> = ({
                       <Webhook size={15} className="text-slate-500" /> Maatwerk ERP Pipelines
                     </div>
                     <ul className="space-y-1.5 text-slate-600 font-medium pl-5 list-disc">
-                      <li>Onbeperkte REST API-capaciteit</li>
+                      <li>REST API & realtime webhooks volgens contractueel quotum</li>
                       <li>Maatwerk koppelingen naar SAP, Salesforce & Odoo</li>
                     </ul>
                   </div>
@@ -499,113 +513,45 @@ export const BillingSettings: React.FC<BillingSettingsProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700 font-semibold">
-                    {/* SECTION: KASSA & HARDWARE */}
-                    <tr className="bg-slate-50/70 font-black text-slate-900 text-[11px]">
-                      <td colSpan={4} className="py-2.5 px-4 uppercase tracking-wider">Kassa & Hardware Integratie</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2.5 px-4">Kassa-terminals</td>
-                      <td className="py-2.5 px-4 text-center">1 scherm</td>
-                      <td className="py-2.5 px-4 text-center bg-slate-50 font-bold text-slate-900">3 schermen inbegrepen</td>
-                      <td className="py-2.5 px-4 text-center text-emerald-600 font-bold">Onbeperkt</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2.5 px-4">Betaalterminals (Worldline, CCV, SumUp, Verifone)</td>
-                      <td className="py-2.5 px-4 text-center text-slate-400">—</td>
-                      <td className="py-2.5 px-4 text-center bg-slate-50 text-emerald-600 font-bold">Inbegrepen</td>
-                      <td className="py-2.5 px-4 text-center text-emerald-600 font-bold">Inbegrepen</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2.5 px-4">Weegschaal & Barcodescanner</td>
-                      <td className="py-2.5 px-4 text-center font-bold">Basisscanner</td>
-                      <td className="py-2.5 px-4 text-center bg-slate-50 text-emerald-600 font-bold">Geavanceerd + Weegschaal</td>
-                      <td className="py-2.5 px-4 text-center text-emerald-600 font-bold">Inbegrepen</td>
-                    </tr>
-
-                    {/* SECTION: CATALOGUS & STOCK */}
-                    <tr className="bg-slate-50/70 font-black text-slate-900 text-[11px]">
-                      <td colSpan={4} className="py-2.5 px-4 uppercase tracking-wider">Catalogus & Voorraadbeheer</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2.5 px-4">Maximaal aantal artikelen</td>
-                      <td className="py-2.5 px-4 text-center">250 producten</td>
-                      <td className="py-2.5 px-4 text-center bg-slate-50 text-emerald-600 font-bold">Onbeperkt</td>
-                      <td className="py-2.5 px-4 text-center text-emerald-600 font-bold">Onbeperkt</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2.5 px-4">Interne voorraadoverdrachten tussen filialen</td>
-                      <td className="py-2.5 px-4 text-center text-slate-400">—</td>
-                      <td className="py-2.5 px-4 text-center bg-slate-50 text-slate-400">—</td>
-                      <td className="py-2.5 px-4 text-center text-emerald-600 font-bold">Inbegrepen</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2.5 px-4">Barcode-etiketten afdrukken (Dymo/Zebra)</td>
-                      <td className="py-2.5 px-4 text-center text-slate-400">—</td>
-                      <td className="py-2.5 px-4 text-center bg-slate-50 text-emerald-600 font-bold">Inbegrepen</td>
-                      <td className="py-2.5 px-4 text-center text-emerald-600 font-bold">Inbegrepen</td>
-                    </tr>
-
-                    {/* SECTION: LOYALITEIT & RETENTIE */}
-                    <tr className="bg-slate-50/70 font-black text-slate-900 text-[11px]">
-                      <td colSpan={4} className="py-2.5 px-4 uppercase tracking-wider">Klanten & Spaarprogramma</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2.5 px-4">Klanten Spaarprogramma & VIP Tiers</td>
-                      <td className="py-2.5 px-4 text-center text-slate-400">—</td>
-                      <td className="py-2.5 px-4 text-center bg-slate-50 text-emerald-600 font-bold">Inbegrepen</td>
-                      <td className="py-2.5 px-4 text-center text-emerald-600 font-bold">Inbegrepen</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2.5 px-4">Cadeaubonnen Uitgifte & Saldo Check</td>
-                      <td className="py-2.5 px-4 text-center text-slate-400">—</td>
-                      <td className="py-2.5 px-4 text-center bg-slate-50 text-emerald-600 font-bold">Inbegrepen</td>
-                      <td className="py-2.5 px-4 text-center text-emerald-600 font-bold">Inbegrepen</td>
-                    </tr>
-
-                    {/* SECTION: API & INTEGRATIES */}
-                    <tr className="bg-slate-50/70 font-black text-slate-900 text-[11px]">
-                      <td colSpan={4} className="py-2.5 px-4 uppercase tracking-wider">Webshop, API & Integraties</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2.5 px-4 font-bold text-slate-900">Webshop Integratie & Live Storefront</td>
-                      <td className="py-2.5 px-4 text-center text-slate-400">—</td>
-                      <td className="py-2.5 px-4 text-center bg-slate-50 text-emerald-600 font-bold">Inbegrepen in Retail Pro</td>
-                      <td className="py-2.5 px-4 text-center text-emerald-600 font-bold">Inbegrepen (Multi-store)</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2.5 px-4">REST API & Webhooks</td>
-                      <td className="py-2.5 px-4 text-center text-slate-400">—</td>
-                      <td className="py-2.5 px-4 text-center bg-slate-50 text-slate-900 font-bold">5.000 verzoeken/dag</td>
-                      <td className="py-2.5 px-4 text-center text-emerald-600 font-bold">Onbeperkt</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2.5 px-4">Peppol e-facturatie & Exact Online</td>
-                      <td className="py-2.5 px-4 text-center text-slate-400">—</td>
-                      <td className="py-2.5 px-4 text-center bg-slate-50 text-emerald-600 font-bold">Inbegrepen</td>
-                      <td className="py-2.5 px-4 text-center text-emerald-600 font-bold">Inbegrepen</td>
-                    </tr>
-
-                    {/* SECTION: SUPPORT & SLA */}
-                    <tr className="bg-slate-50/70 font-black text-slate-900 text-[11px]">
-                      <td colSpan={4} className="py-2.5 px-4 uppercase tracking-wider">Ondersteuning & Garantieregeling</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2.5 px-4">Klantenondersteuning</td>
-                      <td className="py-2.5 px-4 text-center">E-mail ondersteuning</td>
-                      <td className="py-2.5 px-4 text-center bg-slate-50 font-bold text-slate-900">Prioriteit E-mail & Chat</td>
-                      <td className="py-2.5 px-4 text-center text-emerald-600 font-bold">24/7 Telefoon + Dedicated Manager</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2.5 px-4">Uptime SLA-garantie</td>
-                      <td className="py-2.5 px-4 text-center text-slate-400">—</td>
-                      <td className="py-2.5 px-4 text-center bg-slate-50 font-bold text-slate-900">99.5% Uptime</td>
-                      <td className="py-2.5 px-4 text-center text-emerald-600 font-bold">99.9% Uptime SLA</td>
-                    </tr>
+                    {PLAN_COMPARISON_GROUPS.map((group) => (
+                      <React.Fragment key={group.category}>
+                        <tr className="bg-slate-50/70 font-black text-slate-900 text-[11px]">
+                          <td colSpan={4} className="py-2.5 px-4 uppercase tracking-wider">{group.category}</td>
+                        </tr>
+                        {group.rows.map((row) => (
+                          <tr key={row.label}>
+                            <td className="py-2.5 px-4">{row.label}</td>
+                            <td className="py-2.5 px-4 text-center">{row.basic}</td>
+                            <td className="py-2.5 px-4 text-center bg-slate-50 font-bold text-slate-900">{row.pro}</td>
+                            <td className="py-2.5 px-4 text-center font-bold text-slate-900">{row.enterprise}</td>
+                          </tr>
+                        ))}
+                      </React.Fragment>
+                    ))}
                   </tbody>
                 </table>
               </div>
             )}
           </section>
+
+          {snapshot?.canSimulateBilling && (
+            <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-amber-950">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-xs font-black uppercase tracking-wider text-amber-700">Tijdelijke publieke testmodus</div>
+                  <h3 className="mt-1 text-sm font-black">Test ieder plan en ieder trialmoment zonder betaling</h3>
+                  <p className="mt-1 max-w-2xl text-xs font-medium leading-5 text-amber-800">Deze testmogelijkheid blijft voorlopig bewust beschikbaar voor iedere winkeleigenaar. Planwissels voeren geen betaling uit.</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {[30, 3, 1, 0].map((days) => (
+                    <button key={days} type="button" disabled={isUpgrading} onClick={() => void handleTrialSimulation(days)} className="rounded-xl border border-amber-300 bg-white px-3 py-2 text-xs font-black text-amber-900 hover:bg-amber-100 disabled:opacity-50">
+                      {days === 0 ? 'Trial verlopen' : `Nog ${days}d`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
         </div>
       )}
 
@@ -884,7 +830,7 @@ export const BillingSettings: React.FC<BillingSettingsProps> = ({
                 Kassa-terminal Licenties & Maatwerk Add-ons
               </h3>
               <p className="text-xs text-slate-500 font-medium mt-0.5">
-                Voeg extra schermen of integratiemodules toe aan uw bestaande licentie.
+                Stel een prijsindicatie samen. Er wordt niets geactiveerd en geen betaling uitgevoerd.
               </p>
             </div>
           </div>
@@ -895,7 +841,7 @@ export const BillingSettings: React.FC<BillingSettingsProps> = ({
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-xs font-bold text-slate-900">Extra kassa-terminals</div>
-                  <div className="text-[11px] text-slate-500">€ 29 / maand per extra kassa-scherm</div>
+                  <div className="text-[11px] text-slate-500">€ 29 / maand per extra POS-terminal; klantendisplays tellen niet mee</div>
                 </div>
                 <div className="flex items-center gap-2 bg-white border border-slate-300 rounded-xl p-1">
                   <button
@@ -929,45 +875,40 @@ export const BillingSettings: React.FC<BillingSettingsProps> = ({
                 checked={webshopSyncActive}
                 onChange={(e) => {
                   setWebshopSyncActive(e.target.checked);
-                  triggerToast(e.target.checked ? 'Webshop Sync module toegevoegd aan licentie.' : 'Webshop Sync module verwijderd.');
+                  triggerToast(e.target.checked ? 'Webshop Sync toegevoegd aan uw prijsindicatie.' : 'Webshop Sync uit uw prijsindicatie verwijderd.');
                 }}
                 className="h-5 w-5 rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
               />
             </div>
 
-            {/* Accounting Direct Connect */}
+            {/* SMS bundles */}
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between">
               <div>
-                <div className="text-xs font-bold text-slate-900">Automatische Boekhoudkoppeling</div>
-                <div className="text-[11px] text-slate-500">Exact Online / Octopus automatische Z-journaalpost (€ 15 / mnd)</div>
+                <div className="text-xs font-bold text-slate-900">ServiceDesk SMS-bundels</div>
+                <div className="text-[11px] text-slate-500">€ 15 per bundel van 200 berichten</div>
               </div>
-              <input
-                type="checkbox"
-                checked={accountingSyncActive}
-                onChange={(e) => {
-                  setAccountingSyncActive(e.target.checked);
-                  triggerToast(e.target.checked ? 'Boekhouding connector geactiveerd.' : 'Boekhouding connector gedeactiveerd.');
-                }}
-                className="h-5 w-5 rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
-              />
+              <input type="number" min="0" max="100" value={smsBundleCount} onChange={(event) => setSmsBundleCount(Math.max(0, Number(event.target.value) || 0))} className="w-20 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-black" />
             </div>
 
-            {/* Advanced BI Export */}
+            {/* Hardware quote */}
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between">
               <div>
-                <div className="text-xs font-bold text-slate-900">Geavanceerde Verkoopanalyse & Export</div>
-                <div className="text-[11px] text-slate-500">Ruwe data-exports voor PowerBI & Excel analytics (€ 25 / mnd)</div>
+                <div className="text-xs font-bold text-slate-900">Hardware & installatieofferte</div>
+                <div className="text-[11px] text-slate-500">Eenmalige richtprijs € 500–€ 1.500 per kassa</div>
               </div>
               <input
                 type="checkbox"
-                checked={biExportActive}
+                checked={hardwareQuoteActive}
                 onChange={(e) => {
-                  setBiExportActive(e.target.checked);
-                  triggerToast(e.target.checked ? 'Verkoopanalyse & Export module geactiveerd.' : 'Verkoopanalyse & Export module gedeactiveerd.');
+                  setHardwareQuoteActive(e.target.checked);
                 }}
                 className="h-5 w-5 rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
               />
             </div>
+          </div>
+          <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-950 p-5 text-white sm:flex-row sm:items-center sm:justify-between">
+            <div><div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Prijsindicatie add-ons</div><div className="mt-1 text-2xl font-black">{formatEuroCents(addOnMonthlyCents)} <span className="text-xs font-medium text-slate-400">/ maand excl. btw</span></div>{hardwareQuoteActive && <div className="mt-1 text-xs text-slate-300">+ hardware en installatie op offerte</div>}</div>
+            <button type="button" onClick={() => triggerToast('Testactivatie aangevraagd. Er werd niets geactiveerd of betaald.')} className="rounded-xl bg-white px-4 py-2.5 text-xs font-black text-slate-950">Vraag testactivatie aan</button>
           </div>
         </section>
       )}

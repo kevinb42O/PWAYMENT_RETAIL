@@ -3,6 +3,7 @@ import { db } from "../db/db";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import type { ServiceOrder, ServiceOrderEvent } from "../types";
 import type { Json } from "../types/database.generated";
+import { canUseFeature, FEATURE_KEYS } from "../billing/entitlements";
 
 export interface PublicServiceOrder {
   number: string;
@@ -65,6 +66,16 @@ export const persistServiceOrder = async (
   order: ServiceOrder,
   auditAction: "service_order.create" | "service_order.update" | "service_order.status",
 ): Promise<{ remote: boolean }> => {
+  if (auditAction === "service_order.create" && !canUseFeature(FEATURE_KEYS.serviceOrders)) {
+    throw new Error("entitlement:plan-required:service.orders");
+  }
+  if (
+    auditAction === "service_order.create" &&
+    order.attachments.length > 0 &&
+    !canUseFeature(FEATURE_KEYS.serviceAttachments)
+  ) {
+    throw new Error("entitlement:plan-required:service.attachments");
+  }
   await db.service_orders.put(order);
   try {
     globalThis.localStorage?.setItem(

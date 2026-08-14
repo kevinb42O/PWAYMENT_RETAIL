@@ -49,6 +49,7 @@ import type {
 } from "../types";
 import { formatEUR, parseDecimalToCents } from "../utils/money";
 import { Modal } from "./Modal";
+import { canUseFeature, FEATURE_KEYS } from "../billing/entitlements";
 
 const STATUS_META: Record<
   ServiceOrderSystemStatus,
@@ -301,6 +302,13 @@ export const ServiceDesk: React.FC = () => {
 
   const addFiles = async (fileList: FileList | null) => {
     if (!fileList) return;
+    if (!canUseFeature(FEATURE_KEYS.serviceAttachments)) {
+      setMessage({
+        tone: "warning",
+        text: "Foto-intake is beschikbaar in Enterprise. Het dossier kan zonder foto's worden aangemaakt.",
+      });
+      return;
+    }
     const files = Array.from(fileList).slice(0, Math.max(0, 5 - attachments.length));
     const accepted: ServiceOrderAttachment[] = [];
     for (const file of files) {

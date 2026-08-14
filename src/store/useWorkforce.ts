@@ -13,6 +13,7 @@ import type {
   WorkforceShift,
   WorkPattern,
 } from "../workforce/types";
+import { canUseFeature, FEATURE_KEYS } from "../billing/entitlements";
 
 type WorkforceRpcName =
   | "get_workforce_bootstrap"
@@ -43,7 +44,21 @@ type WorkforceRpcClient = {
   ) => Promise<{ data: Json | null; error: RpcError | null }>;
 };
 
-const workforceRpc = supabase as unknown as WorkforceRpcClient;
+const rawWorkforceRpc = supabase as unknown as WorkforceRpcClient;
+const workforceRpc: WorkforceRpcClient = {
+  rpc: async (fn, args) => {
+    if (!canUseFeature(FEATURE_KEYS.workforce)) {
+      return {
+        data: null,
+        error: {
+          code: "P0001",
+          message: "entitlement:plan-required:workforce.core",
+        },
+      };
+    }
+    return rawWorkforceRpc.rpc(fn, args);
+  },
+};
 const fixtureRuntime = import.meta.env.VITE_E2E_BUILD === "true";
 
 const emptyBootstrap = (): WorkforceBootstrap => ({

@@ -39,6 +39,8 @@ import {
   formatEuroCents,
   formatPlanMonthlyPrice,
   PLAN_CATALOG,
+  PLAN_COMPARISON_GROUPS,
+  planPriceCents,
   PUBLIC_PLAN_ORDER,
   yearlySavingsCents,
   yearlyTotalCents,
@@ -900,23 +902,50 @@ const SolutionPage = ({ data }: { data: { title: string; intro: string; label: s
 
 const PricingPage = () => {
   const [cycle, setCycle] = useState<BillingCycle>('yearly');
+  const [configPlan, setConfigPlan] = useState<'pro' | 'enterprise'>('pro');
+  const [extraTerminals, setExtraTerminals] = useState(0);
+  const [extraLocations, setExtraLocations] = useState(0);
+  const [smsBundles, setSmsBundles] = useState(0);
+  const configuredMonthlyCents = planPriceCents(configPlan, cycle)
+    + extraTerminals * 2900
+    + (configPlan === 'enterprise' ? extraLocations * 7900 : 0)
+    + smsBundles * 1500;
 
   return <>
     <AnimatedPageHero className="pw-pricing-hero" eyebrow="Prijzen" title={<>Alles wat je nodig hebt.<br />Precies op het juiste moment.</>} intro="PWAYMENT Basis blijft gratis. Probeer Retail Professional 30 dagen gratis en groei zonder van systeem te veranderen. Alle softwareprijzen zijn exclusief btw." actions={<BillingCycleControl cycle={cycle} onChange={setCycle} />} />
     <section className="pw-shell"><PlanCards cycle={cycle} context="pricing" /></section>
+    <motion.section className="pw-feature-matrix pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>
+      <motion.div variants={fadeUp} className="pw-section-heading">
+        <div><span className="pw-eyebrow">Volledige vergelijking</span><h2>Bekijk precies waar elke groeistap begint.</h2></div>
+      </motion.div>
+      <motion.div className="pw-feature-matrix-table-wrap" variants={fadeUp}>
+        <table>
+          <thead><tr><th>Functie</th><th>Basis</th><th>Professional</th><th>Enterprise</th></tr></thead>
+          <tbody>
+            {PLAN_COMPARISON_GROUPS.map(group => <React.Fragment key={group.category}>
+              <tr className="pw-feature-matrix-group"><th colSpan={4}>{group.category}</th></tr>
+              {group.rows.map(row => <tr key={row.label}><th>{row.label}</th><td>{row.basic}</td><td>{row.pro}</td><td>{row.enterprise}</td></tr>)}
+            </React.Fragment>)}
+          </tbody>
+        </table>
+      </motion.div>
+    </motion.section>
     <motion.section className="pw-current-source pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><motion.div variants={fadeUp}><span className="pw-eyebrow">Ook duidelijk in PWAYMENT</span><h2>Dezelfde plannen. Dezelfde bedragen. Overal herkenbaar.</h2><p>De planvergelijking in PWAYMENT sluit aan op dezelfde publieke pakketten en prijsstructuur.</p></motion.div><motion.div className="pw-current-source-window" variants={fadeUp} whileHover={{ y: -5 }}><div className="pw-window-bar"><i /><i /><i /><span>Instellingen · Plan &amp; Upgrades</span><b>Actueel</b></div><img src={plansImage} alt="Actuele planvergelijking in de lokale PWAYMENT applicatie" loading="lazy" /></motion.div></motion.section>
-    <motion.section className="pw-addons pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><motion.div variants={fadeUp}><span className="pw-eyebrow">Gerichte uitbreidingen</span><h2>Alleen extra betalen wanneer je extra verbindt.</h2></motion.div><motion.div variants={stagger}>{[['Extra kassascherm', '€ 29 / maand', 'Na de 3 inbegrepen schermen in Professional.'], ['External Webshop Sync', '€ 19 / maand', 'Shopify of WooCommerce in twee richtingen.'], ['Advanced Accounting', '€ 15 / maand', 'Automatische Z-journaalpost en Octopus.'], ['Advanced BI & Raw Export', '€ 25 / maand', 'Power BI en uitgebreide Excel-datasets.']].map(([name, price, body]) => <motion.article key={name} variants={fadeUp}><h3>{name}</h3><strong>{price}</strong><p>{body}</p></motion.article>)}</motion.div></motion.section>
-    <ComparisonTable />
+    <motion.section className="pw-addons pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><motion.div variants={fadeUp}><span className="pw-eyebrow">Gerichte uitbreidingen</span><h2>Alleen extra betalen wanneer je extra verbindt.</h2></motion.div><motion.div variants={stagger}>{[['Extra POS-terminal', '€ 29 / maand', 'Boven op de inbegrepen terminal; een klantendisplay telt niet mee.'], ['Extra Enterprise-filiaal', '€ 79 / maand', 'Voor centrale multi-storesturing en lokale voorraad.'], ['ServiceDesk SMS-bundel', '€ 15 / 200', 'Wordt pas actief na interne toekenning en een werkende provider.'], ['Hardware & installatie', 'Op offerte', 'Eenmalig, afhankelijk van printer, scanner, scherm en kassalade.']].map(([name, price, body]) => <motion.article key={name} variants={fadeUp}><h3>{name}</h3><strong>{price}</strong><p>{body}</p></motion.article>)}</motion.div></motion.section>
+    <motion.section className="pw-configurator pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>
+      <motion.div variants={fadeUp}><span className="pw-eyebrow">Prijsconfigurator</span><h2>Stel je testopstelling samen.</h2><p>Dit is een prijsindicatie. Er wordt nog geen betaling uitgevoerd.</p></motion.div>
+      <motion.div className="pw-configurator-panel" variants={fadeUp}>
+        <label>Plan<select value={configPlan} onChange={event => setConfigPlan(event.target.value as 'pro' | 'enterprise')}><option value="pro">Retail Professional</option><option value="enterprise">Enterprise & Ketens</option></select></label>
+        <label>Extra POS-terminals<input type="number" min="0" max="50" value={extraTerminals} onChange={event => setExtraTerminals(Math.max(0, Number(event.target.value) || 0))} /></label>
+        <label>Extra filialen<input type="number" min="0" max="50" disabled={configPlan !== 'enterprise'} value={configPlan === 'enterprise' ? extraLocations : 0} onChange={event => setExtraLocations(Math.max(0, Number(event.target.value) || 0))} /></label>
+        <label>SMS-bundels van 200<input type="number" min="0" max="100" value={smsBundles} onChange={event => setSmsBundles(Math.max(0, Number(event.target.value) || 0))} /></label>
+        <div className="pw-configurator-total"><span>Indicatie per maand, excl. btw</span><strong>{formatEuroCents(configuredMonthlyCents)}</strong><small>{cycle === 'yearly' ? 'met jaarlijkse softwareprijs' : 'maandelijks opzegbare softwareprijs'}</small></div>
+        <a className="pw-button pw-button-dark" href={`/demo?plan=${configPlan}&terminals=${extraTerminals + 1}&locations=${configPlan === 'enterprise' ? extraLocations + 1 : 1}&sms=${smsBundles}`}>Vraag testactivatie aan <ArrowRight size={16} /></a>
+      </motion.div>
+    </motion.section>
     <motion.section className="pw-faq pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><motion.div variants={fadeUp}><span className="pw-eyebrow">Prijsinformatie</span><h2>Geen verrassingen in de kleine letters.</h2></motion.div><motion.div className="pw-faq-list" variants={stagger}>{faqs.slice(3).map(([question, answer]) => <motion.details key={question} variants={fadeUp}><summary>{question}<span>+</span></summary><p>{answer}</p></motion.details>)}</motion.div></motion.section>
     <FinalCta />
   </>;
-};
-
-const ComparisonTable = () => {
-  const rows = [
-    ['Kassaschermen', '1', '3 inbegrepen', 'Onbeperkt'], ['Actieve producten', '250', 'Onbeperkt', 'Onbeperkt'], ['Betaalterminalkoppeling', '—', 'Volgens statusmatrix', 'Volgens statusmatrix'], ['Voorraad & besteladvies', 'Basis', 'Geavanceerd', 'Multi-location'], ['Klanten & loyaliteit', '—', 'Inbegrepen', 'Inbegrepen'], ['PWAYMENT Webshop', '—', 'Inbegrepen', 'Multi-storefront'], ['REST API & webhooks', '—', 'Pilot', 'Pilot / maatwerk'], ['Peppol & Exact', '—', 'Pilot', 'Pilot / maatwerk'], ['Auditgeschiedenis', '30 dagen', 'Uitgebreid', 'Onbeperkt'], ['Ondersteuning', 'E-mail', 'Prioriteit chat & e-mail', 'Volgens overeenkomst'], ['SLA', '—', 'Geen publieke SLA', 'Volgens overeenkomst'],
-  ];
-  return <motion.section className="pw-compare pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><motion.div className="pw-section-heading" variants={fadeUp}><div><span className="pw-eyebrow">Volledige vergelijking</span><h2>Zie exact wat inbegrepen is.</h2></div></motion.div><motion.div className="pw-table-wrap" variants={fadeUp}><table><thead><tr><th>Functie</th><th>Basis</th><th>Professional</th><th>Enterprise</th></tr></thead><tbody>{rows.map(row => <tr key={row[0]}>{row.map((cell, index) => <td key={cell} data-label={index === 0 ? undefined : ['Basis', 'Professional', 'Enterprise'][index - 1]}>{cell}</td>)}</tr>)}</tbody></table></motion.div></motion.section>;
 };
 
 const ContactPage = ({ demo }: { demo: boolean }) => {

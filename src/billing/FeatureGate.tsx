@@ -2,9 +2,11 @@ import React from "react";
 import { Lock, Sparkles } from "lucide-react";
 import {
   type FeatureKey,
+  isFeatureEnabledForSnapshot,
   planLabel,
   useEntitlements,
 } from "./entitlements";
+import { useEntitlementClock } from "./useEntitlementClock";
 
 interface FeatureGateProps {
   feature: FeatureKey;
@@ -24,7 +26,8 @@ export const FeatureGate: React.FC<FeatureGateProps> = ({
   onUpgrade,
 }) => {
   const snapshot = useEntitlements((state) => state.snapshot);
-  if (snapshot?.features[feature]) return <>{children}</>;
+  const { now } = useEntitlementClock();
+  if (isFeatureEnabledForSnapshot(snapshot, feature, now)) return <>{children}</>;
 
   return (
     <div
