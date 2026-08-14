@@ -463,15 +463,15 @@ export const Workforce: React.FC = () => {
 
         {(view === "week" || view === "day") && <section className="min-h-0 flex-1 overflow-auto bg-white" aria-label={`Rooster ${view === "week" ? formatWeekRange(weekStart) : formatLongDate(selectedDate)}`}>
           {workforce.rosterLoading && !workforce.rosterHydrated ? <div className="grid min-h-80 place-items-center text-sm font-semibold text-slate-500">Rooster laden…</div> : <div style={{ minWidth: 226 + dates.length * rosterCellWidth }}>
-            <div className="sticky top-0 z-30 grid border-b border-slate-200 bg-white" style={{ gridTemplateColumns: `226px repeat(${dates.length}, minmax(${rosterCellWidth}px, 1fr)) 108px` }}>
-              <div className="sticky left-0 z-40 border-r border-slate-200 bg-white px-4 py-3 text-[11px] font-bold uppercase tracking-wide text-slate-400">Medewerker</div>
+            <div className="sticky top-0 z-10 grid border-b border-slate-200 bg-white" style={{ gridTemplateColumns: `226px repeat(${dates.length}, minmax(${rosterCellWidth}px, 1fr)) 108px` }}>
+              <div className="sticky left-0 z-20 border-r border-slate-200 bg-white px-4 py-3 text-[11px] font-bold uppercase tracking-wide text-slate-400">Medewerker</div>
               {dates.map((date) => { const calendar = workforce.roster.calendarDays.find((day) => day.date === date); const today = date === todayIso(); return <div key={date} className={`border-r border-slate-200 px-3 py-2.5 text-center ${today ? "bg-cyan-50" : calendar ? "bg-slate-50" : "bg-white"}`}><p className={`text-xs font-bold capitalize ${today ? "text-cyan-800" : "text-slate-700"}`}>{formatShortDay(date)}</p>{calendar && <p className="mt-0.5 truncate text-[10px] text-slate-500" title={calendar.name}>{calendar.name}</p>}</div>; })}
               <div className="px-3 py-3 text-right text-[11px] font-bold uppercase tracking-wide text-slate-400">Week</div>
             </div>
             {employees.length === 0 ? <div className="grid min-h-64 place-items-center border-b border-slate-200 text-sm text-slate-500">Geen medewerkers voor deze selectie.</div> : employees.map((employee) => {
               const weekScheduled = scheduledMinutes(employee.id);
               return <div key={employee.id} className="grid min-h-[92px] border-b border-slate-200" style={{ gridTemplateColumns: `226px repeat(${dates.length}, minmax(${rosterCellWidth}px, 1fr)) 108px` }}>
-                <div className="sticky left-0 z-20 flex items-center gap-3 border-r border-slate-200 bg-white px-4 py-3">
+                <div className="sticky left-0 z-10 flex items-center gap-3 border-r border-slate-200 bg-white px-4 py-3">
                   <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-slate-200 bg-slate-50 text-xs font-bold text-slate-700">{employee.displayName.slice(0, 1)}</span>
                   <div className="min-w-0"><p className="truncate text-sm font-bold text-slate-900">{employee.displayName}</p><p className="mt-0.5 truncate text-[11px] text-slate-500">{employee.employeeNumber ?? employee.email ?? "Medewerker"}</p></div>
                 </div>
@@ -491,8 +491,8 @@ export const Workforce: React.FC = () => {
                 <div className="flex flex-col items-end justify-center px-3 py-2 text-right"><p className="text-xs font-bold tabular-nums text-slate-800">{formatMinutes(weekScheduled)}</p><p className={`mt-1 text-[10px] font-semibold ${weekScheduled > (employee.weeklyMinutes ?? 0) ? "text-amber-700" : "text-slate-400"}`}>van {formatMinutes(employee.weeklyMinutes ?? 0)}</p></div>
               </div>;
             })}
-            {canManage && <div className="sticky bottom-0 z-20 grid border-t border-slate-200 bg-slate-50" style={{ gridTemplateColumns: `226px repeat(${dates.length}, minmax(${rosterCellWidth}px, 1fr)) 108px` }}>
-              <div className="sticky left-0 z-30 border-r border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold text-slate-700">Bezetting</div>
+            {canManage && <div className="sticky bottom-0 z-10 grid border-t border-slate-200 bg-slate-50" style={{ gridTemplateColumns: `226px repeat(${dates.length}, minmax(${rosterCellWidth}px, 1fr)) 108px` }}>
+              <div className="sticky left-0 z-20 border-r border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold text-slate-700">Bezetting</div>
               {dates.map((date) => { const coverage = workforce.roster.coverage.find((day) => day.date === date); return <div key={date} className="border-r border-slate-200 px-3 py-2.5 text-center"><p className={`text-xs font-bold ${coverage?.risk === "red" ? "text-rose-700" : coverage?.risk === "amber" ? "text-amber-700" : "text-emerald-700"}`}>{coverage ? `${coverage.scheduled}/${coverage.minimum}` : "—"}</p><p className="mt-0.5 truncate text-[10px] text-slate-500">{coverage?.missingCompetencies.length ? `${coverage.missingCompetencies.length} competentie mist` : coverage?.risk === "red" ? "Onder minimum" : "Dekking ok"}</p></div>; })}
               <div className="px-3 py-3 text-right text-[10px] font-semibold text-slate-500">{roster?.status === "published" ? "Gepubliceerd" : "Concept"}</div>
             </div>}

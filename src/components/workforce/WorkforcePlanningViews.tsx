@@ -283,13 +283,13 @@ export const MonthlyRosterGrid = ({
   return (
     <section className="min-h-0 flex-1 overflow-auto bg-white" aria-label="Maandrooster">
       <div style={{ minWidth: 226 + dates.length * dayWidth + 96 }}>
-        <div className="sticky top-0 z-30 grid border-b border-slate-200 bg-white" style={{ gridTemplateColumns: `226px repeat(${dates.length}, ${dayWidth}px) 96px` }}>
-          <div className="sticky left-0 z-40 border-r border-slate-200 bg-white px-4 py-3 text-[11px] font-bold uppercase tracking-wide text-slate-400">Medewerker</div>
+        <div className="sticky top-0 z-10 grid border-b border-slate-200 bg-white" style={{ gridTemplateColumns: `226px repeat(${dates.length}, ${dayWidth}px) 96px` }}>
+          <div className="sticky left-0 z-20 border-r border-slate-200 bg-white px-4 py-3 text-[11px] font-bold uppercase tracking-wide text-slate-400">Medewerker</div>
           {dates.map((date) => <div key={date} className={`border-r border-slate-100 py-2 text-center ${date === todayIso() ? "bg-cyan-50" : isoWeekday(date) >= 6 ? "bg-slate-50" : "bg-white"}`}><p className="text-[9px] font-bold uppercase text-slate-400">{weekLetters[isoWeekday(date) - 1]}</p><p className={`mt-0.5 text-[11px] font-bold ${date === todayIso() ? "text-cyan-800" : "text-slate-700"}`}>{Number(date.slice(-2))}</p></div>)}
           <div className="px-3 py-3 text-right text-[11px] font-bold uppercase tracking-wide text-slate-400">Maand</div>
         </div>
         {employees.map((employee) => <div key={employee.id} className="grid border-b border-slate-100" style={{ gridTemplateColumns: `226px repeat(${dates.length}, ${dayWidth}px) 96px` }}>
-          <div className="sticky left-0 z-20 flex min-w-0 items-center gap-3 border-r border-slate-200 bg-white px-4 py-2.5">
+          <div className="sticky left-0 z-10 flex min-w-0 items-center gap-3 border-r border-slate-200 bg-white px-4 py-2.5">
             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-slate-200 bg-slate-50 text-xs font-bold text-slate-700">{employee.displayName.slice(0, 1)}</span>
             <div className="min-w-0"><p className="truncate text-sm font-bold text-slate-900">{employee.displayName}</p><p className="truncate text-[10px] text-slate-500">{employee.employeeNumber ?? employee.email ?? "Medewerker"}</p></div>
           </div>
@@ -303,8 +303,8 @@ export const MonthlyRosterGrid = ({
           })}
           <div className="flex items-center justify-end px-3 text-xs font-bold tabular-nums text-slate-700">{formatMinutes(minutesFor(employee))}</div>
         </div>)}
-        {canManage && <div className="sticky bottom-0 z-20 grid border-t border-slate-200 bg-slate-50" style={{ gridTemplateColumns: `226px repeat(${dates.length}, ${dayWidth}px) 96px` }}>
-          <div className="sticky left-0 z-30 border-r border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold text-slate-700">Bezetting</div>
+        {canManage && <div className="sticky bottom-0 z-10 grid border-t border-slate-200 bg-slate-50" style={{ gridTemplateColumns: `226px repeat(${dates.length}, ${dayWidth}px) 96px` }}>
+          <div className="sticky left-0 z-20 border-r border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold text-slate-700">Bezetting</div>
           {dates.map((date) => {
             const day = coverage.find((item) => item.date === date);
             return <div key={date} title={day?.missingCompetencies.length ? `Ontbreekt: ${day.missingCompetencies.join(", ")}` : day ? `${day.scheduled} van minimaal ${day.minimum}` : "Geen regel"} className="grid place-items-center border-r border-slate-100 py-2"><span className={`h-2 w-2 rounded-full ${day?.risk === "red" ? "bg-rose-500" : day?.risk === "amber" ? "bg-amber-500" : "bg-emerald-500"}`} /><span className="mt-1 text-[9px] font-semibold tabular-nums text-slate-500">{day ? `${day.scheduled}/${day.minimum}` : "—"}</span></div>;

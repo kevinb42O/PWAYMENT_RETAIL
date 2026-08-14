@@ -478,7 +478,7 @@ export const Layout: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen w-full bg-slate-100 overflow-hidden font-sans text-slate-900 selection:bg-sky-500/20">
-      <header className="pos-topbar flex h-16 items-center justify-between px-3 sm:px-7 print:hidden shrink-0 gap-2 sm:gap-4 z-30">
+      <header className="pos-topbar relative flex h-16 items-center justify-between px-3 sm:px-7 print:hidden shrink-0 gap-2 sm:gap-4 z-50">
         {/* Zone A: Official Crisp Brand Logo */}
         <div
           className="flex items-center select-none shrink-0"
@@ -540,7 +540,7 @@ export const Layout: React.FC = () => {
             <ChevronDown size={14} className={`shrink-0 transition-transform ${isNavDropdownOpen ? "rotate-180" : ""}`} />
           </button>
           {isNavDropdownOpen && (
-            <div className="absolute left-1/2 top-full z-50 mt-2 w-64 -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl" role="menu">
+            <div className="absolute left-1/2 top-full z-[60] mt-2 w-64 -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl" role="menu">
               {navigationItems.map((item) => {
                 const active = isNavigationItemActive(item);
                 return (
@@ -548,12 +548,14 @@ export const Layout: React.FC = () => {
                     key={`${item.view}-${item.profileTab ?? "main"}-mobile`}
                     type="button"
                     role="menuitem"
-                    onClick={() => openNavigationItem(item)}
-                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-bold transition-colors ${active ? "bg-sky-50 text-sky-800" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"}`}
+                    onClick={() => {
+                      setIsNavDropdownOpen(false);
+                      openNavigationItem(item);
+                    }}
+                    className={`flex w-full items-center gap-2.5 px-3 py-2 text-xs font-bold transition-colors ${active ? "bg-sky-50 text-sky-800" : "text-slate-700 hover:bg-slate-50"}`}
                   >
-                    <item.Icon size={17} className={active ? "text-sky-600" : "text-slate-400"} />
+                    <item.Icon size={15} />
                     <span>{item.label}</span>
-                    {active && <span className="ml-auto h-2 w-2 rounded-full bg-sky-500" />}
                   </button>
                 );
               })}
@@ -603,7 +605,7 @@ export const Layout: React.FC = () => {
             <div
               role="menu"
               aria-label="Gebruiker en apparaat"
-              className="absolute right-0 top-full mt-2 w-64 rounded-2xl border border-slate-200/90 bg-white p-2 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150"
+              className="absolute right-0 top-full mt-2 w-64 rounded-2xl border border-slate-200/90 bg-white p-2 shadow-2xl z-[60] animate-in fade-in zoom-in-95 duration-150"
             >
               {/* Profile Card Header inside Dropdown */}
               <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-100 rounded-xl mb-1.5">
@@ -751,188 +753,190 @@ export const Layout: React.FC = () => {
         </div>
       )}
 
-      <React.Suspense fallback={<ViewLoading />}>
-        {mainView === "z-report" && <ZReportView />}
-        {mainView === "audit-log" && (
-          <FeatureGate
-            feature={FEATURE_KEYS.auditViewer}
-            title="Het volledige auditlogboek is beschikbaar in Enterprise"
-            description="Auditregistratie blijft altijd actief. Enterprise ontgrendelt de volledige viewer en export."
-            onUpgrade={() => openProfile("billing")}
-          >
-            <AuditLog />
-          </FeatureGate>
-        )}
-        {mainView === "customers" && (
-          <FeatureGate
-            feature={FEATURE_KEYS.customerCrm}
-            title="Klantenbeheer is beschikbaar in Retail Professional"
-            onUpgrade={() => openProfile("billing")}
-          >
-            <Customers />
-          </FeatureGate>
-        )}
-        {mainView === "service" && (
-          <FeatureGate
-            feature={FEATURE_KEYS.serviceOrders}
-            title="ServiceDesk is beschikbaar in Retail Professional"
-            description="Herstelgegevens blijven bewaard. Retail Professional ontgrendelt intake, opvolging en klanttracking."
-            onUpgrade={() => openProfile("billing")}
-          >
-            <ServiceDesk />
-          </FeatureGate>
-        )}
-        {mainView === "workforce" && (
-          <FeatureGate
-            feature={FEATURE_KEYS.workforce}
-            title="Personeel en verlof is niet actief in dit abonnement"
-            description="Werkuren, verlofsaldi en aanvragen blijven veilig bewaard. Pas uw abonnement aan om deze module opnieuw te openen."
-            onUpgrade={() => openProfile("billing")}
-          >
-            <Workforce />
-          </FeatureGate>
-        )}
-        {mainView === "integration-hub" &&
-          (currentRole === "owner" || currentRole === "manager" ? (
+      <main className="flex-1 min-h-0 relative z-0 flex flex-col overflow-hidden">
+        <React.Suspense fallback={<ViewLoading />}>
+          {mainView === "z-report" && <ZReportView />}
+          {mainView === "audit-log" && (
             <FeatureGate
-              feature={FEATURE_KEYS.integrations}
-              title="Integration Hub is beschikbaar in Retail Professional"
+              feature={FEATURE_KEYS.auditViewer}
+              title="Het volledige auditlogboek is beschikbaar in Enterprise"
+              description="Auditregistratie blijft altijd actief. Enterprise ontgrendelt de volledige viewer en export."
               onUpgrade={() => openProfile("billing")}
             >
-              <IntegrationHub />
+              <AuditLog />
             </FeatureGate>
-          ) : (
-            <div className="flex-1 flex items-center justify-center text-slate-500 font-medium">
-              Onvoldoende rechten.
-            </div>
-          ))}
-        {mainView === "insights" && (
-          <FeatureGate
-            feature={FEATURE_KEYS.insights}
-            title="Retail intelligence is beschikbaar in Retail Professional"
-            description="Uw verkoop- en voorraaddata blijft veilig bewaard. Upgrade om prognoses, marges, klantinzichten en actieadviezen opnieuw te openen."
-            onUpgrade={() => openProfile("billing")}
-          >
-            <Insights />
-          </FeatureGate>
-        )}
-        {(mainView === "profile" || mainView === "admin") &&
-          (currentRole === "owner" || currentRole === "manager" ? (
-            <ProfileView
-              initialTab={profileInitialTarget.tab}
-              initialTabRequestKey={profileInitialTarget.requestKey}
-            />
-          ) : (
-            <div className="flex-1 flex items-center justify-center text-slate-500 font-medium">
-              Onvoldoende rechten.
-            </div>
-          ))}
-      </React.Suspense>
-
-      {mainView === "pos" && (
-        <div className="pos-workspace flex flex-col flex-1 overflow-hidden">
-          {/* Ruime, Ergonomische Barcode Command & Search Bar in POS-Modus */}
-          <div className="pos-command-bar px-4 sm:px-6 py-2.5 print:hidden shrink-0">
-            <div className="flex items-center">
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  submitProductQuery();
-                }}
-                className="flex-1 flex items-center gap-2.5"
+          )}
+          {mainView === "customers" && (
+            <FeatureGate
+              feature={FEATURE_KEYS.customerCrm}
+              title="Klantenbeheer is beschikbaar in Retail Professional"
+              onUpgrade={() => openProfile("billing")}
+            >
+              <Customers />
+            </FeatureGate>
+          )}
+          {mainView === "service" && (
+            <FeatureGate
+              feature={FEATURE_KEYS.serviceOrders}
+              title="ServiceDesk is beschikbaar in Retail Professional"
+              description="Herstelgegevens blijven bewaard. Retail Professional ontgrendelt intake, opvolging en klanttracking."
+              onUpgrade={() => openProfile("billing")}
+            >
+              <ServiceDesk />
+            </FeatureGate>
+          )}
+          {mainView === "workforce" && (
+            <FeatureGate
+              feature={FEATURE_KEYS.workforce}
+              title="Personeel en verlof is niet actief in dit abonnement"
+              description="Werkuren, verlofsaldi en aanvragen blijven veilig bewaard. Pas uw abonnement aan om deze module opnieuw te openen."
+              onUpgrade={() => openProfile("billing")}
+            >
+              <Workforce />
+            </FeatureGate>
+          )}
+          {mainView === "integration-hub" &&
+            (currentRole === "owner" || currentRole === "manager" ? (
+              <FeatureGate
+                feature={FEATURE_KEYS.integrations}
+                title="Integration Hub is beschikbaar in Retail Professional"
+                onUpgrade={() => openProfile("billing")}
               >
-                <div className="relative flex-1">
-                  <ScanLine
-                    size={20}
-                    className="pos-command-icon absolute left-4 top-1/2 -translate-y-1/2"
-                  />
-                  <input
-                    ref={scanInputRef}
-                    type="search"
-                    value={productQuery}
-                    onChange={(event) => setProductQuery(event.target.value)}
-                    placeholder="Scan barcode of zoek product op naam, SKU, categorie..."
-                    aria-label="Scan barcode of zoek product"
-                    className="pos-command-input w-full rounded-xl border pl-12 pr-24 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none font-semibold transition-all"
-                  />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-                    <kbd className="hidden sm:inline-flex items-center px-2 py-0.5 text-[10px] font-bold text-slate-600 bg-slate-100 border border-slate-200 rounded-md shadow-sm">
-                      ⌘K
-                    </kbd>
+                <IntegrationHub />
+              </FeatureGate>
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-slate-500 font-medium">
+                Onvoldoende rechten.
+              </div>
+            ))}
+          {mainView === "insights" && (
+            <FeatureGate
+              feature={FEATURE_KEYS.insights}
+              title="Retail intelligence is beschikbaar in Retail Professional"
+              description="Uw verkoop- en voorraaddata blijft veilig bewaard. Upgrade om prognoses, marges, klantinzichten en actieadviezen opnieuw te openen."
+              onUpgrade={() => openProfile("billing")}
+            >
+              <Insights />
+            </FeatureGate>
+          )}
+          {(mainView === "profile" || mainView === "admin") &&
+            (currentRole === "owner" || currentRole === "manager" ? (
+              <ProfileView
+                initialTab={profileInitialTarget.tab}
+                initialTabRequestKey={profileInitialTarget.requestKey}
+              />
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-slate-500 font-medium">
+                Onvoldoende rechten.
+              </div>
+            ))}
+        </React.Suspense>
+
+        {mainView === "pos" && (
+          <div className="pos-workspace flex flex-col flex-1 overflow-hidden">
+            {/* Ruime, Ergonomische Barcode Command & Search Bar in POS-Modus */}
+            <div className="pos-command-bar px-4 sm:px-6 py-2.5 print:hidden shrink-0">
+              <div className="flex items-center">
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    submitProductQuery();
+                  }}
+                  className="flex-1 flex items-center gap-2.5"
+                >
+                  <div className="relative flex-1">
+                    <ScanLine
+                      size={20}
+                      className="pos-command-icon absolute left-4 top-1/2 -translate-y-1/2"
+                    />
+                    <input
+                      ref={scanInputRef}
+                      type="search"
+                      value={productQuery}
+                      onChange={(event) => setProductQuery(event.target.value)}
+                      placeholder="Scan barcode of zoek product op naam, SKU, categorie..."
+                      aria-label="Scan barcode of zoek product"
+                      className="pos-command-input w-full rounded-xl border pl-12 pr-24 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none font-semibold transition-all"
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                      <kbd className="hidden sm:inline-flex items-center px-2 py-0.5 text-[10px] font-bold text-slate-600 bg-slate-100 border border-slate-200 rounded-md shadow-sm">
+                        ⌘K
+                      </kbd>
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    aria-label="Product zoeken"
+                    className="pos-search-submit px-4 sm:px-5 py-2.5 text-white font-bold text-sm rounded-xl transition-colors whitespace-nowrap flex items-center gap-2"
+                  >
+                    <Search size={16} />
+                    <span className="hidden sm:inline">Zoek</span>
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+              {!isDesktop ? (
+                <>
+                  <div className="flex-1 overflow-hidden">
+                    {mobileView === "menu" && (
+                      <Menu
+                        query={productQuery}
+                        onQueryChange={setProductQuery}
+                      />
+                    )}
+                    {mobileView === "cart" && <Cart />}
+                  </div>
+
+                  <div className="flex bg-white border-t border-slate-200 pb-safe print:hidden shadow-lg">
+                    <button
+                      onClick={() => setMobileView("menu")}
+                      className={`flex-1 py-3 flex flex-col items-center gap-1 ${
+                        mobileView === "menu"
+                          ? "text-sky-600 font-bold"
+                          : "text-slate-400"
+                      }`}
+                    >
+                      <ScanLine size={20} />
+                      <span className="text-[10px] uppercase tracking-wider">
+                        Catalogus
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setMobileView("cart")}
+                      className={`flex-1 py-3 flex flex-col items-center gap-1 relative ${
+                        mobileView === "cart"
+                          ? "text-sky-600 font-bold"
+                          : "text-slate-400"
+                      }`}
+                    >
+                      <ShoppingCart size={20} />
+                      <span className="text-[10px] uppercase tracking-wider">
+                        Kassa
+                      </span>
+                      {cartCount > 0 && (
+                        <span className="absolute top-2 right-1/4 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                          {cartCount}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex min-w-0 w-full h-full">
+                  <div className="min-w-0 flex-1 h-full border-r border-slate-200">
+                    <Menu query={productQuery} onQueryChange={setProductQuery} />
+                  </div>
+                  <div className="w-[32%] lg:w-[28%] shrink-0 h-full">
+                    <Cart />
                   </div>
                 </div>
-                <button
-                  type="submit"
-                  aria-label="Product zoeken"
-                  className="pos-search-submit px-4 sm:px-5 py-2.5 text-white font-bold text-sm rounded-xl transition-colors whitespace-nowrap flex items-center gap-2"
-                >
-                  <Search size={16} />
-                  <span className="hidden sm:inline">Zoek</span>
-                </button>
-              </form>
+              )}
             </div>
           </div>
-
-          <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
-            {!isDesktop ? (
-              <>
-                <div className="flex-1 overflow-hidden">
-                  {mobileView === "menu" && (
-                    <Menu
-                      query={productQuery}
-                      onQueryChange={setProductQuery}
-                    />
-                  )}
-                  {mobileView === "cart" && <Cart />}
-                </div>
-
-                <div className="flex bg-white border-t border-slate-200 pb-safe print:hidden shadow-lg">
-                  <button
-                    onClick={() => setMobileView("menu")}
-                    className={`flex-1 py-3 flex flex-col items-center gap-1 ${
-                      mobileView === "menu"
-                        ? "text-sky-600 font-bold"
-                        : "text-slate-400"
-                    }`}
-                  >
-                    <ScanLine size={20} />
-                    <span className="text-[10px] uppercase tracking-wider">
-                      Catalogus
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => setMobileView("cart")}
-                    className={`flex-1 py-3 flex flex-col items-center gap-1 relative ${
-                      mobileView === "cart"
-                        ? "text-sky-600 font-bold"
-                        : "text-slate-400"
-                    }`}
-                  >
-                    <ShoppingCart size={20} />
-                    <span className="text-[10px] uppercase tracking-wider">
-                      Kassa
-                    </span>
-                    {cartCount > 0 && (
-                      <span className="absolute top-2 right-1/4 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                        {cartCount}
-                      </span>
-                    )}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div className="flex min-w-0 w-full h-full">
-                <div className="min-w-0 flex-1 h-full border-r border-slate-200">
-                  <Menu query={productQuery} onQueryChange={setProductQuery} />
-                </div>
-                <div className="w-[32%] lg:w-[28%] shrink-0 h-full">
-                  <Cart />
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+        )}
+      </main>
     </div>
   );
 };
