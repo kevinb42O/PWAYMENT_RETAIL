@@ -157,8 +157,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     role: 'cashier' as Role,
     jobTitle: '',
     pin: '',
+    weeklyHours: '38',
+    weekdays: [1, 2, 3, 4, 5] as number[],
+    startTime: '08:30',
+    endTime: '17:00',
+    breakMinutes: '54',
   });
   const [teamError, setTeamError] = useState<string | null>(null);
+
 
   // DEFAULT TAB IS BILLING & ABONNEMENTEN (TOP ITEM)
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(() => {
@@ -1391,7 +1397,18 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 type="button"
                 onClick={() => {
                   setEditingTeamUser(null);
-                  setTeamForm({ name: '', email: '', role: 'cashier', jobTitle: '', pin: '' });
+                  setTeamForm({
+                    name: '',
+                    email: '',
+                    role: 'cashier',
+                    jobTitle: '',
+                    pin: '',
+                    weeklyHours: '38',
+                    weekdays: [1, 2, 3, 4, 5],
+                    startTime: '08:30',
+                    endTime: '17:00',
+                    breakMinutes: '54',
+                  });
                   setTeamError(null);
                   setShowTeamModal(true);
                 }}
@@ -1408,6 +1425,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   <tr className="border-b border-slate-100 text-slate-400 text-[10px] uppercase tracking-wider">
                     <th className="py-3 px-3">Medewerker & Functie</th>
                     <th className="py-3 px-3">E-mail</th>
+                    <th className="py-3 px-3">Contract & Rooster</th>
                     <th className="py-3 px-3">Systeemrol</th>
                     <th className="py-3 px-3">PIN Status</th>
                     <th className="py-3 px-3 text-right">Acties</th>
@@ -1416,6 +1434,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 <tbody className="divide-y divide-slate-100 text-slate-700">
                   {teamUsers.map((user) => {
                     const isSelf = user.id === currentUserId;
+                    const wfEmp = workforceTeam.find((e) => e.id === user.id);
+                    const userWeeklyHours = wfEmp?.weeklyMinutes ? `${Math.round(wfEmp.weeklyMinutes / 60)}u/week` : '38u/week';
                     return (
                       <tr key={user.id} className="hover:bg-slate-50/60 transition-colors">
                         <td className="py-3.5 px-3 font-bold text-slate-900 flex items-center gap-2.5">
@@ -1440,6 +1460,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                         </td>
                         <td className="py-3.5 px-3 text-slate-500">{user.email || '-'}</td>
                         <td className="py-3.5 px-3">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                            <Clock size={12} className="text-slate-500" />
+                            {userWeeklyHours}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-3">
                           <span
                             className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide border ${
                               user.role === 'owner'
@@ -1463,6 +1489,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                             <button
                               type="button"
                               onClick={() => {
+                                const matchedWf = useWorkforce.getState().team.find((e) => e.id === user.id);
+                                const patterns = useWorkforce.getState().roster.patterns.filter((p) => p.employeeId === user.id && p.scheduledMinutes > 0);
+                                const firstP = patterns[0];
                                 setEditingTeamUser(user);
                                 setTeamForm({
                                   name: user.name,
@@ -1470,6 +1499,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                                   role: user.role,
                                   jobTitle: user.jobTitle || '',
                                   pin: '',
+                                  weeklyHours: matchedWf?.weeklyMinutes ? String(Math.round(matchedWf.weeklyMinutes / 60)) : '38',
+                                  weekdays: patterns.length > 0 ? patterns.map((p) => p.weekday).sort() : [1, 2, 3, 4, 5],
+                                  startTime: firstP?.startTime || '08:30',
+                                  endTime: firstP?.endTime || '17:00',
+                                  breakMinutes: String(firstP?.breakMinutes ?? 54),
                                 });
                                 setTeamError(null);
                                 setShowTeamModal(true);
@@ -1490,9 +1524,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                                     roster: {
                                       ...state.roster,
                                       employees: state.roster.employees.filter((e) => e.id !== user.id),
+                                      patterns: state.roster.patterns.filter((p) => p.employeeId !== user.id),
                                     },
                                   }));
-                                  setSavedToast(`Medewerker ${user.name} verwijderd.`);
+                                  setSavedToast(`Medewerker "${user.name}" verwijderd.`);
                                 }}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
                                 title="Verwijderen"
@@ -1514,9 +1549,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               open={showTeamModal}
               onClose={() => setShowTeamModal(false)}
               title={editingTeamUser ? 'Medewerker bewerken' : 'Nieuwe medewerker toevoegen'}
-              subtitle="Koppel een kassamedewerker aan uw kassa met eigen rol, functie en snel-PIN"
+              subtitle="Koppel een medewerker aan uw kassa met contracturen, werkrooster en snel-PIN"
               icon={<UserPlus size={18} className="text-sky-600" />}
-              size="md"
+              size="lg"
             >
               <form
                 onSubmit={async (e) => {
@@ -1538,9 +1573,16 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     return;
                   }
 
+                  if (teamForm.weekdays.length === 0) {
+                    setTeamError('Selecteer minstens één werkdag voor het werkrooster.');
+                    return;
+                  }
+
                   try {
                     const pinHash = teamForm.pin ? await hashCredential(teamForm.pin, 'pin') : editingTeamUser?.pinHash || '';
                     const activeStoreId = currentStoreId || (useWorkforce.getState().storeId || 'fixture-store');
+                    const weeklyMinutes = Math.round(Number(teamForm.weeklyHours.replace(',', '.')) * 60) || 2280;
+                    const targetId = editingTeamUser ? editingTeamUser.id : `usr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
                     if (editingTeamUser) {
                       await db.users.update(editingTeamUser.id, {
@@ -1550,17 +1592,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                         jobTitle: teamForm.jobTitle.trim() || undefined,
                         ...(teamForm.pin ? { pinHash } : {}),
                       });
-                      await useWorkforce.getState().saveEmployee(activeStoreId, {
-                        id: editingTeamUser.id,
-                        displayName: trimmedName,
-                        email: teamForm.email.trim() || undefined,
-                        weeklyMinutes: 2280,
-                      });
-                      setSavedToast(`Medewerker ${trimmedName} bijgewerkt.`);
                     } else {
-                      const newId = `usr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
                       await db.users.put({
-                        id: newId,
+                        id: targetId,
                         name: trimmedName,
                         email: teamForm.email.trim() || undefined,
                         role: teamForm.role,
@@ -1568,14 +1602,37 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                         pinHash,
                         createdAt: new Date().toISOString(),
                       });
-                      await useWorkforce.getState().saveEmployee(activeStoreId, {
-                        id: newId,
-                        displayName: trimmedName,
-                        email: teamForm.email.trim() || undefined,
-                        weeklyMinutes: 2280,
-                      });
-                      setSavedToast(`Medewerker ${trimmedName} toegevoegd.`);
                     }
+
+                    // Save to workforce employees & automatic leave balances
+                    await useWorkforce.getState().saveEmployee(activeStoreId, {
+                      id: targetId,
+                      displayName: trimmedName,
+                      email: teamForm.email.trim() || undefined,
+                      weeklyMinutes,
+                      initialSchedule: {
+                        weekdays: teamForm.weekdays,
+                        startTime: teamForm.startTime,
+                        endTime: teamForm.endTime,
+                        breakMinutes: Number(teamForm.breakMinutes) || 0,
+                        roleLabel: teamForm.jobTitle.trim() || 'Verkoop',
+                        locationLabel: 'Winkelvloer',
+                      },
+                    });
+
+                    // Save the active work pattern
+                    await useWorkforce.getState().savePattern(activeStoreId, {
+                      employeeId: targetId,
+                      weekdays: teamForm.weekdays,
+                      startTime: teamForm.startTime,
+                      endTime: teamForm.endTime,
+                      breakMinutes: Number(teamForm.breakMinutes) || 0,
+                      roleLabel: teamForm.jobTitle.trim() || 'Verkoop',
+                      locationLabel: 'Winkelvloer',
+                      effectiveFrom: new Date().toISOString().slice(0, 10),
+                    });
+
+                    setSavedToast(editingTeamUser ? `Medewerker ${trimmedName} bijgewerkt met nieuw werkrooster.` : `Medewerker ${trimmedName} toegevoegd en direct ingeroosterd.`);
                     setShowTeamModal(false);
                   } catch (err: any) {
                     setTeamError(err?.message || 'Fout bij opslaan van medewerker.');
@@ -1589,36 +1646,49 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   </div>
                 )}
 
-                <div>
-                  <label className="text-xs font-bold text-slate-700">
-                    Naam medewerker <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={teamForm.name}
-                    onChange={(e) => setTeamForm({ ...teamForm, name: e.target.value })}
-                    placeholder="bv. Lisa Verstraete"
-                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 font-medium"
-                  />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700">
+                      Naam medewerker <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={teamForm.name}
+                      onChange={(e) => setTeamForm({ ...teamForm, name: e.target.value })}
+                      placeholder="bv. Lisa Verstraete"
+                      className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700">E-mailadres (optioneel)</label>
+                    <input
+                      type="email"
+                      value={teamForm.email}
+                      onChange={(e) => setTeamForm({ ...teamForm, email: e.target.value })}
+                      placeholder="lisa@winkel.be"
+                      className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 font-medium"
+                    />
+                  </div>
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-700">Functie / Afdeling (optioneel)</label>
+                  <label className="text-xs font-bold text-slate-700">Functie / Afdeling</label>
                   <input
                     type="text"
                     value={teamForm.jobTitle}
                     onChange={(e) => setTeamForm({ ...teamForm, jobTitle: e.target.value })}
-                    placeholder="bv. Herstellingsdienst, Verkoop, Atelier..."
+                    placeholder="bv. Verkoop, Kassa, Herstellingen, Atelier..."
                     className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 font-medium"
                   />
                   <div className="flex flex-wrap gap-1.5 mt-2">
-                    {['Verkoop', 'Herstellingsdienst', 'Kassa', 'Atelier', 'Magazijn', 'Student'].map((tag) => (
+                    {['Verkoop', 'Kassa', 'Herstellingsdienst', 'Atelier', 'Magazijn', 'Student'].map((tag) => (
                       <button
                         key={tag}
                         type="button"
                         onClick={() => setTeamForm({ ...teamForm, jobTitle: tag })}
-                        className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 transition shadow-2xs"
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 transition shadow-2xs cursor-pointer"
                       >
                         + {tag}
                       </button>
@@ -1626,15 +1696,138 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-xs font-bold text-slate-700">E-mailadres (optioneel)</label>
-                  <input
-                    type="email"
-                    value={teamForm.email}
-                    onChange={(e) => setTeamForm({ ...teamForm, email: e.target.value })}
-                    placeholder="lisa@winkel.be"
-                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 font-medium"
-                  />
+                {/* NIEUWE SECTIE: CONTRACTUREN & STANDAARD WERKROOSTER */}
+                <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-3.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                        <Clock size={14} className="text-sky-600" />
+                        <span>Contracturen & Standaard Werkrooster</span>
+                      </h4>
+                      <p className="text-[11px] text-slate-500 font-medium">Dit rooster wordt automatisch doorgetrokken in de verlof- en personeelsplanning.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { label: 'Voltijds 38u (Ma–Vr)', hours: '38', days: [1, 2, 3, 4, 5], start: '08:30', end: '17:00', brk: '54' },
+                      { label: 'Retail 38u (Di–Za)', hours: '38', days: [2, 3, 4, 5, 6], start: '09:00', end: '17:00', brk: '24' },
+                      { label: 'Deeltijds 32u (4 d.)', hours: '32', days: [1, 2, 4, 5], start: '08:30', end: '17:00', brk: '30' },
+                      { label: 'Halftijds 19u', hours: '19', days: [1, 2, 3, 4, 5], start: '08:30', end: '12:18', brk: '0' },
+                    ].map((preset) => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() =>
+                          setTeamForm({
+                            ...teamForm,
+                            weeklyHours: preset.hours,
+                            weekdays: preset.days,
+                            startTime: preset.start,
+                            endTime: preset.end,
+                            breakMinutes: preset.brk,
+                          })
+                        }
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition shadow-2xs cursor-pointer"
+                      >
+                        ⚡ {preset.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700">Contracturen per week</label>
+                      <input
+                        type="text"
+                        required
+                        value={teamForm.weeklyHours}
+                        onChange={(e) => setTeamForm({ ...teamForm, weeklyHours: e.target.value })}
+                        placeholder="38"
+                        className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none focus:border-sky-500 font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700">Pauze per werkdag (minuten)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="360"
+                        value={teamForm.breakMinutes}
+                        onChange={(e) => setTeamForm({ ...teamForm, breakMinutes: e.target.value })}
+                        className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none focus:border-sky-500 font-medium"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-700 block mb-1.5">Werkdagen</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        [1, 'Ma'],
+                        [2, 'Di'],
+                        [3, 'Wo'],
+                        [4, 'Do'],
+                        [5, 'Vr'],
+                        [6, 'Za'],
+                        [7, 'Zo'],
+                      ].map(([dayNum, dayName]) => {
+                        const num = dayNum as number;
+                        const isSelected = teamForm.weekdays.includes(num);
+                        return (
+                          <button
+                            key={num}
+                            type="button"
+                            onClick={() =>
+                              setTeamForm({
+                                ...teamForm,
+                                weekdays: isSelected
+                                  ? teamForm.weekdays.filter((d) => d !== num)
+                                  : [...teamForm.weekdays, num].sort(),
+                              })
+                            }
+                            className={`h-8 min-w-9 px-2.5 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
+                              isSelected
+                                ? 'bg-slate-900 border-slate-900 text-white shadow-2xs'
+                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                            }`}
+                          >
+                            {dayName}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700">Starttijd</label>
+                      <input
+                        type="time"
+                        required
+                        value={teamForm.startTime}
+                        onChange={(e) => setTeamForm({ ...teamForm, startTime: e.target.value })}
+                        className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none focus:border-sky-500 font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700">Eindtijd</label>
+                      <input
+                        type="time"
+                        required
+                        value={teamForm.endTime}
+                        onChange={(e) => setTeamForm({ ...teamForm, endTime: e.target.value })}
+                        className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none focus:border-sky-500 font-semibold"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
+                    <span className="text-slate-500 font-medium">Berekend volgens rooster:</span>
+                    <span className="font-bold text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
+                      {teamForm.weekdays.length} werkdagen · {teamForm.startTime} tot {teamForm.endTime}
+                    </span>
+                  </div>
                 </div>
 
                 <div>
@@ -1680,7 +1873,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     placeholder={editingTeamUser ? 'Laat leeg om PIN ongewijzigd te laten' : 'bv. 123456'}
                     className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 font-medium tracking-widest"
                   />
-                  <p className="mt-1 text-[11px] text-slate-400">Gebruikt voor snelle kassamedewerker-wissels op de kassa.</p>
+                  <p className="mt-1 text-[11px] text-slate-400">Gebruikt voor snelle medewerker-wissels op de kassa.</p>
                 </div>
 
                 <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
@@ -1706,3 +1899,4 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     </div>
   );
 };
+

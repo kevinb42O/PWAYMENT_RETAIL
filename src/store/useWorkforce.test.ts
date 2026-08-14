@@ -97,10 +97,30 @@ describe("workforce fixture workflow", () => {
       employeeNumber: "EMP-009",
       email: "sophie@demo.be",
       weeklyMinutes: 2280,
+      initialSchedule: {
+        weekdays: [1, 2, 3, 4, 5],
+        startTime: "08:30",
+        endTime: "17:00",
+        breakMinutes: 54,
+        roleLabel: "Verkoop",
+        locationLabel: "Winkelvloer",
+      },
     })).toBe(true);
     expect(useWorkforce.getState().team.some((e) => e.displayName === "Sophie De Smet")).toBe(true);
     expect(useWorkforce.getState().balances.some((b) => b.grantedMinutes === 9120)).toBe(true);
+
+    const sophie = useWorkforce.getState().team.find((e) => e.displayName === "Sophie De Smet")!;
+    expect(useWorkforce.getState().roster.patterns.some((p) => p.employeeId === sophie.id)).toBe(true);
+
+    const batchRes = await useWorkforce.getState().applyPatternsRange("fixture-store", {
+      startDate: "2026-08-10",
+      endDate: "2026-08-31",
+      employeeIds: [sophie.id],
+    });
+    expect(batchRes.success).toBe(true);
+    expect(batchRes.weeksProcessed).toBeGreaterThanOrEqual(3);
   });
+
 
   it("reports empty source and publication errors without corrupting the range", async () => {
     const { useWorkforce } = await loadFixtureStore();

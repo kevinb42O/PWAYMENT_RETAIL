@@ -2,6 +2,8 @@ import { create } from "zustand";
 import { supabase } from "../lib/supabase";
 import type { Json } from "../types/database.generated";
 import { addDays, isoWeekday, localDateTimeToIso, startOfIsoWeek } from "../workforce/roster";
+import { todayIso } from "../workforce/format";
+
 import type {
   CoverageSnapshot,
   LeaveBalance,
@@ -307,8 +309,10 @@ interface WorkforceState extends WorkforceBootstrap {
   publishRoster: (storeId: string, weekStart: string, roster?: WorkforceRoster) => Promise<boolean>;
   reopenRoster: (storeId: string, weekStart: string) => Promise<boolean>;
   savePattern: (storeId: string, input: SavePatternInput) => Promise<boolean>;
+  applyPatternsRange: (storeId: string, input: import("../workforce/types").BatchApplyPatternsInput) => Promise<{ weeksProcessed: number; success: boolean }>;
   saveEmployee: (storeId: string, input: SaveEmployeeInput) => Promise<boolean>;
   submit: (storeId: string, input: {
+
     leaveTypeId: string;
     startDate: string;
     endDate: string;
@@ -675,23 +679,47 @@ export const useWorkforce = create<WorkforceState>((set, get) => {
     async savePattern(storeId, input) {
       set({ mutating: true, error: null, errorCode: null });
       if (fixtureRuntime) {
-        const scheduledMinutes = Math.max(0, Math.round((new Date(`2020-01-01T${input.endTime}:00`).getTime() - new Date(`2020-01-01T${input.startTime}:00`).getTime()) / 60_000) - input.breakMinutes);
-        const nextPatterns = input.weekdays.map((weekday) => ({
-          id: crypto.randomUUID(),
-          employeeId: input.employeeId,
-          weekday,
-          scheduledMinutes,
-          startTime: input.startTime,
-          endTime: input.endTime,
-          breakMinutes: input.breakMinutes,
-          roleLabel: input.roleLabel || null,
-          locationLabel: input.locationLabel || null,
-          effectiveFrom: input.effectiveFrom,
-          effectiveUntil: null,
-        }));
+        const nextPatterns: WorkPattern[] = input.daySchedules && input.daySchedules.length > 0
+          ? input.daySchedules.map((ds) => {
+              const scheduledMinutes = Math.max(0, Math.round((new Date(`2020-01-01T${ds.endTime}:00`).getTime() - new Date(`2020-01-01T${ds.startTime}:00`).getTime()) / 60_000) - ds.breakMinutes);
+              return {
+                id: crypto.randomUUID(),
+                employeeId: input.employeeId,
+                weekday: ds.weekday,
+                scheduledMinutes,
+                startTime: ds.startTime,
+                endTime: ds.endTime,
+                breakMinutes: ds.breakMinutes,
+                roleLabel: input.roleLabel || null,
+                locationLabel: input.locationLabel || null,
+                effectiveFrom: input.effectiveFrom,
+                effectiveUntil: null,
+              };
+            })
+          : input.weekdays.map((weekday) => {
+              const scheduledMinutes = Math.max(0, Math.round((new Date(`2020-01-01T${input.endTime}:00`).getTime() - new Date(`2020-01-01T${input.startTime}:00`).getTime()) / 60_000) - input.breakMinutes);
+              return {
+                id: crypto.randomUUID(),
+                employeeId: input.employeeId,
+                weekday,
+                scheduledMinutes,
+                startTime: input.startTime,
+                endTime: input.endTime,
+                breakMinutes: input.breakMinutes,
+                roleLabel: input.roleLabel || null,
+                locationLabel: input.locationLabel || null,
+                effectiveFrom: input.effectiveFrom,
+                effectiveUntil: null,
+              };
+            });
+
+        const totalWeeklyMinutes = nextPatterns.reduce((acc, p) => acc + p.scheduledMinutes, 0);
+
         set((state) => ({
+          team: state.team.map((e) => e.id === input.employeeId ? { ...e, weeklyMinutes: totalWeeklyMinutes, scheduledDays: nextPatterns.length } : e),
           roster: {
             ...state.roster,
+            employees: state.roster.employees.map((e) => e.id === input.employeeId ? { ...e, weeklyMinutes: totalWeeklyMinutes, scheduledDays: nextPatterns.length } : e),
             patterns: [...state.roster.patterns.filter((pattern) => pattern.employeeId !== input.employeeId), ...nextPatterns],
           },
           mutating: false,
@@ -710,6 +738,93 @@ export const useWorkforce = create<WorkforceState>((set, get) => {
       set({ mutating: false });
       return true;
     },
+
+    async applyPatternsRange(storeId, input) {
+      set({ mutating: true, error: null, errorCode: null });
+      try {
+        const startMonday = startOfIsoWeek(input.startDate);
+        const endMonday = startOfIsoWeek(input.endDate);
+        let currentWeek = startMonday;
+        let weeksProcessed = 0;
+
+        while (currentWeek <= endMonday) {
+          const targetWeek = currentWeek;
+          if (fixtureRuntime) {
+            const range = get().roster;
+            const existingRoster = range.rosters.find((r) => r.weekStart === targetWeek);
+            const rosterValue: WorkforceRoster = existingRoster ?? {
+              id: `fixture-roster-${targetWeek}`,
+              weekStart: targetWeek,
+              status: "draft" as const,
+              version: 1,
+              publishedAt: null,
+            };
+            const patternsToApply = input.employeeIds && input.employeeIds.length > 0
+              ? range.patterns.filter((p) => input.employeeIds!.includes(p.employeeId))
+              : range.patterns;
+
+            const shifts: WorkforceShift[] = patternsToApply.flatMap((pattern) => {
+              const date = addDays(targetWeek, pattern.weekday - 1);
+              if (!pattern.startTime || !pattern.endTime || pattern.scheduledMinutes <= 0) return [];
+              const hasLeave = range.leave.some((l) => l.employeeId === pattern.employeeId && l.startDate <= date && l.endDate >= date && l.status === "approved");
+              if (hasLeave) return [];
+              return [{
+                id: `fixture-shift-${pattern.employeeId}-${date}`,
+                rosterId: rosterValue.id,
+                employeeId: pattern.employeeId,
+                startsAt: localDateTimeToIso(date, pattern.startTime),
+                endsAt: localDateTimeToIso(date, pattern.endTime),
+                breakMinutes: pattern.breakMinutes,
+                paidMinutes: pattern.scheduledMinutes,
+                roleLabel: pattern.roleLabel,
+                locationLabel: pattern.locationLabel,
+                note: null,
+                source: "pattern" as const,
+                version: 1,
+                rosterStatus: "draft" as const,
+                rosterVersion: rosterValue.version + 1,
+                weekStart: targetWeek,
+              }];
+            });
+
+            set((state) => ({
+              roster: {
+                ...state.roster,
+                shifts: [
+                  ...state.roster.shifts.filter((s) => s.weekStart !== targetWeek || (input.employeeIds && input.employeeIds.length > 0 && !input.employeeIds.includes(s.employeeId))),
+                  ...shifts,
+                ],
+                rosters: [
+                  ...state.roster.rosters.filter((r) => r.weekStart !== targetWeek),
+                  { ...rosterValue, version: rosterValue.version + 1 },
+                ],
+              },
+            }));
+          } else {
+            const roster = get().roster.rosters.find((r) => r.weekStart === targetWeek);
+            await workforceRpc.rpc("apply_workforce_patterns", {
+              target_store_id: storeId,
+              payload: rpcPayload({
+                weekStart: targetWeek,
+                employeeIds: input.employeeIds ?? [],
+                expectedRosterVersion: roster?.version,
+              }),
+            });
+          }
+          weeksProcessed += 1;
+          currentWeek = addDays(currentWeek, 7);
+        }
+
+        await refreshLoadedRange(storeId);
+        set({ mutating: false });
+        return { weeksProcessed, success: true };
+      } catch (err: any) {
+        console.error("Batch apply patterns failed:", err);
+        set({ mutating: false, error: err?.message || "Fout bij doortrekken van werkpatronen." });
+        return { weeksProcessed: 0, success: false };
+      }
+    },
+
 
     async submit(storeId, input) {
       set({ mutating: true, error: null, errorCode: null });
@@ -884,9 +999,24 @@ export const useWorkforce = create<WorkforceState>((set, get) => {
         }
       }
 
+      // 4. If initialSchedule is provided, automatically set up the work pattern
+      if (input.initialSchedule && input.initialSchedule.weekdays.length > 0) {
+        await get().savePattern(storeId, {
+          employeeId: id,
+          weekdays: input.initialSchedule.weekdays,
+          startTime: input.initialSchedule.startTime,
+          endTime: input.initialSchedule.endTime,
+          breakMinutes: input.initialSchedule.breakMinutes,
+          roleLabel: input.initialSchedule.roleLabel || "Medewerker",
+          locationLabel: input.initialSchedule.locationLabel || "Winkelvloer",
+          effectiveFrom: input.startDate || todayIso(),
+        });
+      }
+
       set({ mutating: false });
       return true;
     },
+
 
     async adjustBalance(storeId, accountId, deltaMinutes, reason) {
       set({ mutating: true, error: null, errorCode: null });

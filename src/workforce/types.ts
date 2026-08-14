@@ -198,6 +198,13 @@ export interface WorkforceRosterRange {
   coverage: RosterCoverageDay[];
 }
 
+export interface DaySchedule {
+  weekday: number;
+  startTime: string;
+  endTime: string;
+  breakMinutes: number;
+}
+
 export interface SaveShiftInput {
   shiftId?: string;
   employeeId: string;
@@ -220,6 +227,7 @@ export interface SavePatternInput {
   roleLabel: string;
   locationLabel: string;
   effectiveFrom: string;
+  daySchedules?: DaySchedule[];
 }
 
 export interface SaveEmployeeInput {
@@ -231,5 +239,21 @@ export interface SaveEmployeeInput {
   startDate?: string;
   weeklyMinutes?: number;
   competencyIds?: string[];
+  initialSchedule?: {
+    weekdays: number[];
+    startTime: string;
+    endTime: string;
+    breakMinutes: number;
+    roleLabel?: string;
+    locationLabel?: string;
+  };
 }
+
+export interface BatchApplyPatternsInput {
+  startDate: string;
+  endDate: string;
+  employeeIds?: string[];
+  overwriteManualShifts?: boolean;
+}
+
 

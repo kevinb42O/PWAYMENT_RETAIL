@@ -33,24 +33,31 @@ export const WorkforceSettings: React.FC = () => {
   const [reason, setReason] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
+  const [applyingRange, setApplyingRange] = useState(false);
   const [newEmployee, setNewEmployee] = useState({
     displayName: "",
     employeeNumber: "",
     email: "",
     weeklyHours: "38",
     startDate: todayIso(),
+    weekdays: [1, 2, 3, 4, 5] as number[],
+    startTime: "08:30",
+    endTime: "17:00",
+    breakMinutes: 54,
     competencyIds: [] as string[],
   });
   const [pattern, setPattern] = useState({
     employeeId: "",
-    weekdays: [1, 2, 3, 4, 5],
-    startTime: "09:00",
+    weekdays: [1, 2, 3, 4, 5] as number[],
+    startTime: "08:30",
     endTime: "17:00",
-    breakMinutes: 30,
+    breakMinutes: 54,
     roleLabel: "Verkoop",
     locationLabel: "Winkelvloer",
     effectiveFrom: todayIso(),
   });
+
+  const applyPatternsRangeAction = useWorkforce((s) => s.applyPatternsRange);
 
   useEffect(() => {
     if (storeId) {
@@ -69,12 +76,12 @@ export const WorkforceSettings: React.FC = () => {
         setPattern({
           employeeId: firstId,
           weekdays: existing.map((item) => item.weekday),
-          startTime: first.startTime,
-          endTime: first.endTime,
-          breakMinutes: first.breakMinutes,
+          startTime: first.startTime || "08:30",
+          endTime: first.endTime || "17:00",
+          breakMinutes: first.breakMinutes ?? 54,
           roleLabel: first.roleLabel ?? "Verkoop",
           locationLabel: first.locationLabel ?? "Winkelvloer",
-          effectiveFrom: first.effectiveFrom,
+          effectiveFrom: first.effectiveFrom || todayIso(),
         });
       } else {
         setPattern((p) => ({ ...p, employeeId: firstId }));
@@ -97,20 +104,20 @@ export const WorkforceSettings: React.FC = () => {
       setPattern({
         employeeId,
         weekdays: existing.map((item) => item.weekday),
-        startTime: first.startTime,
-        endTime: first.endTime,
-        breakMinutes: first.breakMinutes,
+        startTime: first.startTime || "08:30",
+        endTime: first.endTime || "17:00",
+        breakMinutes: first.breakMinutes ?? 54,
         roleLabel: first.roleLabel ?? "Verkoop",
         locationLabel: first.locationLabel ?? "Winkelvloer",
-        effectiveFrom: first.effectiveFrom,
+        effectiveFrom: first.effectiveFrom || todayIso(),
       });
     } else {
       setPattern({
         employeeId,
         weekdays: [1, 2, 3, 4, 5],
-        startTime: "09:00",
+        startTime: "08:30",
         endTime: "17:00",
-        breakMinutes: 30,
+        breakMinutes: 54,
         roleLabel: "Verkoop",
         locationLabel: "Winkelvloer",
         effectiveFrom: todayIso(),
@@ -125,7 +132,24 @@ export const WorkforceSettings: React.FC = () => {
       ...pattern,
       breakMinutes: Number(pattern.breakMinutes),
     });
-    if (success) setMessage("Werkpatroon bewaard. Gepubliceerde weken blijven ongewijzigd.");
+    if (success) setMessage("Werkpatroon bewaard. Uren worden automatisch doorgetrokken in het rooster.");
+  };
+
+  const handleApplyYearBatch = async (allEmployees = false) => {
+    if (!storeId) return;
+    const currentYear = new Date().getFullYear();
+    const startDate = todayIso();
+    const endDate = `${currentYear}-12-31`;
+    setApplyingRange(true);
+    const result = await applyPatternsRangeAction(storeId, {
+      startDate,
+      endDate,
+      employeeIds: allEmployees ? [] : [pattern.employeeId],
+    });
+    setApplyingRange(false);
+    if (result.success) {
+      setMessage(`Rooster succesvol voor ${result.weeksProcessed} weken doorgetrokken t/m eind ${currentYear}!`);
+    }
   };
 
   const handleAddEmployee = async (e: React.FormEvent) => {
@@ -154,21 +178,46 @@ export const WorkforceSettings: React.FC = () => {
       weeklyMinutes: Number.isFinite(weeklyMinutes) && weeklyMinutes > 0 ? weeklyMinutes : 2280,
       startDate: newEmployee.startDate,
       competencyIds: newEmployee.competencyIds,
+      initialSchedule: {
+        weekdays: newEmployee.weekdays,
+        startTime: newEmployee.startTime,
+        endTime: newEmployee.endTime,
+        breakMinutes: Number(newEmployee.breakMinutes) || 0,
+        roleLabel: "Verkoop",
+        locationLabel: "Winkelvloer",
+      },
     });
 
     if (success) {
+      // 3. Save pattern explicitly
+      await savePatternAction(storeId, {
+        employeeId: newId,
+        weekdays: newEmployee.weekdays,
+        startTime: newEmployee.startTime,
+        endTime: newEmployee.endTime,
+        breakMinutes: Number(newEmployee.breakMinutes) || 0,
+        roleLabel: "Verkoop",
+        locationLabel: "Winkelvloer",
+        effectiveFrom: newEmployee.startDate || todayIso(),
+      });
+
       setShowAddEmployeeModal(false);
-      setMessage(`Medewerker ${newEmployee.displayName} succesvol toegevoegd.`);
+      setMessage(`Medewerker ${newEmployee.displayName} succesvol toegevoegd met ${newEmployee.weeklyHours}u contract en direct ingeroosterd.`);
       setNewEmployee({
         displayName: "",
         employeeNumber: "",
         email: "",
         weeklyHours: "38",
         startDate: todayIso(),
+        weekdays: [1, 2, 3, 4, 5],
+        startTime: "08:30",
+        endTime: "17:00",
+        breakMinutes: 54,
         competencyIds: [],
       });
     }
   };
+
 
   const submitAdjustment = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -236,14 +285,55 @@ export const WorkforceSettings: React.FC = () => {
           </div>
 
           <form onSubmit={savePattern} className="p-5">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">{selectedEmployee?.displayName ?? "Medewerker"}</h3>
-                <p className="mt-0.5 text-xs text-slate-500 font-medium">{selectedPatterns.length ? `${selectedPatterns.length} actieve werkdagen` : "Nog geen werkpatroon"}</p>
+                <p className="mt-0.5 text-xs text-slate-500 font-medium">{selectedPatterns.length ? `${selectedPatterns.length} actieve werkdagen ingesteld` : "Nog geen werkpatroon"}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={applyingRange || !pattern.employeeId}
+                  onClick={() => void handleApplyYearBatch(false)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-sky-800 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-xl transition cursor-pointer disabled:opacity-50"
+                  title="Genereert direct planning voor het hele lopende jaar"
+                >
+                  <span>📅 Doortrekken t/m dec {new Date().getFullYear()}</span>
+                </button>
               </div>
             </div>
 
-            <fieldset className="mt-5">
+            {/* SNELLE PRESETS */}
+            <div className="mt-4 p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+              <span className="text-[11px] font-bold text-slate-600 block">Snelle roostertemplates:</span>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { label: "Voltijds 38u (Ma–Vr)", days: [1, 2, 3, 4, 5], start: "08:30", end: "17:00", brk: 54 },
+                  { label: "Retail 38u (Di–Za)", days: [2, 3, 4, 5, 6], start: "09:00", end: "17:00", brk: 24 },
+                  { label: "Deeltijds 32u (4 d.)", days: [1, 2, 4, 5], start: "08:30", end: "17:00", brk: 30 },
+                  { label: "Halftijds 19u", days: [1, 2, 3, 4, 5], start: "08:30", end: "12:18", brk: 0 },
+                ].map((preset) => (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() =>
+                      setPattern((p) => ({
+                        ...p,
+                        weekdays: preset.days,
+                        startTime: preset.start,
+                        endTime: preset.end,
+                        breakMinutes: preset.brk,
+                      }))
+                    }
+                    className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition shadow-2xs cursor-pointer"
+                  >
+                    ⚡ {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <fieldset className="mt-4">
               <legend className="text-xs font-bold text-slate-600">Werkdagen</legend>
               <div className="mt-2 flex flex-wrap gap-2">
                 {weekdays.map(([day, label]) => {
@@ -297,7 +387,33 @@ export const WorkforceSettings: React.FC = () => {
               </label>
             </div>
 
-            <div className="mt-5 flex justify-end border-t border-slate-100 pt-4">
+            {/* LIVE BEREKENING & CONTRACT AFSTEMMING */}
+            {(() => {
+              const dailyMin = Math.max(0, Math.round((new Date(`2020-01-01T${pattern.endTime}:00`).getTime() - new Date(`2020-01-01T${pattern.startTime}:00`).getTime()) / 60_000) - (Number(pattern.breakMinutes) || 0));
+              const weeklyMin = dailyMin * pattern.weekdays.length;
+              const contractMin = selectedEmployee?.weeklyMinutes || 2280;
+              const matches = weeklyMin === contractMin;
+              return (
+                <div className={`mt-4 p-3 rounded-xl border flex items-center justify-between text-xs ${matches ? "bg-emerald-50 border-emerald-200 text-emerald-900" : "bg-amber-50 border-amber-200 text-amber-900"}`}>
+                  <span className="font-semibold">
+                    {pattern.weekdays.length} dagen × {formatMinutes(dailyMin)} = <strong>{formatMinutes(weeklyMin)}</strong> per week
+                  </span>
+                  <span className="font-bold">
+                    Contract: {formatMinutes(contractMin)} {matches ? "✅ Sluit perfect aan" : `⚠️ Verschil: ${formatMinutes(Math.abs(weeklyMin - contractMin))}`}
+                  </span>
+                </div>
+              );
+            })()}
+
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+              <button
+                type="button"
+                disabled={applyingRange}
+                onClick={() => void handleApplyYearBatch(true)}
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer disabled:opacity-50"
+              >
+                <span>Alle medewerkers doortrekken (2026)</span>
+              </button>
               <button
                 type="submit"
                 disabled={mutating || !pattern.employeeId || !pattern.weekdays.length}
@@ -307,6 +423,7 @@ export const WorkforceSettings: React.FC = () => {
               </button>
             </div>
           </form>
+
         </div>
       </section>
 
@@ -436,6 +553,109 @@ export const WorkforceSettings: React.FC = () => {
             </div>
           </div>
 
+          {/* NIEUWE SECTIE: STANDAARD WERKROOSTER IN MODAL */}
+          <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-3.5">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                <Clock3 size={14} className="text-slate-900" />
+                <span>Standaard Werkrooster</span>
+              </h4>
+              <span className="text-[11px] text-slate-500 font-medium">Wordt direct doorgezet in de planning</span>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { label: "Voltijds 38u (Ma–Vr)", hours: "38", days: [1, 2, 3, 4, 5], start: "08:30", end: "17:00", brk: 54 },
+                { label: "Retail 38u (Di–Za)", hours: "38", days: [2, 3, 4, 5, 6], start: "09:00", end: "17:00", brk: 24 },
+                { label: "Deeltijds 32u (4 d.)", hours: "32", days: [1, 2, 4, 5], start: "08:30", end: "17:00", brk: 30 },
+                { label: "Halftijds 19u", hours: "19", days: [1, 2, 3, 4, 5], start: "08:30", end: "12:18", brk: 0 },
+              ].map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() =>
+                    setNewEmployee({
+                      ...newEmployee,
+                      weeklyHours: preset.hours,
+                      weekdays: preset.days,
+                      startTime: preset.start,
+                      endTime: preset.end,
+                      breakMinutes: preset.brk,
+                    })
+                  }
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition shadow-2xs cursor-pointer"
+                >
+                  ⚡ {preset.label}
+                </button>
+              ))}
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-slate-700 block mb-1.5">Werkdagen</label>
+              <div className="flex flex-wrap gap-1.5">
+                {weekdays.map(([dayNum, dayName]) => {
+                  const num = dayNum as number;
+                  const isSelected = newEmployee.weekdays.includes(num);
+                  return (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() =>
+                        setNewEmployee({
+                          ...newEmployee,
+                          weekdays: isSelected
+                            ? newEmployee.weekdays.filter((d) => d !== num)
+                            : [...newEmployee.weekdays, num].sort(),
+                        })
+                      }
+                      className={`h-8 min-w-9 px-2.5 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
+                        isSelected
+                          ? "bg-slate-900 border-slate-900 text-white shadow-2xs"
+                          : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      {dayName}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <label className="text-[11px] font-bold text-slate-700">Starttijd</label>
+                <input
+                  type="time"
+                  required
+                  value={newEmployee.startTime}
+                  onChange={(e) => setNewEmployee({ ...newEmployee, startTime: e.target.value })}
+                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none focus:border-sky-500 font-semibold"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-slate-700">Eindtijd</label>
+                <input
+                  type="time"
+                  required
+                  value={newEmployee.endTime}
+                  onChange={(e) => setNewEmployee({ ...newEmployee, endTime: e.target.value })}
+                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none focus:border-sky-500 font-semibold"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-slate-700">Pauze (min)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="360"
+                  value={newEmployee.breakMinutes}
+                  onChange={(e) => setNewEmployee({ ...newEmployee, breakMinutes: Number(e.target.value) || 0 })}
+                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none focus:border-sky-500 font-medium"
+                />
+              </div>
+            </div>
+          </div>
+
           <div>
             <label className="text-xs font-bold text-slate-700">Startdatum contract</label>
             <input
@@ -489,7 +709,7 @@ export const WorkforceSettings: React.FC = () => {
             </button>
             <button
               type="submit"
-              disabled={mutating || !newEmployee.displayName.trim()}
+              disabled={mutating || !newEmployee.displayName.trim() || newEmployee.weekdays.length === 0}
               className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-black rounded-xl shadow-xs transition disabled:opacity-50 cursor-pointer"
             >
               <Check size={15} /> Medewerker opslaan

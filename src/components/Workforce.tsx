@@ -399,9 +399,16 @@ export const Workforce: React.FC = () => {
   const leaveFor = (employeeId: string, date: string): RosterLeave | undefined => workforce.roster.leave.find((leave) =>
     leave.employeeId === employeeId && leave.startDate <= date && leave.endDate >= date,
   );
-  const scheduledMinutes = (employeeId: string) => workforce.roster.shifts
-    .filter((shift) => shift.employeeId === employeeId && shift.weekStart === weekStart)
-    .reduce((total, shift) => total + shift.paidMinutes, 0);
+  const scheduledMinutes = (employeeId: string) => dates.reduce((total, date) => {
+    const dayLeave = leaveFor(employeeId, date);
+    if (dayLeave && dayLeave.status === "approved") return total;
+    const dayShifts = shiftFor(employeeId, date);
+    if (dayShifts.length > 0) {
+      return total + dayShifts.reduce((sub, s) => sub + s.paidMinutes, 0);
+    }
+    const pattern = activePatternForDate(workforce.roster.patterns, employeeId, date);
+    return total + (pattern?.scheduledMinutes ?? 0);
+  }, 0);
 
   const openLeave = (date = selectedDate) => {
     setLeaveStartDate(date >= todayIso() ? date : todayIso());
@@ -452,14 +459,22 @@ export const Workforce: React.FC = () => {
           <div className="ml-auto flex items-center gap-2">
             <label className="relative hidden sm:block"><Filter size={14} className="pointer-events-none absolute left-3 top-3 text-slate-400" /><select aria-label="Medewerker filteren" value={employeeFilter} onChange={(event) => setEmployeeFilter(event.target.value)} className="h-9 rounded-lg border border-slate-200 bg-white pl-8 pr-8 text-xs font-bold text-slate-700 outline-none focus:border-cyan-500"><option value="all">Alle medewerkers</option>{workforce.roster.employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.displayName}</option>)}</select></label>
             <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-0.5" aria-label="Roosterperiode">{([['day', 'Dag'], ['week', 'Week'], ['month', 'Maand'], ['year', 'Jaar']] as [RosterView, string][]).map(([key, label]) => <button key={key} type="button" onClick={() => setView(key)} aria-pressed={view === key} className={`rounded-md px-2.5 py-1.5 text-xs font-bold ${view === key ? "border border-slate-200 bg-white text-slate-900 shadow-xs" : "text-slate-500 hover:text-slate-800"}`}>{label}</button>)}</div>
-            {canManage && (view === "week" || view === "day") && <div className="relative"><button type="button" className={`${controlClass} w-9 px-0`} onClick={() => setActionsOpen((open) => !open)} aria-label="Roosteracties" aria-expanded={actionsOpen}><MoreHorizontal size={17} /></button>{actionsOpen && <div className="absolute right-0 top-11 z-40 w-60 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg" role="menu">
-              <button type="button" role="menuitem" disabled={workforce.mutating || roster?.status === "published" || roster?.status === "locked"} onClick={() => { setActionsOpen(false); if (storeId) void setMessageAfter(workforce.applyPatterns(storeId, weekStart, roster), "Werkpatronen op deze week toegepast."); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40"><Settings2 size={15} /> Werkpatronen toepassen</button>
-              <button type="button" role="menuitem" disabled={workforce.mutating || roster?.status === "published" || roster?.status === "locked"} onClick={() => { setActionsOpen(false); if (storeId) void setMessageAfter(workforce.copyWeek(storeId, addDays(weekStart, -7), weekStart, roster), "Vorige week gekopieerd."); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40"><Copy size={15} /> Vorige week kopiëren</button>
+            {canManage && (view === "week" || view === "day") && <div className="relative"><button type="button" className={`${controlClass} w-9 px-0`} onClick={() => setActionsOpen((open) => !open)} aria-label="Roosteracties" aria-expanded={actionsOpen}><MoreHorizontal size={17} /></button>{actionsOpen && <div className="absolute right-0 top-11 z-40 w-64 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg" role="menu">
+              <button type="button" role="menuitem" disabled={workforce.mutating || roster?.status === "published" || roster?.status === "locked"} onClick={() => { setActionsOpen(false); if (storeId) void setMessageAfter(workforce.applyPatterns(storeId, weekStart, roster), "Werkpatronen op deze week toegepast."); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40 cursor-pointer"><Settings2 size={15} /> Werkpatronen op deze week toepassen</button>
+              <button type="button" role="menuitem" disabled={workforce.mutating} onClick={async () => {
+                setActionsOpen(false);
+                if (storeId) {
+                  const res = await workforce.applyPatternsRange(storeId, { startDate: weekStart, endDate: `${planningYear}-12-31` });
+                  if (res.success) setNotice(`Planning voor ${res.weeksProcessed} weken doorgetrokken t/m dec ${planningYear}!`);
+                }
+              }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold text-sky-800 hover:bg-sky-50 disabled:opacity-40 cursor-pointer"><CalendarDays size={15} /> Planning doortrekken (heel {planningYear})</button>
+              <button type="button" role="menuitem" disabled={workforce.mutating || roster?.status === "published" || roster?.status === "locked"} onClick={() => { setActionsOpen(false); if (storeId) void setMessageAfter(workforce.copyWeek(storeId, addDays(weekStart, -7), weekStart, roster), "Vorige week gekopieerd."); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40 cursor-pointer"><Copy size={15} /> Vorige week kopiëren</button>
               <div className="my-1 border-t border-slate-100" />
-              {roster?.status === "published" ? <button type="button" role="menuitem" onClick={() => { setActionsOpen(false); if (storeId) void setMessageAfter(workforce.reopenRoster(storeId, weekStart), "Week heropend als concept."); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-50"><Settings2 size={15} /> Week heropenen</button> : <button type="button" role="menuitem" disabled={workforce.mutating || !workforce.roster.shifts.some((shift) => shift.weekStart === weekStart)} onClick={() => { setActionsOpen(false); if (storeId) void setMessageAfter(workforce.publishRoster(storeId, weekStart, roster), "Rooster gepubliceerd."); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold text-cyan-800 hover:bg-cyan-50 disabled:opacity-40"><Send size={15} /> Week publiceren</button>}
+              {roster?.status === "published" ? <button type="button" role="menuitem" onClick={() => { setActionsOpen(false); if (storeId) void setMessageAfter(workforce.reopenRoster(storeId, weekStart), "Week heropend als concept."); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"><Settings2 size={15} /> Week heropenen</button> : <button type="button" role="menuitem" disabled={workforce.mutating || !workforce.roster.shifts.some((shift) => shift.weekStart === weekStart)} onClick={() => { setActionsOpen(false); if (storeId) void setMessageAfter(workforce.publishRoster(storeId, weekStart, roster), "Rooster gepubliceerd."); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold text-cyan-800 hover:bg-cyan-50 disabled:opacity-40 cursor-pointer"><Send size={15} /> Week publiceren</button>}
             </div>}</div>}
           </div>
         </div>
+
 
         {(view === "week" || view === "day") && <section className="min-h-0 flex-1 overflow-auto bg-white" aria-label={`Rooster ${view === "week" ? formatWeekRange(weekStart) : formatLongDate(selectedDate)}`}>
           {workforce.rosterLoading && !workforce.rosterHydrated ? <div className="grid min-h-80 place-items-center text-sm font-semibold text-slate-500">Rooster laden…</div> : <div style={{ minWidth: 226 + dates.length * rosterCellWidth }}>
