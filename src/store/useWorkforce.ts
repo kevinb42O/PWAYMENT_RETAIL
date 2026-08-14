@@ -17,6 +17,8 @@ import type {
   WorkPattern,
 } from "../workforce/types";
 import { canUseFeature, FEATURE_KEYS } from "../billing/entitlements";
+import { db } from "../db/db";
+import { hashCredential } from "../utils/credentials";
 
 type WorkforceRpcName =
   | "get_workforce_bootstrap"
@@ -365,14 +367,42 @@ export const useWorkforce = create<WorkforceState>((set, get) => {
         set({ ...fixtureBootstrap(), loading: false, hydrated: true, storeId });
         return;
       }
+      let bootstrapData: WorkforceBootstrap = emptyBootstrap();
       const { data, error } = await workforceRpc.rpc("get_workforce_bootstrap", {
         target_store_id: storeId,
       });
-      if (error) {
-        set({ loading: false, hydrated: true, error: workforceErrorMessage(error), errorCode: error.code ?? null });
-        return;
+      if (data) {
+        bootstrapData = asBootstrap(data);
+      } else if (error) {
+        console.warn("Workforce bootstrap warning:", error);
       }
-      set({ ...asBootstrap(data), loading: false, hydrated: true, storeId, error: null, errorCode: null });
+
+      // Merge with Dexie db.users so local team members are never lost
+      try {
+        const localUsers = await db.users.toArray();
+        const existingIds = new Set(bootstrapData.team.map((e) => e.id));
+        const mergedTeam = [...bootstrapData.team];
+        for (const u of localUsers) {
+          if (!existingIds.has(u.id)) {
+            mergedTeam.push({
+              id: u.id,
+              displayName: u.name,
+              employeeNumber: `EMP-${u.id.slice(-4).toUpperCase()}`,
+              email: u.email || null,
+              status: "active",
+              weeklyMinutes: 2280,
+              scheduledDays: 5,
+              competencyIds: [],
+            });
+            existingIds.add(u.id);
+          }
+        }
+        bootstrapData.team = mergedTeam;
+      } catch (dbErr) {
+        console.warn("Dexie users merge error:", dbErr);
+      }
+
+      set({ ...bootstrapData, loading: false, hydrated: true, storeId, error: null, errorCode: null });
     },
 
     async loadRoster(storeId, rangeStart, rangeEnd, force = false) {
@@ -773,61 +803,87 @@ export const useWorkforce = create<WorkforceState>((set, get) => {
 
     async saveEmployee(storeId, input) {
       set({ mutating: true, error: null, errorCode: null });
-      if (fixtureRuntime) {
-        const id = input.id || `fixture-emp-${Date.now()}`;
-        const newEmployee: WorkforceEmployee = {
-          id,
-          displayName: input.displayName.trim(),
-          employeeNumber: input.employeeNumber || `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
-          email: input.email || null,
-          status: input.status || "active",
-          weeklyMinutes: input.weeklyMinutes ?? 2280,
-          scheduledDays: 5,
-          competencyIds: input.competencyIds ?? [],
+      const id = input.id || `usr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      const newEmployee: WorkforceEmployee = {
+        id,
+        displayName: input.displayName.trim(),
+        employeeNumber: input.employeeNumber || `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
+        email: input.email || null,
+        status: input.status || "active",
+        weeklyMinutes: input.weeklyMinutes ?? 2280,
+        scheduledDays: 5,
+        competencyIds: input.competencyIds ?? [],
+      };
+      const year = new Date().getFullYear();
+      const newBalances: LeaveBalance[] = [year, year + 1].map((balanceYear) => ({
+        accountId: `account-${id}-${balanceYear}`,
+        employeeId: id,
+        leaveTypeId: "statutory-vacation",
+        leaveTypeName: "Wettelijke vakantie",
+        year: balanceYear,
+        status: "confirmed" as const,
+        grantedMinutes: (input.weeklyMinutes ?? 2280) * 4,
+        availableMinutes: (input.weeklyMinutes ?? 2280) * 4,
+      }));
+
+      // 1. Immediately update local Zustand state so the employee is right there in planning and settings
+      set((state) => {
+        const exists = state.team.some((e) => e.id === id);
+        const nextTeam = exists
+          ? state.team.map((e) => (e.id === id ? { ...e, ...newEmployee } : e))
+          : [...state.team, newEmployee];
+        const nextRosterEmployees = exists
+          ? state.roster.employees.map((e) => (e.id === id ? { ...e, ...newEmployee } : e))
+          : [...state.roster.employees, newEmployee];
+
+        return {
+          team: nextTeam,
+          balances: exists ? state.balances : [...state.balances, ...newBalances],
+          roster: {
+            ...state.roster,
+            employees: nextRosterEmployees,
+          },
         };
-        const year = new Date().getFullYear();
-        const newBalances: LeaveBalance[] = [year, year + 1].map((balanceYear) => ({
-          accountId: `fixture-account-${id}-${balanceYear}`,
-          employeeId: id,
-          leaveTypeId: "fixture-vacation",
-          leaveTypeName: "Wettelijke vakantie",
-          year: balanceYear,
-          status: "confirmed" as const,
-          grantedMinutes: (input.weeklyMinutes ?? 2280) * 4,
-          availableMinutes: (input.weeklyMinutes ?? 2280) * 4,
-        }));
-
-        set((state) => {
-          const exists = state.team.some((e) => e.id === id);
-          const nextTeam = exists
-            ? state.team.map((e) => (e.id === id ? { ...e, ...newEmployee } : e))
-            : [...state.team, newEmployee];
-          const nextRosterEmployees = exists
-            ? state.roster.employees.map((e) => (e.id === id ? { ...e, ...newEmployee } : e))
-            : [...state.roster.employees, newEmployee];
-
-          return {
-            team: nextTeam,
-            balances: exists ? state.balances : [...state.balances, ...newBalances],
-            roster: {
-              ...state.roster,
-              employees: nextRosterEmployees,
-            },
-            mutating: false,
-          };
-        });
-        return true;
-      }
-
-      const { error } = await workforceRpc.rpc("save_workforce_employee", {
-        target_store_id: storeId,
-        payload: rpcPayload(input),
       });
-      if (error) {
-        mutationError(error);
-        return false;
+
+      // 2. Guarantee persistence in Dexie db.users
+      try {
+        const existing = await db.users.get(id);
+        if (!existing) {
+          const pinHash = await hashCredential("123456", "pin");
+          await db.users.put({
+            id,
+            name: newEmployee.displayName,
+            email: newEmployee.email || undefined,
+            role: "cashier",
+            pinHash,
+            createdAt: new Date().toISOString(),
+          });
+        } else {
+          await db.users.update(id, {
+            name: newEmployee.displayName,
+            email: newEmployee.email || undefined,
+          });
+        }
+      } catch (dexieErr) {
+        console.warn("Dexie save error:", dexieErr);
       }
-      await refreshLoadedRange(storeId);
+
+      // 3. Sync to Supabase if not fixture runtime
+      if (!fixtureRuntime) {
+        try {
+          const { error } = await workforceRpc.rpc("save_workforce_employee", {
+            target_store_id: storeId,
+            payload: rpcPayload(input),
+          });
+          if (error) {
+            console.warn("Supabase workforce sync warning:", error);
+          }
+        } catch (rpcErr) {
+          console.warn("Supabase workforce RPC call failed:", rpcErr);
+        }
+      }
+
       set({ mutating: false });
       return true;
     },

@@ -177,7 +177,7 @@ export const WorkforceSettings: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowAddEmployeeModal(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-sky-700 shrink-0"
+              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-black shrink-0 cursor-pointer"
             >
               <UserPlus size={15} />
               <span>Medewerker toevoegen</span>
@@ -192,9 +192,9 @@ export const WorkforceSettings: React.FC = () => {
                 key={employee.id}
                 type="button"
                 onClick={() => loadExistingPattern(employee.id)}
-                className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left transition-all ${
+                className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left transition-all cursor-pointer ${
                   pattern.employeeId === employee.id
-                    ? "border border-sky-500 bg-sky-50/50 ring-1 ring-sky-500"
+                    ? "border border-slate-900 bg-slate-50 ring-1 ring-slate-900/10 font-bold"
                     : "border border-slate-100 bg-white hover:bg-slate-50 text-slate-700"
                 }`}
               >
@@ -202,7 +202,7 @@ export const WorkforceSettings: React.FC = () => {
                   <span className="block text-xs font-bold text-slate-900">{employee.displayName}</span>
                   <span className="mt-0.5 block text-[11px] text-slate-500 font-medium">{formatMinutes(employee.weeklyMinutes ?? 0)} per week</span>
                 </span>
-                <Clock3 size={15} className={pattern.employeeId === employee.id ? "text-sky-600" : "text-slate-400"} />
+                <Clock3 size={15} className={pattern.employeeId === employee.id ? "text-slate-900" : "text-slate-400"} />
               </button>
             ))}
           </div>
@@ -231,8 +231,8 @@ export const WorkforceSettings: React.FC = () => {
                           weekdays: active ? value.weekdays.filter((item) => item !== day) : [...value.weekdays, day].sort(),
                         }))
                       }
-                      className={`h-9 min-w-10 rounded-xl border px-3 text-xs font-bold transition-colors ${
-                        active ? "border-sky-600 bg-sky-600 text-white shadow-xs" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                      className={`h-9 min-w-10 rounded-xl border px-3 text-xs font-bold transition-colors cursor-pointer ${
+                        active ? "border-slate-900 bg-slate-900 text-white font-bold shadow-xs" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 font-medium"
                       }`}
                     >
                       {label}
@@ -273,7 +273,7 @@ export const WorkforceSettings: React.FC = () => {
               <button
                 type="submit"
                 disabled={workforce.mutating || !pattern.employeeId || !pattern.weekdays.length}
-                className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 text-xs font-bold text-white shadow-xs transition hover:bg-sky-700 disabled:opacity-50"
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-xs font-bold text-white shadow-xs transition hover:bg-black disabled:opacity-50 cursor-pointer"
               >
                 <Check size={15} /> Werkpatroon bewaren
               </button>
@@ -318,33 +318,30 @@ export const WorkforceSettings: React.FC = () => {
           <h2 className="text-sm font-bold text-slate-900">Gemotiveerde saldocorrectie</h2>
           <div className="mt-4 grid gap-4 lg:grid-cols-[2fr_1fr_2fr_auto] lg:items-end">
             <label className="text-xs font-bold text-slate-600">
-              Saldoaccount
-              <select required value={accountId} onChange={(event) => setAccountId(event.target.value)} className={fieldClass}>
-                <option value="">Selecteer medewerker…</option>
-                {currentYearBalances.map((balance) => {
-                  const employee = workforce.team.find((member) => member.id === balance.employeeId);
-                  return (
-                    <option key={balance.accountId} value={balance.accountId}>
-                      {employee?.displayName} · {balance.leaveTypeName}
-                    </option>
-                  );
-                })}
+              Medewerker
+              <select value={accountId} onChange={(event) => setAccountId(event.target.value)} className={fieldClass}>
+                <option value="">Kies verlofrekening</option>
+                {workforce.balances.map((balance) => (
+                  <option key={balance.accountId} value={balance.accountId}>
+                    {workforce.team.find((e) => e.id === balance.employeeId)?.displayName ?? "Medewerker"} - {balance.leaveTypeName} ({balance.year})
+                  </option>
+                ))}
               </select>
             </label>
             <label className="text-xs font-bold text-slate-600">
-              Uren
-              <input required inputMode="decimal" value={hours} onChange={(event) => setHours(event.target.value)} className={fieldClass} placeholder="bv. 7,6" />
+              Uren (+/-)
+              <input value={hours} onChange={(event) => setHours(event.target.value)} placeholder="bv. 8 of -4" className={fieldClass} />
             </label>
             <label className="text-xs font-bold text-slate-600">
-              Reden
-              <input required maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} className={fieldClass} placeholder="Officieel attest of correctie" />
+              Reden (verplicht)
+              <input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="bv. correctie overuren" className={fieldClass} />
             </label>
             <button
               type="submit"
               disabled={workforce.mutating || !accountId || !hours || !reason.trim()}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 text-xs font-bold text-white shadow-xs transition hover:bg-sky-700 disabled:opacity-50"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-xs font-bold text-white shadow-xs transition hover:bg-black disabled:opacity-50 cursor-pointer"
             >
-              {Number(hours.replace(",", ".")) < 0 ? <Minus size={15} /> : <Plus size={15} />} Bewaren
+              <Check size={15} /> Corrigeer
             </button>
           </div>
         </form>
@@ -356,7 +353,7 @@ export const WorkforceSettings: React.FC = () => {
         onClose={() => setShowAddEmployeeModal(false)}
         title="Nieuwe medewerker toevoegen"
         subtitle="Voeg een medewerker toe aan uw personeelsplanning, verlofsaldi en roosters"
-        icon={<UserPlus size={18} className="text-sky-600" />}
+        icon={<UserPlus size={18} className="text-slate-900" />}
         size="lg"
       >
         <form onSubmit={handleAddEmployee} className="space-y-4">
@@ -440,9 +437,9 @@ export const WorkforceSettings: React.FC = () => {
                             : [...newEmployee.competencyIds, comp.id],
                         })
                       }
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
                         active
-                          ? "border-sky-600 bg-sky-600 text-white shadow-xs"
+                          ? "border-slate-900 bg-slate-900 text-white shadow-xs"
                           : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                       }`}
                     >
@@ -458,14 +455,14 @@ export const WorkforceSettings: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowAddEmployeeModal(false)}
-              className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 transition"
+              className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 transition cursor-pointer"
             >
               Annuleren
             </button>
             <button
               type="submit"
               disabled={workforce.mutating || !newEmployee.displayName.trim()}
-              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-xl shadow-xs transition disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-black rounded-xl shadow-xs transition disabled:opacity-50 cursor-pointer"
             >
               <Check size={15} /> Medewerker opslaan
             </button>

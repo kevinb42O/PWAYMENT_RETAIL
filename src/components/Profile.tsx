@@ -125,8 +125,28 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
   const currentUserId = useAuth((s) => s.currentUserId);
   const merchantProfile = useMerchantProfile((s) => s.profile);
-  const teamUsers = useLiveQuery(() => db.users.toArray()) || [];
+  const rawTeamUsers = useLiveQuery(() => db.users.toArray()) || [];
+  const workforceTeam = useWorkforce((s) => s.team);
   const appliedInitialTabRequestRef = useRef<number | undefined>(undefined);
+
+  const teamUsers = useMemo(() => {
+    const users = [...rawTeamUsers];
+    const existingIds = new Set(users.map((u) => u.id));
+    for (const wf of workforceTeam) {
+      if (!existingIds.has(wf.id)) {
+        users.push({
+          id: wf.id,
+          name: wf.displayName,
+          email: wf.email || undefined,
+          role: 'cashier',
+          pinHash: '',
+          createdAt: new Date().toISOString(),
+        });
+        existingIds.add(wf.id);
+      }
+    }
+    return users;
+  }, [rawTeamUsers, workforceTeam]);
 
   // Team management modal state
   const [showTeamModal, setShowTeamModal] = useState(false);
@@ -797,7 +817,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <div className="pt-4 border-t border-slate-100 flex justify-end">
                 <button
                   type="submit"
-                  className="py-2.5 px-6 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors"
+                  className="py-2.5 px-6 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
                 >
                   Wijzigingen Opslaan
                 </button>
@@ -1375,7 +1395,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   setTeamError(null);
                   setShowTeamModal(true);
                 }}
-                className="px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-colors shadow-xs shrink-0"
+                className="px-3.5 py-2 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-colors shadow-xs shrink-0 cursor-pointer"
               >
                 <UserPlus size={15} />
                 <span>Medewerker Toevoegen</span>
@@ -1631,14 +1651,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                           key={r.id}
                           type="button"
                           onClick={() => setTeamForm({ ...teamForm, role: r.id as Role })}
-                          className={`p-2.5 rounded-xl border text-left transition-all ${
+                          className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                             isSelected
-                              ? 'border-sky-600 bg-sky-600 text-white shadow-xs'
+                              ? 'border-slate-900 bg-slate-900 text-white shadow-xs font-bold'
                               : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
                           }`}
                         >
                           <div className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-slate-900'}`}>{r.label}</div>
-                          <div className={`text-[10px] mt-0.5 ${isSelected ? 'text-sky-100 font-medium' : 'text-slate-500'}`}>{r.desc}</div>
+                          <div className={`text-[10px] mt-0.5 ${isSelected ? 'text-slate-200 font-medium' : 'text-slate-500'}`}>{r.desc}</div>
                         </button>
                       );
                     })}
@@ -1658,7 +1678,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     value={teamForm.pin}
                     onChange={(e) => setTeamForm({ ...teamForm, pin: e.target.value.replace(/\D/g, '') })}
                     placeholder={editingTeamUser ? 'Laat leeg om PIN ongewijzigd te laten' : 'bv. 123456'}
-                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 font-medium tracking-widest"
+                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 font-medium tracking-widest"
                   />
                   <p className="mt-1 text-[11px] text-slate-400">Gebruikt voor snelle kassamedewerker-wissels op de kassa.</p>
                 </div>
@@ -1667,13 +1687,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowTeamModal(false)}
-                    className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 transition"
+                    className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 transition cursor-pointer"
                   >
                     Annuleren
                   </button>
                   <button
                     type="submit"
-                    className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-xl shadow-xs transition"
+                    className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-black rounded-xl shadow-xs transition cursor-pointer"
                   >
                     <Check size={15} /> Medewerker opslaan
                   </button>
