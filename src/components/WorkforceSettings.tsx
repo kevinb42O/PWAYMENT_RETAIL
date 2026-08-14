@@ -253,7 +253,7 @@ export const WorkforceSettings: React.FC = () => {
               </label>
               <label className="text-xs font-bold text-slate-600">
                 Pauze (min)
-                <input type="number" min="0" max="720" required value={pattern.breakMinutes} onChange={(event) => setPattern({ ...pattern, breakMinutes: event.target.value })} className={fieldClass} />
+                <input type="number" min="0" max="720" required value={pattern.breakMinutes} onChange={(event) => setPattern({ ...pattern, breakMinutes: Number(event.target.value) || 0 })} className={fieldClass} />
               </label>
               <label className="text-xs font-bold text-slate-600">
                 Functie

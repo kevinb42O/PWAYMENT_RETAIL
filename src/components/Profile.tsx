@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { useAuth } from '../auth/useAuth';
@@ -122,7 +122,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const currentStoreIsDemo = useAuth((s) => s.currentStoreIsDemo);
   const currentRole = useAuth((s) => s.currentRole);
   const currentUserName = useAuth((s) => s.currentUserName);
-
+  const currentStoreId = useAuth((s) => s.currentStoreId);
   const currentUserId = useAuth((s) => s.currentUserId);
   const merchantProfile = useMerchantProfile((s) => s.profile);
   const rawTeamUsers = useLiveQuery(() => db.users.toArray()) || [];
@@ -1540,7 +1540,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
                   try {
                     const pinHash = teamForm.pin ? await hashCredential(teamForm.pin, 'pin') : editingTeamUser?.pinHash || '';
-                    const activeStoreId = merchantProfile?.id ? String(merchantProfile.id) : (useWorkforce.getState().storeId || 'fixture-store');
+                    const activeStoreId = currentStoreId || (useWorkforce.getState().storeId || 'fixture-store');
 
                     if (editingTeamUser) {
                       await db.users.update(editingTeamUser.id, {
