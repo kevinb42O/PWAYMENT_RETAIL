@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { AlertCircle, Clock3, Sparkles, X } from "lucide-react";
+import { AlertCircle, BadgeCheck, Clock3, X } from "lucide-react";
 import {
   entitlementNow,
   useEntitlements,
@@ -73,7 +73,7 @@ export const TrialStatus: React.FC<TrialStatusProps> = ({ onOpenBilling }) => {
           aria-live="polite"
           className="fixed right-4 top-4 z-[100] flex max-w-sm items-start gap-3 rounded-2xl border border-amber-200 bg-white p-4 text-slate-900 shadow-2xl"
         >
-          <Sparkles size={18} className="mt-0.5 shrink-0 text-amber-500" />
+          <BadgeCheck size={18} className="mt-0.5 shrink-0 text-amber-500" />
           <div>
             <div className="text-xs font-black">
               Uw Pro-trial eindigt {days === 0 ? "vandaag" : `over ${days} ${days === 1 ? "dag" : "dagen"}`}.

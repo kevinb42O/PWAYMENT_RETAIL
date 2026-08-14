@@ -108,7 +108,7 @@ export const Modal: React.FC<ModalProps> = ({
         tabIndex={-1}
         className={`${
           isLight
-            ? "bg-white border border-slate-200 text-slate-900 shadow-2xl"
+            ? "bg-white border border-slate-200 text-slate-900 shadow-[0_18px_55px_rgba(15,23,42,0.18)]"
             : "bg-slate-900 border border-slate-800 text-slate-100 shadow-2xl shadow-black/50"
         } rounded-3xl w-full ${sizeClass[size]} ${className} flex flex-col max-h-[92vh] my-auto overflow-hidden transition-all`}
         onClick={(e) => e.stopPropagation()}
@@ -116,7 +116,7 @@ export const Modal: React.FC<ModalProps> = ({
         <div
           className={`flex items-center justify-between px-6 py-4.5 border-b ${
             isLight
-              ? "border-slate-100 bg-slate-50/50"
+              ? "border-slate-200 bg-slate-50/80"
               : "border-slate-800 bg-slate-900/50"
           }`}
         >
@@ -125,7 +125,7 @@ export const Modal: React.FC<ModalProps> = ({
               <div
                 className={`p-2.5 rounded-2xl shrink-0 ${
                   isLight
-                    ? "bg-slate-900 text-white shadow-xs"
+                  ? "bg-[#0e7490] text-white shadow-[0_1px_2px_rgba(15,23,42,0.08)]"
                     : "bg-slate-800 text-slate-100"
                 }`}
               >
@@ -153,7 +153,7 @@ export const Modal: React.FC<ModalProps> = ({
             onClick={onClose}
             className={`p-2 rounded-xl ${
               isLight
-                ? "text-slate-400 hover:bg-slate-200/70 hover:text-slate-900"
+                ? "text-slate-400 hover:bg-[#f0f9ff] hover:text-[#0e7490]"
                 : "text-slate-400 hover:bg-slate-800 hover:text-white"
             } transition-colors shrink-0`}
             title="Sluiten"
@@ -171,7 +171,7 @@ export const Modal: React.FC<ModalProps> = ({
           <div
             className={`px-6 py-4 border-t ${
               isLight
-                ? "border-slate-100 bg-slate-50/50"
+                ? "border-slate-200 bg-slate-50/80"
                 : "border-slate-800/80 bg-slate-900/50"
             }`}
           >

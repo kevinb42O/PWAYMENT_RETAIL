@@ -1,15 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Check, Clock3, Minus, Plus, UserPlus, Users } from "lucide-react";
+import { Check, Clock3, KeyRound, Minus, Plus, ShieldCheck, UserPlus, Users } from "lucide-react";
 import { useAuth } from "../auth/useAuth";
 import { useWorkforce } from "../store/useWorkforce";
 import { formatMinutes, formatWorkdays, todayIso } from "../workforce/format";
 import { addDays, startOfIsoWeek } from "../workforce/roster";
 import { Modal } from "./Modal";
-import { db } from "../db/db";
-import { hashCredential } from "../utils/credentials";
+import { FeedbackBanner } from "./ui/FeedbackBanner";
+import { fieldClassName } from "./ui/Field";
 
-const fieldClass = "mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 font-medium";
-const buttonClass = "inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 disabled:opacity-50";
+const fieldClass = fieldClassName.replace("px-3 py-2 text-sm", "px-3.5 py-2.5 text-xs");
+const buttonClass = "inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:border-[#8bdce8] hover:bg-[#f3fbfc] hover:text-[#0f6f7e] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#38bdf8] disabled:opacity-50";
 const weekdays = [[1, "Ma"], [2, "Di"], [3, "Wo"], [4, "Do"], [5, "Vr"], [6, "Za"], [7, "Zo"]] as const;
 
 export const WorkforceSettings: React.FC = () => {
@@ -27,6 +27,8 @@ export const WorkforceSettings: React.FC = () => {
   const savePatternAction = useWorkforce((s) => s.savePattern);
   const saveEmployeeAction = useWorkforce((s) => s.saveEmployee);
   const adjustBalanceAction = useWorkforce((s) => s.adjustBalance);
+  const approvalPinConfigured = useWorkforce((s) => s.approvalPinConfigured);
+  const setApprovalPinAction = useWorkforce((s) => s.setApprovalPin);
 
   const [accountId, setAccountId] = useState("");
   const [hours, setHours] = useState("");
@@ -34,6 +36,8 @@ export const WorkforceSettings: React.FC = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
   const [applyingRange, setApplyingRange] = useState(false);
+  const [approvalPin, setApprovalPin] = useState("");
+  const [approvalPinConfirmation, setApprovalPinConfirmation] = useState("");
   const [newEmployee, setNewEmployee] = useState({
     displayName: "",
     employeeNumber: "",
@@ -156,22 +160,9 @@ export const WorkforceSettings: React.FC = () => {
     e.preventDefault();
     if (!storeId || !newEmployee.displayName.trim()) return;
     const weeklyMinutes = Math.round(Number(newEmployee.weeklyHours.replace(",", ".")) * 60);
-    const newId = `usr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-    const defaultPinHash = await hashCredential("123456", "pin");
-    
-    // 1. Keep local POS users database in sync
-    await db.users.put({
-      id: newId,
-      name: newEmployee.displayName.trim(),
-      email: newEmployee.email.trim() || undefined,
-      role: "cashier",
-      pinHash: defaultPinHash,
-      createdAt: new Date().toISOString(),
-    });
-
-    // 2. Save in workforce planning and leave accounts
+    // This flow creates employment data only. Register access/PIN setup belongs
+    // to Team & permissions and is no longer silently provisioned here.
     const success = await saveEmployeeAction(storeId, {
-      id: newId,
       displayName: newEmployee.displayName.trim(),
       employeeNumber: newEmployee.employeeNumber.trim() || undefined,
       email: newEmployee.email.trim() || undefined,
@@ -189,20 +180,8 @@ export const WorkforceSettings: React.FC = () => {
     });
 
     if (success) {
-      // 3. Save pattern explicitly
-      await savePatternAction(storeId, {
-        employeeId: newId,
-        weekdays: newEmployee.weekdays,
-        startTime: newEmployee.startTime,
-        endTime: newEmployee.endTime,
-        breakMinutes: Number(newEmployee.breakMinutes) || 0,
-        roleLabel: "Verkoop",
-        locationLabel: "Winkelvloer",
-        effectiveFrom: newEmployee.startDate || todayIso(),
-      });
-
       setShowAddEmployeeModal(false);
-      setMessage(`Medewerker ${newEmployee.displayName} succesvol toegevoegd met ${newEmployee.weeklyHours}u contract en direct ingeroosterd.`);
+      setMessage(`Medewerker ${newEmployee.displayName} toegevoegd met ${newEmployee.weeklyHours}u contract en werkpatroon.`);
       setNewEmployee({
         displayName: "",
         employeeNumber: "",
@@ -231,18 +210,21 @@ export const WorkforceSettings: React.FC = () => {
     }
   };
 
+  const saveApprovalPin = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!storeId || approvalPin !== approvalPinConfirmation) return;
+    if (await setApprovalPinAction(storeId, approvalPin)) {
+      setApprovalPin("");
+      setApprovalPinConfirmation("");
+      setMessage("Persoonlijke goedkeurings-PIN ingesteld.");
+    }
+  };
+
   return (
     <div className="mx-auto w-full max-w-6xl space-y-5">
-      {(error || message) && (
-        <div
-          className={`rounded-xl border px-4 py-3 text-xs font-semibold ${
-            error ? "border-rose-200 bg-rose-50 text-rose-800" : "border-emerald-200 bg-emerald-50 text-emerald-800"
-          }`}
-          role={error ? "alert" : "status"}
-        >
-          {error ?? message}
-        </div>
-      )}
+      {(error || message) && <FeedbackBanner tone={error ? "error" : "success"}>{error ?? message}</FeedbackBanner>}
+
+      {currentRole === "owner" && <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs"><header className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="flex items-center gap-2 text-sm font-bold text-slate-900"><ShieldCheck size={17} className="text-cyan-700" /> Verlofgoedkeuring beveiligen</h2><p className="mt-0.5 text-xs leading-5 text-slate-500">Alleen jij als eigenaar kunt deze PIN instellen of wijzigen. Ze opent de aparte goedkeuringspagina en bevestigt een beslissing.</p></div><span className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold ${approvalPinConfigured ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-900"}`}>{approvalPinConfigured ? <ShieldCheck size={14} /> : <KeyRound size={14} />}{approvalPinConfigured ? "PIN actief" : "PIN ontbreekt"}</span></header><form onSubmit={saveApprovalPin} className="grid gap-3 p-5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end"><label className="text-xs font-bold text-slate-700">{approvalPinConfigured ? "Nieuwe persoonlijke PIN" : "Persoonlijke PIN"}<input aria-label="Nieuwe goedkeurings-PIN" type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} value={approvalPin} onChange={(event) => setApprovalPin(event.target.value.replace(/\D/g, ""))} placeholder="6 cijfers" className={fieldClass} /></label><label className="text-xs font-bold text-slate-700">Herhaal PIN<input aria-label="Herhaal goedkeurings-PIN" type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} value={approvalPinConfirmation} onChange={(event) => setApprovalPinConfirmation(event.target.value.replace(/\D/g, ""))} placeholder="6 cijfers" className={fieldClass} /></label><button type="submit" disabled={mutating || approvalPin.length !== 6 || approvalPin !== approvalPinConfirmation} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-cyan-200 bg-cyan-50 px-4 text-xs font-bold text-cyan-800 hover:bg-cyan-100 disabled:opacity-50"><KeyRound size={15} /> {approvalPinConfigured ? "PIN wijzigen" : "PIN instellen"}</button></form></section>}
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs">
         <header className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 px-5 py-4 gap-3">
@@ -254,7 +236,7 @@ export const WorkforceSettings: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowAddEmployeeModal(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-black shrink-0 cursor-pointer"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#0e7490] bg-[#0e7490] px-3.5 py-2 text-xs font-bold text-white shadow-[0_1px_2px_rgba(15,23,42,0.08)] transition hover:bg-[#0f6677] shrink-0 cursor-pointer"
             >
               <UserPlus size={15} />
               <span>Medewerker toevoegen</span>
@@ -271,7 +253,7 @@ export const WorkforceSettings: React.FC = () => {
                 onClick={() => loadExistingPattern(employee.id)}
                 className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left transition-all cursor-pointer ${
                   pattern.employeeId === employee.id
-                    ? "border border-slate-900 bg-slate-50 ring-1 ring-slate-900/10 font-bold"
+                    ? "border border-[#bae6fd] bg-[#f0f9ff] text-[#0e7490] font-bold"
                     : "border border-slate-100 bg-white hover:bg-slate-50 text-slate-700"
                 }`}
               >
@@ -279,7 +261,7 @@ export const WorkforceSettings: React.FC = () => {
                   <span className="block text-xs font-bold text-slate-900">{employee.displayName}</span>
                   <span className="mt-0.5 block text-[11px] text-slate-500 font-medium">{formatMinutes(employee.weeklyMinutes ?? 0)} per week</span>
                 </span>
-                <Clock3 size={15} className={pattern.employeeId === employee.id ? "text-slate-900" : "text-slate-400"} />
+                <Clock3 size={15} className={pattern.employeeId === employee.id ? "text-[#0e7490]" : "text-slate-400"} />
               </button>
             ))}
           </div>
@@ -295,7 +277,7 @@ export const WorkforceSettings: React.FC = () => {
                   type="button"
                   disabled={applyingRange || !pattern.employeeId}
                   onClick={() => void handleApplyYearBatch(false)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-sky-800 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-xl transition cursor-pointer disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-[#bae6fd] bg-[#f0f9ff] px-3 py-1.5 text-xs font-bold text-[#0e7490] transition hover:bg-[#e2f7fa] cursor-pointer disabled:opacity-50"
                   title="Genereert direct planning voor het hele lopende jaar"
                 >
                   <span>Doortrekken t/m dec {new Date().getFullYear()}</span>
@@ -350,7 +332,7 @@ export const WorkforceSettings: React.FC = () => {
                         }))
                       }
                       className={`h-9 min-w-10 rounded-xl border px-3 text-xs font-bold transition-colors cursor-pointer ${
-                        active ? "border-slate-900 bg-slate-900 text-white font-bold shadow-xs" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 font-medium"
+                        active ? "border-[#0e7490] bg-[#0e7490] text-white font-bold shadow-[0_1px_2px_rgba(15,23,42,0.08)]" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 font-medium"
                       }`}
                     >
                       {label}
@@ -417,7 +399,7 @@ export const WorkforceSettings: React.FC = () => {
               <button
                 type="submit"
                 disabled={mutating || !pattern.employeeId || !pattern.weekdays.length}
-                className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-xs font-bold text-white shadow-xs transition hover:bg-black disabled:opacity-50 cursor-pointer"
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-[#0e7490] bg-[#0e7490] px-4 text-xs font-bold text-white shadow-[0_1px_2px_rgba(15,23,42,0.08)] transition hover:bg-[#0f6677] disabled:opacity-50 cursor-pointer"
               >
                 <Check size={15} /> Werkpatroon bewaren
               </button>

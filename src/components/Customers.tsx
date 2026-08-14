@@ -497,7 +497,7 @@ export const Customers: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-zinc-950 text-white p-4 sm:p-6">
+    <div className="customers-page app-page-content flex-1 overflow-y-auto p-4 sm:p-6">
       <div className="max-w-7xl mx-auto space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -540,7 +540,7 @@ export const Customers: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 rounded-xl border border-zinc-800 bg-zinc-900 p-1">
+        <div className="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-slate-50 p-1 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
           <AdminTab
             icon={<Users size={16} />}
             label="Klanten"
@@ -2418,7 +2418,7 @@ const SortableHeader: React.FC<CustomerSortableHeaderProps> = ({
     >
       <button
         onClick={() => onSort(sortKey)}
-        className={`flex w-full items-center gap-1 ${justify} hover:text-white`}
+        className={`flex w-full items-center gap-1 ${justify} hover:text-[#0e7490]`}
       >
         {label}
         {active ? (
@@ -2495,8 +2495,8 @@ const AdminTab: React.FC<{
     onClick={onClick}
     className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold ${
       active
-        ? "bg-zinc-800 text-white"
-        : "text-zinc-400 hover:text-white hover:bg-zinc-800/60"
+        ? "border border-[#bae6fd] bg-[#f0f9ff] text-[#0e7490]"
+        : "text-slate-500 hover:bg-white hover:text-slate-800"
     }`}
   >
     {icon}
@@ -2509,10 +2509,10 @@ const Kpi: React.FC<{
   value: string;
   tone?: "emerald" | "amber";
 }> = ({ label, value, tone }) => (
-  <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-3">
-    <div className="text-xs uppercase tracking-wide text-zinc-500">{label}</div>
+  <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+    <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
     <div
-      className={`mt-1 text-xl font-bold tabular-nums ${tone === "amber" ? "text-amber-300" : tone === "emerald" ? "text-emerald-300" : "text-white"}`}
+      className={`mt-1 text-xl font-bold tabular-nums ${tone === "amber" ? "text-amber-700" : tone === "emerald" ? "text-emerald-700" : "text-slate-950"}`}
     >
       {value}
     </div>

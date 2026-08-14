@@ -1,5 +1,5 @@
 import React from "react";
-import { Lock, Sparkles } from "lucide-react";
+import { ArrowUpRight, Lock } from "lucide-react";
 import {
   type FeatureKey,
   isFeatureEnabledForSnapshot,
@@ -50,7 +50,7 @@ export const FeatureGate: React.FC<FeatureGateProps> = ({
             onClick={onUpgrade}
             className="mt-5 inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-bold text-white hover:bg-black"
           >
-            <Sparkles size={14} /> Bekijk Retail Professional
+            <ArrowUpRight size={14} /> Bekijk Retail Professional
           </button>
         )}
       </div>

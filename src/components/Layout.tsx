@@ -7,9 +7,11 @@ import { useProducts } from "../store/useProducts";
 import { matchesCatalogQuery } from "../utils/productLookup";
 import { FeatureGate } from "../billing/FeatureGate";
 import { TrialStatus } from "../billing/TrialStatus";
-import { FEATURE_KEYS, planLabel, useEntitlements } from "../billing/entitlements";
+import { FEATURE_KEYS, isFeatureEnabledForSnapshot, planLabel, useEntitlements } from "../billing/entitlements";
 import { supabase } from "../lib/supabase";
 import { useStoreConfiguration } from "../store/useStoreConfiguration";
+import { useWorkforce } from "../store/useWorkforce";
+import { Modal } from "./Modal";
 import {
   AlertCircle,
   CheckCircle2,
@@ -31,6 +33,9 @@ import {
   Minimize,
   SlidersHorizontal,
   ChevronDown,
+  KeyRound,
+  LockKeyhole,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -107,7 +112,9 @@ export const Layout: React.FC = () => {
     setMainView,
     scanCodeToCart,
   } = useStore();
-  const { currentUserName, currentRole, currentStoreId, logout } = useAuth();
+  const { currentUserName, currentRole, currentStoreId, logout, verifyCurrentOwnerPin } = useAuth();
+  const verifyApprovalPin = useWorkforce((state) => state.verifyApprovalPin);
+  const workforceMutating = useWorkforce((state) => state.mutating);
   const refreshEntitlements = useEntitlements((state) => state.load);
   const entitlementSnapshot = useEntitlements((state) => state.snapshot);
   const products = useProducts((s) => s.list);
@@ -125,9 +132,12 @@ export const Layout: React.FC = () => {
   const [isNavDropdownOpen, setIsNavDropdownOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [profileInitialTarget, setProfileInitialTarget] = useState<{
-    tab: "billing" | "webshop-general" | "modules" | "workforce";
+    tab: "billing" | "webshop-general" | "modules" | "workforce" | "leave-approvals";
     requestKey: number;
   }>({ tab: "billing", requestKey: 0 });
+  const [leaveApprovalGateOpen, setLeaveApprovalGateOpen] = useState(false);
+  const [leaveApprovalPin, setLeaveApprovalPin] = useState("");
+  const [leaveApprovalGateError, setLeaveApprovalGateError] = useState<string | null>(null);
 
   const scanInputRef = useRef<HTMLInputElement | null>(null);
   const scanBufferRef = useRef("");
@@ -151,15 +161,25 @@ export const Layout: React.FC = () => {
         entitlementSnapshot.status === "trialing" ? " trial" : ""
       }`
     : undefined;
+  const workforceApprovalAvailable = currentRole === "owner"
+    && modulePreferences.workforce
+    && isFeatureEnabledForSnapshot(entitlementSnapshot, FEATURE_KEYS.workforce);
 
   const openProfile = (
-    tab: "billing" | "webshop-general" | "modules" | "workforce" = "billing",
+    tab: "billing" | "webshop-general" | "modules" | "workforce" | "leave-approvals" = "billing",
   ) => {
     setProfileInitialTarget((current) => ({
       tab,
       requestKey: current.requestKey + 1,
     }));
     setMainView("profile");
+  };
+  const approvalStoreId = currentStoreId ?? (import.meta.env.VITE_E2E_BUILD === "true" ? "fixture-store" : null);
+  const openLeaveApprovalGate = () => {
+    setIsUserMenuOpen(false);
+    setLeaveApprovalPin("");
+    setLeaveApprovalGateError(null);
+    setLeaveApprovalGateOpen(true);
   };
 
   const navigationItems = React.useMemo<NavigationItem[]>(
@@ -649,6 +669,17 @@ export const Layout: React.FC = () => {
                 </button>
               )}
 
+              {workforceApprovalAvailable && (
+                <button
+                  role="menuitem"
+                  onClick={openLeaveApprovalGate}
+                  className="w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-cyan-50 hover:text-cyan-800 transition-colors"
+                >
+                  <span className="flex items-center gap-2.5"><ShieldCheck size={15} className="text-cyan-700" /><span>Verlof goedkeuren</span></span>
+                  <span className="text-[9px] font-extrabold uppercase tracking-wide text-cyan-700">PIN</span>
+                </button>
+              )}
+
               {/* Instellingen Pagina Link */}
               <button
                 role="menuitem"
@@ -753,7 +784,7 @@ export const Layout: React.FC = () => {
         </div>
       )}
 
-      <main className="flex-1 min-h-0 relative z-0 flex flex-col overflow-hidden">
+      <main className="app-standard flex-1 min-h-0 relative flex flex-col overflow-hidden">
         <React.Suspense fallback={<ViewLoading />}>
           {mainView === "z-report" && <ZReportView />}
           {mainView === "audit-log" && (
@@ -937,6 +968,7 @@ export const Layout: React.FC = () => {
           </div>
         )}
       </main>
+      {leaveApprovalGateOpen && <Modal open onClose={() => setLeaveApprovalGateOpen(false)} title="Eigenaarstoegang bevestigen" subtitle="Verlofgoedkeuring is alleen voor de zaakvoerder." icon={<ShieldCheck size={18} />} size="sm" closeOnBackdrop><div className="space-y-4"><div className="rounded-xl border border-cyan-100 bg-cyan-50 p-3 text-xs leading-5 text-cyan-950"><p className="font-bold">Je opent de beveiligde verlofinbox.</p><p className="mt-1">Medewerkers en planners hebben hier geen toegang. Voer je persoonlijke goedkeurings-PIN in om verder te gaan.</p></div><label className="block text-xs font-bold text-slate-700"><span className="flex items-center gap-1.5"><KeyRound size={14} /> Persoonlijke PIN</span><input aria-label="Eigenaar PIN voor verlofgoedkeuring" type="password" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={leaveApprovalPin} onChange={(event) => { setLeaveApprovalPin(event.target.value.replace(/\D/g, "")); setLeaveApprovalGateError(null); }} placeholder="6 cijfers" className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100" /></label>{leaveApprovalGateError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-800">{leaveApprovalGateError}</p>}<div className="flex justify-end gap-2 border-t border-slate-100 pt-4"><button type="button" onClick={() => setLeaveApprovalGateOpen(false)} className="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 hover:bg-slate-50">Annuleren</button><button type="button" disabled={workforceMutating || leaveApprovalPin.length !== 6} onClick={async () => { if (!approvalStoreId) return; const verified = import.meta.env.VITE_E2E_BUILD === "true" ? await verifyCurrentOwnerPin(leaveApprovalPin) : await verifyApprovalPin(approvalStoreId, leaveApprovalPin); if (!verified) { setLeaveApprovalGateError("De ingevoerde PIN is onjuist, geblokkeerd of nog niet ingesteld."); return; } setLeaveApprovalGateOpen(false); openProfile("leave-approvals"); }} className="inline-flex h-9 items-center gap-2 rounded-lg border border-cyan-200 bg-cyan-50 px-3 text-xs font-bold text-cyan-800 hover:bg-cyan-100 disabled:opacity-50"><LockKeyhole size={14} /> Verlofinbox openen</button></div></div></Modal>}
     </div>
   );
 };

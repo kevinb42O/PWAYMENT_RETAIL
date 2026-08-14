@@ -96,6 +96,8 @@ export interface WorkforceBootstrap {
   schemaVersion?: number;
   employee: WorkforceEmployee | null;
   canManage: boolean;
+  /** Only the signed-in owner receives this flag; the PIN itself never leaves the server. */
+  approvalPinConfigured?: boolean;
   leaveTypes: LeaveType[];
   balances: LeaveBalance[];
   requests: LeaveRequest[];
@@ -247,6 +249,17 @@ export interface SaveEmployeeInput {
     roleLabel?: string;
     locationLabel?: string;
   };
+  /**
+   * Optional local register access. It is deliberately separate from employment
+   * data: a workforce employee does not automatically receive a POS login.
+   */
+  posAccess?: {
+    role: import("../types").Role;
+    pinHash: string;
+    jobTitle?: string;
+    /** Retains the historic local POS identity when it predates workforce. */
+    localUserId?: string;
+  };
 }
 
 export interface BatchApplyPatternsInput {
@@ -255,5 +268,3 @@ export interface BatchApplyPatternsInput {
   employeeIds?: string[];
   overwriteManualShifts?: boolean;
 }
-
-

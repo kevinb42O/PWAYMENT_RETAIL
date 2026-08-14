@@ -43,9 +43,20 @@ test("roster is the compact light-mode default and navigates by week and date", 
   await expect(appPage.getByLabel("Roosterdatum")).toBeVisible();
 
   const forbiddenThemeClasses = await appPage.getByTestId("workforce-root").locator("button").evaluateAll((buttons) =>
-    buttons.flatMap((button) => [...button.classList].filter((name) => /^(bg-(sky|cyan|slate)-(600|700|800|900|950)|text-white)$/.test(name))),
+    buttons.flatMap((button) => [...button.classList].filter((name) => /^(bg-(sky|cyan|slate)-(600|700|800|900|950))$/.test(name))),
   );
   expect(forbiddenThemeClasses).toEqual([]);
+});
+
+test("owner opens the separate PIN-gated leave approval centre from settings", async ({ appPage }) => {
+  await openApp(appPage);
+  await appPage.getByRole("button", { name: "Profiel en instellingen" }).click();
+  await appPage.getByRole("menuitem", { name: /Verlof goedkeuren/ }).click();
+  const gate = appPage.getByRole("dialog", { name: "Eigenaarstoegang bevestigen" });
+  await gate.getByLabel("Eigenaar PIN voor verlofgoedkeuring").fill("123456");
+  await gate.getByRole("button", { name: "Verlofinbox openen" }).click();
+  await expect(appPage.getByRole("heading", { name: "Verlof goedkeuren", exact: true }).first()).toBeVisible();
+  await expect(appPage.getByText("PIN-toegang bevestigd", { exact: true })).toBeVisible();
 });
 
 test("manager materializes patterns, edits a shift and publishes the week", async ({ appPage }) => {

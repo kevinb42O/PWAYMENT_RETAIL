@@ -9,7 +9,7 @@ import {
   Plus,
   FileText,
   Layers,
-  Sparkles,
+  BadgeCheck,
   ChevronRight,
   ExternalLink,
   Receipt,
@@ -284,7 +284,7 @@ export const BillingSettings: React.FC<BillingSettingsProps> = ({
               activePlan === 'pro' ? 'border-slate-900 ring-2 ring-slate-900' : 'border-slate-900'
             }`}>
               <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-wider px-4 py-1 rounded-full shadow-2xs flex items-center gap-1">
-                <Sparkles size={12} className="text-amber-300" /> Populairste keuze
+                <BadgeCheck size={12} className="text-amber-300" /> Populairste keuze
               </div>
 
               <div className="space-y-5 pt-1">

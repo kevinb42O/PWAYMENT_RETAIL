@@ -2,6 +2,11 @@ import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import { expect, openApp, test } from "./fixtures";
 
+// This test audits five complete application views. Axe evaluates the full DOM
+// for each view and can exceed Playwright's default 30s while the suite is
+// running in parallel; keep a finite gate rather than making it flaky.
+test.setTimeout(60_000);
+
 const expectNoSeriousAccessibilityViolations = async (
   page: Page,
   viewName: string,

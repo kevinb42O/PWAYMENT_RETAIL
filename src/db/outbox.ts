@@ -26,12 +26,14 @@ export const enqueueOutbox = async (
 /** Best-effort drain. No-op until a backend is configured. */
 export const drainOutbox = async (
   send: (entry: OutboxEntry) => Promise<void>,
-): Promise<void> => {
+): Promise<{ delivered: number; failed?: OutboxEntry }> => {
   const pending = await db.outbox.orderBy('id').toArray();
+  let delivered = 0;
   for (const entry of pending) {
     try {
       await send(entry);
       if (entry.id != null) await db.outbox.delete(entry.id);
+      delivered += 1;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       if (entry.id != null) {
@@ -41,7 +43,8 @@ export const drainOutbox = async (
         });
       }
       // Stop on first failure; retry next cycle.
-      break;
+      return { delivered, failed: entry };
     }
   }
+  return { delivered };
 };

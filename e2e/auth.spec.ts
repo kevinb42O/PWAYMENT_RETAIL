@@ -46,7 +46,7 @@ test("registration requires strong credentials and reload locks the session", as
     .getByRole("button", { name: "Account aanmaken en starten" })
     .click();
   await expect(
-    appPage.getByRole("heading", { name: "Integration Hub" }),
+    appPage.getByRole("heading", { name: "Producten importeren" }),
   ).toBeVisible();
 
   await appPage.reload();

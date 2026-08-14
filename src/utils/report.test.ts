@@ -1,11 +1,25 @@
-import { describe, expect, it } from "vitest";
+import "fake-indexeddb/auto";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+vi.mock("../services/outboxWorker", () => ({
+  synchronizeFinancialLedgerBeforeReport: vi.fn(),
+}));
+vi.mock("../services/supabaseStoreSync", () => ({
+  syncStoreFromSupabase: vi.fn(),
+}));
 import {
   calculateReportData,
+  generateZReport,
+  getUnfinalizedTransactions,
   ReportIntegrityError,
   verifyZReport,
 } from "./report";
 import { Transaction } from "../types";
 import { generateHash } from "./crypto";
+import { db } from "../db/db";
+import { useAuth } from "../auth/useAuth";
+import { supabase } from "../lib/supabase";
+import { synchronizeFinancialLedgerBeforeReport } from "../services/outboxWorker";
+import { syncStoreFromSupabase } from "../services/supabaseStoreSync";
 
 const tx = (
   id: number,
@@ -121,5 +135,115 @@ describe("calculateReportData", () => {
     await expect(
       verifyZReport({ ...report, serverHashPayload: `${serverHashPayload}tampered` }, []),
     ).resolves.toBe(false);
+  });
+});
+
+describe("local Z report finalization", () => {
+  beforeEach(async () => {
+    if (!db.isOpen()) await db.open();
+    await Promise.all([
+      db.transactions.clear(),
+      db.gift_card_events.clear(),
+      db.daily_reports.clear(),
+      db.shifts.clear(),
+      db.outbox.clear(),
+    ]);
+    useAuth.setState({ currentStoreId: null });
+  });
+
+  it("creates a verifiable report, reconciles cash, and finalizes only the selected register", async () => {
+    const first = { ...tx(1, 1210, "Cash"), registerId: "register-a", clientRequestId: "sale-a" };
+    const second = { ...tx(2, 2420, "PIN"), registerId: "register-b", clientRequestId: "sale-b" };
+    await db.transactions.bulkAdd([first, second]);
+    await db.gift_card_events.add({
+      id: "gift-issue-1",
+      giftCardId: "gift-1",
+      giftCardCode: "PW-001",
+      type: "issue",
+      amountCents: 5000,
+      balanceBeforeCents: 0,
+      balanceAfterCents: 5000,
+      timestamp: Date.now(),
+      source: "live",
+      paymentTenders: [{ method: "Cash", amountCents: 5000 }],
+    });
+
+    const report = await generateZReport({
+      registerId: "register-a",
+      openingFloatCents: 1000,
+      countedCashCents: 7210,
+      cashDifferenceReason: "Geteld met tweede medewerker",
+      closedByUserId: "u-owner",
+      closedByUserName: "Eigenaar",
+    });
+
+    expect(report).toMatchObject({
+      reportNumber: 1,
+      registerId: "register-a",
+      transactionIds: [1],
+      expectedCashCents: 7210,
+      cashDifferenceCents: 0,
+      giftCardEventIds: ["gift-issue-1"],
+    });
+    expect(await verifyZReport(report!, [await db.transactions.get(1) as Transaction], await db.gift_card_events.toArray())).toBe(true);
+    expect((await db.transactions.get(1))?.isFinalized).toBe(1);
+    expect((await db.transactions.get(2))?.isFinalized).toBe(0);
+    expect((await db.gift_card_events.get("gift-issue-1"))?.dailyReportId).toBe(report?.id);
+    expect((await db.outbox.toArray())[0]).toMatchObject({ kind: "daily_report" });
+    expect(await getUnfinalizedTransactions("register-a")).toEqual([]);
+    expect(await getUnfinalizedTransactions("register-b")).toHaveLength(1);
+  });
+
+  it("returns no report when a register has neither sales nor gift-card liability events", async () => {
+    await expect(generateZReport({ registerId: "empty-register" })).resolves.toBeNull();
+  });
+
+  it("uses the server-authoritative close when a tenant is active", async () => {
+    const transaction = { ...tx(1, 1210, "PIN"), registerId: "register-a", clientRequestId: "server-sale-1" };
+    await db.transactions.add(transaction);
+    useAuth.setState({ currentStoreId: "store-1" });
+    const report = {
+      reportNumber: 9,
+      timestamp: Date.now(),
+      totalRevenueCents: 1210,
+      totalCostCents: 0,
+      grossProfitCents: 1210,
+      totalVat12Cents: 0,
+      totalVat21Cents: 210,
+      totalExclVat12Cents: 0,
+      totalExclVat21Cents: 1000,
+      totalDiscountCents: 0,
+      paymentTotalsCents: { Cash: 0, PIN: 1210, Cadeaubon: 0 },
+      giftCardLiabilityAddedCents: 0,
+      giftCardLiabilityPaymentTotalsCents: { Cash: 0, PIN: 0, Cadeaubon: 0 },
+      giftCardEventIds: [],
+      transactionIds: [1],
+      prevHash: null,
+      hash: "server-hash",
+      hashPayloadVersion: 3,
+    };
+    vi.mocked(synchronizeFinancialLedgerBeforeReport).mockResolvedValue();
+    vi.mocked(syncStoreFromSupabase).mockImplementation(async () => {
+      await db.daily_reports.add(report);
+    });
+    vi.spyOn(supabase, "rpc").mockResolvedValue({ data: { report_number: 9 }, error: null } as never);
+
+    await expect(generateZReport({ registerId: "register-a", countedCashCents: 0 })).resolves.toMatchObject({ reportNumber: 9 });
+    expect(synchronizeFinancialLedgerBeforeReport).toHaveBeenCalledWith("store-1", [expect.objectContaining({ clientRequestId: "server-sale-1" })], []);
+    expect(supabase.rpc).toHaveBeenCalledWith("finalize_daily_report", expect.objectContaining({ target_store_id: "store-1" }));
+  });
+
+  it("rejects server close errors and malformed report numbers before trusting local state", async () => {
+    await db.transactions.add({ ...tx(1, 1210, "PIN"), registerId: "register-a", clientRequestId: "server-sale-2" });
+    useAuth.setState({ currentStoreId: "store-1" });
+    vi.mocked(synchronizeFinancialLedgerBeforeReport).mockRejectedValueOnce(new Error("verbinding weg"));
+    await expect(generateZReport({ registerId: "register-a" })).rejects.toThrow("openstaande verkopen");
+
+    vi.mocked(synchronizeFinancialLedgerBeforeReport).mockResolvedValue();
+    vi.spyOn(supabase, "rpc").mockResolvedValueOnce({ data: null, error: { message: "report:locked:Dag is gesloten" } } as never);
+    await expect(generateZReport({ registerId: "register-a" })).rejects.toThrow("Dag is gesloten");
+
+    vi.spyOn(supabase, "rpc").mockResolvedValueOnce({ data: { report_number: 0 }, error: null } as never);
+    await expect(generateZReport({ registerId: "register-a" })).rejects.toThrow("geldig Z-rapportnummer");
   });
 });

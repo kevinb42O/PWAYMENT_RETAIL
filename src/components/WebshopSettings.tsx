@@ -6,9 +6,9 @@ import {
   Copy,
   Check,
   Eye,
+  FilePenLine,
   Plus,
   Search,
-  Sparkles,
   Building2,
   Lock,
   RefreshCw,
@@ -1122,7 +1122,7 @@ export const WebshopSettings: React.FC<WebshopSettingsProps> = ({
                   }}
                   className="text-[11px] text-slate-600 hover:text-slate-950 hover:underline flex items-center gap-1"
                 >
-                  <Sparkles size={12} />
+                  <FilePenLine size={12} />
                   <span>Tekstsuggestie gebruiken</span>
                 </button>
               </div>

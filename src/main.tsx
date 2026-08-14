@@ -35,12 +35,16 @@ const accountRoute = ["/app", "/login", "/register"].some(
     window.location.pathname === route ||
     window.location.pathname.startsWith(`${route}/`),
 );
+const platformConsoleRoute =
+  window.location.pathname === "/admin" ||
+  window.location.pathname.startsWith("/admin/");
 const publicWebsiteRoute =
   !passwordSetupFlow &&
   !storefrontRoute &&
   !serviceTrackingRoute &&
   !customerDisplayRoute &&
   !accountRoute &&
+  !platformConsoleRoute &&
   !presentationMode &&
   !presentationBuild;
 const serviceWorkerCleanupKey = "pwayment-service-worker-cleanup-v1";
@@ -230,6 +234,20 @@ const start = async () => {
     root.render(
       <StrictMode>
         <Storefront />
+      </StrictMode>,
+    );
+    return;
+  }
+
+  if (platformConsoleRoute) {
+    document.documentElement.dataset.theme = "light";
+    document.documentElement.classList.add("theme-light");
+    document.documentElement.classList.remove("theme-dark");
+    document.documentElement.style.colorScheme = "light";
+    const { default: AdminApp } = await import("./admin/AdminApp");
+    root.render(
+      <StrictMode>
+        <AdminApp />
       </StrictMode>,
     );
     return;

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, Barcode, Boxes, Building2, Check, CheckCircle2, Download, Package, PackageSearch, Palette, Pencil, Plus, RotateCcw, Search, Sparkles, Tag, Tags, Trash2, TrendingUp, Upload, X } from 'lucide-react';
+import { AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, Barcode, Boxes, Building2, Check, CheckCircle2, Download, Package, PackageSearch, Palette, Pencil, Plus, RotateCcw, Search, Tag, Tags, Trash2, TrendingUp, Upload, X } from 'lucide-react';
 import { useProducts } from '../store/useProducts';
 import { Product } from '../types';
 import { centsToDecimalString, formatEUR, parseDecimalToCents } from '../utils/money';
@@ -388,11 +388,11 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
   };
 
   return (
-    <div className="space-y-6">
+    <div className="product-admin space-y-6">
       {/* Portal action buttons to main page header container (helemaal rechtsboven) */}
       {headerContainer
         ? createPortal(
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="product-admin-header-actions flex flex-wrap items-center gap-2">
               {viewTab === 'products' && (
                 <>
                   <input
@@ -630,7 +630,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
           )}
 
           {/* Search & Filter Toolbar */}
-          <div className="flex flex-col sm:flex-row flex-wrap items-center justify-between gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200/80">
+          <div className="flex flex-col sm:flex-row flex-wrap items-center justify-between gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200/80">
             <div className="relative flex-1 min-w-[240px] w-full sm:w-auto">
               <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
@@ -655,15 +655,15 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
               </select>
 
               {/* Status Filter Switcher */}
-              <div className="flex bg-slate-200/80 p-0.5 rounded-xl border border-slate-300/60">
+              <div className="flex bg-slate-50 p-0.5 rounded-xl border border-slate-200">
                 {(['active', 'archived', 'all'] as const).map((f) => (
                   <button
                     key={f}
                     onClick={() => setFilter(f)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                       filter === f
-                        ? 'bg-white text-slate-900 shadow-2xs'
-                        : 'text-slate-600 hover:text-slate-900 font-semibold'
+                        ? 'border border-[#bae6fd] bg-[#f0f9ff] text-[#0e7490] shadow-none'
+                        : 'text-slate-600 hover:bg-white hover:text-slate-900 font-semibold'
                     }`}
                   >
                     {f === 'active' ? 'Actief' : f === 'archived' ? 'Gearchiveerd' : 'Alles'}
@@ -812,6 +812,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
         <Modal
           open
           size="5xl"
+          className="product-admin-modal"
           onClose={close}
           icon={<Package size={22} />}
           title={isNew ? 'Nieuw Product Toevoegen' : 'Product Bewerken'}
@@ -849,8 +850,8 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
             {/* LEFT COLUMN: Main Details, Categorization, Pricing (8 Cols) */}
             <div className="lg:col-span-8 space-y-6">
               {/* CARD 1: Product Identiteit & Categorisatie */}
-              <div className="bg-slate-50/60 border border-slate-200/80 rounded-2xl p-5 space-y-4 shadow-2xs">
-                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-700 border-b border-slate-200/60 pb-2.5">
+              <div className="product-admin-section rounded-2xl p-5 space-y-4">
+                <div className="product-admin-section-title flex items-center gap-2 text-xs font-black uppercase tracking-wider pb-2.5">
                   <Tag size={15} className="text-slate-500" />
                   <span>Basisinformatie & Categorisatie</span>
                 </div>
@@ -925,8 +926,8 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
               </div>
 
               {/* CARD 2: SKU & Barcodes */}
-              <div className="bg-slate-50/60 border border-slate-200/80 rounded-2xl p-5 space-y-4 shadow-2xs">
-                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-700 border-b border-slate-200/60 pb-2.5">
+              <div className="product-admin-section rounded-2xl p-5 space-y-4">
+                <div className="product-admin-section-title flex items-center gap-2 text-xs font-black uppercase tracking-wider pb-2.5">
                   <Barcode size={15} className="text-slate-500" />
                   <span>Identificatie & Barcodes</span>
                 </div>
@@ -960,7 +961,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                         className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-bold transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer"
                         title="Genereer een unieke interne EAN-13 barcode"
                       >
-                        <Sparkles size={13} className="text-amber-400" />
+                        <Barcode size={13} />
                         <span>Genereer EAN</span>
                       </button>
                     </div>
@@ -969,9 +970,9 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
               </div>
 
               {/* CARD 3: Financiën & Winstmarge */}
-              <div className="bg-slate-50/60 border border-slate-200/80 rounded-2xl p-5 space-y-4 shadow-2xs">
-                <div className="flex items-center justify-between border-b border-slate-200/60 pb-2.5">
-                  <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-700">
+              <div className="product-admin-section rounded-2xl p-5 space-y-4">
+                <div className="product-admin-section-title flex items-center justify-between pb-2.5">
+                  <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider">
                     <TrendingUp size={15} className="text-slate-500" />
                     <span>Prijzen & Winstmarge</span>
                   </div>
@@ -1037,7 +1038,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                   </Field>
                 </div>
 
-                <div className="rounded-2xl border border-violet-200 bg-violet-50/70 p-4">
+                <div className="product-admin-tier-panel rounded-2xl p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <div className="text-xs font-black text-violet-950">Klantprijzen</div>
@@ -1052,13 +1053,13 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                         while (group in current) group = `prijsgroep-${++index}`;
                         setEditing({ ...editing, priceTiers: { ...current, [group]: editing.priceCents } });
                       }}
-                      className="shrink-0 rounded-xl bg-violet-700 px-3 py-2 text-[11px] font-black text-white hover:bg-violet-800"
+                      className="shrink-0 rounded-xl bg-[#0e7490] px-3 py-2 text-[11px] font-black text-white hover:bg-[#0f6677]"
                     >
                       + Prijsgroep
                     </button>
                   </div>
                   {Object.entries(editing.priceTiers ?? {}).length === 0 ? (
-                    <div className="mt-3 rounded-xl border border-dashed border-violet-200 bg-white/60 p-3 text-[11px] text-violet-700">Geen afwijkende klantprijzen. Iedereen betaalt de standaard verkoopprijs.</div>
+                    <div className="product-admin-tier-empty mt-3 rounded-xl border border-dashed p-3 text-[11px]">Geen afwijkende klantprijzen. Iedereen betaalt de standaard verkoopprijs.</div>
                   ) : (
                     <div className="mt-3 space-y-2">
                       {Object.entries(editing.priceTiers ?? {}).map(([group, cents]) => (
@@ -1073,7 +1074,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                               next[nextGroup] = cents;
                               setEditing({ ...editing, priceTiers: next });
                             }}
-                            className="rounded-xl border border-violet-200 bg-white px-3 py-2 text-xs font-bold text-violet-950 focus:border-violet-500 focus:outline-none"
+                            className="product-admin-tier-input rounded-xl border bg-white px-3 py-2 text-xs font-bold focus:outline-none"
                             aria-label="Naam prijsgroep"
                           />
                           <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">€</span><input
@@ -1082,7 +1083,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                             step="0.01"
                             value={(cents / 100).toFixed(2)}
                             onChange={(event) => setEditing({ ...editing, priceTiers: { ...(editing.priceTiers ?? {}), [group]: Math.max(0, Math.round(Number(event.target.value || 0) * 100)) } })}
-                            className="w-full rounded-xl border border-violet-200 bg-white py-2 pl-7 pr-2 text-xs font-black text-slate-900 focus:border-violet-500 focus:outline-none"
+                            className="product-admin-tier-input w-full rounded-xl border bg-white py-2 pl-7 pr-2 text-xs font-black focus:outline-none"
                             aria-label={`Prijs voor ${group}`}
                           /></div>
                           <button type="button" onClick={() => { const next = { ...(editing.priceTiers ?? {}) }; delete next[group]; setEditing({ ...editing, priceTiers: next }); }} className="flex h-8 w-8 items-center justify-center rounded-lg text-red-500 hover:bg-red-100" aria-label={`Verwijder ${group}`}><X size={14} /></button>
@@ -1097,8 +1098,8 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
             {/* RIGHT COLUMN: Inventory & Kassa Tegel Live Preview (4 Cols) */}
             <div className="lg:col-span-4 space-y-6">
               {/* CARD 4: Voorraadbeheer */}
-              <div className="bg-slate-50/60 border border-slate-200/80 rounded-2xl p-5 space-y-4 shadow-2xs">
-                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-700 border-b border-slate-200/60 pb-2.5">
+              <div className="product-admin-section rounded-2xl p-5 space-y-4">
+                <div className="product-admin-section-title flex items-center gap-2 text-xs font-black uppercase tracking-wider pb-2.5">
                   <Boxes size={15} className="text-slate-500" />
                   <span>Voorraadbeheer</span>
                 </div>
@@ -1144,8 +1145,8 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
               </div>
 
               {/* CARD 5: Kassa Tegel & Live Preview */}
-              <div className="bg-slate-50/60 border border-slate-200/80 rounded-2xl p-5 space-y-4 shadow-2xs">
-                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-700 border-b border-slate-200/60 pb-2.5">
+              <div className="product-admin-section rounded-2xl p-5 space-y-4">
+                <div className="product-admin-section-title flex items-center gap-2 text-xs font-black uppercase tracking-wider pb-2.5">
                   <Palette size={15} className="text-slate-500" />
                   <span>Kassa Tegel & Weergave</span>
                 </div>

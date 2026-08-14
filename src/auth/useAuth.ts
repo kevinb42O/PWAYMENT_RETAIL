@@ -49,6 +49,8 @@ interface AuthState {
    * Returns the approving user id, or null if no match.
    */
   verifyManager: (pin: string) => Promise<string | null>;
+  /** Verifies the PIN of the current owner only; used by local demo fixtures. */
+  verifyCurrentOwnerPin: (pin: string) => Promise<boolean>;
 }
 
 /** Hash a PIN identical to how seed users are stored. */
@@ -599,6 +601,23 @@ export const useAuth = create<AuthState>()(
         clearFailures(attemptKey);
         await audit("approve", { approverUserId: match.id });
         return match.id;
+      },
+      async verifyCurrentOwnerPin(pin) {
+        const { currentUserId, currentRole } = get();
+        if (currentRole !== "owner" || !currentUserId || !/^\d{6}$/.test(pin)) return false;
+        const attemptKey = `owner-leave-approval:${currentUserId}`;
+        if (isBlocked(attemptKey)) return false;
+        const user = await db.users.get(currentUserId);
+        if (!user || user.role !== "owner") return false;
+        const check = await verifyCredential(pin, "pin", user.pinHash);
+        if (!check.valid) {
+          recordFailure(attemptKey);
+          return false;
+        }
+        if (check.needsUpgrade) await db.users.update(user.id, { pinHash: await hashPin(pin) });
+        clearFailures(attemptKey);
+        await audit("approve", { approverUserId: user.id, scope: "leave" });
+        return true;
       },
     }),
     {

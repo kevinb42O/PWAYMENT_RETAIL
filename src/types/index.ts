@@ -444,6 +444,8 @@ export interface User {
   passwordHash?: string;
   storeName?: string;
   createdAt?: string;
+  /** Optional link to the server-authoritative employment record. */
+  workforceEmployeeId?: string;
 }
 
 export type AuditAction =

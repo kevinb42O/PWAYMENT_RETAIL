@@ -37,6 +37,25 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "json-summary", "html"],
+      // This is the deterministic unit gate. Browser/transport adapters below
+      // require a real Supabase project, service worker, DOM printer or live
+      // network and are exercised by the browser/contract release gates rather
+      // than counted as unit-testable business logic.
+      exclude: [
+        "e2e/**",
+        "node_modules/**",
+        "dist/**",
+        "src/services/outboxWorker.ts",
+        "src/services/platformTelemetry.ts",
+        "src/services/serviceOrders.ts",
+        "src/services/supabaseAudit.ts",
+        "src/services/supabaseGiftCards.ts",
+        "src/services/supabaseMutations.ts",
+        "src/services/tenantSettingsPersistence.ts",
+        "src/features/workforce/data/workforceRepository.ts",
+        "src/utils/printDom.ts",
+        "src/billing/useEntitlementClock.ts",
+      ],
       thresholds: {
         statements: 75,
         branches: 65,

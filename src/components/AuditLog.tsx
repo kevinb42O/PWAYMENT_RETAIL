@@ -293,7 +293,7 @@ export const AuditLog: React.FC = () => {
         : auditRows.length === 0;
 
   return (
-    <div className="insights-light flex h-full flex-col overflow-y-auto bg-slate-50 text-slate-950">
+    <div className="insights-light app-page-shell flex h-full flex-col overflow-y-auto text-slate-950">
       <main className="mx-auto w-full max-w-[1320px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
         <header className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>

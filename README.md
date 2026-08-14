@@ -461,8 +461,16 @@ voor onbekende HTML-routes terug op `/index.html`, zodat directe bezoeken aan
 bijvoorbeeld `/app`, `/shop` of `/pricing` werken.
 
 De repository is gekoppeld aan een OpenAI Sites-project via
-`.openai/hosting.json`. Er staat geen automatische deployjob in de GitHub
-Actions-workflow; CI bouwt en verifieert, maar publiceert niet.
+`.openai/hosting.json`. Productiepublicatie gebeurt uitsluitend vanuit de
+GitHub Actions-workflow **Production deployment**, nadat de volledige
+workflow **Quality gates** voor dezelfde `main`-commit geslaagd is. De
+rechtstreekse Vercel-deploy bij een push naar `main` staat daarom uit.
+
+Voor de eerste publicatie moeten in GitHub de repositorysecrets
+`VERCEL_TOKEN`, `VERCEL_ORG_ID` en `VERCEL_PROJECT_ID` staan. Bescherm ook de
+GitHub-environment `production` met de gewenste reviewers; de workflow wacht
+dan op die goedkeuring, maar kan nooit vóór de groene quality- en E2E-gates
+publiceren.
 
 De PWA-service worker wordt alleen in echte productiebuilds geregistreerd.
 Development-, presentatie- en E2E-modi verwijderen bestaande workers en caches

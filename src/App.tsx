@@ -12,6 +12,7 @@ import { applyThemeMode } from "./utils/theme";
 import { startOutboxWorker, stopOutboxWorker } from "./services/outboxWorker";
 import { startRealtimeSync, stopRealtimeSync } from "./services/realtimeSync";
 import { CustomerDisplayPublisher } from "./customer-display/CustomerDisplayPublisher";
+import { startPlatformHealthMonitoring } from "./services/platformTelemetry";
 
 const RecordingCursor = () => {
   const [cursor, setCursor] = useState({
@@ -71,6 +72,7 @@ const RecordingCursor = () => {
 
 export default function App() {
   const unlocked = useAuth((s) => s.unlocked);
+  const currentStoreId = useAuth((s) => s.currentStoreId);
   const themeMode = useTheme((s) => s.mode);
   const presentationRequested =
     new URLSearchParams(window.location.search).get("presentation") === "1";
@@ -115,6 +117,11 @@ export default function App() {
       stopRealtimeSync();
     };
   }, [unlocked]);
+
+  useEffect(() => {
+    if (!unlocked || !currentStoreId) return;
+    return startPlatformHealthMonitoring(currentStoreId);
+  }, [currentStoreId, unlocked]);
 
   return unlocked ? (
     <>

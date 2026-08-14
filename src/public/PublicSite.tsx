@@ -25,7 +25,6 @@ import {
   ScanLine,
   ShieldCheck,
   ShoppingBag,
-  Sparkles,
   Store,
   TrendingUp,
   UserCog,
@@ -607,7 +606,7 @@ const HomePage = () => (
         <motion.div className="pw-section-heading" variants={fadeUp}><div><span className="pw-eyebrow">De PWAYMENT retailflow</span><h2>Alles begint bij een verkoop.<br />Alles wordt beter door wat je leert.</h2></div><a href="/product" className="pw-text-link">Ontdek het platform <ArrowRight size={15} /></a></motion.div>
         <div className="pw-loop">
           {[
-            [ScanLine, 'Verkoop', 'Snel, foutarm en overal herkenbaar.'], [Database, 'Registreer', 'Voorraad, klant en betaling bewegen mee.'], [BarChart3, 'Begrijp', 'Zie marge, ritme en afwijkingen.'], [Sparkles, 'Verbeter', 'Bestel, stuur bij en bouw loyaliteit.'],
+            [ScanLine, 'Verkoop', 'Snel, foutarm en overal herkenbaar.'], [Database, 'Registreer', 'Voorraad, klant en betaling bewegen mee.'], [BarChart3, 'Begrijp', 'Zie marge, ritme en afwijkingen.'], [TrendingUp, 'Verbeter', 'Bestel, stuur bij en bouw loyaliteit.'],
           ].map(([Icon, title, body], index) => <motion.div className="pw-loop-step" key={String(title)} variants={fadeUp} whileHover={{ y: -8, transition: { duration: .25 } }}><span>0{index + 1}</span><Icon size={24} /><h3>{String(title)}</h3><p>{String(body)}</p></motion.div>)}
         </div>
       </div>

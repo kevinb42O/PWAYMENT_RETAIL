@@ -14,7 +14,6 @@ import {
   CreditCard,
   Percent,
   Calendar,
-  Sparkles,
   ChevronRight,
   Trash2,
   Pencil,

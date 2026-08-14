@@ -1,0 +1,191 @@
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Activity,
+  AlertTriangle,
+  ArrowRight,
+  Building2,
+  CheckCircle2,
+  ChevronLeft,
+  CircleAlert,
+  Clock3,
+  CreditCard,
+  Gauge,
+  LifeBuoy,
+  ListChecks,
+  LogOut,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  Smartphone,
+  Store,
+  WifiOff,
+} from "lucide-react";
+import { supabase, isSupabaseConfigured } from "../lib/supabase";
+import { Button } from "../components/ui/Button";
+import { FeedbackBanner } from "../components/ui/FeedbackBanner";
+import {
+  getPlatformOverview,
+  getPlatformSession,
+  getPlatformSupportSnapshot,
+  getPlatformStoreDetail,
+  listPlatformIncidents,
+  listPlatformStores,
+  refreshPlatformHealthSnapshots,
+  requestSupportAccess,
+  revokeSupportAccess,
+  updatePlatformIncident,
+  type PlatformHealthStatus,
+  type PlatformIncidentDetail,
+  type PlatformOverview,
+  type PlatformSession,
+  type PlatformStore,
+  type PlatformStoreDetail,
+  type PlatformSupportSnapshot,
+} from "./platformApi";
+
+type AdminView = "overview" | "stores" | "store" | "incidents";
+
+const formatDate = (value: string | null | undefined) =>
+  value
+    ? new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value))
+    : "Geen bevestiging";
+
+const relativeTime = (value: string | null | undefined) => {
+  if (!value) return "Geen bevestiging";
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return "Geen bevestiging";
+  const minutes = Math.max(0, Math.round((Date.now() - timestamp) / 60_000));
+  if (minutes < 1) return "net nu";
+  if (minutes < 60) return `${minutes} min geleden`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `${hours} u geleden`;
+  return `${Math.round(hours / 24)} d geleden`;
+};
+
+const healthConfig: Record<PlatformHealthStatus, { label: string; className: string }> = {
+  healthy: { label: "Gezond", className: "border-emerald-200 bg-emerald-50 text-emerald-700" },
+  at_risk: { label: "Aandacht nodig", className: "border-amber-200 bg-amber-50 text-amber-700" },
+  critical: { label: "Kritiek", className: "border-rose-200 bg-rose-50 text-rose-700" },
+  inactive: { label: "Inactief", className: "border-slate-200 bg-slate-100 text-slate-600" },
+  not_activated: { label: "Nog niet geactiveerd", className: "border-violet-200 bg-violet-50 text-violet-700" },
+  data_only: { label: "Serverdata zonder agent", className: "border-cyan-200 bg-cyan-50 text-cyan-700" },
+};
+
+const routeFor = (path: string) => {
+  window.history.pushState({}, "", path);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+};
+
+const currentRoute = (): { view: AdminView; storeId?: string } => {
+  const storeMatch = window.location.pathname.match(/^\/admin\/stores\/([^/]+)$/);
+  if (storeMatch) return { view: "store", storeId: decodeURIComponent(storeMatch[1]) };
+  if (window.location.pathname === "/admin/stores") return { view: "stores" };
+  if (window.location.pathname === "/admin/incidents") return { view: "incidents" };
+  return { view: "overview" };
+};
+
+const StatusBadge = ({ status }: { status: PlatformHealthStatus }) => (
+  <span className={`inline-flex rounded-lg border px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.06em] ${healthConfig[status].className}`}>
+    {healthConfig[status].label}
+  </span>
+);
+
+const MetricCard = ({ label, value, detail, Icon, tone = "neutral" }: {
+  label: string;
+  value: string | number;
+  detail: string;
+  Icon: typeof Activity;
+  tone?: "neutral" | "warning" | "danger" | "success";
+}) => (
+  <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+    <div className="flex items-start justify-between gap-3">
+      <div>
+        <p className="text-[10px] font-extrabold uppercase tracking-[0.09em] text-slate-500">{label}</p>
+        <p className="mt-2 text-2xl font-extrabold tracking-tight text-slate-950">{value}</p>
+      </div>
+      <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${tone === "danger" ? "bg-rose-50 text-rose-700" : tone === "warning" ? "bg-amber-50 text-amber-700" : tone === "success" ? "bg-emerald-50 text-emerald-700" : "bg-cyan-50 text-cyan-700"}`}>
+        <Icon size={18} />
+      </span>
+    </div>
+    <p className="mt-3 text-xs font-medium leading-5 text-slate-500">{detail}</p>
+  </article>
+);
+
+const Panel = ({ title, subtitle, children, action }: { title: string; subtitle?: string; children: React.ReactNode; action?: React.ReactNode }) => (
+  <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+    <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-4 py-3.5">
+      <div><h2 className="text-sm font-extrabold text-slate-900">{title}</h2>{subtitle && <p className="mt-0.5 text-xs leading-5 text-slate-500">{subtitle}</p>}</div>
+      {action}
+    </div>
+    {children}
+  </article>
+);
+
+const PlatformLogin = ({ onAuthenticated }: { onAuthenticated: () => Promise<void> }) => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const submit = async (event: FormEvent) => {
+    event.preventDefault(); setSubmitting(true); setError(null);
+    const { error: authError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    if (authError) { setError("De aanmeldgegevens zijn ongeldig."); setSubmitting(false); return; }
+    try { await onAuthenticated(); } catch (err) { await supabase.auth.signOut(); setError(err instanceof Error ? err.message : "Platformtoegang is niet beschikbaar."); }
+    finally { setSubmitting(false); }
+  };
+  return <main className="flex min-h-dvh items-center justify-center bg-slate-50 px-5"><form onSubmit={submit} className="w-full max-w-sm rounded-[1.75rem] border border-slate-200 bg-white p-7 shadow-[0_24px_80px_-40px_rgba(15,23,42,0.45)]"><img src="/branding/pwayment-logo.svg" alt="Pwayment" className="h-7 w-auto" /><p className="mt-8 text-[11px] font-extrabold uppercase tracking-[0.16em] text-cyan-700">Platform Console</p><h1 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-950">Beveiligde operatorstoegang</h1><p className="mt-2 text-sm leading-6 text-slate-500">Alle toegang en supportacties worden geregistreerd.</p>{error && <FeedbackBanner tone="error" className="mt-5">{error}</FeedbackBanner>}<label className="mt-6 block text-xs font-bold text-slate-700">E-mailadres<input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100" /></label><label className="mt-4 block text-xs font-bold text-slate-700">Wachtwoord<input required type="password" value={password} onChange={(event) => setPassword(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100" /></label><Button variant="primary" className="mt-6 w-full" disabled={submitting}>{submitting ? "Controleren…" : "Aanmelden"}</Button></form></main>;
+};
+
+const Sidebar = ({ view, onNavigate, onLogout }: { view: AdminView; onNavigate: (path: string) => void; onLogout: () => void }) => {
+  const items: Array<[string, AdminView, typeof Gauge, string]> = [["/admin", "overview", Gauge, "Overzicht"], ["/admin/stores", "stores", Store, "Winkels"], ["/admin/incidents", "incidents", CircleAlert, "Incidenten"]];
+  return <aside className="flex w-full shrink-0 flex-row items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 lg:min-h-dvh lg:w-64 lg:flex-col lg:items-stretch lg:justify-start lg:border-b-0 lg:border-r lg:px-4 lg:py-5"><div><img src="/branding/pwayment-logo.svg" alt="Pwayment" className="h-6 w-auto" /><p className="mt-1 hidden text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 lg:block">Platform Console</p></div><nav className="flex items-center gap-1 lg:mt-8 lg:flex-col lg:items-stretch">{items.map(([path, itemView, Icon, label]) => <button key={path} type="button" onClick={() => onNavigate(path)} className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold transition ${view === itemView || (itemView === "stores" && view === "store") ? "bg-cyan-50 text-cyan-800" : "text-slate-600 hover:bg-slate-50"}`}><Icon size={16} /><span className="hidden sm:inline lg:inline">{label}</span></button>)}</nav><button type="button" onClick={onLogout} className="hidden items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50 lg:mt-auto lg:inline-flex"><LogOut size={16} /> Afmelden</button></aside>;
+};
+
+const Overview = ({ overview, loading, onRefresh, onOpenStores }: { overview: PlatformOverview | null; loading: boolean; onRefresh: () => void; onOpenStores: (storeId?: string) => void }) => {
+  if (!overview && loading) return <div className="py-20 text-center text-sm font-semibold text-slate-500">Commandocentrale laden…</div>;
+  if (!overview) return <FeedbackBanner tone="error">Het platformoverzicht kon niet worden geladen.</FeedbackBanner>;
+  const { metrics } = overview;
+  return <section className="space-y-5"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-[0.12em] text-cyan-700">Operator commandocentrale</p><h1 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-950">Wat vereist vandaag aandacht?</h1><p className="mt-1 text-sm text-slate-500">Live operationele signalen, centrale bedrijfsdata en duidelijke volgende acties.</p></div><Button onClick={onRefresh} disabled={loading}><RefreshCw size={15} /> {loading ? "Vernieuwen…" : "Vernieuwen"}</Button></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5"><MetricCard label="Actieve winkels · 24u" value={metrics.active_stores_24h} detail={`${metrics.health.healthy} technisch gezond`} Icon={Activity} tone="success" /><MetricCard label="Kritieke incidenten" value={metrics.critical_incidents} detail="P1- en P2-problemen die actie vragen" Icon={AlertTriangle} tone={metrics.critical_incidents ? "danger" : "success"} /><MetricCard label="Sync-risico" value={metrics.sync_at_risk} detail="Winkels met retry, blokkade of oude wachtrij" Icon={WifiOff} tone={metrics.sync_at_risk ? "warning" : "success"} /><MetricCard label="Financiële fouten · 24u" value={metrics.financial_failures_24h} detail="Checkout, refund of dagafsluiting" Icon={CreditCard} tone={metrics.financial_failures_24h ? "danger" : "success"} /><MetricCard label="Actieve abonnementen" value={metrics.subscriptions.active} detail={`${metrics.subscriptions.trialing} trial · ${metrics.subscriptions.past_due} achterstallig`} Icon={Building2} /></div><div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]"><Panel title="Prioritaire actiewachtrij" subtitle="Alleen toestanden met een concrete operatoractie verschijnen hier." action={<Button size="sm" variant="quiet" onClick={() => onOpenStores()}>Alle winkels <ArrowRight size={14} /></Button>}>{overview.priority_stores.length ? <ul>{overview.priority_stores.map((store) => <li key={store.store_id} className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 last:border-0 sm:flex-row sm:items-center"><StatusBadge status={store.health_status} /><div className="min-w-0 flex-1"><p className="text-sm font-bold text-slate-900">{store.store_name}</p><p className="mt-0.5 text-xs leading-5 text-slate-600">{store.primary_reason}</p><p className="mt-1 text-[11px] font-semibold text-cyan-700">{store.recommended_action}</p></div><Button size="sm" onClick={() => onOpenStores(store.store_id)}>Open</Button></li>)}</ul> : <div className="px-5 py-12 text-center"><CheckCircle2 className="mx-auto text-emerald-600" size={26} /><p className="mt-2 text-sm font-bold text-slate-800">Geen open actiepunten</p><p className="mt-1 text-xs text-slate-500">Er zijn geen kritieke, risicovolle of nog te activeren winkelomgevingen.</p></div>}</Panel><Panel title="Meetdekking" subtitle="Een nul is nooit hetzelfde als onbekende data."><dl className="divide-y divide-slate-100 px-4">{(["healthy", "at_risk", "critical", "not_activated", "data_only", "inactive"] as PlatformHealthStatus[]).map((status) => <div className="flex items-center justify-between py-3" key={status}><StatusBadge status={status} /><dd className="text-lg font-extrabold text-slate-900">{metrics.health[status]}</dd></div>)}</dl></Panel></div><Panel title="Open incidenten" subtitle="Gegroepeerd op foutsignatuur en impact.">{overview.incidents.length ? <ul>{overview.incidents.map((incident) => <li key={incident.id} className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 last:border-0"><span className={`rounded-lg px-2 py-1 text-[10px] font-extrabold uppercase ${incident.severity === "p1" ? "bg-rose-100 text-rose-700" : incident.severity === "p2" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"}`}>{incident.severity}</span><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-slate-800">{incident.title}</p><p className="mt-0.5 text-[11px] text-slate-500">{incident.affected_store_count} winkels · {relativeTime(incident.last_seen_at)}</p></div><span className="text-[11px] font-bold text-slate-500">{incident.status}</span></li>)}</ul> : <div className="px-4 py-10 text-center text-xs font-semibold text-slate-500">Er zijn geen open incidenten.</div>}</Panel></section>;
+};
+
+const Stores = ({ onOpen }: { onOpen: (store: PlatformStore) => void }) => {
+  const [stores, setStores] = useState<PlatformStore[]>([]); const [search, setSearch] = useState(""); const [health, setHealth] = useState(""); const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null);
+  const load = useCallback(async () => { setLoading(true); setError(null); try { setStores((await listPlatformStores(search, health)).items); } catch (err) { setError(err instanceof Error ? err.message : "Winkels konden niet geladen worden."); } finally { setLoading(false); } }, [search, health]);
+  useEffect(() => { const timer = window.setTimeout(() => void load(), 180); return () => window.clearTimeout(timer); }, [load]);
+  return <section><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-[0.12em] text-cyan-700">Klantengezondheid</p><h1 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-950">Winkels</h1><p className="mt-1 text-sm text-slate-500">Status, meetdekking, wachtrijen en een verklaarbare volgende actie per winkel.</p></div><Button onClick={() => void load()} disabled={loading}><RefreshCw size={15} /> Vernieuwen</Button></div><div className="mt-5 flex flex-col gap-2 sm:flex-row"><label className="relative flex-1"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Zoek op winkelnaam" className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100" /></label><select value={health} onChange={(event) => setHealth(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none focus:border-cyan-500"> <option value="">Alle gezondheidstoestanden</option>{Object.entries(healthConfig).map(([value, config]) => <option key={value} value={value}>{config.label}</option>)}</select></div>{error && <FeedbackBanner tone="error" className="mt-4">{error}</FeedbackBanner>}<div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]"><div className="overflow-x-auto"><table className="w-full min-w-[1020px] text-left"><thead className="border-b border-slate-100 bg-slate-50 text-[10px] font-extrabold uppercase tracking-[0.08em] text-slate-500"><tr><th className="px-4 py-3">Winkel</th><th className="px-4 py-3">Gezondheid</th><th className="px-4 py-3">Verklaring</th><th className="px-4 py-3">Laatste sync</th><th className="px-4 py-3">Wachtrij</th><th className="px-4 py-3">Incidenten</th><th className="px-4 py-3" /></tr></thead><tbody>{loading ? <tr><td colSpan={7} className="px-4 py-10 text-center text-sm font-semibold text-slate-500">Winkels laden…</td></tr> : stores.length ? stores.map((store) => <tr key={store.id} className="border-b border-slate-100 align-top last:border-0 hover:bg-slate-50/70"><td className="px-4 py-3"><p className="text-sm font-bold text-slate-900">{store.name}</p><p className="mt-0.5 text-[11px] text-slate-500">{store.is_demo ? "Demo · " : ""}{store.plan_code ?? "Geen plan"} · aangemaakt {formatDate(store.created_at)}</p></td><td className="px-4 py-3"><StatusBadge status={store.health_status} /><p className="mt-1 text-[11px] text-slate-500">{store.data_coverage_status === "measured" ? "Meetagent actief" : store.data_coverage_status === "server_data_only" ? "Alleen serverdata" : "Activatie vereist"}</p></td><td className="max-w-[310px] px-4 py-3 text-xs leading-5 text-slate-600">{store.health_reason}</td><td className="px-4 py-3 text-xs font-semibold text-slate-700">{relativeTime(store.last_sync_at)}</td><td className="px-4 py-3 text-xs font-bold text-slate-700">{store.pending_queue_count}</td><td className="px-4 py-3 text-xs font-bold text-slate-700">{store.open_incidents}</td><td className="px-4 py-3 text-right"><Button size="sm" onClick={() => onOpen(store)}>Open</Button></td></tr>) : <tr><td colSpan={7} className="px-4 py-10 text-center"><p className="text-sm font-bold text-slate-800">Geen winkels gevonden</p><p className="mt-1 text-xs text-slate-500">Pas je zoekopdracht of gezondheidsfilter aan.</p></td></tr>}</tbody></table></div></div></section>;
+};
+
+const StoreDetail = ({ storeId, onBack }: { storeId: string; onBack: () => void }) => {
+  const [detail, setDetail] = useState<PlatformStoreDetail | null>(null); const [supportSnapshot, setSupportSnapshot] = useState<PlatformSupportSnapshot | null>(null); const [error, setError] = useState<string | null>(null); const [loading, setLoading] = useState(true); const [reason, setReason] = useState(""); const [consent, setConsent] = useState(false); const [supportMessage, setSupportMessage] = useState<string | null>(null); const [requesting, setRequesting] = useState(false);
+  const load = useCallback(async () => { setLoading(true); setError(null); try { setDetail(await getPlatformStoreDetail(storeId)); } catch (err) { setError(err instanceof Error ? err.message : "Winkeldossier kon niet geladen worden."); } finally { setLoading(false); } }, [storeId]);
+  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { if (!detail?.support_access) { setSupportSnapshot(null); return; } void getPlatformSupportSnapshot(storeId).then(setSupportSnapshot).catch((snapshotError) => setSupportMessage(snapshotError instanceof Error ? snapshotError.message : "Supportcontext kon niet geladen worden.")); }, [detail?.support_access, storeId]);
+  const submitSupport = async (event: FormEvent) => { event.preventDefault(); setRequesting(true); setSupportMessage(null); try { const grant = await requestSupportAccess(storeId, reason, consent); setSupportMessage(`Read-only supporttoegang is actief tot ${formatDate(grant.expires_at)}.`); setReason(""); setConsent(false); await load(); } catch (err) { setSupportMessage(err instanceof Error ? err.message : "Supporttoegang kon niet worden aangevraagd."); } finally { setRequesting(false); } };
+  const endSupport = async () => { const grantId = detail?.active_support_grant.id; if (!grantId) return; setRequesting(true); setSupportMessage(null); try { await revokeSupportAccess(grantId); setSupportMessage("Supporttoegang is ingetrokken."); await load(); } catch (revokeError) { setSupportMessage(revokeError instanceof Error ? revokeError.message : "Supporttoegang kon niet worden ingetrokken."); } finally { setRequesting(false); } };
+  if (loading) return <div className="flex flex-1 items-center justify-center py-24 text-sm font-semibold text-slate-500">Winkeldossier laden…</div>;
+  if (error || !detail) return <section><Button variant="quiet" onClick={onBack}><ChevronLeft size={16} /> Winkels</Button><FeedbackBanner tone="error" className="mt-4">{error ?? "Geen gegevens gevonden."}</FeedbackBanner></section>;
+  const { activity, health } = detail;
+  return <section className="space-y-5"><Button variant="quiet" size="sm" onClick={onBack}><ChevronLeft size={16} /> Alle winkels</Button><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-[0.12em] text-cyan-700">Winkeldossier</p><h1 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-950">{detail.store.name}</h1><p className="mt-1 text-sm text-slate-500">{detail.store.country_code} · {detail.store.locale} · {detail.store.timezone}</p></div><Button onClick={() => void load()}><RefreshCw size={15} /> Vernieuwen</Button></div><article className={`rounded-2xl border p-5 ${healthConfig[health.status].className}`}><div className="flex flex-wrap items-start justify-between gap-4"><div><StatusBadge status={health.status} /><h2 className="mt-3 text-lg font-extrabold text-slate-950">{health.primary_reason}</h2><p className="mt-1 max-w-3xl text-sm leading-6 text-slate-700">Volgende stap: {health.recommended_action}</p></div><dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs text-slate-700"><div><dt className="font-bold">Laatste bevestiging</dt><dd>{relativeTime(health.last_seen_at)}</dd></div><div><dt className="font-bold">Laatste sync</dt><dd>{relativeTime(health.last_successful_sync_at)}</dd></div><div><dt className="font-bold">Wachtrij</dt><dd>{health.pending_queue_count} records</dd></div><div><dt className="font-bold">Open incidenten</dt><dd>{health.open_incident_count}</dd></div></dl></div></article><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5"><MetricCard label="Verkopen · 30d" value={activity.sales_30d} detail="Centraal bevestigde verkopen" Icon={CreditCard} /><MetricCard label="Z-rapporten · 30d" value={activity.z_reports_30d} detail="Server-authoritative afsluitingen" Icon={ShieldCheck} /><MetricCard label="Webshoporders · 30d" value={activity.webshop_orders_30d} detail="Centraal aangemaakte orders" Icon={Store} /><MetricCard label="Actieve teamleden" value={activity.active_members} detail="Actieve memberships" Icon={Building2} /><MetricCard label="Dataversheid" value={relativeTime(activity.data_as_of)} detail="Laatste centrale bedrijfsrecord" Icon={Activity} /></div><div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]"><div className="space-y-5"><Panel title="Technische tijdlijn" subtitle="Veilige operationele metadata; geen klant- of betaalgegevens.">{detail.recent_health_events.length ? <ul>{detail.recent_health_events.map((event, index) => <li key={`${event.occurred_at}-${index}`} className="flex gap-3 border-b border-slate-100 px-4 py-3 last:border-0"><span className={`mt-1 h-2.5 w-2.5 rounded-full ${event.severity === "critical" || event.severity === "error" ? "bg-rose-500" : event.severity === "warning" ? "bg-amber-500" : "bg-cyan-500"}`} /><div className="min-w-0"><p className="text-xs font-bold text-slate-800">{event.event_type}{event.operation ? ` · ${event.operation}` : ""}</p><p className="mt-0.5 text-[11px] text-slate-500">{event.error_code ?? "Bevestigd"} · {formatDate(event.occurred_at)}</p></div></li>)}</ul> : <div className="px-4 py-10 text-center"><p className="text-xs font-bold text-slate-700">Nog geen technische meting ontvangen</p><p className="mt-1 text-xs text-slate-500">Dit is een activatiestatus, geen foutmelding. {health.recommended_action}</p></div>}</Panel><Panel title="Geregistreerde installaties" subtitle="Versie en laatst gezien moment per actieve meetagent.">{detail.devices.length ? <ul>{detail.devices.map((device) => <li key={device.installation_id} className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 last:border-0"><span className="rounded-xl bg-slate-100 p-2 text-slate-600"><Smartphone size={16} /></span><div><p className="text-xs font-bold text-slate-800">{device.platform_family ?? "Onbekend platform"}</p><p className="mt-0.5 text-[11px] text-slate-500">{device.app_version ?? "Geen release-info"} · gezien {relativeTime(device.last_seen_at)}</p></div></li>)}</ul> : <div className="px-4 py-10 text-center text-xs font-semibold text-slate-500">Er is nog geen installatie geregistreerd.</div>}</Panel>{detail.incidents.length > 0 && <Panel title="Open incidenten" subtitle="Aan deze winkel gekoppelde storingen."><ul>{detail.incidents.map((incident) => <li key={incident.id} className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 last:border-0"><span className="rounded-lg bg-rose-50 px-2 py-1 text-[10px] font-extrabold uppercase text-rose-700">{incident.severity}</span><div><p className="text-xs font-bold text-slate-800">{incident.title}</p><p className="mt-0.5 text-[11px] text-slate-500">{incident.status} · {relativeTime(incident.last_seen_at)}</p></div></li>)}</ul></Panel>}{detail.support_access && <Panel title="Read-only supportcontext" subtitle="Alleen zichtbaar tijdens jouw actieve, geauteerde supportgrant.">{supportSnapshot ? <div className="space-y-4 p-4"><div className="grid gap-2 text-xs sm:grid-cols-2"><p><span className="font-bold text-slate-700">Contact:</span> {supportSnapshot.store_contact.email ?? "Niet ingevuld"}</p><p><span className="font-bold text-slate-700">Telefoon:</span> {supportSnapshot.store_contact.phone ?? "Niet ingevuld"}</p></div><div><p className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-slate-500">Actieve teamleden</p><p className="mt-1 text-xs text-slate-700">{supportSnapshot.active_members.map((member) => `${member.display_name} (${member.role})`).join(", ") || "Geen actieve memberships"}</p></div></div> : <p className="p-4 text-xs font-semibold text-slate-500">Supportcontext laden…</p>}</Panel>}</div><aside className="h-fit rounded-2xl border border-cyan-100 bg-cyan-50/50 p-5"><LifeBuoy size={20} className="text-cyan-700" /><h2 className="mt-3 text-sm font-extrabold text-slate-900">Tijdelijke supporttoegang</h2><p className="mt-1 text-xs leading-5 text-slate-600">Read-only toegang vervalt automatisch na 60 minuten. Elke grant wordt geaudit.</p>{detail.support_access ? <div className="mt-4"><FeedbackBanner tone="success">Actief tot {formatDate(detail.active_support_grant.expires_at)}.</FeedbackBanner><Button variant="danger" className="mt-3 w-full" disabled={requesting} onClick={() => void endSupport()}>{requesting ? "Intrekken…" : "Supporttoegang intrekken"}</Button></div> : <form onSubmit={submitSupport} className="mt-4"><label className="block text-xs font-bold text-slate-700">Waarom is toegang nodig?<textarea required minLength={12} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} rows={4} className="mt-1.5 w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100" placeholder="Bijv. klant meldde vastgelopen synchronisatie na dagafsluiting." /></label><label className="mt-3 flex items-start gap-2 text-xs font-semibold leading-5 text-slate-700"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} className="mt-1 accent-cyan-700" /> De klant heeft expliciet ingestemd met tijdelijke read-only supporttoegang.</label><Button variant="primary" className="mt-4 w-full" disabled={requesting || !consent || reason.trim().length < 12}>{requesting ? "Toegang aanvragen…" : "Start 60 min support"}</Button></form>}{supportMessage && <FeedbackBanner tone={supportMessage.startsWith("Read-only") || supportMessage.startsWith("Supporttoegang is") ? "success" : "error"} className="mt-4">{supportMessage}</FeedbackBanner>}<div className="mt-5 border-t border-cyan-100 pt-4 text-[11px] leading-5 text-slate-500"><Clock3 size={14} className="mr-1 inline text-cyan-700" /> Transactie-inhoud en exports blijven buiten deze read-only scope.</div></aside></div></section>;
+};
+
+const Incidents = () => {
+  const [incidents, setIncidents] = useState<PlatformIncidentDetail[]>([]); const [status, setStatus] = useState(""); const [severity, setSeverity] = useState(""); const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null); const [updating, setUpdating] = useState<string | null>(null);
+  const load = useCallback(async () => { setLoading(true); setError(null); try { setIncidents((await listPlatformIncidents(status, severity)).items); } catch (err) { setError(err instanceof Error ? err.message : "Incidenten konden niet geladen worden."); } finally { setLoading(false); } }, [status, severity]);
+  useEffect(() => { void load(); }, [load]);
+  const transition = async (incident: PlatformIncidentDetail, nextStatus: "acknowledged" | "investigating" | "mitigated" | "resolved" | "false_positive") => { setUpdating(incident.id); setError(null); try { await updatePlatformIncident(incident.id, nextStatus); await load(); } catch (err) { setError(err instanceof Error ? err.message : "Incident kon niet worden bijgewerkt."); } finally { setUpdating(null); } };
+  return <section className="space-y-5"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-[0.12em] text-cyan-700">Triagecentrum</p><h1 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-950">Incidenten</h1><p className="mt-1 text-sm text-slate-500">Bevestig, onderzoek en sluit concrete operationele storingen met een audittrail.</p></div><Button onClick={() => void load()} disabled={loading}><RefreshCw size={15} /> Vernieuwen</Button></div><div className="flex flex-wrap gap-2"><select value={status} onChange={(event) => setStatus(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700"><option value="">Alle statussen</option><option value="new">Nieuw</option><option value="acknowledged">Bevestigd</option><option value="investigating">In onderzoek</option><option value="mitigated">Beperkt</option><option value="resolved">Opgelost</option><option value="false_positive">Geen incident</option></select><select value={severity} onChange={(event) => setSeverity(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700"><option value="">Alle ernstniveaus</option><option value="p1">P1</option><option value="p2">P2</option><option value="p3">P3</option><option value="p4">P4</option></select></div>{error && <FeedbackBanner tone="error">{error}</FeedbackBanner>}<Panel title="Incidentenwachtrij" subtitle="Nieuwe gebeurtenissen worden op foutsignatuur gegroepeerd; één fout zorgt niet voor een eindeloze lijst.">{loading ? <div className="px-4 py-12 text-center text-sm font-semibold text-slate-500">Incidenten laden…</div> : incidents.length ? <ul>{incidents.map((incident) => <li key={incident.id} className="border-b border-slate-100 px-4 py-4 last:border-0"><div className="flex flex-col gap-3 lg:flex-row lg:items-center"><div className="flex items-center gap-2"><span className={`rounded-lg px-2 py-1 text-[10px] font-extrabold uppercase ${incident.severity === "p1" ? "bg-rose-100 text-rose-700" : incident.severity === "p2" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"}`}>{incident.severity}</span><span className="text-[11px] font-bold text-slate-500">{incident.status}</span></div><div className="min-w-0 flex-1"><p className="text-sm font-bold text-slate-900">{incident.title}</p><p className="mt-0.5 text-xs text-slate-500">{incident.affected_store_count} winkels · laatst gezien {relativeTime(incident.last_seen_at)}{incident.operation ? ` · ${incident.operation}` : ""}</p></div><div className="flex flex-wrap gap-2">{incident.status === "new" && <Button size="sm" onClick={() => void transition(incident, "acknowledged")} disabled={updating === incident.id}>Bevestig</Button>}{!['resolved', 'false_positive'].includes(incident.status) && <Button size="sm" variant="quiet" onClick={() => void transition(incident, "investigating")} disabled={updating === incident.id}>Onderzoek</Button>}{!['resolved', 'false_positive'].includes(incident.status) && <Button size="sm" variant="quiet" onClick={() => void transition(incident, "resolved")} disabled={updating === incident.id}>Sluit</Button>}</div></div>{incident.events.length > 0 && <p className="mt-3 text-[11px] leading-5 text-slate-500">Laatste gebeurtenis: {incident.events[0].event_type} · {relativeTime(incident.events[0].occurred_at)}</p>}</li>)}</ul> : <div className="px-4 py-12 text-center"><ShieldCheck className="mx-auto text-emerald-600" size={25} /><p className="mt-2 text-sm font-bold text-slate-800">Geen incidenten voor deze filter</p><p className="mt-1 text-xs text-slate-500">De wachtrij is momenteel leeg.</p></div>}</Panel></section>;
+};
+
+export default function AdminApp() {
+  const [session, setSession] = useState<PlatformSession | null>(null); const [checking, setChecking] = useState(true); const [accessError, setAccessError] = useState<string | null>(null); const [route, setRoute] = useState(currentRoute); const [overview, setOverview] = useState<PlatformOverview | null>(null); const [overviewLoading, setOverviewLoading] = useState(false);
+  const loadOverview = useCallback(async () => { setOverviewLoading(true); try { await refreshPlatformHealthSnapshots(); setOverview(await getPlatformOverview()); } catch (err) { setAccessError(err instanceof Error ? err.message : "Overzicht kon niet geladen worden."); } finally { setOverviewLoading(false); } }, []);
+  const authenticate = useCallback(async () => { if (!isSupabaseConfigured) throw new Error("Supabase is niet geconfigureerd voor deze omgeving."); const { data } = await supabase.auth.getSession(); if (!data.session) throw new Error("Meld je aan met een platformaccount."); const platformSession = await getPlatformSession(); setSession(platformSession); setAccessError(null); await loadOverview(); }, [loadOverview]);
+  useEffect(() => { void authenticate().catch((err) => setAccessError(err instanceof Error ? err.message : "Platformtoegang niet beschikbaar.")).finally(() => setChecking(false)); }, [authenticate]);
+  useEffect(() => { const onPop = () => setRoute(currentRoute()); window.addEventListener("popstate", onPop); return () => window.removeEventListener("popstate", onPop); }, []);
+  const navigate = (path: string) => routeFor(path);
+  const logout = async () => { await supabase.auth.signOut(); setSession(null); setOverview(null); routeFor("/admin"); };
+  const title = useMemo(() => route.view === "overview" ? "Overzicht" : route.view === "stores" ? "Winkels" : route.view === "incidents" ? "Incidenten" : "Winkeldossier", [route.view]);
+  if (checking) return <main className="flex min-h-dvh items-center justify-center bg-slate-50 text-sm font-bold text-slate-500">Platformsessie controleren…</main>;
+  if (!session) return <PlatformLogin onAuthenticated={authenticate} />;
+  return <div className="flex min-h-dvh flex-col bg-slate-50 text-slate-900 lg:flex-row"><Sidebar view={route.view} onNavigate={navigate} onLogout={() => void logout()} /><main className="min-w-0 flex-1"><header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 sm:px-6"><div><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">PWAYMENT · {session.role}</p><p className="mt-0.5 text-sm font-extrabold text-slate-900">{title}</p></div><button type="button" onClick={() => void logout()} className="rounded-lg p-2 text-slate-500 hover:bg-slate-50 lg:hidden" aria-label="Afmelden"><LogOut size={17} /></button></header>{accessError && <div className="px-4 pt-4 sm:px-6"><FeedbackBanner tone="error" onDismiss={() => setAccessError(null)}>{accessError}</FeedbackBanner></div>}<div className="p-4 sm:p-6">{route.view === "overview" && <Overview overview={overview} loading={overviewLoading} onRefresh={() => void loadOverview()} onOpenStores={(storeId) => navigate(storeId ? `/admin/stores/${encodeURIComponent(storeId)}` : "/admin/stores")} />}{route.view === "stores" && <Stores onOpen={(store) => navigate(`/admin/stores/${encodeURIComponent(store.id)}`)} />}{route.view === "store" && route.storeId && <StoreDetail storeId={route.storeId} onBack={() => navigate("/admin/stores")} />}{route.view === "incidents" && <Incidents />}</div></main></div>;
+}

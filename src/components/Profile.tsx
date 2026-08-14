@@ -14,6 +14,7 @@ import { WebshopSettings } from './WebshopSettings';
 import { CustomerDisplaySettings } from './CustomerDisplaySettings';
 import { ModuleSettings } from './ModuleSettings';
 import { WorkforceSettings } from './WorkforceSettings';
+import { LeaveApprovalCenter } from './LeaveApprovalCenter';
 import { FeatureGate } from '../billing/FeatureGate';
 import { FEATURE_KEYS } from '../billing/entitlements';
 import { Modal } from './Modal';
@@ -43,7 +44,7 @@ import {
   Download,
   Check,
   ShieldCheck,
-  Sparkles,
+  Palette,
   Plus,
   Webhook,
   BadgePercent,
@@ -83,6 +84,7 @@ type WorkspaceTab =
   | 'billing-addons'
   | 'modules'
   | 'workforce'
+  | 'leave-approvals'
   | 'catalog'
   | 'catalog-products'
   | 'catalog-categories'
@@ -132,9 +134,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
   const teamUsers = useMemo(() => {
     const users = [...rawTeamUsers];
-    const existingIds = new Set(users.map((u) => u.id));
+    const linkedWorkforceIds = new Set(users.map((user) => user.workforceEmployeeId ?? user.id));
     for (const wf of workforceTeam) {
-      if (!existingIds.has(wf.id)) {
+      if (!linkedWorkforceIds.has(wf.id)) {
         users.push({
           id: wf.id,
           name: wf.displayName,
@@ -143,7 +145,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           pinHash: '',
           createdAt: new Date().toISOString(),
         });
-        existingIds.add(wf.id);
+        linkedWorkforceIds.add(wf.id);
       }
     }
     return users;
@@ -223,6 +225,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     if (initialTab.startsWith('webshop')) setWebshopExpanded(true);
   }, [initialTab, initialTabRequestKey]);
 
+  useEffect(() => {
+    if (!currentStoreId || (activeTab !== 'team' && activeTab !== 'workforce' && activeTab !== 'leave-approvals')) return;
+    void useWorkforce.getState().load(currentStoreId);
+  }, [activeTab, currentStoreId]);
+
   const getBillingSubTab = (tab: WorkspaceTab): BillingSubTab => {
     if (tab === 'billing-invoices') return 'invoices';
     if (tab === 'billing-payment') return 'payment';
@@ -246,7 +253,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col md:flex-row h-full bg-slate-100 font-sans selection:bg-sky-500/20 overflow-hidden">
+    <div className="app-page-shell flex-1 flex flex-col md:flex-row h-full font-sans selection:bg-sky-500/20 overflow-hidden">
       {/* VERCEL / SUPABASE STYLE SIDEBAR */}
       <aside className="w-full md:w-64 bg-white border-b md:border-b-0 md:border-r border-slate-200 p-2 md:p-4 shrink-0 block md:flex md:flex-col md:justify-between overflow-x-auto md:overflow-x-hidden md:overflow-y-auto">
         <div className="flex min-w-max gap-1 md:block md:min-w-0 md:space-y-1 [&>button]:!w-auto [&>button]:shrink-0 md:[&>button]:!w-full">
@@ -412,7 +419,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 {[
                   { id: 'webshop-general', label: 'Overzicht', icon: <Store size={13} className="shrink-0" /> },
                   { id: 'webshop-orders', label: 'Bestellingen', icon: <Receipt size={13} className="shrink-0" /> },
-                  { id: 'webshop-design', label: 'Vormgeving', icon: <Sparkles size={13} className="shrink-0" /> },
+                  { id: 'webshop-design', label: 'Vormgeving', icon: <Palette size={13} className="shrink-0" /> },
                   { id: 'webshop-products', label: 'Assortiment', icon: <Package size={13} className="shrink-0" /> },
                   { id: 'webshop-coupons', label: 'Kortingen', icon: <Tag size={13} className="shrink-0" /> },
                   { id: 'webshop-shipping', label: 'Levering', icon: <Truck size={13} className="shrink-0" /> },
@@ -640,6 +647,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               {activeTab === 'billing-plan' && 'Licentieplan & Upgrades'}
               {activeTab === 'modules' && 'Modules & navigatie'}
               {activeTab === 'workforce' && 'Personeel, verlof & bezetting'}
+              {activeTab === 'leave-approvals' && 'Verlof goedkeuren'}
               {activeTab === 'billing-invoices' && "Facturen & Creditnota's"}
               {activeTab === 'billing-payment' && 'Betaalmethode & SEPA Mandaat'}
               {activeTab === 'billing-addons' && 'Kassa Terminals & Add-on Modules'}
@@ -655,7 +663,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               {activeTab === 'loyalty' && 'Spaarprogramma & Retentie'}
               {activeTab.startsWith('hardware') && 'Kassa Hardware & Randapparatuur'}
               {activeTab === 'security' && 'Beveiliging & Manager PIN'}
-              {activeTab === 'team' && 'Team & Permissiematrix'}
+              {activeTab === 'team' && 'Team & rechten'}
             </h1>
             <p className="text-xs text-slate-500 font-medium mt-0.5">
               {activeTab.startsWith('billing')
@@ -664,10 +672,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 ? 'Zet werkmodules rechtstreeks aan of uit. Uw navigatie volgt onmiddellijk en bewaren gebeurt automatisch.'
                 : activeTab === 'workforce'
                 ? 'Beheer medewerkers, verlofsaldi en de regels waarmee PWAYMENT de winkelbezetting controleert.'
+                : activeTab === 'leave-approvals'
+                ? 'Beoordeel aanvragen veilig vanuit eigenaarstoegang. Elke beslissing wordt gelogd en vereist uw persoonlijke PIN.'
                 : (activeTab === 'catalog' || activeTab.startsWith('catalog-'))
                 ? 'Beheer uw artikelbestand, inkoop-/verkoopprijzen, voorraad en Btw-tarieven.'
                 : activeTab.startsWith('webshop')
                 ? 'Beheer publicatie, assortiment, bestellingen en klantinstellingen vanuit één centrale omgeving.'
+                : activeTab === 'team'
+                ? 'Beheer wie toegang heeft tot de kassa, welke rol iemand krijgt en hoe elk personeelsdossier aan die toegang gekoppeld is.'
                 : activeTab === 'integrations'
                 ? 'Beheer leveranciers, webshops, boekhouding, payments, webhooks en API-toegang.'
                 : 'Beheer uw Pwayment Retail licentie, winkelprofiel, kassa-hardware en rechten.'}
@@ -694,6 +706,16 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             onUpgrade={() => setActiveTab('billing-plan')}
           >
             <WorkforceSettings />
+          </FeatureGate>
+        )}
+        {activeTab === 'leave-approvals' && currentRole === 'owner' && (
+          <FeatureGate
+            feature={FEATURE_KEYS.workforce}
+            title="Verlofgoedkeuring is beschikbaar in Enterprise & Ketens"
+            description="Beoordeel aanvragen en bewaak de planning vanuit een beveiligde eigenaarstoegang."
+            onUpgrade={() => setActiveTab('billing-plan')}
+          >
+            <LeaveApprovalCenter />
           </FeatureGate>
         )}
 
@@ -1383,15 +1405,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
         {/* TAB 11: TEAM & PERMISSIES */}
         {activeTab === 'team' && (
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 md:p-8 shadow-2xs max-w-4xl space-y-6">
+          <div className="bg-white rounded-xl border border-slate-200 p-6 md:p-8 shadow-[0_1px_2px_rgba(15,23,42,0.04)] max-w-5xl space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 gap-3">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-2xl bg-sky-50 text-sky-700 border border-sky-100">
+                <div className="p-2.5 rounded-xl bg-[#f0f9ff] text-[#0e7490] border border-[#bae6fd]">
                   <Users size={20} />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">Team & Rol-Toewijzing</h3>
-                  <p className="text-xs text-slate-500 font-medium">Beheer medewerkers, pincodes en kassa-rechten</p>
+                  <h3 className="text-base font-bold text-slate-900">Team & rechten</h3>
+                  <p className="text-xs text-slate-500 font-medium">Koppel POS-toegang, rollen en snel-PIN aan het personeelsdossier.</p>
                 </div>
               </div>
               <button
@@ -1413,7 +1435,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   setTeamError(null);
                   setShowTeamModal(true);
                 }}
-                className="px-3.5 py-2 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-colors shadow-xs shrink-0 cursor-pointer"
+                className="px-3.5 py-2 border border-[#0e7490] bg-[#0e7490] hover:bg-[#0f6677] text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-colors shadow-[0_1px_2px_rgba(15,23,42,0.08)] shrink-0 cursor-pointer"
               >
                 <UserPlus size={15} />
                 <span>Medewerker Toevoegen</span>
@@ -1423,7 +1445,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs font-semibold">
                 <thead>
-                  <tr className="border-b border-slate-100 text-slate-400 text-[10px] uppercase tracking-wider">
+                  <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 text-[10px] uppercase tracking-wider">
                     <th className="py-3 px-3">Medewerker & Functie</th>
                     <th className="py-3 px-3">E-mail</th>
                     <th className="py-3 px-3">Contract & Rooster</th>
@@ -1435,25 +1457,26 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 <tbody className="divide-y divide-slate-100 text-slate-700">
                   {teamUsers.map((user) => {
                     const isSelf = user.id === currentUserId;
-                    const wfEmp = workforceTeam.find((e) => e.id === user.id);
+                    const workforceEmployeeId = user.workforceEmployeeId ?? user.id;
+                    const wfEmp = workforceTeam.find((e) => e.id === workforceEmployeeId);
                     const userWeeklyHours = wfEmp?.weeklyMinutes ? `${Math.round(wfEmp.weeklyMinutes / 60)}u/week` : '38u/week';
                     return (
                       <tr key={user.id} className="hover:bg-slate-50/60 transition-colors">
                         <td className="py-3.5 px-3 font-bold text-slate-900 flex items-center gap-2.5">
-                          <div className="h-8 w-8 rounded-full bg-sky-100 text-sky-800 font-black text-xs flex items-center justify-center border border-sky-200 shrink-0">
+                          <div className="h-8 w-8 rounded-full bg-[#f0f9ff] text-[#0e7490] font-black text-xs flex items-center justify-center border border-[#bae6fd] shrink-0">
                             {user.name ? user.name.charAt(0).toUpperCase() : 'M'}
                           </div>
                           <div>
                             <div className="flex items-center gap-1.5">
                               <span>{user.name}</span>
                               {isSelf && (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-100 text-sky-800">
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#f0f9ff] text-[#0e7490]">
                                   U
                                 </span>
                               )}
                             </div>
                             {user.jobTitle && (
-                              <div className="text-[11px] font-medium text-sky-700 mt-0.5">
+                              <div className="text-[11px] font-medium text-[#0e7490] mt-0.5">
                                 {user.jobTitle}
                               </div>
                             )}
@@ -1472,7 +1495,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                               user.role === 'owner'
                                 ? 'bg-amber-50 text-amber-800 border-amber-200'
                                 : user.role === 'manager'
-                                ? 'bg-sky-50 text-sky-800 border-sky-200'
+                                ? 'bg-[#f0f9ff] text-[#0e7490] border-[#bae6fd]'
                                 : 'bg-slate-50 text-slate-700 border-slate-200'
                             }`}
                           >
@@ -1490,8 +1513,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                             <button
                               type="button"
                               onClick={() => {
-                                const matchedWf = useWorkforce.getState().team.find((e) => e.id === user.id);
-                                const patterns = useWorkforce.getState().roster.patterns.filter((p) => p.employeeId === user.id && p.scheduledMinutes > 0);
+                                const workforceEmployeeId = user.workforceEmployeeId ?? user.id;
+                                const matchedWf = useWorkforce.getState().team.find((e) => e.id === workforceEmployeeId);
+                                const patterns = useWorkforce.getState().roster.patterns.filter((p) => p.employeeId === workforceEmployeeId && p.scheduledMinutes > 0);
                                 const firstP = patterns[0];
                                 setEditingTeamUser(user);
                                 setTeamForm({
@@ -1509,7 +1533,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                                 setTeamError(null);
                                 setShowTeamModal(true);
                               }}
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-sky-700 hover:bg-sky-50 transition"
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-[#0e7490] hover:bg-[#f0f9ff] transition"
                               title="Bewerken"
                             >
                               <Edit2 size={15} />
@@ -1518,20 +1542,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                               <button
                                 type="button"
                                 onClick={async () => {
-                                  if (!confirm(`Weet u zeker dat u medewerker "${user.name}" wilt verwijderen?`)) return;
+                                  if (!confirm(`Weet u zeker dat u de POS-toegang van "${user.name}" wilt verwijderen?`)) return;
                                   await db.users.delete(user.id);
-                                  useWorkforce.setState((state) => ({
-                                    team: state.team.filter((e) => e.id !== user.id),
-                                    roster: {
-                                      ...state.roster,
-                                      employees: state.roster.employees.filter((e) => e.id !== user.id),
-                                      patterns: state.roster.patterns.filter((p) => p.employeeId !== user.id),
-                                    },
-                                  }));
-                                  setSavedToast(`Medewerker "${user.name}" verwijderd.`);
+                                  setSavedToast(`POS-toegang voor "${user.name}" verwijderd. Personeels- en verlofgeschiedenis blijft behouden.`);
                                 }}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
-                                title="Verwijderen"
+                                title="POS-toegang verwijderen"
                               >
                                 <Trash2 size={15} />
                               </button>
@@ -1583,31 +1599,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     const pinHash = teamForm.pin ? await hashCredential(teamForm.pin, 'pin') : editingTeamUser?.pinHash || '';
                     const activeStoreId = currentStoreId || (useWorkforce.getState().storeId || 'fixture-store');
                     const weeklyMinutes = Math.round(Number(teamForm.weeklyHours.replace(',', '.')) * 60) || 2280;
-                    const targetId = editingTeamUser ? editingTeamUser.id : `usr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
-                    if (editingTeamUser) {
-                      await db.users.update(editingTeamUser.id, {
-                        name: trimmedName,
-                        email: teamForm.email.trim() || undefined,
-                        role: teamForm.role,
-                        jobTitle: teamForm.jobTitle.trim() || undefined,
-                        ...(teamForm.pin ? { pinHash } : {}),
-                      });
-                    } else {
-                      await db.users.put({
-                        id: targetId,
-                        name: trimmedName,
-                        email: teamForm.email.trim() || undefined,
-                        role: teamForm.role,
-                        jobTitle: teamForm.jobTitle.trim() || undefined,
-                        pinHash,
-                        createdAt: new Date().toISOString(),
-                      });
-                    }
-
-                    // Save to workforce employees & automatic leave balances
-                    await useWorkforce.getState().saveEmployee(activeStoreId, {
-                      id: targetId,
+                    const saved = await useWorkforce.getState().saveEmployee(activeStoreId, {
+                      id: editingTeamUser?.workforceEmployeeId ?? editingTeamUser?.id,
                       displayName: trimmedName,
                       email: teamForm.email.trim() || undefined,
                       weeklyMinutes,
@@ -1619,19 +1613,17 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                         roleLabel: teamForm.jobTitle.trim() || 'Verkoop',
                         locationLabel: 'Winkelvloer',
                       },
+                      posAccess: {
+                        role: teamForm.role,
+                        pinHash,
+                        jobTitle: teamForm.jobTitle.trim() || undefined,
+                        localUserId: editingTeamUser?.id,
+                      },
                     });
-
-                    // Save the active work pattern
-                    await useWorkforce.getState().savePattern(activeStoreId, {
-                      employeeId: targetId,
-                      weekdays: teamForm.weekdays,
-                      startTime: teamForm.startTime,
-                      endTime: teamForm.endTime,
-                      breakMinutes: Number(teamForm.breakMinutes) || 0,
-                      roleLabel: teamForm.jobTitle.trim() || 'Verkoop',
-                      locationLabel: 'Winkelvloer',
-                      effectiveFrom: new Date().toISOString().slice(0, 10),
-                    });
+                    if (!saved) {
+                      setTeamError(useWorkforce.getState().error || 'Fout bij opslaan van medewerker.');
+                      return;
+                    }
 
                     setSavedToast(editingTeamUser ? `Medewerker ${trimmedName} bijgewerkt met nieuw werkrooster.` : `Medewerker ${trimmedName} toegevoegd en direct ingeroosterd.`);
                     setShowTeamModal(false);
@@ -1900,4 +1892,3 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     </div>
   );
 };
-

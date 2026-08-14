@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { supabase } from "../lib/supabase";
 import type { Json } from "../types/database.generated";
 import { addDays, isoWeekday, localDateTimeToIso, startOfIsoWeek } from "../workforce/roster";
 import { todayIso } from "../workforce/format";
@@ -18,61 +17,17 @@ import type {
   WorkforceShift,
   WorkPattern,
 } from "../workforce/types";
-import { canUseFeature, FEATURE_KEYS } from "../billing/entitlements";
 import { db } from "../db/db";
-import { hashCredential } from "../utils/credentials";
+import { workforceRepository, type WorkforceRpcError } from "../features/workforce/data/workforceRepository";
 
-type WorkforceRpcName =
-  | "get_workforce_bootstrap"
-  | "get_workforce_roster"
-  | "save_workforce_employee"
-  | "save_workforce_shift"
-  | "delete_workforce_shift"
-  | "apply_workforce_patterns"
-  | "copy_workforce_week"
-  | "publish_workforce_roster"
-  | "reopen_workforce_roster"
-  | "save_workforce_pattern"
-  | "submit_leave_request"
-  | "decide_leave_request"
-  | "withdraw_leave_request"
-  | "adjust_leave_balance";
-
-interface RpcError {
-  code?: string;
-  message?: string;
-  details?: string;
-  hint?: string;
-}
-
-type WorkforceRpcClient = {
-  rpc: (
-    fn: WorkforceRpcName,
-    args: Record<string, Json | string>,
-  ) => Promise<{ data: Json | null; error: RpcError | null }>;
-};
-
-const rawWorkforceRpc = supabase as unknown as WorkforceRpcClient;
-const workforceRpc: WorkforceRpcClient = {
-  rpc: async (fn, args) => {
-    if (!canUseFeature(FEATURE_KEYS.workforce)) {
-      return {
-        data: null,
-        error: {
-          code: "P0001",
-          message: "entitlement:plan-required:workforce.core",
-        },
-      };
-    }
-    return rawWorkforceRpc.rpc(fn, args);
-  },
-};
 const fixtureRuntime = import.meta.env.VITE_E2E_BUILD === "true";
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const emptyBootstrap = (): WorkforceBootstrap => ({
   schemaVersion: 2,
   employee: null,
   canManage: false,
+  approvalPinConfigured: false,
   leaveTypes: [],
   balances: [],
   requests: [],
@@ -235,6 +190,7 @@ const asBootstrap = (value: Json | null): WorkforceBootstrap => {
     schemaVersion: typeof data.schemaVersion === "number" ? data.schemaVersion : 1,
     employee: data.employee ?? null,
     canManage: data.canManage === true,
+    approvalPinConfigured: data.approvalPinConfigured === true,
     leaveTypes: Array.isArray(data.leaveTypes) ? data.leaveTypes : [],
     balances: Array.isArray(data.balances) ? data.balances : [],
     requests: Array.isArray(data.requests) ? data.requests : [],
@@ -266,7 +222,7 @@ const asRoster = (value: Json | null, rangeStart: string, rangeEnd: string): Wor
   };
 };
 
-export const workforceErrorMessage = (error: RpcError | null): string => {
+export const workforceErrorMessage = (error: WorkforceRpcError | null): string => {
   if (!error) return "Onbekende fout.";
   if (error.code === "PGRST202" || error.message?.includes("schema cache")) {
     return "De personeelsbackend is nog niet bijgewerkt. Voer de nieuwste Supabase-migratie uit.";
@@ -318,7 +274,9 @@ interface WorkforceState extends WorkforceBootstrap {
     endDate: string;
     note: string;
   }) => Promise<boolean>;
-  decide: (storeId: string, requestId: string, decision: "approved" | "rejected", note: string) => Promise<boolean>;
+  setApprovalPin: (storeId: string, pin: string) => Promise<boolean>;
+  verifyApprovalPin: (storeId: string, pin: string) => Promise<boolean>;
+  decide: (storeId: string, requestId: string, decision: "approved" | "rejected", note: string, approvalPin: string) => Promise<boolean>;
   withdraw: (storeId: string, requestId: string) => Promise<boolean>;
   adjustBalance: (storeId: string, accountId: string, deltaMinutes: number, reason: string) => Promise<boolean>;
   clearError: () => void;
@@ -336,7 +294,7 @@ export const useWorkforce = create<WorkforceState>((set, get) => {
     ]);
   };
 
-  const mutationError = (error: RpcError | null) => {
+  const mutationError = (error: WorkforceRpcError | null) => {
     set({
       mutating: false,
       error: workforceErrorMessage(error),
@@ -372,38 +330,13 @@ export const useWorkforce = create<WorkforceState>((set, get) => {
         return;
       }
       let bootstrapData: WorkforceBootstrap = emptyBootstrap();
-      const { data, error } = await workforceRpc.rpc("get_workforce_bootstrap", {
+      const { data, error } = await workforceRepository.rpc("get_workforce_bootstrap", {
         target_store_id: storeId,
       });
       if (data) {
         bootstrapData = asBootstrap(data);
       } else if (error) {
         console.warn("Workforce bootstrap warning:", error);
-      }
-
-      // Merge with Dexie db.users so local team members are never lost
-      try {
-        const localUsers = await db.users.toArray();
-        const existingIds = new Set(bootstrapData.team.map((e) => e.id));
-        const mergedTeam = [...bootstrapData.team];
-        for (const u of localUsers) {
-          if (!existingIds.has(u.id)) {
-            mergedTeam.push({
-              id: u.id,
-              displayName: u.name,
-              employeeNumber: `EMP-${u.id.slice(-4).toUpperCase()}`,
-              email: u.email || null,
-              status: "active",
-              weeklyMinutes: 2280,
-              scheduledDays: 5,
-              competencyIds: [],
-            });
-            existingIds.add(u.id);
-          }
-        }
-        bootstrapData.team = mergedTeam;
-      } catch (dbErr) {
-        console.warn("Dexie users merge error:", dbErr);
       }
 
       set({ ...bootstrapData, loading: false, hydrated: true, storeId, error: null, errorCode: null });
@@ -422,7 +355,7 @@ export const useWorkforce = create<WorkforceState>((set, get) => {
         set({ roster: next, rosterLoading: false, rosterHydrated: true });
         return;
       }
-      const { data, error } = await workforceRpc.rpc("get_workforce_roster", {
+      const { data, error } = await workforceRepository.rpc("get_workforce_roster", {
         target_store_id: storeId,
         range_start: rangeStart,
         range_end: rangeEnd,
@@ -485,7 +418,7 @@ export const useWorkforce = create<WorkforceState>((set, get) => {
         }));
         return true;
       }
-      const { error } = await workforceRpc.rpc("save_workforce_shift", {
+      const { error } = await workforceRepository.rpc("save_workforce_shift", {
         target_store_id: storeId,
         payload: rpcPayload(input),
       });
@@ -507,7 +440,7 @@ export const useWorkforce = create<WorkforceState>((set, get) => {
         }));
         return true;
       }
-      const { error } = await workforceRpc.rpc("delete_workforce_shift", {
+      const { error } = await workforceRepository.rpc("delete_workforce_shift", {
         target_store_id: storeId,
         payload: rpcPayload({
           shiftId: shift.id,
@@ -560,7 +493,7 @@ export const useWorkforce = create<WorkforceState>((set, get) => {
         }));
         return true;
       }
-      const { error } = await workforceRpc.rpc("apply_workforce_patterns", {
+      const { error } = await workforceRepository.rpc("apply_workforce_patterns", {
         target_store_id: storeId,
         payload: rpcPayload({ weekStart, employeeIds: [], expectedRosterVersion: roster?.version }),
       });
@@ -603,7 +536,7 @@ export const useWorkforce = create<WorkforceState>((set, get) => {
         }));
         return true;
       }
-      const { error } = await workforceRpc.rpc("copy_workforce_week", {
+      const { error } = await workforceRepository.rpc("copy_workforce_week", {
         target_store_id: storeId,
         payload: rpcPayload({ sourceWeekStart, targetWeekStart, expectedRosterVersion: roster?.version }),
       });
@@ -637,7 +570,7 @@ export const useWorkforce = create<WorkforceState>((set, get) => {
         }));
         return true;
       }
-      const { error } = await workforceRpc.rpc("publish_workforce_roster", {
+      const { error } = await workforceRepository.rpc("publish_workforce_roster", {
         target_store_id: storeId,
         payload: rpcPayload({ weekStart, expectedRosterVersion: roster?.version }),
       });
@@ -663,7 +596,7 @@ export const useWorkforce = create<WorkforceState>((set, get) => {
         }));
         return true;
       }
-      const { error } = await workforceRpc.rpc("reopen_workforce_roster", {
+      const { error } = await workforceRepository.rpc("reopen_workforce_roster", {
         target_store_id: storeId,
         payload: rpcPayload({ weekStart }),
       });
@@ -726,7 +659,7 @@ export const useWorkforce = create<WorkforceState>((set, get) => {
         }));
         return true;
       }
-      const { error } = await workforceRpc.rpc("save_workforce_pattern", {
+      const { error } = await workforceRepository.rpc("save_workforce_pattern", {
         target_store_id: storeId,
         payload: rpcPayload(input),
       });
@@ -802,7 +735,7 @@ export const useWorkforce = create<WorkforceState>((set, get) => {
             }));
           } else {
             const roster = get().roster.rosters.find((r) => r.weekStart === targetWeek);
-            await workforceRpc.rpc("apply_workforce_patterns", {
+            await workforceRepository.rpc("apply_workforce_patterns", {
               target_store_id: storeId,
               payload: rpcPayload({
                 weekStart: targetWeek,
@@ -855,7 +788,7 @@ export const useWorkforce = create<WorkforceState>((set, get) => {
         set((state) => ({ requests: [request, ...state.requests], mutating: false }));
         return true;
       }
-      const { error } = await workforceRpc.rpc("submit_leave_request", {
+      const { error } = await workforceRepository.rpc("submit_leave_request", {
         target_store_id: storeId,
         payload: rpcPayload({ clientRequestId: crypto.randomUUID(), ...input }),
       });
@@ -868,8 +801,62 @@ export const useWorkforce = create<WorkforceState>((set, get) => {
       return true;
     },
 
-    async decide(storeId, requestId, decision, note) {
+    async setApprovalPin(storeId, pin) {
       set({ mutating: true, error: null, errorCode: null });
+      if (!/^\d{6}$/.test(pin)) {
+        set({ mutating: false, error: "De goedkeurings-PIN bestaat uit exact 6 cijfers.", errorCode: "INVALID_PIN" });
+        return false;
+      }
+      if (fixtureRuntime) {
+        set({ approvalPinConfigured: true, mutating: false });
+        return true;
+      }
+      const { data, error } = await workforceRepository.rpc("set_leave_approval_pin", {
+        target_store_id: storeId,
+        payload: rpcPayload({ pin }),
+      });
+      if (error || (data && typeof data === "object" && !Array.isArray(data) && data.ok === false)) {
+        mutationError(error ?? { code: "P0001", message: "leave:pin:De PIN kon niet worden ingesteld." });
+        return false;
+      }
+      set({ approvalPinConfigured: true, mutating: false });
+      return true;
+    },
+
+    async verifyApprovalPin(storeId, pin) {
+      set({ mutating: true, error: null, errorCode: null });
+      if (!/^\d{6}$/.test(pin)) {
+        set({ mutating: false, error: "Voer je persoonlijke PIN van 6 cijfers in.", errorCode: "INVALID_PIN" });
+        return false;
+      }
+      if (fixtureRuntime) {
+        set({ mutating: false });
+        return true;
+      }
+      const { data, error } = await workforceRepository.rpc("verify_leave_approval_pin", {
+        target_store_id: storeId,
+        payload: rpcPayload({ approvalPin: pin }),
+      });
+      if (error || (data && typeof data === "object" && !Array.isArray(data) && data.ok === false)) {
+        const code = data && typeof data === "object" && !Array.isArray(data) ? data.errorCode : null;
+        const message = code === "pin-locked"
+          ? "Je goedkeurings-PIN is tijdelijk geblokkeerd. Probeer later opnieuw."
+          : code === "pin-not-configured"
+            ? "Stel eerst je persoonlijke goedkeurings-PIN in via Instellingen → Personeel & verlof."
+            : "De ingevoerde PIN is onjuist. Probeer opnieuw.";
+        mutationError(error ?? { code: "P0001", message });
+        return false;
+      }
+      set({ mutating: false });
+      return true;
+    },
+
+    async decide(storeId, requestId, decision, note, approvalPin) {
+      set({ mutating: true, error: null, errorCode: null });
+      if (!/^\d{6}$/.test(approvalPin)) {
+        set({ mutating: false, error: "Voer je persoonlijke PIN van 6 cijfers in.", errorCode: "INVALID_PIN" });
+        return false;
+      }
       if (fixtureRuntime) {
         set((state) => ({
           requests: state.requests.map((request) => request.id === requestId
@@ -879,12 +866,20 @@ export const useWorkforce = create<WorkforceState>((set, get) => {
         }));
         return true;
       }
-      const { error } = await workforceRpc.rpc("decide_leave_request", {
+      const { data, error } = await workforceRepository.rpc("decide_leave_request", {
         target_store_id: storeId,
-        payload: rpcPayload({ requestId, decision, note }),
+        payload: rpcPayload({ requestId, decision, note, approvalPin }),
       });
-      if (error) {
-        mutationError(error);
+      if (error || (data && typeof data === "object" && !Array.isArray(data) && data.ok === false)) {
+        const code = data && typeof data === "object" && !Array.isArray(data) ? data.errorCode : null;
+        const message = code === "invalid-pin"
+          ? "De ingevoerde PIN is onjuist. Probeer opnieuw."
+          : code === "pin-locked"
+            ? "Je goedkeurings-PIN is tijdelijk geblokkeerd. Probeer later opnieuw."
+            : code === "pin-not-configured"
+              ? "Stel eerst je persoonlijke goedkeurings-PIN in."
+              : "De verlofbeslissing kon niet worden bevestigd.";
+        mutationError(error ?? { code: "P0001", message });
         return false;
       }
       await refreshLoadedRange(storeId);
@@ -903,7 +898,7 @@ export const useWorkforce = create<WorkforceState>((set, get) => {
         }));
         return true;
       }
-      const { error } = await workforceRpc.rpc("withdraw_leave_request", {
+      const { error } = await workforceRepository.rpc("withdraw_leave_request", {
         target_store_id: storeId,
         target_request_id: requestId,
       });
@@ -918,91 +913,118 @@ export const useWorkforce = create<WorkforceState>((set, get) => {
 
     async saveEmployee(storeId, input) {
       set({ mutating: true, error: null, errorCode: null });
-      const id = input.id || `usr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-      const newEmployee: WorkforceEmployee = {
-        id,
-        displayName: input.displayName.trim(),
-        employeeNumber: input.employeeNumber || `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
-        email: input.email || null,
-        status: input.status || "active",
-        weeklyMinutes: input.weeklyMinutes ?? 2280,
-        scheduledDays: 5,
-        competencyIds: input.competencyIds ?? [],
-      };
-      const year = new Date().getFullYear();
-      const newBalances: LeaveBalance[] = [year, year + 1].map((balanceYear) => ({
-        accountId: `account-${id}-${balanceYear}`,
-        employeeId: id,
-        leaveTypeId: "statutory-vacation",
-        leaveTypeName: "Wettelijke vakantie",
-        year: balanceYear,
-        status: "confirmed" as const,
-        grantedMinutes: (input.weeklyMinutes ?? 2280) * 4,
-        availableMinutes: (input.weeklyMinutes ?? 2280) * 4,
-      }));
+      let newEmployee: WorkforceEmployee;
+      if (fixtureRuntime) {
+        const id = input.id || crypto.randomUUID();
+        newEmployee = {
+          id,
+          displayName: input.displayName.trim(),
+          employeeNumber: input.employeeNumber || `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
+          email: input.email || null,
+          status: input.status || "active",
+          weeklyMinutes: input.weeklyMinutes ?? 2280,
+          scheduledDays: 5,
+          competencyIds: input.competencyIds ?? [],
+        };
+      } else {
+        const serverInput = {
+          ...input,
+          // Only an employee returned by this store can be used as an update
+          // identity. A local POS ID, including a UUID-shaped legacy ID, is not
+          // evidence of a workforce record.
+          id: input.id && get().team.some((employee) => employee.id === input.id) && uuidPattern.test(input.id)
+            ? input.id
+            : undefined,
+          posAccess: undefined,
+        };
+        let result: { data: Json | null; error: WorkforceRpcError | null };
+        try {
+          result = await workforceRepository.rpc("save_workforce_employee", {
+            target_store_id: storeId,
+            payload: rpcPayload(serverInput),
+          });
+        } catch {
+          mutationError({ message: "workforce:connection:De medewerker kon niet veilig worden bewaard. Controleer uw verbinding en probeer opnieuw." });
+          return false;
+        }
+        if (result.error) {
+          mutationError(result.error);
+          return false;
+        }
+        const saved = result.data && typeof result.data === "object" && !Array.isArray(result.data)
+          ? result.data as unknown as Partial<WorkforceEmployee>
+          : null;
+        if (!saved || typeof saved.id !== "string" || !uuidPattern.test(saved.id)) {
+          mutationError({ message: "workforce:invalid-response:De personeelsbackend gaf geen geldige medewerker-ID terug." });
+          return false;
+        }
+        newEmployee = {
+          id: saved.id,
+          displayName: typeof saved.displayName === "string" ? saved.displayName : input.displayName.trim(),
+          employeeNumber: typeof saved.employeeNumber === "string" ? saved.employeeNumber : input.employeeNumber ?? null,
+          email: typeof saved.email === "string" ? saved.email : input.email ?? null,
+          status: saved.status === "inactive" || saved.status === "leave" ? saved.status : "active",
+          weeklyMinutes: input.weeklyMinutes ?? 2280,
+          scheduledDays: input.initialSchedule?.weekdays.length ?? 0,
+          competencyIds: input.competencyIds ?? [],
+        };
+      }
 
-      // 1. Immediately update local Zustand state so the employee is right there in planning and settings
+      // A POS login is opt-in. Its ID deliberately equals the canonical workforce
+      // ID for newly created records, avoiding a client-generated identity split.
+      if (input.posAccess) {
+        try {
+          const localUserId = input.posAccess.localUserId ?? newEmployee.id;
+          const existingUser = await db.users.get(localUserId);
+          await db.users.put({
+            ...existingUser,
+            id: localUserId,
+            name: newEmployee.displayName,
+            email: newEmployee.email || undefined,
+            role: input.posAccess.role,
+            jobTitle: input.posAccess.jobTitle?.trim() || undefined,
+            pinHash: input.posAccess.pinHash,
+            createdAt: existingUser?.createdAt ?? new Date().toISOString(),
+            workforceEmployeeId: newEmployee.id,
+          });
+        } catch {
+          set({ mutating: false, error: "De medewerker is bewaard, maar POS-toegang kon niet lokaal worden ingesteld." });
+          return false;
+        }
+      }
+
       set((state) => {
-        const exists = state.team.some((e) => e.id === id);
-        const nextTeam = exists
-          ? state.team.map((e) => (e.id === id ? { ...e, ...newEmployee } : e))
-          : [...state.team, newEmployee];
-        const nextRosterEmployees = exists
-          ? state.roster.employees.map((e) => (e.id === id ? { ...e, ...newEmployee } : e))
-          : [...state.roster.employees, newEmployee];
-
+        const exists = state.team.some((employee) => employee.id === newEmployee.id);
+        const year = new Date().getFullYear();
+        const fixtureBalances: LeaveBalance[] = fixtureRuntime && !exists
+          ? [year, year + 1].map((balanceYear) => ({
+              accountId: `account-${newEmployee.id}-${balanceYear}`,
+              employeeId: newEmployee.id,
+              leaveTypeId: "statutory-vacation",
+              leaveTypeName: "Wettelijke vakantie",
+              year: balanceYear,
+              status: "confirmed" as const,
+              grantedMinutes: (input.weeklyMinutes ?? 2280) * 4,
+              availableMinutes: (input.weeklyMinutes ?? 2280) * 4,
+            }))
+          : [];
         return {
-          team: nextTeam,
-          balances: exists ? state.balances : [...state.balances, ...newBalances],
+          team: exists ? state.team.map((employee) => employee.id === newEmployee.id ? newEmployee : employee) : [...state.team, newEmployee],
+          balances: fixtureBalances.length ? [...state.balances, ...fixtureBalances] : state.balances,
           roster: {
             ...state.roster,
-            employees: nextRosterEmployees,
+            employees: exists
+              ? state.roster.employees.map((employee) => employee.id === newEmployee.id ? newEmployee : employee)
+              : [...state.roster.employees, newEmployee],
           },
         };
       });
 
-      // 2. Guarantee persistence in Dexie db.users
-      try {
-        const existing = await db.users.get(id);
-        if (!existing) {
-          const pinHash = await hashCredential("123456", "pin");
-          await db.users.put({
-            id,
-            name: newEmployee.displayName,
-            email: newEmployee.email || undefined,
-            role: "cashier",
-            pinHash,
-            createdAt: new Date().toISOString(),
-          });
-        } else {
-          await db.users.update(id, {
-            name: newEmployee.displayName,
-            email: newEmployee.email || undefined,
-          });
-        }
-      } catch (dexieErr) {
-        console.warn("Dexie save error:", dexieErr);
-      }
-
-      // 3. Sync to Supabase if not fixture runtime
-      if (!fixtureRuntime) {
-        try {
-          const { error } = await workforceRpc.rpc("save_workforce_employee", {
-            target_store_id: storeId,
-            payload: rpcPayload(input),
-          });
-          if (error) {
-            console.warn("Supabase workforce sync warning:", error);
-          }
-        } catch (rpcErr) {
-          console.warn("Supabase workforce RPC call failed:", rpcErr);
-        }
-      }
-
-      // 4. If initialSchedule is provided, automatically set up the work pattern
+      // Create an initial work pattern exactly once, after the employee has a
+      // canonical server identity. A failure is surfaced rather than hidden.
       if (input.initialSchedule && input.initialSchedule.weekdays.length > 0) {
-        await get().savePattern(storeId, {
-          employeeId: id,
+        const patternSaved = await get().savePattern(storeId, {
+          employeeId: newEmployee.id,
           weekdays: input.initialSchedule.weekdays,
           startTime: input.initialSchedule.startTime,
           endTime: input.initialSchedule.endTime,
@@ -1011,7 +1033,10 @@ export const useWorkforce = create<WorkforceState>((set, get) => {
           locationLabel: input.initialSchedule.locationLabel || "Winkelvloer",
           effectiveFrom: input.startDate || todayIso(),
         });
+        if (!patternSaved) return false;
       }
+
+      if (!fixtureRuntime) await get().load(storeId, true);
 
       set({ mutating: false });
       return true;
@@ -1029,7 +1054,7 @@ export const useWorkforce = create<WorkforceState>((set, get) => {
         }));
         return true;
       }
-      const { error } = await workforceRpc.rpc("adjust_leave_balance", {
+      const { error } = await workforceRepository.rpc("adjust_leave_balance", {
         target_store_id: storeId,
         payload: rpcPayload({ accountId, deltaMinutes, reason }),
       });

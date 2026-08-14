@@ -218,7 +218,10 @@ test("Z-closing finalizes the sale and records cash reconciliation", async ({
   await expect(reportDialog).toBeVisible();
   await expect(reportDialog.getByRole("heading", { name: /Wat werd er verkocht/ })).toBeVisible();
   await expect(reportDialog.getByText("Allen Hardware Bolts 1 inch").first()).toBeVisible();
-  await expect(reportDialog.getByText(/Historisch rapport/).first()).toBeVisible();
+  await expect(reportDialog.getByRole("heading", { name: "Integriteit" })).toBeVisible();
+  await expect(
+    reportDialog.getByText(/server-authoritair|Historisch rapport/).first(),
+  ).toBeVisible();
 
   await reportDialog
     .locator("section")

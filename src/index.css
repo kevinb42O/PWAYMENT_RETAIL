@@ -1097,15 +1097,274 @@ body {
   background: #0f6677;
 }
 
+/* Application design system: the Kassa screen is the visual source of truth.
+   New and migrated modules use these semantic classes instead of inventing a
+   new palette, shadow, border radius, or focus treatment. */
+.app-standard {
+  --app-page-bg: #f4f8fb;
+  --app-surface: #ffffff;
+  --app-border: #dbe3ea;
+  --app-text: #0f172a;
+  --app-muted: #64748b;
+  --app-primary: #0e7490;
+  --app-primary-hover: #0f6677;
+  --app-primary-soft: #f0f9ff;
+  --app-primary-border: #bae6fd;
+  --app-focus: #38bdf8;
+}
+
+.app-page-shell,
+.app-standard > .app-page-shell {
+  background: var(--app-page-bg);
+  color: var(--app-text);
+}
+
+.app-page-header {
+  border-color: var(--app-border);
+  background: var(--app-surface);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.app-page-content {
+  background: var(--app-page-bg);
+}
+
+/* Slate 500 is a fraction below WCAG AA on the application canvas (#f4f8fb).
+   Keep muted copy visually secondary while preserving the required 4.5:1
+   contrast ratio everywhere a page uses the shared shell. */
+.app-page-shell .text-slate-500,
+.app-page-content .text-slate-500 {
+  color: #5f7088 !important;
+}
+
+/* Compatibility rule for legacy modules while their raw utility classes are
+   progressively replaced by Button and Field. It gives every existing primary
+   action the Kassa treatment without changing its behaviour or permissions. */
+.app-standard button.bg-slate-900,
+.app-standard button.bg-slate-950,
+.app-standard button.bg-emerald-600,
+.app-standard button.bg-sky-400,
+.app-standard button.bg-sky-700,
+.app-standard button.bg-cyan-700,
+.app-standard button.bg-indigo-600,
+.app-standard button.bg-blue-600 {
+  border-color: var(--app-primary) !important;
+  background-color: var(--app-primary) !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08) !important;
+}
+
+.app-standard button.bg-slate-900:hover,
+.app-standard button.bg-slate-950:hover,
+.app-standard button.bg-emerald-600:hover,
+.app-standard button.bg-sky-400:hover,
+.app-standard button.bg-sky-700:hover,
+.app-standard button.bg-cyan-700:hover,
+.app-standard button.bg-indigo-600:hover,
+.app-standard button.bg-blue-600:hover {
+  background-color: var(--app-primary-hover) !important;
+}
+
+/* Filled blue and teal controls are always high-contrast actions. Never let
+   the light-theme compatibility layer turn their labels black. */
+.app-standard button[class*="bg-[#0e7490]"],
+.app-standard button[class*="bg-sky-500"],
+.app-standard button[class*="bg-sky-600"],
+.app-standard button[class*="bg-sky-700"],
+.app-standard button[class*="bg-cyan-500"],
+.app-standard button[class*="bg-cyan-600"],
+.app-standard button[class*="bg-cyan-700"],
+.app-standard button[class*="bg-blue-500"],
+.app-standard button[class*="bg-blue-600"],
+.app-standard button[class*="bg-blue-700"],
+.app-standard button[class*="bg-indigo-500"],
+.app-standard button[class*="bg-indigo-600"],
+.app-standard button[class*="bg-indigo-700"] {
+  color: #ffffff !important;
+}
+
+.service-total-action button:first-child,
+.service-total-action button:first-child * {
+  color: #ffffff !important;
+}
+
+/* Productbeheer remains a data-dense screen, but follows the same controls as
+   Kassa: soft surfaces, teal focus, pale-cyan selected filters, and white
+   labels on all primary actions. */
+.product-admin input:focus,
+.product-admin select:focus,
+.product-admin textarea:focus {
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1) !important;
+}
+
+.product-admin button.bg-slate-100,
+.product-admin-header-actions button.bg-slate-100 {
+  border-color: #e2e8f0;
+  background-color: #ffffff;
+  color: #475569;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.product-admin button.bg-slate-100:hover,
+.product-admin-header-actions button.bg-slate-100:hover {
+  border-color: #8bdce8;
+  background-color: #f3fbfc;
+  color: #0f6f7e;
+}
+
+.product-admin button.bg-slate-900,
+.product-admin-header-actions button.bg-slate-900 {
+  border-color: #0e7490 !important;
+  background-color: #0e7490 !important;
+  color: #ffffff !important;
+}
+
+.product-admin button.bg-slate-900:hover,
+.product-admin-header-actions button.bg-slate-900:hover {
+  background-color: #0f6677 !important;
+}
+
+/* The product editor is deliberately a form workspace, not a stack of dark
+   cards. These rules keep every field, section and pricing group on the same
+   quiet Kassa surface while preserving the live tile preview as a preview. */
+.product-admin-modal {
+  border-color: #dbeafe !important;
+}
+
+.product-admin-modal .product-admin-section {
+  border: 1px solid #dbeafe;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.product-admin-modal .product-admin-section-title {
+  border-bottom: 1px solid #e0f2fe;
+  color: #334155;
+}
+
+.product-admin-modal .product-admin-section-title svg {
+  color: #0e7490;
+}
+
+.product-admin-modal :is(input, select, textarea) {
+  border-color: #cbd5e1 !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.product-admin-modal :is(input, select, textarea):focus {
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1) !important;
+}
+
+.product-admin-modal .product-admin-tier-panel {
+  border: 1px solid #bae6fd;
+  background: #f0f9ff;
+}
+
+.product-admin-modal .product-admin-tier-panel :is(.text-violet-950, .text-violet-700) {
+  color: #155e75;
+}
+
+.product-admin-modal .product-admin-tier-empty,
+.product-admin-modal .product-admin-tier-input {
+  border-color: #bae6fd;
+  color: #334155;
+}
+
+.product-admin-modal .product-admin-tier-empty {
+  background: #ffffff;
+}
+
+.product-admin-modal .product-admin-tier-input:focus {
+  border-color: #38bdf8 !important;
+}
+
+.app-standard button:focus-visible,
+.app-standard input:focus-visible,
+.app-standard select:focus-visible,
+.app-standard textarea:focus-visible {
+  outline: 2px solid var(--app-focus);
+  outline-offset: 2px;
+}
+
+/* Transitional Kassa skin for the legacy customer module. This keeps its
+   business logic untouched while its tables, cards, forms, and controls move
+   onto the application palette. Individual components can now be replaced by
+   the shared primitives without a second visual change. */
+.customers-page {
+  color: var(--app-text);
+}
+
+.customers-page .bg-zinc-950,
+.customers-page .bg-zinc-950\/60,
+.customers-page .bg-zinc-950\/70,
+.customers-page .bg-zinc-900,
+.customers-page .bg-zinc-900\/40,
+.customers-page .bg-zinc-900\/60 {
+  background-color: var(--app-surface) !important;
+}
+
+.customers-page .bg-zinc-800,
+.customers-page .bg-zinc-800\/60 {
+  background-color: #f8fafc !important;
+}
+
+.customers-page .border-zinc-800,
+.customers-page .border-zinc-700 {
+  border-color: var(--app-border) !important;
+}
+
+.customers-page .text-white,
+.customers-page .text-zinc-100,
+.customers-page .text-zinc-200,
+.customers-page .text-zinc-300 {
+  color: var(--app-text) !important;
+}
+
+.customers-page .text-zinc-400,
+.customers-page .text-zinc-500,
+.customers-page .text-zinc-600 {
+  /* #64748b is 4.45:1 on the shared application canvas. */
+  color: #5f7088 !important;
+}
+
+.customers-page .hover\:bg-zinc-800:hover,
+.customers-page .hover\:bg-zinc-800\/60:hover {
+  background-color: var(--app-primary-soft) !important;
+}
+
+.customers-page .hover\:text-white:hover,
+.customers-page .hover\:text-zinc-200:hover,
+.customers-page .hover\:text-zinc-300:hover {
+  color: var(--app-primary) !important;
+}
+
+.customers-page .customer-primary-action,
+.app-standard .customer-primary-action {
+  border: 1px solid var(--app-primary);
+  background: var(--app-primary);
+  color: #ffffff !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.customers-page .customer-primary-action:hover,
+.app-standard .customer-primary-action:hover {
+  background: var(--app-primary-hover);
+}
+
+
 .customer-primary-action,
 .theme-light .customer-primary-action {
-  background: #047857;
+  border-color: #0e7490;
+  background: #0e7490;
   color: #ffffff !important;
 }
 
 .customer-primary-action:hover,
 .theme-light .customer-primary-action:hover {
-  background: #065f46;
+  background: #0f6677;
 }
 
 .theme-light .pos-workspace,

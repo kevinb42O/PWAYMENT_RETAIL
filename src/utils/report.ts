@@ -219,6 +219,12 @@ const canonicalTransaction = (transaction: Transaction) => ({
   shiftId: transaction.shiftId,
 });
 
+/** The report linkage is written only after hashing and must not invalidate it. */
+const canonicalGiftCardEvent = (event: GiftCardEvent) => {
+  const { dailyReportId: _dailyReportId, ...immutableEvent } = event;
+  return immutableEvent;
+};
+
 export const verifyZReport = async (
   report: DailyReport,
   transactions: Transaction[],
@@ -233,7 +239,13 @@ export const verifyZReport = async (
     transactions: [...transactions]
       .sort((a, b) => (a.id ?? 0) - (b.id ?? 0))
       .map(canonicalTransaction),
-    giftCardEvents: [...events].sort((a, b) => a.id.localeCompare(b.id)),
+    giftCardEvents: [...events]
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map((event) =>
+        (report.hashPayloadVersion ?? 2) >= 3
+          ? canonicalGiftCardEvent(event)
+          : event,
+      ),
   });
   return (await generateHash(payload)) === report.hash;
 };
@@ -309,15 +321,17 @@ export const generateZReport = async (
         expectedCashCents,
         cashDifferenceCents,
         cashDifferenceReason: opts.cashDifferenceReason,
-        hashPayloadVersion: 2,
+        hashPayloadVersion: 3,
       };
       const payload = JSON.stringify({
-        version: 2,
+        version: 3,
         report: { ...reportWithoutHash, hash: undefined },
         transactions: transactions
           .sort((a, b) => (a.id ?? 0) - (b.id ?? 0))
           .map(canonicalTransaction),
-        giftCardEvents: events.sort((a, b) => a.id.localeCompare(b.id)),
+        giftCardEvents: events
+          .sort((a, b) => a.id.localeCompare(b.id))
+          .map(canonicalGiftCardEvent),
       });
       const hash = await Dexie.waitFor(generateHash(payload));
       const report: DailyReport = { ...reportWithoutHash, hash };

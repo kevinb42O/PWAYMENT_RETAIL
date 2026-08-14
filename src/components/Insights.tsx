@@ -397,7 +397,7 @@ export const Insights = () => {
   };
 
   return (
-    <div className="insights-light flex min-h-0 flex-1 overflow-hidden">
+    <div className="insights-light app-page-shell flex min-h-0 flex-1 overflow-hidden">
       <InsightsSidebar
         section={location.section}
         page={location.page}
@@ -405,7 +405,7 @@ export const Insights = () => {
         badges={badges}
         qualityLabel={qualityLabel}
       />
-      <main className="min-w-0 flex-1 overflow-y-auto bg-slate-50 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
+      <main className="app-page-content min-w-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
         <div className="mx-auto max-w-[1320px]">
           <InsightsMobileNavigation
             section={location.section}

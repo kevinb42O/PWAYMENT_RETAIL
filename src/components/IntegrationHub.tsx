@@ -12,7 +12,7 @@ import {
   History,
   Layers3,
   RefreshCw,
-  Sparkles,
+  Cable,
   UploadCloud,
 } from "lucide-react";
 import { audit } from "../auth/useAuth";
@@ -516,44 +516,42 @@ export const IntegrationHub: React.FC = () => {
   };
 
   return (
-    <main className="flex-1 overflow-y-auto bg-slate-50">
+    <main className="integration-hub-page app-page-content flex-1 overflow-y-auto">
       <div className="mx-auto max-w-[1500px] space-y-6 p-4 sm:p-6 lg:p-8">
-        <section className="overflow-hidden rounded-3xl bg-slate-950 text-white shadow-xl">
-          <div className="grid gap-8 p-6 sm:p-8 lg:grid-cols-[1.35fr_0.65fr] lg:p-10">
+        <header className="grid gap-6 border-b border-slate-200 pb-6 lg:grid-cols-[1.35fr_0.65fr] lg:items-end">
             <div>
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-400/10 px-3 py-1 text-xs font-bold text-sky-200">
-                <Sparkles size={14} /> Universele onboardinglaag
+              <div className="mb-3 inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-[#0e7490]">
+                <Cable size={14} /> Productimport & koppelingen
               </div>
-              <h1 className="max-w-3xl text-3xl font-black tracking-tight sm:text-4xl">
-                Integration Hub
+              <h1 className="max-w-3xl text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+                Producten importeren
               </h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
-                Importeer de bestaande productwereld van een winkel zoals ze vandaag bestaat. Pwayment herkent kolommen, bewaart onbekende velden en maakt klantprijzen direct bruikbaar aan de kassa.
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-500 sm:text-base">
+                Laad een bestaand bestand in en controleer eerst hoe elk veld wordt gekoppeld. Pas daarna worden producten, prijzen en klanttarieven veilig bijgewerkt voor gebruik aan de kassa.
               </p>
-              <div className="mt-6 flex flex-wrap gap-3">
+              <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2">
                 {["CSV & TSV", "Excel .xlsx", "JSON", "Eigen velden", "Onbeperkte prijsgroepen"].map((label) => (
-                  <span key={label} className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-white/90">
+                  <span key={label} className="text-xs font-bold text-slate-600">
                     {label}
                   </span>
                 ))}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 self-end">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div className="text-2xl font-black">{products.length}</div>
-                <div className="mt-1 text-xs font-semibold text-slate-400">producten klaar</div>
+            <dl className="grid grid-cols-2 gap-x-5 gap-y-4 self-end sm:grid-cols-3">
+              <div className="border-l border-slate-200 pl-4">
+                <dt className="text-xs font-semibold text-slate-500">producten klaar</dt>
+                <dd className="mt-1 text-2xl font-black text-slate-950">{products.length}</dd>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div className="text-2xl font-black">{jobs.filter((job) => job.status.startsWith("completed")).length}</div>
-                <div className="mt-1 text-xs font-semibold text-slate-400">imports voltooid</div>
+              <div className="border-l border-slate-200 pl-4">
+                <dt className="text-xs font-semibold text-slate-500">imports voltooid</dt>
+                <dd className="mt-1 text-2xl font-black text-slate-950">{jobs.filter((job) => job.status.startsWith("completed")).length}</dd>
               </div>
-              <div className="col-span-2 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-emerald-100">
-                <div className="flex items-center gap-2 text-sm font-extrabold"><Check size={16} /> Geen vaste template vereist</div>
-                <p className="mt-1 text-xs text-emerald-100/75">Kolommen worden gemapt vóór er ook maar één product wijzigt.</p>
+              <div className="col-span-2 border-l border-[#bae6fd] pl-4 sm:col-span-1">
+                <dt className="flex items-center gap-1.5 text-xs font-extrabold text-[#0e7490]"><Check size={15} /> Geen vaste template</dt>
+                <dd className="mt-1 text-[11px] leading-4 text-slate-500">Kolommen worden gemapt vóór er iets wijzigt.</dd>
               </div>
-            </div>
-          </div>
-        </section>
+            </dl>
+        </header>
 
         {message && (
           <div className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${message.tone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-red-200 bg-red-50 text-red-900"}`} role={message.tone === "error" ? "alert" : "status"}>
@@ -665,7 +663,7 @@ export const IntegrationHub: React.FC = () => {
                 )}
                 <div className="mt-6 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-end sm:justify-between">
                   <label className="block flex-1"><span className="mb-1.5 block text-xs font-bold text-slate-600">Naam van deze mapping</span><input value={profileName} onChange={(event) => setProfileName(event.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-semibold focus:border-sky-500 focus:outline-none" /></label>
-                  <button type="button" disabled={isImporting || preview.valid === 0} onClick={() => void performImport()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-extrabold text-white shadow-sm hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50">
+                  <button type="button" disabled={isImporting || preview.valid === 0} onClick={() => void performImport()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#0e7490] bg-[#0e7490] px-5 py-2.5 text-sm font-extrabold text-white shadow-[0_1px_2px_rgba(15,23,42,0.08)] transition hover:bg-[#0f6677] disabled:cursor-not-allowed disabled:opacity-50">
                     {isImporting ? <RefreshCw size={17} className="animate-spin" /> : <ArrowRight size={17} />}{isImporting ? "Importeren…" : `Importeer ${preview.valid} producten`}
                   </button>
                 </div>

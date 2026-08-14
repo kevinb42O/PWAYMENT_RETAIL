@@ -83,7 +83,9 @@ describe("workforce fixture workflow", () => {
     })).toBe(true);
     const request = useWorkforce.getState().requests[0];
     expect(request.totalMinutes).toBe(912);
-    expect(await useWorkforce.getState().decide("fixture-store", request.id, "approved", "Ok")).toBe(true);
+    expect(await useWorkforce.getState().decide("fixture-store", request.id, "approved", "Ok", "12345")).toBe(false);
+    expect(useWorkforce.getState().requests[0].status).toBe("pending");
+    expect(await useWorkforce.getState().decide("fixture-store", request.id, "approved", "Ok", "123456")).toBe(true);
     expect(useWorkforce.getState().requests[0].status).toBe("approved");
     expect(await useWorkforce.getState().withdraw("fixture-store", request.id)).toBe(true);
     expect(useWorkforce.getState().requests[0].status).toBe("cancelled");

@@ -7,13 +7,13 @@ import {
   CalendarClock,
   Check,
   CheckCircle2,
+  Clock3,
   Eye,
   EyeOff,
   LoaderCircle,
   Monitor,
   RotateCcw,
   ShoppingBag,
-  Sparkles,
   Store,
   Users,
   Wrench,
@@ -319,7 +319,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
           </div>
           <div className="flex items-center gap-3">
             <span className="hidden rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-slate-500 shadow-sm ring-1 ring-slate-200 sm:inline-flex">
-              <Sparkles size={13} className="mr-1.5 text-sky-600" /> 2–3 minuten
+              <Clock3 size={13} className="mr-1.5 text-sky-600" /> 2–3 minuten
             </span>
             <button
               type="button"
@@ -570,7 +570,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                   />
                   <div className="sm:col-span-2 rounded-2xl border border-sky-100 bg-sky-50/80 p-4 text-sm leading-6 text-sky-950">
                     <div className="flex items-center gap-2 font-extrabold">
-                      <Sparkles size={16} className="text-sky-600" /> Slim startpunt
+                      <Clock3 size={16} className="text-sky-600" /> Slim startpunt
                     </div>
                     <p className="mt-1 text-xs leading-5 text-sky-800">
                       Voor {labelFor(RETAIL_INDUSTRIES, configuration.industry).toLowerCase()} stellen we op de volgende stap een passende werkruimte voor. U houdt altijd het laatste woord.
