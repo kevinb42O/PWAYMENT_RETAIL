@@ -15,7 +15,19 @@ const weekdays = [[1, "Ma"], [2, "Di"], [3, "Wo"], [4, "Do"], [5, "Vr"], [6, "Za
 export const WorkforceSettings: React.FC = () => {
   const { currentStoreId, currentRole } = useAuth();
   const storeId = currentStoreId ?? (import.meta.env.VITE_E2E_BUILD === "true" ? "fixture-store" : null);
-  const workforce = useWorkforce();
+
+  const team = useWorkforce((s) => s.team);
+  const balances = useWorkforce((s) => s.balances);
+  const rosterPatterns = useWorkforce((s) => s.roster.patterns);
+  const competencies = useWorkforce((s) => s.competencies);
+  const mutating = useWorkforce((s) => s.mutating);
+  const error = useWorkforce((s) => s.error);
+  const load = useWorkforce((s) => s.load);
+  const loadRoster = useWorkforce((s) => s.loadRoster);
+  const savePatternAction = useWorkforce((s) => s.savePattern);
+  const saveEmployeeAction = useWorkforce((s) => s.saveEmployee);
+  const adjustBalanceAction = useWorkforce((s) => s.adjustBalance);
+
   const [accountId, setAccountId] = useState("");
   const [hours, setHours] = useState("");
   const [reason, setReason] = useState("");
@@ -42,28 +54,44 @@ export const WorkforceSettings: React.FC = () => {
 
   useEffect(() => {
     if (storeId) {
-      void workforce.load(storeId);
+      void load(storeId);
       const start = startOfIsoWeek(todayIso());
-      void workforce.loadRoster(storeId, start, addDays(start, 27));
+      void loadRoster(storeId, start, addDays(start, 27));
     }
-  }, [storeId, workforce]);
+  }, [storeId]);
 
   useEffect(() => {
-    if (!pattern.employeeId && workforce.team.length > 0) {
-      loadExistingPattern(workforce.team[0].id);
+    if (!pattern.employeeId && team.length > 0) {
+      const firstId = team[0].id;
+      const existing = rosterPatterns.filter((item) => item.employeeId === firstId);
+      if (existing.length > 0) {
+        const first = existing[0];
+        setPattern({
+          employeeId: firstId,
+          weekdays: existing.map((item) => item.weekday),
+          startTime: first.startTime,
+          endTime: first.endTime,
+          breakMinutes: first.breakMinutes,
+          roleLabel: first.roleLabel ?? "Verkoop",
+          locationLabel: first.locationLabel ?? "Winkelvloer",
+          effectiveFrom: first.effectiveFrom,
+        });
+      } else {
+        setPattern((p) => ({ ...p, employeeId: firstId }));
+      }
     }
-  }, [workforce.team]);
+  }, [team.length, pattern.employeeId]);
 
   const currentYearBalances = useMemo(
-    () => workforce.balances.filter((balance) => balance.year === new Date().getFullYear()),
-    [workforce.balances],
+    () => balances.filter((balance) => balance.year === new Date().getFullYear()),
+    [balances],
   );
 
-  const selectedPatterns = workforce.roster.patterns.filter((item) => item.employeeId === pattern.employeeId && item.scheduledMinutes > 0);
-  const selectedEmployee = workforce.team.find((employee) => employee.id === pattern.employeeId);
+  const selectedPatterns = rosterPatterns.filter((item) => item.employeeId === pattern.employeeId && item.scheduledMinutes > 0);
+  const selectedEmployee = team.find((employee) => employee.id === pattern.employeeId);
 
   const loadExistingPattern = (employeeId: string) => {
-    const existing = workforce.roster.patterns.filter((item) => item.employeeId === employeeId);
+    const existing = rosterPatterns.filter((item) => item.employeeId === employeeId);
     if (existing.length > 0) {
       const first = existing[0];
       setPattern({
@@ -93,7 +121,7 @@ export const WorkforceSettings: React.FC = () => {
   const savePattern = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!storeId || !pattern.employeeId) return;
-    const success = await workforce.savePattern(storeId, {
+    const success = await savePatternAction(storeId, {
       ...pattern,
       breakMinutes: Number(pattern.breakMinutes),
     });
@@ -118,7 +146,7 @@ export const WorkforceSettings: React.FC = () => {
     });
 
     // 2. Save in workforce planning and leave accounts
-    const success = await workforce.saveEmployee(storeId, {
+    const success = await saveEmployeeAction(storeId, {
       id: newId,
       displayName: newEmployee.displayName.trim(),
       employeeNumber: newEmployee.employeeNumber.trim() || undefined,
@@ -147,7 +175,7 @@ export const WorkforceSettings: React.FC = () => {
     if (!storeId || !accountId || !hours || !reason.trim()) return;
     const deltaMinutes = Math.round(Number(hours.replace(",", ".")) * 60);
     if (!Number.isFinite(deltaMinutes) || deltaMinutes === 0) return;
-    if (await workforce.adjustBalance(storeId, accountId, deltaMinutes, reason.trim())) {
+    if (await adjustBalanceAction(storeId, accountId, deltaMinutes, reason.trim())) {
       setHours("");
       setReason("");
       setMessage("Saldocorrectie bewaard.");
@@ -156,14 +184,14 @@ export const WorkforceSettings: React.FC = () => {
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-5">
-      {(workforce.error || message) && (
+      {(error || message) && (
         <div
           className={`rounded-xl border px-4 py-3 text-xs font-semibold ${
-            workforce.error ? "border-rose-200 bg-rose-50 text-rose-800" : "border-emerald-200 bg-emerald-50 text-emerald-800"
+            error ? "border-rose-200 bg-rose-50 text-rose-800" : "border-emerald-200 bg-emerald-50 text-emerald-800"
           }`}
-          role={workforce.error ? "alert" : "status"}
+          role={error ? "alert" : "status"}
         >
-          {workforce.error ?? message}
+          {error ?? message}
         </div>
       )}
 
@@ -187,7 +215,7 @@ export const WorkforceSettings: React.FC = () => {
 
         <div className="grid lg:grid-cols-[280px_minmax(0,1fr)]">
           <div className="border-b border-slate-100 p-2 lg:border-b-0 lg:border-r space-y-1">
-            {workforce.team.map((employee) => (
+            {team.map((employee) => (
               <button
                 key={employee.id}
                 type="button"
@@ -272,7 +300,7 @@ export const WorkforceSettings: React.FC = () => {
             <div className="mt-5 flex justify-end border-t border-slate-100 pt-4">
               <button
                 type="submit"
-                disabled={workforce.mutating || !pattern.employeeId || !pattern.weekdays.length}
+                disabled={mutating || !pattern.employeeId || !pattern.weekdays.length}
                 className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-xs font-bold text-white shadow-xs transition hover:bg-black disabled:opacity-50 cursor-pointer"
               >
                 <Check size={15} /> Werkpatroon bewaren
@@ -288,8 +316,8 @@ export const WorkforceSettings: React.FC = () => {
           <p className="mt-0.5 text-xs text-slate-500 font-medium">Saldi worden in minuten bewaard; correcties blijven in het auditlog.</p>
         </header>
         <div className="divide-y divide-slate-100">
-          {workforce.team.map((member) => {
-            const balances = currentYearBalances.filter((balance) => balance.employeeId === member.id);
+          {team.map((member) => {
+            const memberBalances = currentYearBalances.filter((balance) => balance.employeeId === member.id);
             return (
               <div key={member.id} className="grid gap-3 px-5 py-3.5 sm:grid-cols-[minmax(0,1fr)_2fr] sm:items-center">
                 <div>
@@ -297,8 +325,8 @@ export const WorkforceSettings: React.FC = () => {
                   <p className="text-[11px] text-slate-500 font-medium">{member.employeeNumber ?? member.email ?? "Medewerker"}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {balances.length ? (
-                    balances.map((balance) => (
+                  {memberBalances.length ? (
+                    memberBalances.map((balance) => (
                       <span key={balance.accountId} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700">
                         {balance.leaveTypeName}: {formatWorkdays(balance.availableMinutes)} <span className="font-normal text-slate-500">({formatMinutes(balance.availableMinutes)})</span>
                       </span>
@@ -321,9 +349,9 @@ export const WorkforceSettings: React.FC = () => {
               Medewerker
               <select value={accountId} onChange={(event) => setAccountId(event.target.value)} className={fieldClass}>
                 <option value="">Kies verlofrekening</option>
-                {workforce.balances.map((balance) => (
+                {balances.map((balance) => (
                   <option key={balance.accountId} value={balance.accountId}>
-                    {workforce.team.find((e) => e.id === balance.employeeId)?.displayName ?? "Medewerker"} - {balance.leaveTypeName} ({balance.year})
+                    {team.find((e) => e.id === balance.employeeId)?.displayName ?? "Medewerker"} - {balance.leaveTypeName} ({balance.year})
                   </option>
                 ))}
               </select>
@@ -338,7 +366,7 @@ export const WorkforceSettings: React.FC = () => {
             </label>
             <button
               type="submit"
-              disabled={workforce.mutating || !accountId || !hours || !reason.trim()}
+              disabled={mutating || !accountId || !hours || !reason.trim()}
               className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-xs font-bold text-white shadow-xs transition hover:bg-black disabled:opacity-50 cursor-pointer"
             >
               <Check size={15} /> Corrigeer
@@ -419,11 +447,11 @@ export const WorkforceSettings: React.FC = () => {
             />
           </div>
 
-          {workforce.competencies.length > 0 && (
+          {competencies.length > 0 && (
             <div>
               <label className="text-xs font-bold text-slate-700 block mb-2">Competenties & rollen</label>
               <div className="flex flex-wrap gap-2">
-                {workforce.competencies.map((comp) => {
+                {competencies.map((comp) => {
                   const active = newEmployee.competencyIds.includes(comp.id);
                   return (
                     <button
@@ -461,7 +489,7 @@ export const WorkforceSettings: React.FC = () => {
             </button>
             <button
               type="submit"
-              disabled={workforce.mutating || !newEmployee.displayName.trim()}
+              disabled={mutating || !newEmployee.displayName.trim()}
               className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-black rounded-xl shadow-xs transition disabled:opacity-50 cursor-pointer"
             >
               <Check size={15} /> Medewerker opslaan
