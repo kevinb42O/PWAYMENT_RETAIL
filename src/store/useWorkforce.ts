@@ -4,10 +4,13 @@ import type { Json } from "../types/database.generated";
 import { addDays, isoWeekday, localDateTimeToIso, startOfIsoWeek } from "../workforce/roster";
 import type {
   CoverageSnapshot,
+  LeaveBalance,
   LeaveRequest,
+  SaveEmployeeInput,
   SavePatternInput,
   SaveShiftInput,
   WorkforceBootstrap,
+  WorkforceEmployee,
   WorkforceRoster,
   WorkforceRosterRange,
   WorkforceShift,
@@ -18,6 +21,7 @@ import { canUseFeature, FEATURE_KEYS } from "../billing/entitlements";
 type WorkforceRpcName =
   | "get_workforce_bootstrap"
   | "get_workforce_roster"
+  | "save_workforce_employee"
   | "save_workforce_shift"
   | "delete_workforce_shift"
   | "apply_workforce_patterns"
@@ -264,7 +268,10 @@ export const workforceErrorMessage = (error: RpcError | null): string => {
     return "De personeelsbackend is nog niet bijgewerkt. Voer de nieuwste Supabase-migratie uit.";
   }
   const raw = error.message?.trim() ?? "";
-  const structured = raw.match(/(?:workforce|roster|leave|modules):[^:]+:(.+)$/);
+  if (raw.includes("entitlement:plan-required:workforce.core") || raw.includes("workforce.core")) {
+    return "Personeels- en verlofbeheer is niet inbegrepen in uw huidige abonnement. Upgrade naar Enterprise & Ketens om deze module te gebruiken.";
+  }
+  const structured = raw.match(/(?:workforce|roster|leave|modules|entitlement):[^:]+:(.+)$/);
   if (structured?.[1]) return structured[1].trim();
   if (error.code === "42501") return "Je hebt geen toegang tot deze personeelsgegevens.";
   return raw || error.details || "De personeelsgegevens konden niet worden geladen.";
@@ -298,6 +305,7 @@ interface WorkforceState extends WorkforceBootstrap {
   publishRoster: (storeId: string, weekStart: string, roster?: WorkforceRoster) => Promise<boolean>;
   reopenRoster: (storeId: string, weekStart: string) => Promise<boolean>;
   savePattern: (storeId: string, input: SavePatternInput) => Promise<boolean>;
+  saveEmployee: (storeId: string, input: SaveEmployeeInput) => Promise<boolean>;
   submit: (storeId: string, input: {
     leaveTypeId: string;
     startDate: string;
@@ -753,6 +761,67 @@ export const useWorkforce = create<WorkforceState>((set, get) => {
       const { error } = await workforceRpc.rpc("withdraw_leave_request", {
         target_store_id: storeId,
         target_request_id: requestId,
+      });
+      if (error) {
+        mutationError(error);
+        return false;
+      }
+      await refreshLoadedRange(storeId);
+      set({ mutating: false });
+      return true;
+    },
+
+    async saveEmployee(storeId, input) {
+      set({ mutating: true, error: null, errorCode: null });
+      if (fixtureRuntime) {
+        const id = input.id || `fixture-emp-${Date.now()}`;
+        const newEmployee: WorkforceEmployee = {
+          id,
+          displayName: input.displayName.trim(),
+          employeeNumber: input.employeeNumber || `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
+          email: input.email || null,
+          status: input.status || "active",
+          weeklyMinutes: input.weeklyMinutes ?? 2280,
+          scheduledDays: 5,
+          competencyIds: input.competencyIds ?? [],
+        };
+        const year = new Date().getFullYear();
+        const newBalances: LeaveBalance[] = [year, year + 1].map((balanceYear) => ({
+          accountId: `fixture-account-${id}-${balanceYear}`,
+          employeeId: id,
+          leaveTypeId: "fixture-vacation",
+          leaveTypeName: "Wettelijke vakantie",
+          year: balanceYear,
+          status: "confirmed" as const,
+          grantedMinutes: (input.weeklyMinutes ?? 2280) * 4,
+          availableMinutes: (input.weeklyMinutes ?? 2280) * 4,
+        }));
+
+        set((state) => {
+          const exists = state.team.some((e) => e.id === id);
+          const nextTeam = exists
+            ? state.team.map((e) => (e.id === id ? { ...e, ...newEmployee } : e))
+            : [...state.team, newEmployee];
+          const nextRosterEmployees = exists
+            ? state.roster.employees.map((e) => (e.id === id ? { ...e, ...newEmployee } : e))
+            : [...state.roster.employees, newEmployee];
+
+          return {
+            team: nextTeam,
+            balances: exists ? state.balances : [...state.balances, ...newBalances],
+            roster: {
+              ...state.roster,
+              employees: nextRosterEmployees,
+            },
+            mutating: false,
+          };
+        });
+        return true;
+      }
+
+      const { error } = await workforceRpc.rpc("save_workforce_employee", {
+        target_store_id: storeId,
+        payload: rpcPayload(input),
       });
       if (error) {
         mutationError(error);

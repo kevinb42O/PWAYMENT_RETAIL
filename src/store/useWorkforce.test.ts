@@ -91,6 +91,15 @@ describe("workforce fixture workflow", () => {
     const account = useWorkforce.getState().balances[0];
     expect(await useWorkforce.getState().adjustBalance("fixture-store", account.accountId, 60, "Correctie")).toBe(true);
     expect(useWorkforce.getState().balances[0].availableMinutes).toBe(account.availableMinutes + 60);
+
+    expect(await useWorkforce.getState().saveEmployee("fixture-store", {
+      displayName: "Sophie De Smet",
+      employeeNumber: "EMP-009",
+      email: "sophie@demo.be",
+      weeklyMinutes: 2280,
+    })).toBe(true);
+    expect(useWorkforce.getState().team.some((e) => e.displayName === "Sophie De Smet")).toBe(true);
+    expect(useWorkforce.getState().balances.some((b) => b.grantedMinutes === 9120)).toBe(true);
   });
 
   it("reports empty source and publication errors without corrupting the range", async () => {
@@ -114,6 +123,7 @@ describe("workforce fixture workflow", () => {
 describe("workforce error messages", () => {
   it("keeps structured backend detail and recognizes schema mismatch", async () => {
     const { workforceErrorMessage } = await loadFixtureStore();
+    expect(workforceErrorMessage({ message: "entitlement:plan-required:workforce.core" })).toContain("Enterprise & Ketens");
     expect(workforceErrorMessage({ message: "roster:overlap:Deze medewerker heeft al een shift." })).toBe("Deze medewerker heeft al een shift.");
     expect(workforceErrorMessage({ code: "42501" })).toContain("geen toegang");
     expect(workforceErrorMessage({ code: "PGRST202", message: "schema cache" })).toContain("Supabase-migratie");

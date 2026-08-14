@@ -436,6 +436,7 @@ export interface User {
   firstName?: string;
   lastName?: string;
   role: Role;
+  jobTitle?: string;
   /** SHA-256 hex of the PIN. */
   pinHash: string;
   email?: string;

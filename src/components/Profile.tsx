@@ -16,6 +16,9 @@ import { ModuleSettings } from './ModuleSettings';
 import { WorkforceSettings } from './WorkforceSettings';
 import { FeatureGate } from '../billing/FeatureGate';
 import { FEATURE_KEYS } from '../billing/entitlements';
+import { Modal } from './Modal';
+import { hashCredential } from '../utils/credentials';
+import type { User, Role } from '../types';
 import {
   WorldlineLogo,
   CCVLogo,
@@ -63,6 +66,10 @@ import {
   Monitor,
   LayoutGrid,
   CalendarClock,
+  Edit2,
+  Trash2,
+  UserPlus,
+  KeyRound,
 } from 'lucide-react';
 
 type WorkspaceTab =
@@ -114,8 +121,21 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const currentRole = useAuth((s) => s.currentRole);
   const currentUserName = useAuth((s) => s.currentUserName);
 
+  const currentUserId = useAuth((s) => s.currentUserId);
   const teamUsers = useLiveQuery(() => db.users.toArray()) || [];
   const appliedInitialTabRequestRef = useRef<number | undefined>(undefined);
+
+  // Team management modal state
+  const [showTeamModal, setShowTeamModal] = useState(false);
+  const [editingTeamUser, setEditingTeamUser] = useState<User | null>(null);
+  const [teamForm, setTeamForm] = useState({
+    name: '',
+    email: '',
+    role: 'cashier' as Role,
+    jobTitle: '',
+    pin: '',
+  });
+  const [teamError, setTeamError] = useState<string | null>(null);
 
   // DEFAULT TAB IS BILLING & ABONNEMENTEN (TOP ITEM)
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(() => {
@@ -636,7 +656,16 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         )}
 
         {activeTab === 'modules' && <ModuleSettings />}
-        {activeTab === 'workforce' && <WorkforceSettings />}
+        {activeTab === 'workforce' && (
+          <FeatureGate
+            feature={FEATURE_KEYS.workforce}
+            title="Personeels- en verlofbeheer is beschikbaar in Enterprise & Ketens"
+            description="Beheer medewerkers, contracten, werkpatronen en verlofsaldi vanuit één centrale omgeving. Activeer Enterprise & Ketens om deze module te gebruiken."
+            onUpgrade={() => setActiveTab('billing-plan')}
+          >
+            <WorkforceSettings />
+          </FeatureGate>
+        )}
 
         {/* TAB 1: BILLING & ABONNEMENTEN (EXPANDED SUB-TABS) */}
         {activeTab.startsWith('billing') && (
@@ -1325,21 +1354,27 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         {/* TAB 11: TEAM & PERMISSIES */}
         {activeTab === 'team' && (
           <div className="bg-white rounded-3xl border border-slate-200 p-6 md:p-8 shadow-2xs max-w-4xl space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 gap-3">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-slate-100 text-slate-700">
+                <div className="p-2.5 rounded-2xl bg-sky-50 text-sky-700 border border-sky-100">
                   <Users size={20} />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900">Team & Rol-Toewijzing</h3>
-                  <p className="text-xs text-slate-500 font-medium">Beheer medewerkers en hun rechten in het kassasysteem</p>
+                  <p className="text-xs text-slate-500 font-medium">Beheer medewerkers, pincodes en kassa-rechten</p>
                 </div>
               </div>
               <button
-                onClick={() => alert('Nieuwe medewerker uitnodigen...')}
-                className="px-3.5 py-2 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-colors shadow-2xs"
+                type="button"
+                onClick={() => {
+                  setEditingTeamUser(null);
+                  setTeamForm({ name: '', email: '', role: 'cashier', jobTitle: '', pin: '' });
+                  setTeamError(null);
+                  setShowTeamModal(true);
+                }}
+                className="px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-colors shadow-xs shrink-0"
               >
-                <Plus size={15} />
+                <UserPlus size={15} />
                 <span>Medewerker Toevoegen</span>
               </button>
             </div>
@@ -1348,33 +1383,277 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <table className="w-full text-left text-xs font-semibold">
                 <thead>
                   <tr className="border-b border-slate-100 text-slate-400 text-[10px] uppercase tracking-wider">
-                    <th className="py-2.5 px-3">Medewerker</th>
-                    <th className="py-2.5 px-3">E-mail</th>
-                    <th className="py-2.5 px-3">Rol</th>
-                    <th className="py-2.5 px-3 text-right">Status</th>
+                    <th className="py-3 px-3">Medewerker & Functie</th>
+                    <th className="py-3 px-3">E-mail</th>
+                    <th className="py-3 px-3">Systeemrol</th>
+                    <th className="py-3 px-3">PIN Status</th>
+                    <th className="py-3 px-3 text-right">Acties</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
-                  {teamUsers.map((user) => (
-                    <tr key={user.id}>
-                      <td className="py-3 px-3 font-bold text-slate-900 flex items-center gap-2.5">
-                        <div className="h-7 w-7 rounded-full bg-slate-100 text-slate-700 font-black text-xs flex items-center justify-center">
-                          {user.name ? user.name.charAt(0).toUpperCase() : 'E'}
-                        </div>
-                        <span>{user.name}</span>
-                      </td>
-                      <td className="py-3 px-3 text-slate-500">{user.email || '-'}</td>
-                      <td className="py-3 px-3">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 uppercase tracking-wide border border-slate-200">
-                          {user.role}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-right text-emerald-600 font-bold">Actief</td>
-                    </tr>
-                  ))}
+                  {teamUsers.map((user) => {
+                    const isSelf = user.id === currentUserId;
+                    return (
+                      <tr key={user.id} className="hover:bg-slate-50/60 transition-colors">
+                        <td className="py-3.5 px-3 font-bold text-slate-900 flex items-center gap-2.5">
+                          <div className="h-8 w-8 rounded-full bg-sky-100 text-sky-800 font-black text-xs flex items-center justify-center border border-sky-200 shrink-0">
+                            {user.name ? user.name.charAt(0).toUpperCase() : 'M'}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span>{user.name}</span>
+                              {isSelf && (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-100 text-sky-800">
+                                  U
+                                </span>
+                              )}
+                            </div>
+                            {user.jobTitle && (
+                              <div className="text-[11px] font-medium text-sky-700 mt-0.5">
+                                {user.jobTitle}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-3 text-slate-500">{user.email || '-'}</td>
+                        <td className="py-3.5 px-3">
+                          <span
+                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide border ${
+                              user.role === 'owner'
+                                ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                : user.role === 'manager'
+                                ? 'bg-sky-50 text-sky-800 border-sky-200'
+                                : 'bg-slate-50 text-slate-700 border-slate-200'
+                            }`}
+                          >
+                            {user.role === 'owner' ? 'Eigenaar' : user.role === 'manager' ? 'Manager' : 'Kassier'}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-3">
+                          <span className="inline-flex items-center gap-1 text-[11px] text-slate-600 font-medium">
+                            <KeyRound size={12} className="text-slate-400" />
+                            {user.pinHash ? 'Actief' : 'Niet ingesteld'}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-3 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingTeamUser(user);
+                                setTeamForm({
+                                  name: user.name,
+                                  email: user.email || '',
+                                  role: user.role,
+                                  jobTitle: user.jobTitle || '',
+                                  pin: '',
+                                });
+                                setTeamError(null);
+                                setShowTeamModal(true);
+                              }}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-sky-700 hover:bg-sky-50 transition"
+                              title="Bewerken"
+                            >
+                              <Edit2 size={15} />
+                            </button>
+                            {!isSelf && (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (!confirm(`Weet u zeker dat u medewerker "${user.name}" wilt verwijderen?`)) return;
+                                  await db.users.delete(user.id);
+                                  setSavedToast(`Medewerker ${user.name} verwijderd.`);
+                                }}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                                title="Verwijderen"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
+
+            {/* MODAL: MEDEWERKER TOEVOEGEN / BEWERKEN */}
+            <Modal
+              open={showTeamModal}
+              onClose={() => setShowTeamModal(false)}
+              title={editingTeamUser ? 'Medewerker bewerken' : 'Nieuwe medewerker toevoegen'}
+              subtitle="Koppel een kassamedewerker aan uw kassa met eigen rol, functie en snel-PIN"
+              icon={<UserPlus size={18} className="text-sky-600" />}
+              size="md"
+            >
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  setTeamError(null);
+                  const trimmedName = teamForm.name.trim();
+                  if (!trimmedName) {
+                    setTeamError('Vul een geldige naam in.');
+                    return;
+                  }
+
+                  if (!editingTeamUser && !teamForm.pin) {
+                    setTeamError('Voer een 6-cijferige PIN in voor deze medewerker.');
+                    return;
+                  }
+
+                  if (teamForm.pin && !/^\d{6}$/.test(teamForm.pin)) {
+                    setTeamError('De kassa-PIN moet exact 6 cijfers bevatten (bv. 123456).');
+                    return;
+                  }
+
+                  try {
+                    const pinHash = teamForm.pin ? await hashCredential(teamForm.pin, 'pin') : editingTeamUser?.pinHash || '';
+
+                    if (editingTeamUser) {
+                      await db.users.update(editingTeamUser.id, {
+                        name: trimmedName,
+                        email: teamForm.email.trim() || undefined,
+                        role: teamForm.role,
+                        jobTitle: teamForm.jobTitle.trim() || undefined,
+                        ...(teamForm.pin ? { pinHash } : {}),
+                      });
+                      setSavedToast(`Medewerker ${trimmedName} bijgewerkt.`);
+                    } else {
+                      const newId = `usr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+                      await db.users.put({
+                        id: newId,
+                        name: trimmedName,
+                        email: teamForm.email.trim() || undefined,
+                        role: teamForm.role,
+                        jobTitle: teamForm.jobTitle.trim() || undefined,
+                        pinHash,
+                        createdAt: new Date().toISOString(),
+                      });
+                      setSavedToast(`Medewerker ${trimmedName} toegevoegd.`);
+                    }
+                    setShowTeamModal(false);
+                  } catch (err: any) {
+                    setTeamError(err?.message || 'Fout bij opslaan van medewerker.');
+                  }
+                }}
+                className="space-y-4"
+              >
+                {teamError && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold rounded-xl" role="alert">
+                    {teamError}
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700">
+                    Naam medewerker <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={teamForm.name}
+                    onChange={(e) => setTeamForm({ ...teamForm, name: e.target.value })}
+                    placeholder="bv. Lisa Verstraete"
+                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700">Functie / Afdeling (optioneel)</label>
+                  <input
+                    type="text"
+                    value={teamForm.jobTitle}
+                    onChange={(e) => setTeamForm({ ...teamForm, jobTitle: e.target.value })}
+                    placeholder="bv. Herstellingsdienst, Verkoop, Atelier..."
+                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 font-medium"
+                  />
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {['Verkoop', 'Herstellingsdienst', 'Kassa', 'Atelier', 'Magazijn', 'Student'].map((tag) => (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => setTeamForm({ ...teamForm, jobTitle: tag })}
+                        className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-50 hover:bg-sky-50 text-slate-600 hover:text-sky-800 border border-slate-200 transition"
+                      >
+                        + {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700">E-mailadres (optioneel)</label>
+                  <input
+                    type="email"
+                    value={teamForm.email}
+                    onChange={(e) => setTeamForm({ ...teamForm, email: e.target.value })}
+                    placeholder="lisa@winkel.be"
+                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1.5">Rol in het kassasysteem</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'cashier', label: 'Kassier', desc: 'Verkopen & retours' },
+                      { id: 'manager', label: 'Manager', desc: 'Prijzen & Z-rapport' },
+                      { id: 'owner', label: 'Eigenaar', desc: 'Volledig beheer' },
+                    ].map((r) => (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => setTeamForm({ ...teamForm, role: r.id as Role })}
+                        className={`p-2.5 rounded-xl border text-left transition-all ${
+                          teamForm.role === r.id
+                            ? 'border-sky-500 bg-sky-50/70 ring-1 ring-sky-500'
+                            : 'border-slate-200 bg-white hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="text-xs font-bold text-slate-900">{r.label}</div>
+                        <div className="text-[10px] text-slate-500 mt-0.5">{r.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700">
+                    {editingTeamUser ? 'Nieuwe 6-cijferige Kassa PIN (optioneel)' : '6-cijferige Kassa PIN'} {!editingTeamUser && <span className="text-rose-500">*</span>}
+                  </label>
+                  <input
+                    type="password"
+                    maxLength={6}
+                    inputMode="numeric"
+                    pattern="\d*"
+                    required={!editingTeamUser}
+                    value={teamForm.pin}
+                    onChange={(e) => setTeamForm({ ...teamForm, pin: e.target.value.replace(/\D/g, '') })}
+                    placeholder={editingTeamUser ? 'Laat leeg om PIN ongewijzigd te laten' : 'bv. 123456'}
+                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 font-medium tracking-widest"
+                  />
+                  <p className="mt-1 text-[11px] text-slate-400">Gebruikt voor snelle kassamedewerker-wissels op de kassa.</p>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setShowTeamModal(false)}
+                    className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 transition"
+                  >
+                    Annuleren
+                  </button>
+                  <button
+                    type="submit"
+                    className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-xl shadow-xs transition"
+                  >
+                    <Check size={15} /> Medewerker opslaan
+                  </button>
+                </div>
+              </form>
+            </Modal>
           </div>
         )}
       </main>

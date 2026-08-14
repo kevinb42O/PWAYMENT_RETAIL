@@ -50,6 +50,21 @@ const fetchAll = async <T>(
   }
 };
 
+const fetchAllSafe = async <T>(
+  fetchPage: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{ data: T[] | null; error: PostgrestError | null }>,
+  fallback: T[] = [],
+): Promise<T[]> => {
+  try {
+    return await fetchAll(fetchPage);
+  } catch (err) {
+    console.warn("Table sync skipped due to permissions or plan restrictions:", err);
+    return fallback;
+  }
+};
+
 const jsonArray = <T>(value: Json | null): T[] =>
   Array.isArray(value) ? (value as T[]) : [];
 
@@ -217,7 +232,7 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
         .order("occurred_at")
         .range(from, to),
     ),
-    fetchAll<Row<"audit_entries">>((from, to) =>
+    fetchAllSafe<Row<"audit_entries">>((from, to) =>
       supabase
         .from("audit_entries")
         .select("*")

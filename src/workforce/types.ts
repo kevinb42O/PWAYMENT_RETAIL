@@ -221,3 +221,15 @@ export interface SavePatternInput {
   locationLabel: string;
   effectiveFrom: string;
 }
+
+export interface SaveEmployeeInput {
+  id?: string;
+  displayName: string;
+  employeeNumber?: string;
+  email?: string;
+  status?: "active" | "inactive" | "leave";
+  startDate?: string;
+  weeklyMinutes?: number;
+  competencyIds?: string[];
+}
+
