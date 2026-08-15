@@ -7,7 +7,7 @@
   },
   "headers": [
     {
-      "source": "/((?!assets/|assets$|.*\\.[^/]+$).*)",
+      "source": "/((?!api/|api$|assets/|assets$|.*\\.[^/]+$).*)",
       "headers": [
         {
           "key": "Cache-Control",

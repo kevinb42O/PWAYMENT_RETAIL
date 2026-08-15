@@ -223,6 +223,16 @@ export interface PlatformDevelopmentUpdate {
   pushed_at: string;
 }
 
+export interface PlatformDevelopmentCursor {
+  id: string;
+  pushed_at: string;
+}
+
+export interface PlatformDevelopmentUpdatesPage {
+  items: PlatformDevelopmentUpdate[];
+  next_cursor: PlatformDevelopmentCursor | null;
+}
+
 export interface PlatformIncidentDetail extends PlatformIncident {
   operation: string | null;
   first_seen_at: string;
@@ -363,7 +373,9 @@ export const deletePlatformStore = (storeId: string, expectedStoreName: string, 
     deletion_reason: reason,
   });
 
-export const listPlatformDevelopmentUpdates = () =>
-  call<{ items: PlatformDevelopmentUpdate[] }>("platform_list_development_updates", {
+export const listPlatformDevelopmentUpdates = (cursor?: PlatformDevelopmentCursor | null) =>
+  call<PlatformDevelopmentUpdatesPage>("platform_list_development_updates", {
     page_limit: 100,
+    before_pushed_at: cursor?.pushed_at,
+    before_id: cursor?.id,
   });
