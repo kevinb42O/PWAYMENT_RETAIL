@@ -353,8 +353,11 @@ export const startOutboxWorker = () => {
       if (result.failed) {
         void reportPlatformHealth({
           storeId,
-          eventType: result.failed.attempts >= 4 ? "sync.failed_permanent" : "sync.retrying",
-          severity: result.failed.attempts >= 4 ? "error" : "warning",
+          // The outbox deliberately keeps retrying every failed delivery. Do
+          // not label an entry as permanent while it remains retryable; that
+          // would make the platform console show a false current outage.
+          eventType: "sync.retrying",
+          severity: "warning",
           operation: result.failed.kind,
           errorFingerprint: safeErrorFingerprint(
             result.failed.kind,
