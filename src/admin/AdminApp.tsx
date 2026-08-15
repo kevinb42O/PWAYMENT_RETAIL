@@ -27,6 +27,7 @@ import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { Button } from "../components/ui/Button";
 import { FeedbackBanner } from "../components/ui/FeedbackBanner";
 import { TenantControls } from "./TenantControls";
+import { DevelopmentLog } from "./DevelopmentLog";
 import {
   getPlatformOverview,
   getPlatformSession,
@@ -59,7 +60,7 @@ import {
   type PlatformRole,
 } from "./platformApi";
 
-type AdminView = "overview" | "stores" | "store" | "incidents" | "team" | "releases" | "audit";
+type AdminView = "overview" | "stores" | "store" | "incidents" | "team" | "releases" | "audit" | "development";
 
 const formatDate = (value: string | null | undefined) =>
   value
@@ -100,6 +101,7 @@ const currentRoute = (): { view: AdminView; storeId?: string } => {
   if (window.location.pathname === "/admin/team") return { view: "team" };
   if (window.location.pathname === "/admin/releases") return { view: "releases" };
   if (window.location.pathname === "/admin/audit") return { view: "audit" };
+  if (window.location.pathname === "/admin/development") return { view: "development" };
   return { view: "overview" };
 };
 
@@ -156,7 +158,7 @@ const PlatformLogin = ({ onAuthenticated }: { onAuthenticated: () => Promise<voi
 };
 
 const Sidebar = ({ view, onNavigate, onLogout }: { view: AdminView; onNavigate: (path: string) => void; onLogout: () => void }) => {
-  const items: Array<[string, AdminView, typeof Gauge, string]> = [["/admin", "overview", Gauge, "Overzicht"], ["/admin/stores", "stores", Store, "Winkels"], ["/admin/incidents", "incidents", CircleAlert, "Incidenten"], ["/admin/releases", "releases", Rocket, "Releases"], ["/admin/team", "team", UsersRound, "Team"], ["/admin/audit", "audit", ScrollText, "Audit"]];
+  const items: Array<[string, AdminView, typeof Gauge, string]> = [["/admin", "overview", Gauge, "Overzicht"], ["/admin/stores", "stores", Store, "Winkels"], ["/admin/incidents", "incidents", CircleAlert, "Incidenten"], ["/admin/development", "development", ListChecks, "Ontwikkeling"], ["/admin/releases", "releases", Rocket, "Releases"], ["/admin/team", "team", UsersRound, "Team"], ["/admin/audit", "audit", ScrollText, "Audit"]];
   return <aside className="flex w-full shrink-0 flex-row items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 lg:min-h-dvh lg:w-64 lg:flex-col lg:items-stretch lg:justify-start lg:border-b-0 lg:border-r lg:px-4 lg:py-5"><div><img src="/branding/pwayment-logo.svg" alt="Pwayment" className="h-6 w-auto" /><p className="mt-1 hidden text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 lg:block">Platform Console</p></div><nav className="flex items-center gap-1 lg:mt-8 lg:flex-col lg:items-stretch">{items.map(([path, itemView, Icon, label]) => <button key={path} type="button" onClick={() => onNavigate(path)} className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold transition ${view === itemView || (itemView === "stores" && view === "store") ? "bg-cyan-50 text-cyan-800" : "text-slate-600 hover:bg-slate-50"}`}><Icon size={16} /><span className="hidden sm:inline lg:inline">{label}</span></button>)}</nav><button type="button" onClick={onLogout} className="hidden items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50 lg:mt-auto lg:inline-flex"><LogOut size={16} /> Afmelden</button></aside>;
 };
 
@@ -197,7 +199,7 @@ const Incidents = () => {
 
 const platformScopes = [
   "dashboard.read", "stores.read", "support.write", "incidents.write", "billing.read",
-  "billing.write", "integrations.read", "lifecycle.delete", "team.read", "team.write",
+  "billing.write", "integrations.read", "lifecycle.delete", "development.read", "team.read", "team.write",
   "releases.read", "releases.write", "releases.approve", "audit.read",
 ] as const;
 
@@ -263,8 +265,8 @@ export default function AdminApp() {
   useEffect(() => { const onPop = () => setRoute(currentRoute()); window.addEventListener("popstate", onPop); return () => window.removeEventListener("popstate", onPop); }, []);
   const navigate = (path: string) => routeFor(path);
   const logout = async () => { await supabase.auth.signOut(); setSession(null); setOverview(null); routeFor("/admin"); };
-  const title = useMemo(() => route.view === "overview" ? "Overzicht" : route.view === "stores" ? "Winkels" : route.view === "incidents" ? "Incidenten" : route.view === "team" ? "Team & toegang" : route.view === "releases" ? "Releases" : route.view === "audit" ? "Platformaudit" : "Winkeldossier", [route.view]);
+  const title = useMemo(() => route.view === "overview" ? "Overzicht" : route.view === "stores" ? "Winkels" : route.view === "incidents" ? "Incidenten" : route.view === "development" ? "Ontwikkelupdates" : route.view === "team" ? "Team & toegang" : route.view === "releases" ? "Releases" : route.view === "audit" ? "Platformaudit" : "Winkeldossier", [route.view]);
   if (checking) return <main className="flex min-h-dvh items-center justify-center bg-slate-50 text-sm font-bold text-slate-500">Platformsessie controleren…</main>;
   if (!session) return <PlatformLogin onAuthenticated={authenticate} />;
-  return <div className="flex min-h-dvh flex-col bg-slate-50 text-slate-900 lg:flex-row"><Sidebar view={route.view} onNavigate={navigate} onLogout={() => void logout()} /><main className="min-w-0 flex-1"><header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 sm:px-6"><div><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">PWAYMENT · {session.role}</p><p className="mt-0.5 text-sm font-extrabold text-slate-900">{title}</p></div><button type="button" onClick={() => void logout()} className="rounded-lg p-2 text-slate-500 hover:bg-slate-50 lg:hidden" aria-label="Afmelden"><LogOut size={17} /></button></header>{accessError && <div className="px-4 pt-4 sm:px-6"><FeedbackBanner tone="error" onDismiss={() => setAccessError(null)}>{accessError}</FeedbackBanner></div>}<div className="p-4 sm:p-6">{route.view === "overview" && <Overview overview={overview} loading={overviewLoading} onRefresh={() => void loadOverview()} onOpenStores={(storeId) => navigate(storeId ? `/admin/stores/${encodeURIComponent(storeId)}` : "/admin/stores")} />}{route.view === "stores" && <Stores onOpen={(store) => navigate(`/admin/stores/${encodeURIComponent(store.id)}`)} />}{route.view === "store" && route.storeId && <StoreDetailWithControls storeId={route.storeId} onBack={() => navigate("/admin/stores")} onDeleted={() => navigate("/admin/stores")} />}{route.view === "incidents" && <Incidents />}{route.view === "team" && <Team session={session} />}{route.view === "releases" && <Releases />}{route.view === "audit" && <Audit />}</div></main></div>;
+  return <div className="flex min-h-dvh flex-col bg-slate-50 text-slate-900 lg:flex-row"><Sidebar view={route.view} onNavigate={navigate} onLogout={() => void logout()} /><main className="min-w-0 flex-1"><header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 sm:px-6"><div><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">PWAYMENT · {session.role}</p><p className="mt-0.5 text-sm font-extrabold text-slate-900">{title}</p></div><button type="button" onClick={() => void logout()} className="rounded-lg p-2 text-slate-500 hover:bg-slate-50 lg:hidden" aria-label="Afmelden"><LogOut size={17} /></button></header>{accessError && <div className="px-4 pt-4 sm:px-6"><FeedbackBanner tone="error" onDismiss={() => setAccessError(null)}>{accessError}</FeedbackBanner></div>}<div className="p-4 sm:p-6">{route.view === "overview" && <Overview overview={overview} loading={overviewLoading} onRefresh={() => void loadOverview()} onOpenStores={(storeId) => navigate(storeId ? `/admin/stores/${encodeURIComponent(storeId)}` : "/admin/stores")} />}{route.view === "stores" && <Stores onOpen={(store) => navigate(`/admin/stores/${encodeURIComponent(store.id)}`)} />}{route.view === "store" && route.storeId && <StoreDetailWithControls storeId={route.storeId} onBack={() => navigate("/admin/stores")} onDeleted={() => navigate("/admin/stores")} />}{route.view === "incidents" && <Incidents />}{route.view === "development" && <DevelopmentLog />}{route.view === "team" && <Team session={session} />}{route.view === "releases" && <Releases />}{route.view === "audit" && <Audit />}</div></main></div>;
 }

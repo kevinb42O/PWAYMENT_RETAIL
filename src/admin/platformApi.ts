@@ -209,6 +209,20 @@ export interface PlatformIntegrationRun {
   actor_email: string | null;
 }
 
+export interface PlatformDevelopmentUpdate {
+  id: string;
+  github_push_id: string;
+  repository_full_name: string;
+  branch_name: string;
+  before_sha: string | null;
+  after_sha: string;
+  compare_url: string | null;
+  pusher_name: string | null;
+  headline: string;
+  commits: Array<{ sha?: string; message?: string; timestamp?: string; url?: string; author?: { name?: string } }>;
+  pushed_at: string;
+}
+
 export interface PlatformIncidentDetail extends PlatformIncident {
   operation: string | null;
   first_seen_at: string;
@@ -347,4 +361,9 @@ export const deletePlatformStore = (storeId: string, expectedStoreName: string, 
     target_store_id: storeId,
     expected_store_name: expectedStoreName,
     deletion_reason: reason,
+  });
+
+export const listPlatformDevelopmentUpdates = () =>
+  call<{ items: PlatformDevelopmentUpdate[] }>("platform_list_development_updates", {
+    page_limit: 100,
   });

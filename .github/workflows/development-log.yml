@@ -1,0 +1,69 @@
+name: Record development update
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["**"]
+
+permissions:
+  contents: read
+
+jobs:
+  record:
+    name: Write platform development log
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check development-log configuration
+        id: configuration
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Development-log secrets are not configured yet; recording skipped."
+          fi
+
+      - name: Build the push record
+        if: steps.configuration.outputs.enabled == 'true'
+        id: payload
+        env:
+          EVENT_PATH: ${{ github.event_path }}
+        run: |
+          jq -c '{
+            github_push_id: (.push_id | tostring),
+            repository_full_name: .repository.full_name,
+            branch_name: (.ref | sub("^refs/heads/"; "") | sub("^refs/tags/"; "tag/")),
+            before_sha: .before,
+            after_sha: .after,
+            compare_url: .compare,
+            pusher_name: .pusher.name,
+            pusher_email: .pusher.email,
+            headline: (.head_commit.message // ("Push to " + .ref)),
+            pushed_at: (.head_commit.timestamp // null),
+            commits: [.commits[]? | {
+              sha: .id,
+              message: .message,
+              timestamp: .timestamp,
+              url: .url,
+              author: { name: .author.name, email: .author.email, username: .author.username }
+            }]
+          }' "$EVENT_PATH" > development-update.json
+
+      - name: Append the secure platform record
+        if: steps.configuration.outputs.enabled == 'true'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          test -n "$SUPABASE_URL"
+          test -n "$SUPABASE_SERVICE_ROLE_KEY"
+          curl --fail-with-body --retry 3 --retry-all-errors \
+            -X POST "$SUPABASE_URL/rest/v1/rpc/ingest_github_development_update" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            --data-binary @<(jq -c '{payload: .}' development-update.json)
