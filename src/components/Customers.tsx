@@ -2053,15 +2053,15 @@ export const Customers: React.FC = () => {
                             <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-slate-200 pt-4">
                               <button
                                 type="button"
-                                title="Factuur bekijken"
+                                title={invData.type === "receipt" ? "Ticket bekijken" : "Factuur bekijken"}
                                 onClick={() => setPreviewInvoice(invData)}
                                 className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100"
                               >
-                                <Eye size={14} /> Bekijken
+                                <Eye size={14} /> {invData.type === "receipt" ? "Ticket bekijken" : "Factuur bekijken"}
                               </button>
                               <button
                                 type="button"
-                                title="Factuur downloaden"
+                                title="PDF downloaden"
                                 onClick={() =>
                                   downloadInvoicePdf(
                                     invData,

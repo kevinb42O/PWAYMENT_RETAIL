@@ -10,6 +10,7 @@ interface InvoicePreviewModalProps {
 
 export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({ invoice, onClose }) => {
   if (!invoice) return null;
+  const documentTitle = invoice.type === "credit_note" ? "Creditnota" : invoice.type === "receipt" ? "Kassaticket" : "Factuur";
 
   const pdfDataUrl = useMemo(() => {
     try {
@@ -45,14 +46,14 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({ invoic
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="break-words text-sm font-black text-slate-900 sm:text-base">
-                  Officiële Factuur {invoice.invoiceNumber}
+                  {documentTitle} {invoice.invoiceNumber}
                 </h3>
                 <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-extrabold rounded-md border border-emerald-200">
                   {invoice.status}
                 </span>
               </div>
               <p className="text-xs text-slate-500 font-semibold">
-                Belgisch btw-conform document • Peppol BIS Billing 3.0
+                PDF-weergave van de bevroren verkoopgegevens
               </p>
             </div>
           </div>
@@ -106,7 +107,7 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({ invoic
         <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between text-xs font-semibold text-slate-600 gap-3">
           <div className="flex items-center gap-2">
             <CheckCircle2 size={16} className="text-emerald-500" />
-            <span>Wettelijke vermeldingen & BTW-uitsplitsing inbegrepen.</span>
+            <span>BTW-uitsplitsing en documentreferentie inbegrepen.</span>
           </div>
           <div className="flex items-center gap-3">
             <span>Klant: <strong>{invoice.buyer.name}</strong></span>

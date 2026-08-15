@@ -13,6 +13,10 @@ export interface MerchantInfo {
   phone?: string;
   email?: string;
   website?: string;
+  iban?: string;
+  bic?: string;
+  rpr?: string;
+  invoiceTerms?: string;
   footer?: string;
   returnPolicy?: string;
 }
@@ -26,6 +30,10 @@ export const DEFAULT_MERCHANT: MerchantInfo = {
   phone: '+32 9 000 00 00',
   email: 'hallo@pwayment.be',
   website: 'www.pwayment.be',
+  iban: '',
+  bic: '',
+  rpr: '',
+  invoiceTerms: '',
   footer: 'Bedankt voor uw aankoop.',
   returnPolicy: 'Retour of omruiling volgens winkelvoorwaarden met origineel ticket.',
 };

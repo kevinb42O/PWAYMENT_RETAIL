@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { formatEUR } from "./money";
+import { allocateCents } from "./money";
 import { format } from "date-fns";
 
 export interface InvoiceLineItem {
@@ -36,7 +37,7 @@ export interface InvoiceData {
   dueDate: string | Date;
   deliveryDate?: string | Date;
   status: "Voldaan" | "In afwachting" | "Vervallen" | "Gedeeltelijk";
-  type?: "subscription" | "sale" | "credit_note";
+  type?: "subscription" | "sale" | "credit_note" | "receipt";
   structuredCommunication?: string; // e.g. +++081/2026/00042+++
   reference?: string;
   seller: InvoiceParty;
@@ -90,6 +91,7 @@ export function createInvoicePdf(data: InvoiceData): jsPDF {
   const pageHeight = doc.internal.pageSize.getHeight(); // 297mm
   const margin = 15;
   const contentWidth = pageWidth - margin * 2;
+  const footerY = pageHeight - 35;
 
   // Colors
   const primaryColor = [15, 23, 42]; // Slate-900
@@ -115,7 +117,7 @@ export function createInvoicePdf(data: InvoiceData): jsPDF {
   doc.setFontSize(16);
   doc.setTextColor(255, 255, 255);
   doc.text(
-    data.type === "credit_note" ? "CORRECTIEDOCUMENT" : "VERKOOPDOCUMENT",
+    data.type === "credit_note" ? "CREDITNOTA" : data.type === "receipt" ? "KASSATICKET" : "FACTUUR",
     pageWidth - margin,
     14,
     { align: "right" },
@@ -145,7 +147,7 @@ export function createInvoicePdf(data: InvoiceData): jsPDF {
 
   const metaCols = [
     { label: "FACTUURNUMMER", value: data.invoiceNumber },
-    { label: "FACTUURDAYUM", value: formatDateStr(data.invoiceDate) },
+    { label: "FACTUURDATUM", value: formatDateStr(data.invoiceDate) },
     { label: "VERVALDATUM", value: formatDateStr(data.dueDate) },
     {
       label: "RELEVANTE PERIODE",
@@ -274,7 +276,8 @@ export function createInvoicePdf(data: InvoiceData): jsPDF {
 
   autoTable(doc, {
     startY: cursorY,
-    margin: { left: margin, right: margin },
+    // Keep physical footer space clear on every page, not just the last one.
+    margin: { left: margin, right: margin, bottom: 55 },
     head: [
       [
         "Omschrijving / Dienst",
@@ -343,11 +346,18 @@ export function createInvoicePdf(data: InvoiceData): jsPDF {
   // FINANCIAL SUMMARY & VAT BREAKDOWN
   const summaryBoxWidth = 85;
 
+  // The financial summary must travel as a unit and never collide with the
+  // fixed legal footer. Start a clean final page when the table ended too low.
+  if (cursorY > footerY - 58) {
+    doc.addPage();
+    cursorY = margin;
+  }
+
   // VAT BREAKDOWN TABLE (LEFT)
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42);
-  doc.text("BTW UITSPLITSING (VERPLICHT WETTELIJK)", margin, cursorY);
+  doc.text("BTW-UITSPLITSING", margin, cursorY);
 
   const vatRows = Array.from(vatMap.entries()).map(([rate, vals]) => [
     `${rate}%`,
@@ -427,46 +437,32 @@ export function createInvoicePdf(data: InvoiceData): jsPDF {
     : cursorY + 40;
   cursorY = Math.max(lastTableY, cursorY + 45) + 10;
 
-  // STATUTORY LEGAL CLAUSES & PEPPOL FOOTER
-  const footerY = pageHeight - 35;
-  doc.setDrawColor(203, 213, 225);
-  doc.setLineWidth(0.3);
-  doc.line(margin, footerY, pageWidth - margin, footerY);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  doc.setTextColor(100, 116, 139);
-
-  const legalNotice =
-    "Wettelijke vermelding: Behoudens tegenbericht binnen 8 dagen wordt deze factuur als aanvaard beschouwd. " +
-    "Bij laattijdige betaling is van rechtswege en zonder ingebrekestelling een moratoire intrest van 10% per jaar en een schadebeding van 10% (min. € 40,-) verschuldigd (Art. 5 Wet 02/08/2002). " +
-    "Alle geleverde goederen blijven eigendom van de verkoper tot volledige betaling.";
-
-  doc.text(doc.splitTextToSize(legalNotice, contentWidth), margin, footerY + 4);
-
-  // Bottom Line: IBAN + Peppol BIS v3 + Page counter
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7.5);
-  doc.setTextColor(15, 23, 42);
-
+  // Fixed footer on every page; legal terms belong only on the final page.
+  const pageCount = doc.getNumberOfPages();
+  const legalNotice = data.notes || "Deze factuur werd uitgereikt vanuit de geregistreerde verkoop.";
   const ibanLine = `IBAN: ${data.seller.iban || "-"} | BIC: ${data.seller.bic || "-"} | RPR: ${data.seller.rpr || "-"}`;
-  doc.text(ibanLine, margin, footerY + 16);
+  for (let page = 1; page <= pageCount; page += 1) {
+    doc.setPage(page);
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.3);
+    doc.line(margin, footerY, pageWidth - margin, footerY);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Referentie: ${data.invoiceNumber}`, margin, footerY + 22);
+    doc.text(`Pagina ${page} / ${pageCount}`, pageWidth - margin, footerY + 22, { align: "right" });
+    if (page !== pageCount) continue;
 
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(100, 116, 139);
-  doc.text(
-    "Gegenereerd uit de opgeslagen transactiesnapshot",
-    pageWidth - margin,
-    footerY + 16,
-    { align: "right" },
-  );
-
-  doc.setFontSize(6.5);
-  doc.text(
-    `Gegenereerd door Pwayment Retail • Referentie: ${data.invoiceNumber}`,
-    margin,
-    footerY + 22,
-  );
+    doc.setFontSize(7);
+    doc.text(doc.splitTextToSize(legalNotice, contentWidth), margin, footerY + 4);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(15, 23, 42);
+    doc.text(ibanLine, margin, footerY + 16);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 116, 139);
+    doc.text("Gegenereerd uit een bevroren transactiesnapshot", pageWidth - margin, footerY + 16, { align: "right" });
+  }
 
   return doc;
 }
@@ -502,6 +498,23 @@ export function convertTransactionToInvoiceData(
     vat21Cents: number;
     paymentMethod: string;
     documentNumber?: string;
+    invoiceNumber?: string;
+    invoiceIssuedAt?: number;
+    documentRequest?: {
+      type: "receipt" | "invoice-b2c" | "invoice-b2b";
+      recipient?: {
+        customerId?: string;
+        name: string;
+        companyName?: string;
+        addressLine1: string;
+        postalCode: string;
+        city: string;
+        countryCode: string;
+        vatNumber?: string;
+        email?: string;
+        purchaseOrderReference?: string;
+      };
+    };
     kind?: "sale" | "refund";
     customerId?: string;
     items: Array<{
@@ -522,6 +535,7 @@ export function convertTransactionToInvoiceData(
     email?: string;
     phone?: string;
     rpr?: string;
+    invoiceTerms?: string;
   },
   customer?: {
     name: string;
@@ -535,42 +549,75 @@ export function convertTransactionToInvoiceData(
   } | null,
 ): InvoiceData {
   const direction = t.kind === "refund" ? -1 : 1;
-  const items: InvoiceLineItem[] = t.items.map((item) => {
+  const grossLines = t.items.map((item) => {
     const modSum = (item.modifiers ?? []).reduce((s, m) => s + m.deltaCents, 0);
     const unitIncl = item.product.priceCents + modSum;
     const vatRate = item.product.vatRate || 21;
-    const unitExcl = Math.round(unitIncl / (1 + vatRate / 100));
     const lineTotalIncl = unitIncl * item.quantity;
-    const lineTotalExcl = Math.round(lineTotalIncl / (1 + vatRate / 100));
-    const lineVat = lineTotalIncl - lineTotalExcl;
-
     return {
+      item,
+      unitIncl,
+      vatRate,
+      lineTotalIncl,
       description:
         item.product.name +
         (item.modifiers?.length
           ? ` (${item.modifiers.map((m) => m.label).join(", ")})`
           : ""),
-      quantity: item.quantity,
-      unitPriceExclCents: unitExcl,
-      vatRate,
-      totalExclCents: lineTotalExcl * direction,
-      totalVatCents: lineVat * direction,
-      totalInclCents: lineTotalIncl * direction,
     };
   });
+
+  // Allocate the cart discount first per VAT rate, then per line. This mirrors
+  // the booking engine and guarantees invoice totals reconcile to the sale.
+  const discountByLine = new Array(grossLines.length).fill(0);
+  const rateGroups = [12, 21].map((rate) => ({
+    indices: grossLines.flatMap((line, index) => line.vatRate === rate ? [index] : []),
+  }));
+  const rateDiscounts = allocateCents(
+    Math.min(t.discountCents, t.subtotalCents),
+    rateGroups.map((group) => group.indices.reduce((sum, index) => sum + grossLines[index].lineTotalIncl, 0)),
+  );
+  rateGroups.forEach((group, groupIndex) => {
+    const allocated = allocateCents(rateDiscounts[groupIndex], group.indices.map((index) => grossLines[index].lineTotalIncl));
+    group.indices.forEach((index, lineIndex) => { discountByLine[index] = allocated[lineIndex]; });
+  });
+
+  const netByLine = grossLines.map((line, index) => line.lineTotalIncl - discountByLine[index]);
+  const exclByLine = new Array(grossLines.length).fill(0);
+  rateGroups.forEach((group, groupIndex) => {
+    const rate = groupIndex === 0 ? 12 : 21;
+    const groupNet = group.indices.reduce((sum, index) => sum + netByLine[index], 0);
+    const groupExcl = Math.round(groupNet / (1 + rate / 100));
+    const allocated = allocateCents(groupExcl, group.indices.map((index) => netByLine[index]));
+    group.indices.forEach((index, lineIndex) => { exclByLine[index] = allocated[lineIndex]; });
+  });
+  const items: InvoiceLineItem[] = grossLines.map((line, index) => ({
+    description: line.description,
+    quantity: line.item.quantity,
+    unitPriceExclCents: Math.round(line.unitIncl / (1 + line.vatRate / 100)),
+    vatRate: line.vatRate,
+    totalExclCents: exclByLine[index] * direction,
+    totalVatCents: (netByLine[index] - exclByLine[index]) * direction,
+    totalInclCents: netByLine[index] * direction,
+  }));
 
   const txDate = new Date(t.timestamp);
   const formattedDate = format(txDate, "yyyyMMdd");
 
   return {
     invoiceNumber:
+      t.invoiceNumber ??
       t.documentNumber ??
       `POS-${formattedDate}-${String(t.id ?? 1).padStart(4, "0")}`,
-    invoiceDate: txDate,
+    invoiceDate: t.invoiceIssuedAt ? new Date(t.invoiceIssuedAt) : txDate,
     dueDate: txDate,
     deliveryDate: txDate,
     status: "Voldaan",
-    type: t.kind === "refund" ? "credit_note" : "sale",
+    type: t.kind === "refund"
+      ? "credit_note"
+      : t.documentRequest?.type === "invoice-b2c" || t.documentRequest?.type === "invoice-b2b"
+        ? "sale"
+        : "receipt",
     structuredCommunication: `+++${format(txDate, "MM")}/${format(txDate, "yyyy")}/${String(t.id ?? 1).padStart(5, "0")}+++`,
     paymentMethod: t.paymentMethod,
     seller: {
@@ -585,13 +632,16 @@ export function convertTransactionToInvoiceData(
       phone: merchant.phone,
       rpr: merchant.rpr,
     },
-    buyer: {
-      name:
-        customer?.name ||
-        (t.customerId ? `Klant #${t.customerId}` : "Particuliere Klant"),
-      addressLine1: customer?.street
-        ? `${customer.street} ${customer.houseNumber || ""}`.trim()
-        : "Winkelverkoop Balie",
+    buyer: t.documentRequest?.recipient ? {
+      name: t.documentRequest.recipient.name,
+      legalName: t.documentRequest.recipient.companyName,
+      addressLine1: t.documentRequest.recipient.addressLine1,
+      addressLine2: `${t.documentRequest.recipient.postalCode} ${t.documentRequest.recipient.city}, ${t.documentRequest.recipient.countryCode}`,
+      vatNumber: t.documentRequest.recipient.vatNumber,
+      email: t.documentRequest.recipient.email,
+    } : {
+      name: customer?.name || (t.customerId ? `Klant #${t.customerId}` : "Particuliere Klant"),
+      addressLine1: customer?.street ? `${customer.street} ${customer.houseNumber || ""}`.trim() : "Winkelverkoop Balie",
       postalCode: customer?.postalCode,
       city: customer?.city,
       vatNumber: customer?.vatNumber,
@@ -599,5 +649,7 @@ export function convertTransactionToInvoiceData(
       phone: customer?.phone,
     },
     items,
+    reference: t.documentRequest?.recipient?.purchaseOrderReference,
+    notes: merchant.invoiceTerms,
   };
 }

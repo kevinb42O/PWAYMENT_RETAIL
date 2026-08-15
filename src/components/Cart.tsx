@@ -12,6 +12,7 @@ import {
   Trash2,
   User,
   Gift,
+  FileText,
 } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { useProducts } from "../store/useProducts";
@@ -37,12 +38,17 @@ import {
 } from "../hooks/useThermalPrinter";
 import { EscPosPrintAdapter } from "./ThermalPrinterPanel";
 import { CustomerLinkModal } from "./CustomerLinkModal";
+import { DocumentChoiceModal, documentChoiceLabel } from "./DocumentChoiceModal";
 import { GiftCardPaymentModal } from "./GiftCardPaymentModal";
 import { useCustomers } from "../store/useCustomers";
 import { isGiftCardExpired } from "../utils/giftCards";
 import { Modal } from "./Modal";
 import { projectCart } from "../customer-display/cartProjection";
 import { useCustomerDisplayRuntime } from "../customer-display/runtime";
+import type { SaleDocumentRequest } from "../types";
+import { useMerchantProfile } from "../store/useMerchantProfile";
+import { convertTransactionToInvoiceData } from "../utils/invoicePdfGenerator";
+import { InvoicePreviewModal } from "./InvoicePreviewModal";
 
 const lineUnitCents = (o: OrderItem): number =>
   o.product.priceCents +
@@ -80,6 +86,7 @@ export const Cart: React.FC = () => {
     () => customers.find((c) => c.id === linkedCustomerId),
     [customers, linkedCustomerId],
   );
+  const merchantProfile = useMerchantProfile((state) => state.profile);
 
   useEffect(() => {
     void hydrate();
@@ -118,6 +125,9 @@ export const Cart: React.FC = () => {
   const [cashOpen, setCashOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const [giftOpen, setGiftOpen] = useState(false);
+  const [documentChoiceOpen, setDocumentChoiceOpen] = useState(false);
+  const [documentRequest, setDocumentRequest] = useState<SaleDocumentRequest>({ type: "receipt" });
+  const [invoicePreviewOpen, setInvoicePreviewOpen] = useState(false);
   // Kept across retries so a retried checkout can never create a second sale.
   const requestIdRef = useRef<string | null>(null);
 
@@ -152,6 +162,12 @@ export const Cart: React.FC = () => {
   const remainingTotal = cartProjection.remainingCents;
   const checkoutBlocked =
     !hasItemsToCheckout || isProcessing || vatBlockers.length > 0;
+  const completedInvoice = useMemo(
+    () => receipt && receipt.documentRequest?.type !== "receipt"
+      ? convertTransactionToInvoiceData(receipt, receipt.merchantSnapshot ?? merchantProfile, linkedCustomer)
+      : null,
+    [receipt, merchantProfile, linkedCustomer],
+  );
 
   if (receipt) {
     return (
@@ -162,7 +178,7 @@ export const Cart: React.FC = () => {
             <CheckCircle size={20} />
             <span className="font-semibold text-white">Betaling gelukt</span>
             <span className="text-sm text-zinc-400">
-              — {receipt.paymentMethod}
+              — {completedInvoice ? `Factuur ${completedInvoice.invoiceNumber}` : receipt.paymentMethod}
             </span>
           </div>
           {/* Printer status — shown only when disconnected so cashier knows to connect */}
@@ -218,6 +234,15 @@ export const Cart: React.FC = () => {
           >
             {printerConnected ? "🖨️ Herdruk" : "🔌 Verbind & Druk"}
           </button>
+          {completedInvoice && (
+            <button
+              type="button"
+              onClick={() => setInvoicePreviewOpen(true)}
+              className="flex-1 rounded-lg bg-sky-600 py-3 font-semibold text-white hover:bg-sky-500"
+            >
+              <span className="inline-flex items-center gap-1.5"><FileText size={16} /> Factuur</span>
+            </button>
+          )}
           <button
             onClick={() => {
               useCustomerDisplayRuntime.getState().resetPayment();
@@ -228,6 +253,7 @@ export const Cart: React.FC = () => {
             Sluiten
           </button>
         </div>
+        <InvoicePreviewModal invoice={invoicePreviewOpen ? completedInvoice : null} onClose={() => setInvoicePreviewOpen(false)} />
       </div>
     );
   }
@@ -267,6 +293,7 @@ export const Cart: React.FC = () => {
         customerId: linkedCustomerId ?? undefined,
         userId: auth.currentUserId ?? undefined,
         userName: auth.currentUserName ?? undefined,
+        documentRequest,
       });
 
       syncPersistedProducts(result.updatedProducts);
@@ -281,6 +308,7 @@ export const Cart: React.FC = () => {
         .completePayment(result.transaction);
       clearCart();
       setReceipt(result.transaction);
+      setDocumentRequest({ type: "receipt" });
 
       // Printing happens only after the commit, so a printer failure can never
       // leave a half-booked sale behind.
@@ -492,6 +520,25 @@ export const Cart: React.FC = () => {
       </div>
 
       <div className="pos-checkout border-t border-zinc-200 bg-white p-4">
+        <button
+          type="button"
+          onClick={() => setDocumentChoiceOpen(true)}
+          className={`mb-3 flex w-full items-center justify-between rounded-xl border px-3 py-3 text-left transition-colors ${documentRequest.type === "receipt" ? "border-zinc-200 bg-zinc-50 hover:border-zinc-300" : "border-sky-300 bg-sky-50 hover:border-sky-400"}`}
+        >
+          <span className="flex items-center gap-2">
+            <span className={`grid h-8 w-8 place-items-center rounded-lg ${documentRequest.type === "receipt" ? "bg-white text-zinc-600" : "bg-sky-600 text-white"}`}><FileText size={16} /></span>
+            <span>
+              <span className="block text-xs font-semibold text-zinc-500">Document voor deze verkoop</span>
+              <span className="block text-sm font-bold text-zinc-900">{documentChoiceLabel(documentRequest)}</span>
+            </span>
+          </span>
+          <span className="text-xs font-bold text-sky-700">Wijzigen</span>
+        </button>
+        {documentRequest.type !== "receipt" && !linkedCustomer && (
+          <button type="button" onClick={() => setLinkOpen(true)} className="mb-3 w-full rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-left text-xs font-semibold text-amber-900 hover:bg-amber-100">
+            Koppel een klant om factuurgegevens sneller voor in te vullen.
+          </button>
+        )}
         {vatBlockers.length > 0 && (
           <div className="mb-3 flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-800">
             <AlertTriangle size={16} className="mt-px flex-shrink-0" />
@@ -628,6 +675,13 @@ export const Cart: React.FC = () => {
           linkCustomer(id);
           setLinkOpen(false);
         }}
+      />
+      <DocumentChoiceModal
+        open={documentChoiceOpen}
+        customer={linkedCustomer}
+        value={documentRequest}
+        onClose={() => setDocumentChoiceOpen(false)}
+        onChange={setDocumentRequest}
       />
       <GiftCardPaymentModal
         open={giftOpen}

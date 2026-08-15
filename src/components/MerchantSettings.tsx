@@ -75,6 +75,10 @@ export const MerchantSettings: React.FC = () => {
       phone: draft.phone?.trim() || undefined,
       email: draft.email?.trim() || undefined,
       website: draft.website?.trim() || undefined,
+      iban: draft.iban?.trim().toUpperCase().replace(/\s+/g, '') || undefined,
+      bic: draft.bic?.trim().toUpperCase() || undefined,
+      rpr: draft.rpr?.trim() || undefined,
+      invoiceTerms: draft.invoiceTerms?.trim() || undefined,
       footer: draft.footer?.trim() || undefined,
       returnPolicy: draft.returnPolicy?.trim() || undefined,
     });
@@ -85,8 +89,8 @@ export const MerchantSettings: React.FC = () => {
     <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-4">
       <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 space-y-4">
         <div>
-          <h2 className="text-lg font-bold">Kassaticket instellingen</h2>
-          <p className="text-sm text-zinc-400">Deze shopgegevens worden op elk geprint ticket en op de console-print gebruikt.</p>
+          <h2 className="text-lg font-bold">Ticket- en factuuridentiteit</h2>
+          <p className="text-sm text-zinc-400">Deze juridische identiteit wordt bevroren op ieder nieuw ticket en iedere factuur. Controleer ze zorgvuldig vóór livegebruik.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -114,7 +118,20 @@ export const MerchantSettings: React.FC = () => {
           <Field label="E-mail">
             <input value={draft.email ?? ''} onChange={(e) => set('email', e.target.value)} className="input" />
           </Field>
+          <Field label="IBAN voor onbetaalde facturen">
+            <input value={draft.iban ?? ''} onChange={(e) => set('iban', e.target.value)} placeholder="BE68 5390 0754 7011" className="input" />
+          </Field>
+          <Field label="BIC">
+            <input value={draft.bic ?? ''} onChange={(e) => set('bic', e.target.value)} placeholder="KREDBEBB" className="input" />
+          </Field>
+          <Field label="RPR / ondernemingsrechtbank">
+            <input value={draft.rpr ?? ''} onChange={(e) => set('rpr', e.target.value)} placeholder="RPR Gent, afdeling Gent" className="input" />
+          </Field>
         </div>
+
+        <Field label="Factuurvoorwaarden">
+          <textarea value={draft.invoiceTerms ?? ''} onChange={(e) => set('invoiceTerms', e.target.value)} rows={3} placeholder="Alleen door uw accountant/juridisch adviseur goedgekeurde tekst." className="input resize-none" />
+        </Field>
 
         <Field label="Ticket footer">
           <textarea value={draft.footer ?? ''} onChange={(e) => set('footer', e.target.value)} rows={2} className="input resize-none" />

@@ -102,6 +102,48 @@ describe('finalizeCheckout', () => {
     expect(await counts()).toEqual({ transactions: 1, audit: 1, outbox: 1 });
   });
 
+  it('issues an invoice number and freezes B2B billing data with the sale', async () => {
+    const result = await finalizeCheckout(baseInput({
+      clientRequestId: 'b2b-invoice',
+      documentRequest: {
+        type: 'invoice-b2b',
+        recipient: {
+          name: 'An De Smet',
+          companyName: 'De Smet Retail BV',
+          addressLine1: 'Stationsstraat 12',
+          postalCode: '9000',
+          city: 'Gent',
+          countryCode: 'be',
+          vatNumber: 'be0987654321',
+        },
+      },
+    }));
+
+    expect(result.transaction.documentRequest).toMatchObject({
+      type: 'invoice-b2b',
+      recipient: { countryCode: 'BE', vatNumber: 'BE0987654321' },
+    });
+    expect(result.transaction.invoiceNumber).toMatch(/^INV-\d{4}-\d{8}$/);
+    expect(result.transaction.invoiceIssuedAt).toBe(result.transaction.timestamp);
+  });
+
+  it('refuses an incomplete B2B invoice without booking a sale', async () => {
+    await expect(finalizeCheckout(baseInput({
+      clientRequestId: 'invalid-b2b-invoice',
+      documentRequest: {
+        type: 'invoice-b2b',
+        recipient: {
+          name: 'An De Smet',
+          addressLine1: 'Stationsstraat 12',
+          postalCode: '9000',
+          city: 'Gent',
+          countryCode: 'BE',
+        },
+      },
+    }))).rejects.toMatchObject({ code: 'invalid-request' });
+    expect(await db.transactions.count()).toBe(0);
+  });
+
   it('seals an active migration atomically with the first live checkout', async () => {
     useAuth.setState({ currentStoreId: 'store-1' });
     await db.migration_activations.put(migrationActivation());
