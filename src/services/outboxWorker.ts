@@ -5,7 +5,8 @@ import type { Json } from "../types/database.generated";
 import type { DailyReport, GiftCardEvent, OutboxEntry, Transaction, WebshopOrder } from "../types";
 import { db } from "../db/db";
 import { upsertSupabaseProducts, upsertSupabaseCustomers, upsertSupabaseCategories, deleteSupabaseCategory } from "./supabaseMutations";
-import { pushMigrationOutboxEntry } from "./migrationSync";
+import { pushMigrationOutboxEntry, type MigrationActivationOutboxPayload } from "./migrationSync";
+import { recordIntegrationRun } from "./integrationOperations";
 import {
   mutateSupabaseGiftCard,
   pushSupabaseGiftCardMutation,
@@ -355,6 +356,18 @@ export const startOutboxWorker = () => {
 
       const result = await drainOutbox(async (entry) => {
         await sendOutboxEntry(storeId, entry);
+        if (entry.kind === "migration_activate") {
+          const telemetry = (entry.payload as MigrationActivationOutboxPayload).integrationRun;
+          if (telemetry) {
+            await recordIntegrationRun({
+              ...telemetry,
+              storeId,
+              status: "completed",
+              eventType: "delivery.confirmed",
+              eventMessage: "Server receipt bevestigd via de achtergrondwachtrij.",
+            });
+          }
+        }
       });
       const metadata = await getOutboxHealthMetadata();
       if (result.failed) {

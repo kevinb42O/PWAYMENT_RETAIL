@@ -1,5 +1,7 @@
 import { db } from "../db/db";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
+import { recordIntegrationRun, type IntegrationRunTelemetry } from "./integrationOperations";
+import { getOutboxHealthMetadata, reportPlatformHealth, safeErrorFingerprint } from "./platformTelemetry";
 import type {
   Customer,
   MigrationActivation,
@@ -16,6 +18,7 @@ export interface MigrationActivationOutboxPayload {
   products: Product[];
   customers: Customer[];
   inverseChanges: MigrationInverseChange[];
+  integrationRun?: Omit<IntegrationRunTelemetry, "storeId" | "status" | "eventType" | "eventMessage">;
 }
 
 export interface MigrationUndoOutboxPayload {
@@ -42,6 +45,28 @@ const requireRemoteStore = (storeId: string): void => {
 
 const throwIfError = (error: { message: string } | null): void => {
   if (error) throw new Error(`Migratiesynchronisatie mislukt: ${error.message}`);
+};
+
+const runForEntry = (storeId: string, entry: OutboxEntry, status: IntegrationRunTelemetry["status"], error?: unknown): Promise<void> | null => {
+  if (entry.kind !== "migration_activate") return null;
+  const telemetry = (entry.payload as MigrationActivationOutboxPayload).integrationRun;
+  if (!telemetry) return null;
+  const eventType = status === "completed"
+    ? "delivery.confirmed"
+    : status === "queued"
+      ? "delivery.queued"
+      : "delivery.failed";
+  return recordIntegrationRun({
+    ...telemetry,
+    storeId,
+    status,
+    errorCode: error ? "MIGRATION_DELIVERY_PENDING" : telemetry.errorCode,
+    errorFingerprint: error ? safeErrorFingerprint("migration.delivery", error) : telemetry.errorFingerprint,
+    eventType,
+    eventMessage: status === "completed"
+      ? "Server receipt bevestigd."
+      : "De wijziging blijft veilig in de synchronisatiewachtrij.",
+  });
 };
 
 /**
@@ -99,6 +124,7 @@ export const synchronizeMigrationNow = async (
   ].includes(entry.kind));
   if (migrationEntries.length === 0) return { sent: 0, pending: 0 };
   if (globalThis.navigator?.onLine === false || !isSupabaseConfigured || storeId === "local-device") {
+    await Promise.all(migrationEntries.map((entry) => runForEntry(storeId, entry, "queued")));
     return { sent: 0, pending: migrationEntries.length };
   }
 
@@ -107,6 +133,7 @@ export const synchronizeMigrationNow = async (
     try {
       await pushMigrationOutboxEntry(storeId, entry);
       if (entry.id != null) await db.outbox.delete(entry.id);
+      await runForEntry(storeId, entry, "completed");
       sent += 1;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Onbekende synchronisatiefout.";
@@ -116,8 +143,20 @@ export const synchronizeMigrationNow = async (
           lastError: message,
         });
       }
+      await runForEntry(storeId, entry, "queued", error);
+      void reportPlatformHealth({
+        storeId,
+        eventType: "sync.retrying",
+        severity: "warning",
+        operation: entry.kind,
+        errorFingerprint: safeErrorFingerprint(entry.kind, error),
+        metadata: await getOutboxHealthMetadata(),
+      });
       return { sent, pending: migrationEntries.length - sent, error: message };
     }
+  }
+  if (sent > 0) {
+    void reportPlatformHealth({ storeId, eventType: "sync.completed", operation: "migration.import", metadata: await getOutboxHealthMetadata() });
   }
   return { sent, pending: 0 };
 };

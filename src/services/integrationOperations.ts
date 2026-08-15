@@ -12,7 +12,7 @@ export interface IntegrationRunTelemetry {
   operation: "import" | "connection_test" | "sync" | "webhook";
   sourceName: string;
   sourceFormat?: string;
-  status: "running" | "completed" | "completed_with_errors" | "failed" | "cancelled";
+  status: "queued" | "running" | "completed" | "completed_with_errors" | "failed" | "cancelled";
   rowCount?: number;
   createdCount?: number;
   updatedCount?: number;
@@ -21,6 +21,9 @@ export interface IntegrationRunTelemetry {
   errorCode?: string;
   errorFingerprint?: string;
   mappingSummary?: Record<string, unknown>;
+  /** A small, allow-listed lifecycle marker — never a raw import payload. */
+  eventType?: "run.started" | "delivery.queued" | "delivery.confirmed" | "delivery.failed" | "run.cancelled";
+  eventMessage?: string;
 }
 
 /** Best-effort operational telemetry: import success must never depend on it. */
@@ -41,6 +44,8 @@ export const recordIntegrationRun = async (run: IntegrationRunTelemetry): Promis
     run_error_code: run.errorCode ?? null,
     run_error_fingerprint: run.errorFingerprint ?? null,
     run_mapping_summary: (run.mappingSummary ?? {}) as Json,
+    run_event_type: run.eventType ?? null,
+    run_event_message: run.eventMessage ?? null,
   });
   if (error) {
     // eslint-disable-next-line no-console

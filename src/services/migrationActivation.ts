@@ -95,6 +95,7 @@ export const executeMigration = async (
   mappedProducts: Product[],
   mappedCustomers: Customer[],
   mappedCategories: ProductCategory[] = [],
+  integrationRun?: MigrationActivationOutboxPayload["integrationRun"],
 ): Promise<MigrationExecutionResult> => {
   const normalizedStoreId = storeId.trim();
   if (!normalizedStoreId) {
@@ -170,6 +171,7 @@ export const executeMigration = async (
         products: mappedProducts,
         customers: mappedCustomers,
         inverseChanges,
+        integrationRun,
       };
       const outboxEntry: OutboxEntry = {
         timestamp: now,

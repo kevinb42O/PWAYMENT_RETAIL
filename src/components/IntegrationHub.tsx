@@ -30,6 +30,8 @@ import {
 import { executeMigration, undoMigrationActivation } from "../services/migrationActivation";
 import { migrationStoreScope } from "../services/migrationActivity";
 import { synchronizeMigrationNow } from "../services/migrationSync";
+import { recordIntegrationRun } from "../services/integrationOperations";
+import { safeErrorFingerprint } from "../services/platformTelemetry";
 import { useCategories } from "../store/useCategories";
 import { useCustomers } from "../store/useCustomers";
 import { useProducts } from "../store/useProducts";
@@ -192,13 +194,44 @@ export const IntegrationHub: React.FC = () => {
     if (!proposal || !canActivate) return;
     setIsWorking(true);
     setMessage(null);
+    const runId = globalThis.crypto.randomUUID();
+    const sourceName = [sources.catalog.fileName, sources.customers.fileName].filter(Boolean).join(" + ") || "Migratiewerkruimte";
+    const sourceFormat = [sources.catalog.parsed?.format, sources.customers.parsed?.format].filter(Boolean).join("+") || undefined;
+    const mappingSummary = {
+      graph_version: proposal.version,
+      source_kinds: (Object.entries(sources).filter(([, source]) => source.parsed).map(([kind]) => kind)),
+      mapped_fields: sources.catalog.mappings.length + sources.customers.mappings.length,
+      validation_issues: totalIssues,
+      mode: "creation_only_with_undo",
+    };
     try {
+      await recordIntegrationRun({
+        storeId: migrationStoreId,
+        runId,
+        operation: "import",
+        sourceName,
+        sourceFormat,
+        status: "running",
+        rowCount: totalRecords,
+        mappingSummary,
+        eventType: "run.started",
+        eventMessage: "Migratie lokaal gevalideerd en veilig geactiveerd.",
+      });
       const result = await executeMigration(
         migrationStoreId,
         proposal,
         mappedCatalog?.products ?? [],
         mappedCustomers?.customers ?? [],
         mappedCatalog?.categories ?? [],
+        {
+          runId,
+          operation: "import",
+          sourceName,
+          sourceFormat,
+          rowCount: totalRecords,
+          createdCount: totalRecords + (mappedCatalog?.categories.length ?? 0),
+          mappingSummary,
+        },
       );
       const sync = await synchronizeMigrationNow(migrationStoreId);
       await Promise.all([refreshProducts(), hydrateCustomers(true), refreshCategories()]);
@@ -216,6 +249,21 @@ export const IntegrationHub: React.FC = () => {
       setMessage({ tone: "success", text: `Veilig geactiveerd: ${result.productCount} producten, ${result.customerCount} klanten en ${result.categoryCount} nieuwe categorieën. ${serverMessage} U kunt dit volledig ongedaan maken tot de eerste echte activiteit.` });
       setReviewConfirmed(false);
     } catch (error) {
+      await recordIntegrationRun({
+        storeId: migrationStoreId,
+        runId,
+        operation: "import",
+        sourceName,
+        sourceFormat,
+        status: "failed",
+        rowCount: totalRecords,
+        errorCount: 1,
+        errorCode: "MIGRATION_ACTIVATION_FAILED",
+        errorFingerprint: safeErrorFingerprint("migration.activate", error),
+        mappingSummary,
+        eventType: "delivery.failed",
+        eventMessage: "Lokale activatie kon niet veilig worden voltooid.",
+      });
       setMessage({ tone: "error", text: error instanceof Error ? error.message : "De migratie kon niet veilig geactiveerd worden." });
     } finally {
       setIsWorking(false);

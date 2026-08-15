@@ -194,7 +194,7 @@ export interface PlatformIntegrationRun {
   operation: "import" | "connection_test" | "sync" | "webhook";
   source_name: string;
   source_format: string | null;
-  status: "running" | "completed" | "completed_with_errors" | "failed" | "cancelled";
+  status: "queued" | "running" | "completed" | "completed_with_errors" | "failed" | "cancelled";
   row_count: number;
   created_count: number;
   updated_count: number;
@@ -207,6 +207,13 @@ export interface PlatformIntegrationRun {
   completed_at: string | null;
   actor_name: string | null;
   actor_email: string | null;
+  events: Array<{
+    event_type: "run.started" | "delivery.queued" | "delivery.confirmed" | "delivery.failed" | "run.cancelled";
+    status: PlatformIntegrationRun["status"];
+    message: string | null;
+    error_code: string | null;
+    occurred_at: string;
+  }>;
 }
 
 export interface PlatformDevelopmentUpdate {

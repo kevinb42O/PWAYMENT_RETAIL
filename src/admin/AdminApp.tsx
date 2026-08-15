@@ -214,8 +214,22 @@ const roleLabels: Record<PlatformRole, string> = {
 const StoreDetailWithControls = ({ storeId, onBack, onDeleted }: { storeId: string; onBack: () => void; onDeleted: () => void }) => {
   const [detail, setDetail] = useState<PlatformStoreDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [section, setSection] = useState<"overview" | "integrations" | "plan" | "danger">("overview");
   useEffect(() => { void getPlatformStoreDetail(storeId).then(setDetail).catch((err) => setError(err instanceof Error ? err.message : "Tenantcontroles konden niet geladen worden.")); }, [storeId]);
-  return <><StoreDetail storeId={storeId} onBack={onBack} />{error ? <FeedbackBanner tone="error" className="mt-5">{error}</FeedbackBanner> : detail && <TenantControls storeId={storeId} detail={detail} onDeleted={onDeleted} />}</>;
+  const sections: Array<{ id: typeof section; label: string; detail: string }> = [
+    { id: "overview", label: "Overzicht & synchronisatie", detail: "gezondheid, technische tijdlijn en support" },
+    { id: "integrations", label: "Integration Hub", detail: "imports, afleverstatus en bronacties" },
+    { id: "plan", label: "Plan & modules", detail: "entitlements aan de serverbron wijzigen" },
+    { id: "danger", label: "Danger zone", detail: "onomkeerbare tenantverwijdering" },
+  ];
+  return <section className="space-y-5">
+    <nav aria-label="Winkeldossier secties" className="overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"><div className="flex min-w-max gap-1">{sections.map((item) => <button key={item.id} type="button" onClick={() => setSection(item.id)} className={`rounded-xl px-3 py-2 text-left transition ${section === item.id ? "bg-cyan-50 text-cyan-900" : "text-slate-600 hover:bg-slate-50"}`}><span className="block text-xs font-extrabold">{item.label}</span><span className={`mt-0.5 block text-[10px] font-medium ${section === item.id ? "text-cyan-700" : "text-slate-400"}`}>{item.detail}</span></button>)}</div></nav>
+    {section === "overview" && <StoreDetail storeId={storeId} onBack={onBack} />}
+    {error && <FeedbackBanner tone="error">{error}</FeedbackBanner>}
+    {detail && section === "integrations" && <TenantControls storeId={storeId} detail={detail} section="integrations" onDeleted={onDeleted} />}
+    {detail && section === "plan" && <TenantControls storeId={storeId} detail={detail} section="plan" onDeleted={onDeleted} />}
+    {detail && section === "danger" && <TenantControls storeId={storeId} detail={detail} section="danger" onDeleted={onDeleted} />}
+  </section>;
 };
 
 const Team = ({ session }: { session: PlatformSession }) => {
