@@ -1,8 +1,9 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../db/db';
+import { useAuth } from '../auth/useAuth';
 import { CheckoutError, finalizeCheckout } from './checkout';
-import { Customer, GiftCard, OrderItem, Product } from '../types';
+import { Customer, GiftCard, MigrationActivation, OrderItem, Product } from '../types';
 
 const product = (over: Partial<Product> = {}): Product => ({
   id: 'deck-1',
@@ -57,6 +58,19 @@ const counts = async () => ({
   outbox: await db.outbox.count(),
 });
 
+const migrationActivation = (over: Partial<MigrationActivation> = {}): MigrationActivation => ({
+  id: 'migration-1',
+  storeId: 'store-1',
+  status: 'active',
+  graphVersion: 1,
+  answersJson: {},
+  receiptJson: {},
+  activatedAt: 1,
+  createdAt: 1,
+  updatedAt: 1,
+  ...over,
+});
+
 beforeEach(async () => {
   if (!db.isOpen()) await db.open();
   await Promise.all([
@@ -67,7 +81,10 @@ beforeEach(async () => {
     db.customers.clear(),
     db.audit.clear(),
     db.outbox.clear(),
+    db.migration_activations.clear(),
+    db.migration_activity_locks.clear(),
   ]);
+  useAuth.setState({ currentStoreId: null });
   await db.products.put(product());
 });
 
@@ -83,6 +100,47 @@ describe('finalizeCheckout', () => {
     expect((await db.products.get('deck-1')).stockQty).toBe(4);
     expect((await db.customers.get('cust-1')).visitCount).toBe(1);
     expect(await counts()).toEqual({ transactions: 1, audit: 1, outbox: 1 });
+  });
+
+  it('seals an active migration atomically with the first live checkout', async () => {
+    useAuth.setState({ currentStoreId: 'store-1' });
+    await db.migration_activations.put(migrationActivation());
+
+    const result = await finalizeCheckout(baseInput({ clientRequestId: 'migration-lock-sale' }));
+
+    expect(result.duplicate).toBe(false);
+    expect(await db.migration_activations.get('migration-1')).toMatchObject({
+      status: 'locked',
+      firstMeaningfulActivityType: 'checkout',
+      firstMeaningfulActivityEntityType: 'transaction',
+      firstMeaningfulActivityEntityId: String(result.transaction.id),
+    });
+    expect(await db.migration_activity_locks.toArray()).toEqual([
+      expect.objectContaining({
+        migrationId: 'migration-1',
+        activityType: 'checkout',
+        entityType: 'transaction',
+        entityId: String(result.transaction.id),
+      }),
+    ]);
+  });
+
+  it('rolls back the sale when migration sealing detects a corrupted active activation', async () => {
+    useAuth.setState({ currentStoreId: 'store-1' });
+    await db.migration_activations.put(migrationActivation({
+      firstMeaningfulActivityAt: 2,
+      firstMeaningfulActivityType: 'checkout',
+      firstMeaningfulActivityEntityType: 'transaction',
+      firstMeaningfulActivityEntityId: 'old-transaction',
+    }));
+
+    await expect(finalizeCheckout(baseInput({ clientRequestId: 'corrupt-migration-sale' }))).rejects.toThrow(
+      'migration-activity:active-migration-already-sealed',
+    );
+
+    expect(await counts()).toEqual({ transactions: 0, audit: 0, outbox: 0 });
+    expect((await db.products.get('deck-1'))?.stockQty).toBe(5);
+    expect(await db.migration_activity_locks.count()).toBe(0);
   });
 
   it('debits a full gift-card payment exactly once', async () => {

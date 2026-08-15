@@ -11,6 +11,8 @@ interface CategoriesState {
   list: ProductCategory[];
   hydrated: boolean;
   hydrate: () => Promise<void>;
+  /** Re-read categories committed by a migration or another application tab. */
+  refresh: () => Promise<void>;
   addCategory: (name: string) => Promise<ProductCategory | null>;
   renameCategory: (id: string, name: string) => Promise<void>;
   removeCategory: (id: string) => Promise<boolean>;
@@ -83,6 +85,11 @@ export const useCategories = create<CategoriesState>((set, get) => ({
     }
 
     set({ list: sortByName(fromDb), hydrated: true });
+  },
+
+  refresh: async () => {
+    const categories = await db.categories.toArray();
+    set({ list: sortByName(categories), hydrated: true });
   },
 
   addCategory: async (rawName) => {

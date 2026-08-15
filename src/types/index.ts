@@ -113,6 +113,33 @@ export interface PaymentTender {
 
 export type TransactionKind = "sale" | "refund";
 
+/** The document the cashier intentionally requested before payment. */
+export type SaleDocumentType = "receipt" | "invoice-b2c" | "invoice-b2b";
+
+/**
+ * Frozen billing information used for an issued invoice. It deliberately lives
+ * on the transaction instead of being resolved from the mutable customer file
+ * when somebody opens an old document.
+ */
+export interface InvoiceRecipientSnapshot {
+  customerId?: string;
+  name: string;
+  companyName?: string;
+  addressLine1: string;
+  postalCode: string;
+  city: string;
+  countryCode: string;
+  vatNumber?: string;
+  email?: string;
+  purchaseOrderReference?: string;
+}
+
+export interface SaleDocumentRequest {
+  type: SaleDocumentType;
+  /** Present for each invoice; absent for a normal anonymous receipt. */
+  recipient?: InvoiceRecipientSnapshot;
+}
+
 export interface Transaction {
   id?: number;
   /**
@@ -160,6 +187,11 @@ export interface Transaction {
   correctionReason?: string;
   /** Stable human-facing number and immutable merchant snapshot. */
   documentNumber?: string;
+  /** Cashier-selected document intent and immutable invoice recipient data. */
+  documentRequest?: SaleDocumentRequest;
+  /** Invoice sequence assigned at issue time. A backend will become canonical. */
+  invoiceNumber?: string;
+  invoiceIssuedAt?: number;
   merchantSnapshot?: {
     name: string;
     legalName?: string;
@@ -493,6 +525,8 @@ export type AuditAction =
   | "import.preview"
   | "import.complete"
   | "import.rollback"
+  | "migration.activate"
+  | "migration.undo"
   | "service_order.create"
   | "service_order.update"
   | "service_order.status"
@@ -602,6 +636,99 @@ export interface ImportJob {
   profileId?: string;
   affectedProductIds: string[];
   issues: Array<{ row: number; message: string }>;
+}
+
+/** Immutable activation record for one tenant migration. The first meaningful
+ * activity fields are write-once: once present, a full automatic undo is no
+ * longer permitted. */
+export type MigrationActivationStatus =
+  | "active"
+  | "undone"
+  | "locked"
+  | "correction-required";
+
+export type MigrationMeaningfulActivityType =
+  | "checkout"
+  | "refund"
+  | "catalog-change"
+  | "customer-change"
+  | "stock-change"
+  | "service-change"
+  | "gift-card-change"
+  | "webshop-order"
+  | "configuration-change"
+  | "external-delivery";
+
+export type MigrationEntityType =
+  | "transaction"
+  | "product"
+  | "category"
+  | "customer"
+  | "stock-movement"
+  | "service-order"
+  | "gift-card"
+  | "webshop-order"
+  | "store-configuration"
+  | "external-delivery";
+
+export type MigrationInverseActionType =
+  | "delete-created"
+  | "restore-before-image"
+  | "remove-relation"
+  | "restore-configuration";
+
+export type MigrationJson =
+  | string
+  | number
+  | boolean
+  | null
+  | MigrationJson[]
+  | { [key: string]: MigrationJson };
+
+export interface MigrationActivation {
+  id: string;
+  storeId: string;
+  status: MigrationActivationStatus;
+  graphVersion: number;
+  answersJson: Record<string, MigrationJson>;
+  receiptJson: Record<string, MigrationJson>;
+  activatedAt: number;
+  createdAt: number;
+  updatedAt: number;
+  /** Write once when the tenant begins using the activated setup. */
+  firstMeaningfulActivityAt?: number;
+  firstMeaningfulActivityType?: MigrationMeaningfulActivityType;
+  firstMeaningfulActivityEntityType?: MigrationEntityType;
+  firstMeaningfulActivityEntityId?: string;
+  lockedAt?: number;
+  undoneAt?: number;
+}
+
+/** One deterministic inverse operation, executed in sequence during Mode 1
+ * undo. The migration receipt itself is never deleted. */
+export interface MigrationInverseChange {
+  id: string;
+  migrationId: string;
+  sequence: number;
+  actionType: MigrationInverseActionType;
+  entityType: MigrationEntityType;
+  entityId: string;
+  beforeImageOrInversePayload: MigrationJson;
+  createdAt: number;
+}
+
+/** Append-only evidence that a migration's full-undo window closed. */
+export interface MigrationActivityLock {
+  id: string;
+  migrationId: string;
+  storeId: string;
+  activityType: MigrationMeaningfulActivityType;
+  entityType: MigrationEntityType;
+  entityId: string;
+  occurredAt: number;
+  actorUserId?: string;
+  actorName?: string;
+  correlationId?: string;
 }
 
 export type ServiceOrderSystemStatus =

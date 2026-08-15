@@ -2,703 +2,278 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
   AlertTriangle,
-  ArrowRight,
   Check,
   ChevronRight,
+  CircleHelp,
+  ClipboardCheck,
   Database,
-  Download,
-  FileJson,
   FileSpreadsheet,
-  History,
-  Layers3,
-  RefreshCw,
-  Cable,
+  LoaderCircle,
+  RotateCcw,
+  ShieldCheck,
+  Sparkles,
   UploadCloud,
+  Users,
 } from "lucide-react";
 import { audit, useAuth } from "../auth/useAuth";
 import { db } from "../db/db";
-import { useCategories } from "../store/useCategories";
-import { useProducts } from "../store/useProducts";
-import { useStoreConfiguration } from "../store/useStoreConfiguration";
-import { configuredVatFallback } from "../onboarding/storeConfiguration";
-import type {
-  ImportFieldMapping,
-  ImportJob,
-  ImportMappingProfile,
-  Product,
-} from "../types";
+import { compileRetailConfiguration } from "../migration/configurationCompiler";
+import { discoverRetailBusiness } from "../migration/businessDiscovery";
 import {
-  inferMappings,
-  parseImportFile,
-  type ParsedImportFile,
-} from "../utils/integrationImport";
-import { formatEUR, parseDecimalToCents } from "../utils/money";
-import { normalizePriceGroup } from "../utils/pricing";
-import { recordIntegrationRun } from "../services/integrationOperations";
+  CUSTOMER_MAPPING_TARGETS,
+  inferMigrationMappings,
+  mapMigrationRecords,
+  PRODUCT_MAPPING_TARGETS,
+  type MigrationSourceKind,
+} from "../migration/recordMapper";
+import { executeMigration, undoMigrationActivation } from "../services/migrationActivation";
+import { migrationStoreScope } from "../services/migrationActivity";
+import { useCategories } from "../store/useCategories";
+import { useCustomers } from "../store/useCustomers";
+import { useProducts } from "../store/useProducts";
+import { configuredVatFallback } from "../onboarding/storeConfiguration";
+import { useStoreConfiguration } from "../store/useStoreConfiguration";
+import type { ImportFieldMapping } from "../types";
+import { inferMappings, parseImportFile, type ParsedImportFile } from "../utils/integrationImport";
 
-const CORE_TARGETS = [
-  ["ignore", "Niet importeren"],
-  ["core:id", "Extern ID"],
-  ["core:name", "Productnaam"],
-  ["core:category", "Categorie"],
-  ["core:sku", "SKU / artikelcode"],
-  ["core:barcode", "Barcode / EAN / GTIN"],
-  ["core:brand", "Merk"],
-  ["core:supplier", "Leverancier"],
-  ["core:supplierCode", "Leverancierscode"],
-  ["core:variant", "Variant"],
-  ["core:costPrice", "Aankoopprijs"],
-  ["core:sellingPrice", "Standaard verkoopprijs"],
-  ["core:vatRate", "BTW-percentage"],
-  ["core:stockQty", "Voorraad"],
-] as const;
-
-const DEFAULT_PRICE_GROUPS = [
-  "telenet-klant",
-  "niet-klant",
-  "b2b",
-  "medewerker",
-  "contract",
-  "promo",
-];
-
-const valueFor = (
-  row: string[],
-  parsed: ParsedImportFile,
-  mappings: ImportFieldMapping[],
-  target: string,
-): string => {
-  const mapping = mappings.find((candidate) => candidate.target === target);
-  if (!mapping) return "";
-  const index = parsed.headers.indexOf(mapping.source);
-  return index < 0 ? "" : row[index]?.trim() ?? "";
+type SourceState = {
+  fileName: string;
+  parsed: ParsedImportFile | null;
+  mappings: ImportFieldMapping[];
 };
 
-const slugify = (value: string): string =>
-  value
-    .toLocaleLowerCase("nl-BE")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 48);
+const emptySource = (): SourceState => ({ fileName: "", parsed: null, mappings: [] });
 
-const parseInteger = (value: string): number | undefined => {
-  if (!value.trim()) return undefined;
-  const normalized = value.replace(/\s/g, "").replace(",", ".");
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : undefined;
+const sourceMeta: Record<MigrationSourceKind, { title: string; detail: string; Icon: typeof FileSpreadsheet }> = {
+  catalog: { title: "Catalogus & voorraad", detail: "Artikelen, prijzen, barcodes, voorraad en eigen velden", Icon: FileSpreadsheet },
+  customers: { title: "Klanten", detail: "Contacten, adressen, segmenten en klantprijzen", Icon: Users },
 };
-
-const parseVat = (value: string, fallback: number): number | null => {
-  if (!value.trim()) return fallback;
-  const parsed = Number(value.replace("%", "").replace(",", ".").trim());
-  if (!Number.isFinite(parsed)) return null;
-  const rate = parsed > 0 && parsed < 1 ? Math.round(parsed * 100) : Math.round(parsed);
-  return [0, 6, 12, 21].includes(rate) ? rate : null;
-};
-
-const readPrice = (value: string): number | null | undefined => {
-  if (!value.trim()) return undefined;
-  const parsed = parseDecimalToCents(value);
-  return parsed.ok ? parsed.cents : null;
-};
-
-const formatDateTime = (timestamp: number): string =>
-  new Intl.DateTimeFormat("nl-BE", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(timestamp);
 
 const fileTypeLabel = (format: ParsedImportFile["format"]): string =>
   format === "xlsx" ? "Excel" : format.toUpperCase();
 
-interface ImportPreview {
-  valid: number;
-  newCount: number;
-  updateCount: number;
-  issueCount: number;
-  priceGroups: string[];
-}
-
-const computePreview = (
-  parsed: ParsedImportFile | null,
-  mappings: ImportFieldMapping[],
-  products: Product[],
-  vatFallback: number,
-): ImportPreview => {
-  if (!parsed) return { valid: 0, newCount: 0, updateCount: 0, issueCount: 0, priceGroups: [] };
-  const existingKeys = new Set(
-    products.flatMap((product) =>
-      [product.id, product.sku, product.barcode]
-        .filter((value): value is string => Boolean(value))
-        .map((value) => value.toLocaleLowerCase("nl-BE")),
-    ),
-  );
-  let valid = 0;
-  let newCount = 0;
-  let updateCount = 0;
-  let issueCount = 0;
-  parsed.rows.forEach((row) => {
-    const name = valueFor(row, parsed, mappings, "core:name");
-    const sellingPrice = readPrice(valueFor(row, parsed, mappings, "core:sellingPrice"));
-    const vat = parseVat(
-      valueFor(row, parsed, mappings, "core:vatRate"),
-      vatFallback,
-    );
-    const candidateKeys = [
-      valueFor(row, parsed, mappings, "core:id"),
-      valueFor(row, parsed, mappings, "core:sku"),
-      valueFor(row, parsed, mappings, "core:barcode"),
-    ]
-      .filter(Boolean)
-      .map((value) => value.toLocaleLowerCase("nl-BE"));
-    const updatesExisting = candidateKeys.some((key) => existingKeys.has(key));
-    if (!name || sellingPrice === null || vat == null || (sellingPrice == null && !updatesExisting)) {
-      issueCount += 1;
-      return;
-    }
-    valid += 1;
-    if (updatesExisting) updateCount += 1;
-    else newCount += 1;
-  });
-  return {
-    valid,
-    newCount,
-    updateCount,
-    issueCount,
-    priceGroups: Array.from(
-      new Set(
-        mappings
-          .filter((mapping) => mapping.target.startsWith("price:"))
-          .map((mapping) => mapping.target.slice(6)),
-      ),
-    ),
-  };
+const downloadExample = (kind: MigrationSourceKind) => {
+  const content = kind === "catalog"
+    ? [
+      "Artikelcode;Productnaam;Categorie;Merk;EAN;Aankoopprijs;Verkoopprijs;Prijs Telenet klant;Voorraad;BTW;IMEI",
+      "MOD-360;360-modem;Netwerk;Telenet;5410000000011;64,00;99,00;79,00;12;21;356789012345678",
+      "REP-DIAG;Diagnose toestel;Services;;;0,00;35,00;25,00;;21;",
+    ].join("\n")
+    : [
+      "Klant-ID;Naam;E-mail;Telefoon;Adres;Prijsgroep;Opmerking",
+      "C-1001;Sofie Janssens;sofie@example.be;+32 470 12 34 56;Kerkstraat 1, 2000 Antwerpen;telenet-klant;Contractklant",
+      "C-1002;Sam Peeters;sam@example.be;+32 471 98 76 54;Markt 9, 9000 Gent;b2b;Zakelijke klant",
+    ].join("\n");
+  const url = URL.createObjectURL(new Blob([content], { type: "text/csv;charset=utf-8" }));
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `pwayment-${kind}-voorbeeld.csv`;
+  anchor.click();
+  URL.revokeObjectURL(url);
 };
 
 export const IntegrationHub: React.FC = () => {
   const currentStoreId = useAuth((state) => state.currentStoreId);
   const products = useProducts((state) => state.list);
-  const hydrateProducts = useProducts((state) => state.hydrate);
-  const bulkUpsert = useProducts((state) => state.bulkUpsert);
+  const customers = useCustomers((state) => state.customers);
   const categories = useCategories((state) => state.list);
+  const hydrateProducts = useProducts((state) => state.hydrate);
+  const refreshProducts = useProducts((state) => state.refresh);
+  const hydrateCustomers = useCustomers((state) => state.hydrate);
   const hydrateCategories = useCategories((state) => state.hydrate);
-  const storeConfiguration = useStoreConfiguration(
-    (state) => state.configuration,
-  );
+  const refreshCategories = useCategories((state) => state.refresh);
+  const storeConfiguration = useStoreConfiguration((state) => state.configuration);
   const defaultVat = configuredVatFallback(storeConfiguration);
-  const jobs = useLiveQuery(() => db.import_jobs.orderBy("createdAt").reverse().limit(8).toArray()) ?? [];
-  const profiles = useLiveQuery(() => db.import_mapping_profiles.orderBy("updatedAt").reverse().toArray()) ?? [];
-
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const [fileName, setFileName] = useState("");
-  const [parsed, setParsed] = useState<ParsedImportFile | null>(null);
-  const [mappings, setMappings] = useState<ImportFieldMapping[]>([]);
-  const [profileName, setProfileName] = useState("");
-  const [isDragging, setIsDragging] = useState(false);
-  const [isParsing, setIsParsing] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
+  const migrationStoreId = migrationStoreScope(currentStoreId);
+  const catalogInputRef = useRef<HTMLInputElement | null>(null);
+  const customerInputRef = useRef<HTMLInputElement | null>(null);
+  const [activeSource, setActiveSource] = useState<MigrationSourceKind>("catalog");
+  const [sources, setSources] = useState<Record<MigrationSourceKind, SourceState>>({
+    catalog: emptySource(),
+    customers: emptySource(),
+  });
+  const [isDragging, setIsDragging] = useState<MigrationSourceKind | null>(null);
+  const [isWorking, setIsWorking] = useState(false);
+  const [reviewConfirmed, setReviewConfirmed] = useState(false);
   const [message, setMessage] = useState<{ tone: "success" | "error"; text: string } | null>(null);
 
+  const activeMigration = useLiveQuery(
+    () => db.migration_activations.where("[storeId+status]").equals([migrationStoreId, "active"]).first(),
+    [migrationStoreId],
+  );
+
   useEffect(() => {
-    void Promise.all([hydrateProducts(), hydrateCategories()]);
-  }, [hydrateCategories, hydrateProducts]);
+    void Promise.all([hydrateProducts(), hydrateCustomers(), hydrateCategories()]);
+  }, [hydrateCategories, hydrateCustomers, hydrateProducts]);
 
-  const preview = useMemo(
-    () => computePreview(parsed, mappings, products, defaultVat),
-    [defaultVat, mappings, parsed, products],
-  );
-  const discoveredGroups = useMemo(
-    () =>
-      Array.from(
-        new Set([
-          ...DEFAULT_PRICE_GROUPS,
-          ...mappings
-            .filter((mapping) => mapping.target.startsWith("price:"))
-            .map((mapping) => mapping.target.slice(6)),
-        ]),
-      ),
-    [mappings],
-  );
+  const mappedCatalog = useMemo(() => {
+    const source = sources.catalog;
+    return source.parsed
+      ? mapMigrationRecords({ kind: "catalog", parsed: source.parsed, mappings: source.mappings, defaultVat, existingCategories: categories })
+      : null;
+  }, [categories, defaultVat, sources.catalog]);
+  const mappedCustomers = useMemo(() => {
+    const source = sources.customers;
+    return source.parsed
+      ? mapMigrationRecords({ kind: "customers", parsed: source.parsed, mappings: source.mappings, defaultVat, existingCategories: categories })
+      : null;
+  }, [categories, defaultVat, sources.customers]);
+  const source = sources[activeSource];
+  const preview = activeSource === "catalog" ? mappedCatalog : mappedCustomers;
+  const proposal = useMemo(() => {
+    const parsed = sources.catalog.parsed ?? sources.customers.parsed;
+    const fileName = sources.catalog.fileName || sources.customers.fileName;
+    if (!parsed || !fileName) return null;
+    return compileRetailConfiguration(discoverRetailBusiness(parsed, fileName));
+  }, [sources.catalog.fileName, sources.catalog.parsed, sources.customers.fileName, sources.customers.parsed]);
+  const totalIssues = (mappedCatalog?.issues.length ?? 0) + (mappedCustomers?.issues.length ?? 0);
+  const totalRecords = (mappedCatalog?.products.length ?? 0) + (mappedCustomers?.customers.length ?? 0);
+  const blockingQuestions = proposal?.questions.filter((question) => question.priority === "blocking") ?? [];
+  const canActivate = totalRecords > 0 && totalIssues === 0 && reviewConfirmed && !activeMigration && !isWorking;
 
-  const loadFile = async (file: File) => {
-    setIsParsing(true);
+  const loadFile = async (kind: MigrationSourceKind, file: File) => {
+    setIsWorking(true);
     setMessage(null);
     try {
-      const next = await parseImportFile(file);
-      const inferred = inferMappings(next.headers);
-      setFileName(file.name);
-      setParsed(next);
-      setMappings(inferred);
-      setProfileName(`${file.name.replace(/\.[^.]+$/, "")} mapping`);
-      await audit("import.preview", {
-        fileName: file.name,
-        format: next.format,
-        rows: next.rows.length,
-      });
+      const parsed = await parseImportFile(file);
+      const mappings = inferMigrationMappings(kind, parsed.headers, inferMappings);
+      setSources((current) => ({ ...current, [kind]: { fileName: file.name, parsed, mappings } }));
+      setActiveSource(kind);
+      setReviewConfirmed(false);
+      await audit("import.preview", { fileName: file.name, format: parsed.format, rows: parsed.rows.length, migrationKind: kind });
     } catch (error) {
-      setParsed(null);
-      setMappings([]);
-      setMessage({
-        tone: "error",
-        text: error instanceof Error ? error.message : "Dit bestand kon niet worden gelezen.",
-      });
+      setMessage({ tone: "error", text: error instanceof Error ? error.message : "Dit bestand kon niet worden gelezen." });
     } finally {
-      setIsParsing(false);
-      if (inputRef.current) inputRef.current.value = "";
+      setIsWorking(false);
+      if (kind === "catalog" && catalogInputRef.current) catalogInputRef.current.value = "";
+      if (kind === "customers" && customerInputRef.current) customerInputRef.current.value = "";
     }
   };
 
-  const updateMapping = (source: string, target: string) => {
-    setMappings((current) =>
-      current.map((mapping) =>
-        mapping.source === source ? { ...mapping, target, confidence: 1 } : mapping,
-      ),
-    );
+  const updateMapping = (sourceHeader: string, target: string) => {
+    setSources((current) => ({
+      ...current,
+      [activeSource]: {
+        ...current[activeSource],
+        mappings: current[activeSource].mappings.map((mapping) => mapping.source === sourceHeader ? { ...mapping, target, confidence: 1 } : mapping),
+      },
+    }));
+    setReviewConfirmed(false);
   };
 
-  const applyProfile = (profile: ImportMappingProfile) => {
-    if (!parsed) return;
-    const bySource = new Map(profile.mappings.map((mapping) => [mapping.source, mapping]));
-    setMappings(
-      parsed.headers.map((header) => bySource.get(header) ?? inferMappings([header])[0]),
-    );
-    setProfileName(profile.name);
-    setMessage({ tone: "success", text: `Mapping “${profile.name}” toegepast.` });
+  const clearSource = (kind: MigrationSourceKind) => {
+    setSources((current) => ({ ...current, [kind]: emptySource() }));
+    setReviewConfirmed(false);
   };
 
-  const performImport = async () => {
-    if (!parsed || !fileName || isImporting) return;
-    setIsImporting(true);
+  const activate = async () => {
+    if (!proposal || !canActivate) return;
+    setIsWorking(true);
     setMessage(null);
-    const jobId = globalThis.crypto.randomUUID();
-    const issues: ImportJob["issues"] = [];
-    const mappingSummary = {
-      mapped_fields: mappings.filter((mapping) => mapping.target !== "ignore" && !mapping.target.startsWith("price:")).length,
-      price_groups: mappings.filter((mapping) => mapping.target.startsWith("price:")).length,
-      ignored_fields: mappings.filter((mapping) => mapping.target === "ignore").length,
-      automatic_schema_changes: false,
-    };
-    await recordIntegrationRun({ storeId: currentStoreId, runId: jobId, operation: "import", sourceName: fileName, sourceFormat: parsed.format, status: "running", rowCount: parsed.rows.length, mappingSummary });
     try {
-      const categoryMap = new Map(
-        useCategories
-          .getState()
-          .list.map((category) => [category.name.toLocaleLowerCase("nl-BE"), category.id]),
+      const result = await executeMigration(
+        migrationStoreId,
+        proposal,
+        mappedCatalog?.products ?? [],
+        mappedCustomers?.customers ?? [],
+        mappedCatalog?.categories ?? [],
       );
-
-      const currentProducts = useProducts.getState().list;
-      const byId = new Map(currentProducts.map((product) => [product.id.toLocaleLowerCase("nl-BE"), product]));
-      const bySku = new Map(
-        currentProducts
-          .filter((product) => product.sku)
-          .map((product) => [product.sku!.toLocaleLowerCase("nl-BE"), product]),
-      );
-      const byBarcode = new Map(
-        currentProducts
-          .filter((product) => product.barcode)
-          .map((product) => [product.barcode!.toLocaleLowerCase("nl-BE"), product]),
-      );
-      const prepared = new Map<string, Product>();
-      const incomingIds = new Set<string>();
-      const incomingSkus = new Set<string>();
-      const incomingBarcodes = new Set<string>();
-      let updatedCount = 0;
-
-      parsed.rows.forEach((row, rowIndex) => {
-        const rowNumber = rowIndex + 2;
-        const name = valueFor(row, parsed, mappings, "core:name");
-        if (!name) {
-          issues.push({ row: rowNumber, message: "Productnaam ontbreekt." });
-          return;
-        }
-        const explicitId = valueFor(row, parsed, mappings, "core:id");
-        const incomingSku = valueFor(row, parsed, mappings, "core:sku") || undefined;
-        const incomingBarcode = valueFor(row, parsed, mappings, "core:barcode") || undefined;
-        const normalizedId = explicitId.toLocaleLowerCase("nl-BE");
-        const normalizedSku = incomingSku?.toLocaleLowerCase("nl-BE");
-        const normalizedBarcode = incomingBarcode?.toLocaleLowerCase("nl-BE");
-        if (
-          (normalizedId && incomingIds.has(normalizedId)) ||
-          (normalizedSku && incomingSkus.has(normalizedSku)) ||
-          (normalizedBarcode && incomingBarcodes.has(normalizedBarcode))
-        ) {
-          issues.push({ row: rowNumber, message: "Dubbel extern ID, SKU of barcode in het bestand." });
-          return;
-        }
-        if (normalizedId) incomingIds.add(normalizedId);
-        if (normalizedSku) incomingSkus.add(normalizedSku);
-        if (normalizedBarcode) incomingBarcodes.add(normalizedBarcode);
-        const existing =
-          (explicitId ? byId.get(explicitId.toLocaleLowerCase("nl-BE")) : undefined) ??
-          (incomingSku ? bySku.get(incomingSku.toLocaleLowerCase("nl-BE")) : undefined) ??
-          (incomingBarcode ? byBarcode.get(incomingBarcode.toLocaleLowerCase("nl-BE")) : undefined);
-        const sku = incomingSku ?? existing?.sku;
-        const barcode = incomingBarcode ?? existing?.barcode;
-        const standardPrice = readPrice(valueFor(row, parsed, mappings, "core:sellingPrice"));
-        const costPrice = readPrice(valueFor(row, parsed, mappings, "core:costPrice"));
-        const vatRate = parseVat(
-          valueFor(row, parsed, mappings, "core:vatRate"),
-          existing?.vatRate ?? defaultVat,
-        );
-        if (standardPrice === null || costPrice === null) {
-          issues.push({ row: rowNumber, message: "Prijsformaat is ongeldig of dubbelzinnig." });
-          return;
-        }
-        if (standardPrice == null && !existing) {
-          issues.push({ row: rowNumber, message: "Standaard verkoopprijs ontbreekt voor een nieuw product." });
-          return;
-        }
-        if (vatRate == null) {
-          issues.push({ row: rowNumber, message: "BTW moet 0, 6, 12 of 21% zijn." });
-          return;
-        }
-        const importedCategoryName = valueFor(row, parsed, mappings, "core:category");
-        const categoryName = importedCategoryName || "Geïmporteerd";
-        const category = importedCategoryName
-          ? categoryMap.get(categoryName.toLocaleLowerCase("nl-BE"))
-          : existing?.category ?? categoryMap.get("geïmporteerd");
-        if (!category) {
-          issues.push({ row: rowNumber, message: `Categorie “${categoryName}” bestaat niet. Maak of map deze categorie eerst; imports maken geen categorieën automatisch aan.` });
-          return;
-        }
-        const priceTiers = { ...(existing?.priceTiers ?? {}) };
-        const customFields = { ...(existing?.customFields ?? {}) };
-        mappings.forEach((mapping) => {
-          const columnIndex = parsed.headers.indexOf(mapping.source);
-          const rawValue = row[columnIndex]?.trim() ?? "";
-          if (!rawValue) return;
-          if (mapping.target.startsWith("price:")) {
-            const tierPrice = readPrice(rawValue);
-            if (tierPrice === null) {
-              issues.push({ row: rowNumber, message: `Ongeldige prijs in “${mapping.source}”.` });
-            } else if (tierPrice != null) {
-              priceTiers[normalizePriceGroup(mapping.target.slice(6))] = tierPrice;
-            }
-          }
-        });
-
-        const baseId = slugify(explicitId || incomingSku || incomingBarcode || name) || globalThis.crypto.randomUUID();
-        let id = existing?.id ?? baseId;
-        if (!existing) {
-          let suffix = 2;
-          while (byId.has(id.toLocaleLowerCase("nl-BE")) || prepared.has(id)) {
-            id = `${baseId}-${suffix}`;
-            suffix += 1;
-          }
-        }
-        const next: Product = {
-          ...(existing ?? {}),
-          id,
-          name,
-          category,
-          sku,
-          barcode,
-          brand: valueFor(row, parsed, mappings, "core:brand") || existing?.brand,
-          supplier: valueFor(row, parsed, mappings, "core:supplier") || existing?.supplier,
-          supplierCode:
-            valueFor(row, parsed, mappings, "core:supplierCode") || existing?.supplierCode,
-          variant: valueFor(row, parsed, mappings, "core:variant") || existing?.variant,
-          priceCents: standardPrice ?? existing?.priceCents ?? 0,
-          costPriceCents: costPrice ?? existing?.costPriceCents,
-          vatRate,
-          stockQty:
-            parseInteger(valueFor(row, parsed, mappings, "core:stockQty")) ??
-            existing?.stockQty,
-          priceTiers,
-          customFields,
-          productType: existing?.productType ?? "merchandise",
-          isActive: true,
-        };
-        if (existing) updatedCount += 1;
-        prepared.set(id, next);
+      await Promise.all([refreshProducts(), hydrateCustomers(true), refreshCategories()]);
+      await audit("migration.activate", {
+        migrationId: result.activation.id,
+        products: result.productCount,
+        customers: result.customerCount,
+        categories: result.categoryCount,
       });
-
-      const importedProducts = Array.from(prepared.values());
-      if (importedProducts.length === 0) {
-        throw new Error("Geen geldige producten gevonden. Controleer minstens de kolom Productnaam.");
-      }
-      await bulkUpsert(importedProducts);
-
-      const now = Date.now();
-      const profile: ImportMappingProfile = {
-        id: globalThis.crypto.randomUUID(),
-        name: profileName.trim() || `${fileName} mapping`,
-        format: parsed.format,
-        mappings,
-        createdAt: now,
-        updatedAt: now,
-        lastUsedAt: now,
-      };
-      await db.import_mapping_profiles.put(profile);
-      const job: ImportJob = {
-        id: jobId,
-        fileName,
-        format: parsed.format,
-        status: issues.length > 0 ? "completed-with-errors" : "completed",
-        createdAt: now,
-        completedAt: now,
-        rowCount: parsed.rows.length,
-        importedCount: importedProducts.length - updatedCount,
-        updatedCount,
-        skippedCount: parsed.rows.length - importedProducts.length,
-        errorCount: issues.length,
-        mappings,
-        profileId: profile.id,
-        affectedProductIds: importedProducts.map((product) => product.id),
-        issues: issues.slice(0, 100),
-      };
-      await db.import_jobs.put(job);
-      await audit("import.complete", {
-        jobId,
-        fileName,
-        imported: job.importedCount,
-        updated: job.updatedCount,
-        skipped: job.skippedCount,
-      });
-      await recordIntegrationRun({ storeId: currentStoreId, runId: jobId, operation: "import", sourceName: fileName, sourceFormat: parsed.format, status: issues.length > 0 ? "completed_with_errors" : "completed", rowCount: parsed.rows.length, createdCount: job.importedCount, updatedCount: job.updatedCount, skippedCount: job.skippedCount, errorCount: job.errorCount, mappingSummary });
-      setMessage({
-        tone: "success",
-        text: `${job.importedCount} nieuwe en ${job.updatedCount} bestaande producten verwerkt. Ze staan meteen in de kassa.`,
-      });
-      setParsed(null);
-      setMappings([]);
-      setFileName("");
+      setMessage({ tone: "success", text: `Veilig geactiveerd: ${result.productCount} producten, ${result.customerCount} klanten en ${result.categoryCount} nieuwe categorieën. U kunt dit volledig ongedaan maken tot de eerste echte activiteit.` });
+      setReviewConfirmed(false);
     } catch (error) {
-      const text = error instanceof Error ? error.message : "Import mislukt.";
-      await db.import_jobs.put({
-        id: jobId,
-        fileName,
-        format: parsed.format,
-        status: "failed",
-        createdAt: Date.now(),
-        completedAt: Date.now(),
-        rowCount: parsed.rows.length,
-        importedCount: 0,
-        updatedCount: 0,
-        skippedCount: parsed.rows.length,
-        errorCount: 1,
-        mappings,
-        affectedProductIds: [],
-        issues: [{ row: 0, message: text }],
-      });
-      await recordIntegrationRun({ storeId: currentStoreId, runId: jobId, operation: "import", sourceName: fileName, sourceFormat: parsed.format, status: "failed", rowCount: parsed.rows.length, skippedCount: parsed.rows.length, errorCount: 1, errorCode: "import_failed", errorFingerprint: text.slice(0, 160), mappingSummary });
-      setMessage({ tone: "error", text });
+      setMessage({ tone: "error", text: error instanceof Error ? error.message : "De migratie kon niet veilig geactiveerd worden." });
     } finally {
-      setIsImporting(false);
+      setIsWorking(false);
     }
   };
 
-  const downloadExample = () => {
-    const content = [
-      "Artikelcode;Productnaam;Categorie;Merk;Leverancier;Leverancierscode;EAN;Aankoopprijs;Verkoopprijs;Prijs Telenet klant;Prijs B2B;Voorraad;BTW;Kleur",
-      "MOD-360;360-modem;Netwerk;Telenet;Telenet;TEL-MOD-360;5410000000011;64,00;99,00;79,00;74,00;12;21;Zwart",
-      "REP-DIAG;Diagnose toestel;Services;;;SERV-DIAG;;0,00;35,00;25,00;30,00;;21;",
-    ].join("\n");
-    const url = URL.createObjectURL(new Blob([content], { type: "text/csv;charset=utf-8" }));
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = "pwayment-integration-hub-voorbeeld.csv";
-    anchor.click();
-    URL.revokeObjectURL(url);
+  const undo = async () => {
+    if (!activeMigration || isWorking) return;
+    setIsWorking(true);
+    setMessage(null);
+    try {
+      await undoMigrationActivation(migrationStoreId, activeMigration.id);
+      await Promise.all([refreshProducts(), hydrateCustomers(true), refreshCategories()]);
+      await audit("migration.undo", { migrationId: activeMigration.id });
+      setMessage({ tone: "success", text: "De actieve migratie is volledig ongedaan gemaakt. Uw eerdere Pwayment-gegevens bleven onaangeraakt." });
+    } catch (error) {
+      setMessage({ tone: "error", text: error instanceof Error ? error.message : "Ongedaan maken is niet gelukt." });
+    } finally {
+      setIsWorking(false);
+    }
   };
+
+  const mappingTargets = activeSource === "catalog" ? PRODUCT_MAPPING_TARGETS : CUSTOMER_MAPPING_TARGETS;
+  const activeInputRef = activeSource === "catalog" ? catalogInputRef : customerInputRef;
 
   return (
     <main className="integration-hub-page app-page-content flex-1 overflow-y-auto">
       <div className="mx-auto max-w-[1500px] space-y-6 p-4 sm:p-6 lg:p-8">
-        <header className="grid gap-6 border-b border-slate-200 pb-6 lg:grid-cols-[1.35fr_0.65fr] lg:items-end">
-            <div>
-              <div className="mb-3 inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-[#0e7490]">
-                <Cable size={14} /> Productimport & koppelingen
-              </div>
-              <h1 className="max-w-3xl text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-                Producten importeren
-              </h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-500 sm:text-base">
-                Laad een bestaand bestand in en controleer eerst hoe elk veld wordt gekoppeld. Pas daarna worden producten, prijzen en klanttarieven veilig bijgewerkt voor gebruik aan de kassa.
-              </p>
-              <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2">
-                {["CSV & TSV", "Excel .xlsx", "JSON", "Eigen velden", "Onbeperkte prijsgroepen"].map((label) => (
-                  <span key={label} className="text-xs font-bold text-slate-600">
-                    {label}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <dl className="grid grid-cols-2 gap-x-5 gap-y-4 self-end sm:grid-cols-3">
-              <div className="border-l border-slate-200 pl-4">
-                <dt className="text-xs font-semibold text-slate-500">producten klaar</dt>
-                <dd className="mt-1 text-2xl font-black text-slate-950">{products.length}</dd>
-              </div>
-              <div className="border-l border-slate-200 pl-4">
-                <dt className="text-xs font-semibold text-slate-500">imports voltooid</dt>
-                <dd className="mt-1 text-2xl font-black text-slate-950">{jobs.filter((job) => job.status.startsWith("completed")).length}</dd>
-              </div>
-              <div className="col-span-2 border-l border-[#bae6fd] pl-4 sm:col-span-1">
-                <dt className="flex items-center gap-1.5 text-xs font-extrabold text-[#0e7490]"><Check size={15} /> Geen vaste template</dt>
-                <dd className="mt-1 text-[11px] leading-4 text-slate-500">Kolommen worden gemapt vóór er iets wijzigt.</dd>
-              </div>
-            </dl>
+        <header className="grid gap-6 border-b border-slate-200 pb-6 lg:grid-cols-[1.25fr_0.75fr] lg:items-end">
+          <div>
+            <div className="mb-3 inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-cyan-700"><Sparkles size={14} /> Autonomous Retail Migration</div>
+            <h1 className="max-w-3xl text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Stap over zonder uw winkel opnieuw op te bouwen.</h1>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-500 sm:text-base">Upload de exports die u al heeft. Pwayment herkent de structuur, bewaart uw bronvelden en laat u pas activeren na een leesbare controle. Tot de eerste echte activiteit kunt u de hele migratie in één keer terugdraaien.</p>
+          </div>
+          <dl className="grid grid-cols-3 gap-3 self-end">
+            <div className="border-l border-slate-200 pl-3"><dt className="text-[11px] font-semibold text-slate-500">producten</dt><dd className="mt-1 text-2xl font-black text-slate-950">{products.length}</dd></div>
+            <div className="border-l border-slate-200 pl-3"><dt className="text-[11px] font-semibold text-slate-500">klanten</dt><dd className="mt-1 text-2xl font-black text-slate-950">{customers.length}</dd></div>
+            <div className="border-l border-cyan-200 pl-3"><dt className="text-[11px] font-semibold text-cyan-700">veiligheid</dt><dd className="mt-1 text-xs font-black text-cyan-800">{activeMigration ? "UNDO OPEN" : "VOORSTEL"}</dd></div>
+          </dl>
         </header>
 
-        {message && (
-          <div className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${message.tone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-red-200 bg-red-50 text-red-900"}`} role={message.tone === "error" ? "alert" : "status"}>
-            {message.text}
-          </div>
+        {message && <div role={message.tone === "error" ? "alert" : "status"} className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${message.tone === "error" ? "border-red-200 bg-red-50 text-red-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"}`}>{message.text}</div>}
+
+        {activeMigration && (
+          <section className={`rounded-3xl border p-5 shadow-sm ${activeMigration.firstMeaningfulActivityAt == null ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex gap-3"><span className="rounded-xl bg-white p-2.5 text-emerald-700 shadow-sm"><ShieldCheck size={20} /></span><div><p className="text-xs font-black uppercase tracking-[0.14em] text-emerald-700">Actieve migratiereceipt</p><h2 className="mt-1 text-base font-black text-slate-950">{activeMigration.firstMeaningfulActivityAt == null ? "Uw volledige undo-venster staat nog open." : "De migratie is verzegeld door live activiteit."}</h2><p className="mt-1 text-xs leading-5 text-slate-600">{activeMigration.firstMeaningfulActivityAt == null ? "Nog geen verkoop of andere betekenisvolle activiteit gezien. Een volledige undo verwijdert uitsluitend de records op deze receipt." : "Volledige undo is nu veilig geblokkeerd; een toekomstige correctieworkflow werkt voorwaarts."}</p></div></div>
+              {activeMigration.firstMeaningfulActivityAt == null && <button type="button" onClick={() => void undo()} disabled={isWorking} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-emerald-700 bg-white px-4 py-2 text-sm font-extrabold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"><RotateCcw size={16} /> Alles ongedaan maken</button>}
+            </div>
+          </section>
         )}
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_350px]">
           <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-            {!parsed ? (
-              <>
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <div className="text-xs font-black uppercase tracking-[0.18em] text-sky-600">Stap 1</div>
-                    <h2 className="mt-1 text-xl font-black text-slate-950">Breng uw bestand binnen</h2>
-                    <p className="mt-1 text-sm text-slate-500">Geen kolommen hernoemen. Geen Pwayment-template invullen.</p>
-                  </div>
-                  <button type="button" onClick={downloadExample} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50">
-                    <Download size={15} /> Voorbeeldbestand
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => inputRef.current?.click()}
-                  onDragEnter={(event) => { event.preventDefault(); setIsDragging(true); }}
-                  onDragOver={(event) => event.preventDefault()}
-                  onDragLeave={() => setIsDragging(false)}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    setIsDragging(false);
-                    const file = event.dataTransfer.files[0];
-                    if (file) void loadFile(file);
-                  }}
-                  className={`mt-6 flex min-h-64 w-full flex-col items-center justify-center rounded-3xl border-2 border-dashed px-6 text-center transition ${isDragging ? "border-sky-500 bg-sky-50" : "border-slate-300 bg-slate-50 hover:border-sky-400 hover:bg-sky-50/60"}`}
-                >
-                  <span className="rounded-2xl bg-white p-4 text-sky-600 shadow-sm"><UploadCloud size={32} /></span>
-                  <span className="mt-4 text-base font-black text-slate-900">{isParsing ? "Bestand analyseren…" : "Sleep uw stockbestand hierheen"}</span>
-                  <span className="mt-1 text-sm text-slate-500">of klik om CSV, TSV, Excel of JSON te kiezen</span>
-                  <span className="mt-5 rounded-full bg-slate-200/70 px-3 py-1 text-[11px] font-bold text-slate-600">Uw bestaande structuur mag blijven bestaan</span>
-                </button>
-                <input ref={inputRef} type="file" accept=".csv,.tsv,.xlsx,.json,text/csv,text/tab-separated-values,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) void loadFile(file); }} />
-              </>
+            <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-700">Migratiewerkruimte</p><h2 className="mt-1 text-xl font-black text-slate-950">1. Voeg uw bronnen toe</h2><p className="mt-1 text-sm text-slate-500">Een catalogus, klantenbestand of beide. CSV, TSV, Excel en JSON werken lokaal in uw browser.</p></div><span className="rounded-full bg-slate-100 px-3 py-1.5 text-[11px] font-bold text-slate-600">Geen vaste template</span></div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              {(["catalog", "customers"] as const).map((kind) => {
+                const meta = sourceMeta[kind];
+                const Icon = meta.Icon;
+                const loaded = sources[kind].parsed;
+                return <section key={kind} className={`rounded-2xl border p-4 transition ${activeSource === kind ? "border-cyan-400 bg-cyan-50/60" : "border-slate-200 bg-slate-50"}`}><div className="flex items-start justify-between gap-3"><button type="button" onClick={() => setActiveSource(kind)} className="flex min-w-0 items-start gap-3 text-left"><span className="rounded-xl bg-white p-2 text-cyan-700 shadow-sm"><Icon size={18} /></span><span><span className="block text-sm font-black text-slate-900">{meta.title}</span><span className="mt-1 block text-[11px] leading-4 text-slate-500">{loaded ? `${sources[kind].fileName} · ${loaded.rows.length} rijen` : meta.detail}</span></span></button>{loaded && <button type="button" onClick={() => clearSource(kind)} className="text-[11px] font-bold text-slate-500 hover:text-slate-950">Wissen</button>}</div><div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={() => { setActiveSource(kind); (kind === "catalog" ? catalogInputRef : customerInputRef).current?.click(); }} disabled={isWorking || Boolean(activeMigration)} className="inline-flex items-center gap-2 rounded-xl border border-cyan-700 bg-white px-3 py-2 text-xs font-extrabold text-cyan-800 hover:bg-cyan-50 disabled:opacity-50"><UploadCloud size={15} /> {loaded ? "Vervang bestand" : "Upload bestand"}</button><button type="button" onClick={() => downloadExample(kind)} className="rounded-xl px-3 py-2 text-xs font-bold text-slate-600 hover:bg-white">Voorbeeld</button></div></section>;
+              })}
+            </div>
+            <input ref={catalogInputRef} type="file" accept=".csv,.tsv,.xlsx,.json,text/csv,text/tab-separated-values,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) void loadFile("catalog", file); }} />
+            <input ref={customerInputRef} type="file" accept=".csv,.tsv,.xlsx,.json,text/csv,text/tab-separated-values,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) void loadFile("customers", file); }} />
+
+            {!source.parsed ? (
+              <button type="button" onClick={() => activeInputRef.current?.click()} onDragEnter={(event) => { event.preventDefault(); setIsDragging(activeSource); }} onDragOver={(event) => event.preventDefault()} onDragLeave={() => setIsDragging(null)} onDrop={(event) => { event.preventDefault(); setIsDragging(null); const file = event.dataTransfer.files[0]; if (file) void loadFile(activeSource, file); }} disabled={isWorking || Boolean(activeMigration)} className={`mt-6 flex min-h-48 w-full flex-col items-center justify-center rounded-3xl border-2 border-dashed px-6 text-center transition disabled:opacity-50 ${isDragging === activeSource ? "border-cyan-500 bg-cyan-50" : "border-slate-300 bg-slate-50 hover:border-cyan-400 hover:bg-cyan-50/60"}`}><span className="rounded-2xl bg-white p-4 text-cyan-700 shadow-sm"><UploadCloud size={30} /></span><span className="mt-3 text-sm font-black text-slate-900">Upload {sourceMeta[activeSource].title.toLocaleLowerCase()}</span><span className="mt-1 text-xs text-slate-500">Of sleep het bestand hierheen</span></button>
             ) : (
               <>
-                <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 pb-5">
-                  <div>
-                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-sky-600"><FileSpreadsheet size={15} /> Stap 2 · Slimme mapping</div>
-                    <h2 className="mt-2 text-xl font-black text-slate-950">{fileName}</h2>
-                    <p className="mt-1 text-sm text-slate-500">{fileTypeLabel(parsed.format)} · {parsed.rows.length} rijen · {parsed.headers.length} kolommen{parsed.sheetName ? ` · tabblad ${parsed.sheetName}` : ""}</p>
-                  </div>
-                  <button type="button" onClick={() => { setParsed(null); setMappings([]); setFileName(""); }} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50">Ander bestand</button>
-                </div>
-
-                {profiles.length > 0 && (
-                  <div className="mt-5 flex flex-wrap items-center gap-2">
-                    <span className="mr-1 text-xs font-bold text-slate-500">Bewaarde mapping:</span>
-                    {profiles.slice(0, 4).map((profile) => (
-                      <button key={profile.id} type="button" onClick={() => applyProfile(profile)} className="rounded-full border border-slate-200 px-3 py-1 text-xs font-bold text-slate-700 hover:border-sky-300 hover:bg-sky-50">{profile.name}</button>
-                    ))}
-                  </div>
-                )}
-
-                <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200">
-                  <div className="grid grid-cols-[minmax(130px,0.8fr)_36px_minmax(180px,1fr)_minmax(130px,0.8fr)] gap-2 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-wider text-slate-500">
-                    <span>Uw kolom</span><span /><span>Wordt in Pwayment</span><span>Voorbeeld</span>
-                  </div>
-                  <div className="max-h-[430px] divide-y divide-slate-100 overflow-y-auto">
-                    {mappings.map((mapping) => {
-                      const previewValue = parsed.rows.find((row) => row[parsed.headers.indexOf(mapping.source)]?.trim())?.[parsed.headers.indexOf(mapping.source)] ?? "—";
-                      return (
-                        <div key={mapping.source} className="grid grid-cols-[minmax(130px,0.8fr)_36px_minmax(180px,1fr)_minmax(130px,0.8fr)] items-center gap-2 px-4 py-3">
-                          <div className="truncate text-sm font-bold text-slate-800" title={mapping.source}>{mapping.source}</div>
-                          <ChevronRight size={16} className="text-slate-300" />
-                          <select value={mapping.target} onChange={(event) => updateMapping(mapping.source, event.target.value)} className="min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-800 focus:border-sky-500 focus:outline-none">
-                            {CORE_TARGETS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                            <optgroup label="Klantprijzen">
-                              {discoveredGroups.map((group) => <option key={group} value={`price:${group}`}>Prijs · {group}</option>)}
-                            </optgroup>
-                            {!CORE_TARGETS.some(([value]) => value === mapping.target) && !mapping.target.startsWith("price:") && <option value={mapping.target}>{mapping.target}</option>}
-                          </select>
-                          <div className="truncate rounded-lg bg-slate-50 px-2.5 py-2 text-xs text-slate-500" title={previewValue}>{previewValue}</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="mt-6 grid gap-3 sm:grid-cols-4">
-                  {[
-                    [preview.valid, "geldige rijen", "text-slate-950"],
-                    [preview.newCount, "nieuwe producten", "text-emerald-700"],
-                    [preview.updateCount, "updates", "text-sky-700"],
-                    [preview.issueCount, "te controleren", preview.issueCount ? "text-amber-700" : "text-slate-500"],
-                  ].map(([value, label, tone]) => (
-                    <div key={String(label)} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <div className={`text-xl font-black ${tone}`}>{value}</div><div className="mt-1 text-xs font-semibold text-slate-500">{label}</div>
-                    </div>
-                  ))}
-                </div>
-                {preview.priceGroups.length > 0 && (
-                  <div className="mt-4 flex items-start gap-3 rounded-2xl border border-violet-200 bg-violet-50 p-4 text-violet-900">
-                    <Layers3 size={19} className="mt-0.5 shrink-0" />
-                    <div><div className="text-sm font-extrabold">{preview.priceGroups.length} klantprijsgroep{preview.priceGroups.length === 1 ? "" : "en"} herkend</div><div className="mt-1 text-xs">{preview.priceGroups.join(" · ")} — gekoppelde klanten krijgen deze prijs automatisch aan de kassa.</div></div>
-                  </div>
-                )}
-                {preview.issueCount > 0 && (
-                  <div className="mt-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900"><AlertTriangle size={19} className="mt-0.5 shrink-0" /><div className="text-xs leading-5"><strong>{preview.issueCount} rij(en) worden overgeslagen.</strong> Een productnaam ontbreekt, een prijs is dubbelzinnig, of het BTW-tarief is niet Belgisch ondersteund. Geldige rijen kunnen veilig verder.</div></div>
-                )}
-                <div className="mt-4 flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-slate-700"><AlertTriangle size={19} className="mt-0.5 shrink-0 text-slate-500" /><div className="text-xs leading-5"><strong>Geen automatische schemawijzigingen.</strong> Onbekende kolommen worden standaard niet geïmporteerd en ontbrekende categorieën blokkeren alleen de betrokken rij. Maak velden of categorieën bewust aan en map daarna opnieuw.</div></div>
-                <div className="mt-6 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-end sm:justify-between">
-                  <label className="block flex-1"><span className="mb-1.5 block text-xs font-bold text-slate-600">Naam van deze mapping</span><input value={profileName} onChange={(event) => setProfileName(event.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-semibold focus:border-sky-500 focus:outline-none" /></label>
-                  <button type="button" disabled={isImporting || preview.valid === 0} onClick={() => void performImport()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#0e7490] bg-[#0e7490] px-5 py-2.5 text-sm font-extrabold text-white shadow-[0_1px_2px_rgba(15,23,42,0.08)] transition hover:bg-[#0f6677] disabled:cursor-not-allowed disabled:opacity-50">
-                    {isImporting ? <RefreshCw size={17} className="animate-spin" /> : <ArrowRight size={17} />}{isImporting ? "Importeren…" : `Importeer ${preview.valid} producten`}
-                  </button>
-                </div>
+                <div className="mt-7 flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-700">2. Controleer de vertaling</p><h2 className="mt-1 text-xl font-black text-slate-950">{source.fileName}</h2><p className="mt-1 text-sm text-slate-500">{fileTypeLabel(source.parsed.format)} · {source.parsed.rows.length} rijen · {source.parsed.headers.length} kolommen</p></div><button type="button" onClick={() => clearSource(activeSource)} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50">Ander bestand</button></div>
+                <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200"><div className="grid grid-cols-[minmax(105px,0.8fr)_28px_minmax(155px,1fr)_minmax(95px,0.65fr)] gap-2 bg-slate-50 px-3 py-3 text-[10px] font-black uppercase tracking-wider text-slate-500 sm:px-4"><span>Uw kolom</span><span /><span>Wordt in Pwayment</span><span>Voorbeeld</span></div><div className="max-h-[390px] divide-y divide-slate-100 overflow-y-auto">{source.mappings.map((mapping) => { const index = source.parsed!.headers.indexOf(mapping.source); const sample = source.parsed!.rows.find((row) => row[index]?.trim())?.[index] ?? "—"; return <div key={mapping.source} className="grid grid-cols-[minmax(105px,0.8fr)_28px_minmax(155px,1fr)_minmax(95px,0.65fr)] items-center gap-2 px-3 py-3 sm:px-4"><div className="truncate text-sm font-bold text-slate-800" title={mapping.source}>{mapping.source}</div><ChevronRight size={15} className="text-slate-300" /><select value={mapping.target} onChange={(event) => updateMapping(mapping.source, event.target.value)} disabled={Boolean(activeMigration)} className="min-w-0 rounded-xl border border-slate-200 bg-white px-2 py-2 text-xs font-bold text-slate-800 focus:border-cyan-500 focus:outline-none disabled:opacity-50">{mappingTargets.map(([value, label]) => <option key={value} value={value}>{label}</option>)}{activeSource === "catalog" && <optgroup label="Klantprijzen">{["telenet-klant", "niet-klant", "b2b", "medewerker", "contract", "promo"].map((group) => <option key={group} value={`price:${group}`}>Prijs · {group}</option>)}</optgroup>}{!mappingTargets.some((entry) => entry[0] === mapping.target) && !mapping.target.startsWith("price:") && <option value={mapping.target}>{mapping.target}</option>}</select><div className="truncate rounded-lg bg-slate-50 px-2 py-2 text-xs text-slate-500" title={sample}>{sample}</div></div>; })}</div></div>
+                <p className="mt-3 text-xs leading-5 text-slate-500">Velden die niet bij de financiële kern horen, worden niet weggegooid: voor catalogusrijen blijven ze per product beschikbaar als eigen bronvelden. U kunt elke kolom hierboven alsnog expliciet koppelen.</p>
               </>
             )}
           </section>
 
           <aside className="space-y-6">
-            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center gap-2"><Database size={18} className="text-sky-600" /><h2 className="text-sm font-black text-slate-900">Wat werkt nu</h2></div>
-              <div className="mt-4 space-y-3">
-                {([
-                  [FileSpreadsheet, "Bestandsimport", "CSV, TSV en Excel met vrije kolommen", true],
-                  [FileJson, "JSON-import", "Lijsten uit bestaande systemen", true],
-                  [Layers3, "Prijsboeken", "Klant, B2B, medewerker, contract…", true],
-                  [RefreshCw, "Automatische synchronisatie", "API- en leveranciersconnectors", false],
-                ] as Array<[React.ElementType, string, string, boolean]>).map(([Icon, title, detail, live]) => {
-                  const CardIcon = Icon as typeof FileSpreadsheet;
-                  return <div key={String(title)} className="flex gap-3 rounded-2xl bg-slate-50 p-3"><CardIcon size={18} className={live ? "text-emerald-600" : "text-slate-400"} /><div className="min-w-0"><div className="flex items-center gap-2 text-xs font-extrabold text-slate-800">{title}<span className={`rounded-full px-2 py-0.5 text-[9px] uppercase ${live ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-500"}`}>{live ? "Live" : "Volgende fase"}</span></div><div className="mt-1 text-[11px] leading-4 text-slate-500">{detail}</div></div></div>;
-                })}
-              </div>
-            </section>
+            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center gap-2"><ClipboardCheck size={18} className="text-cyan-700" /><h2 className="text-sm font-black text-slate-900">3. Migratiereceipt</h2></div><p className="mt-2 text-xs leading-5 text-slate-500">Dit is wat er zal worden aangemaakt. Geen bestaande Pwayment-records worden overschreven.</p><div className="mt-4 grid grid-cols-3 gap-2 text-center"><div className="rounded-xl bg-emerald-50 p-3"><div className="text-lg font-black text-emerald-700">{mappedCatalog?.products.length ?? 0}</div><div className="text-[10px] font-bold text-emerald-700">producten</div></div><div className="rounded-xl bg-sky-50 p-3"><div className="text-lg font-black text-sky-700">{mappedCustomers?.customers.length ?? 0}</div><div className="text-[10px] font-bold text-sky-700">klanten</div></div><div className="rounded-xl bg-violet-50 p-3"><div className="text-lg font-black text-violet-700">{mappedCatalog?.categories.length ?? 0}</div><div className="text-[10px] font-bold text-violet-700">categorieën</div></div></div>{totalIssues > 0 && <div className="mt-4 flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900"><AlertTriangle size={17} className="mt-0.5 shrink-0" /><span><strong>{totalIssues} rij(en) vragen aandacht.</strong> Corrigeer de mapping of bron voordat u activeert. Pwayment slaat in deze veilige modus geen onvolledige rijen stilzwijgend over.</span></div>}{totalIssues === 0 && totalRecords > 0 && <div className="mt-4 flex gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs leading-5 text-emerald-900"><Check size={17} className="mt-0.5 shrink-0" /><span>Alle geladen rijen zijn valide voor deze eerste, volledig omkeerbare migratie.</span></div>}</section>
 
-            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between"><div className="flex items-center gap-2"><History size={18} className="text-slate-500" /><h2 className="text-sm font-black text-slate-900">Laatste imports</h2></div><span className="text-[10px] font-bold text-slate-400">AUDIT TRAIL</span></div>
-              <div className="mt-4 space-y-3">
-                {jobs.length === 0 ? <p className="rounded-2xl bg-slate-50 p-4 text-xs leading-5 text-slate-500">Nog geen import uitgevoerd. Na de eerste import verschijnt hier exact wat nieuw, bijgewerkt en overgeslagen werd.</p> : jobs.map((job) => (
-                  <div key={job.id} className="rounded-2xl border border-slate-100 p-3">
-                    <div className="flex items-start justify-between gap-2"><div className="min-w-0"><div className="truncate text-xs font-extrabold text-slate-800">{job.fileName}</div><div className="mt-1 text-[10px] text-slate-400">{formatDateTime(job.createdAt)}</div></div><span className={`rounded-full px-2 py-1 text-[9px] font-black uppercase ${job.status === "failed" ? "bg-red-100 text-red-700" : job.status === "completed-with-errors" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>{job.status === "failed" ? "Mislukt" : job.status === "completed-with-errors" ? "Deels" : "Klaar"}</span></div>
-                    <div className="mt-3 grid grid-cols-3 gap-1 text-center"><div className="rounded-lg bg-emerald-50 px-1 py-2"><div className="text-xs font-black text-emerald-700">{job.importedCount}</div><div className="text-[9px] text-emerald-700">nieuw</div></div><div className="rounded-lg bg-sky-50 px-1 py-2"><div className="text-xs font-black text-sky-700">{job.updatedCount}</div><div className="text-[9px] text-sky-700">update</div></div><div className="rounded-lg bg-slate-50 px-1 py-2"><div className="text-xs font-black text-slate-600">{job.skippedCount}</div><div className="text-[9px] text-slate-500">over</div></div></div>
-                  </div>
-                ))}
-              </div>
-            </section>
+            {proposal && <section className="rounded-3xl border border-cyan-200 bg-cyan-50/70 p-5 shadow-sm"><div className="flex gap-3"><span className="rounded-xl bg-white p-2 text-cyan-700 shadow-sm"><Sparkles size={18} /></span><div><p className="text-xs font-black uppercase tracking-[0.14em] text-cyan-700">Bedrijfsscan</p><h2 className="mt-1 text-sm font-black text-slate-950">Voorgesteld: {proposal.nodes.find((node) => node.key === "business.industry")?.value as string}</h2></div></div><div className="mt-4 space-y-2">{blockingQuestions.map((question) => <div key={question.id} className="flex gap-2 rounded-xl border border-cyan-100 bg-white/80 p-3 text-xs leading-5 text-slate-700"><CircleHelp size={16} className="mt-0.5 shrink-0 text-amber-600" />{question.detail}</div>)}{blockingQuestions.length === 0 && <p className="rounded-xl border border-cyan-100 bg-white/80 p-3 text-xs leading-5 text-slate-600">De scan heeft geen blokkerende opzetvraag voor deze bron. De voorgestelde winkelopzet wordt in de receipt bewaard, maar niet automatisch op uw account toegepast.</p>}</div></section>}
+
+            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center gap-2"><ShieldCheck size={18} className="text-emerald-600" /><h2 className="text-sm font-black text-slate-900">Veilig activeren</h2></div><label className="mt-4 flex cursor-pointer items-start gap-3 text-xs leading-5 text-slate-600"><input type="checkbox" checked={reviewConfirmed} onChange={(event) => setReviewConfirmed(event.target.checked)} disabled={Boolean(activeMigration) || totalRecords === 0 || totalIssues > 0} className="mt-0.5 h-4 w-4 rounded accent-cyan-700" /><span>Ik heb de mapping en aantallen gecontroleerd. Ik begrijp dat deze V1-migratie alleen nieuwe catalogus-, categorie- en klantrecords maakt en dat ik die volledig kan undo’en vóór de eerste live activiteit.</span></label><button type="button" onClick={() => void activate()} disabled={!canActivate} className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-cyan-700 px-4 py-2.5 text-sm font-extrabold text-white hover:bg-cyan-800 disabled:cursor-not-allowed disabled:opacity-50">{isWorking ? <LoaderCircle size={17} className="animate-spin" /> : <ShieldCheck size={17} />}{isWorking ? "Bezig…" : `Activeer ${totalRecords || ""} veilige record${totalRecords === 1 ? "" : "s"}`}</button>{activeMigration && <p className="mt-3 text-center text-[11px] leading-4 text-slate-500">Rond of undo de actieve migratie af voor u een nieuwe start.</p>}</section>
           </aside>
         </div>
-
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="grid gap-5 md:grid-cols-3">
-            {[
-              ["1", "Upload wat u al heeft", "Het bestand hoeft niet aan Pwayment aangepast te worden."],
-              ["2", "Controleer de slimme mapping", "Financiële kernvelden blijven streng; eigen velden blijven volledig bewaard."],
-              ["3", "Ga direct verkopen", `Standaardprijzen én klantprijzen zijn onmiddellijk actief. Voorbeeld: ${formatEUR(7900)} voor Telenet-klanten.`],
-            ].map(([number, title, detail]) => <div key={number} className="flex gap-4"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-950 text-sm font-black text-white">{number}</div><div><h3 className="text-sm font-extrabold text-slate-900">{title}</h3><p className="mt-1 text-xs leading-5 text-slate-500">{detail}</p></div></div>)}
-          </div>
-        </section>
       </div>
     </main>
   );

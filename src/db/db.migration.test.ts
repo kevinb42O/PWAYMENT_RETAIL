@@ -98,11 +98,14 @@ describe('POSDatabase v9 → v12 migration', () => {
     const upgraded = new POSDatabase();
     try {
       await upgraded.open();
-      expect(upgraded.verno).toBe(15);
+      expect(upgraded.verno).toBe(16);
       expect(upgraded.webshop_orders).toBeDefined();
       expect(upgraded.import_jobs).toBeDefined();
       expect(upgraded.import_mapping_profiles).toBeDefined();
       expect(upgraded.service_orders).toBeDefined();
+      expect(upgraded.migration_activations).toBeDefined();
+      expect(upgraded.migration_inverse_changes).toBeDefined();
+      expect(upgraded.migration_activity_locks).toBeDefined();
 
       // Legacy rows survive the upgrade untouched.
       const rows = await upgraded.transactions.toArray();

@@ -9,6 +9,7 @@ import {
   OutboxEntry,
   PaymentMethod,
   Product,
+  SaleDocumentRequest,
   Transaction,
 } from "../types";
 import { calculateTotals, Totals, UnsupportedVatRateError } from "../utils/vat";
@@ -16,6 +17,10 @@ import { isGiftCardExpired } from "../utils/giftCards";
 import { getMerchantProfileSnapshot } from "../store/useMerchantProfile";
 import { DEFAULT_REGISTER_ID, isGiftCardProduct } from "../utils/financial";
 import type { Json } from "../types/database.generated";
+import {
+  currentMigrationTransactionContext,
+  recordMeaningfulActivity,
+} from "./migrationActivity";
 
 export type CheckoutErrorCode =
   | "empty-cart"
@@ -73,6 +78,7 @@ export interface CheckoutInput {
   customerId?: string;
   userId?: string;
   userName?: string;
+  documentRequest?: SaleDocumentRequest;
 }
 
 export interface CheckoutResult {
@@ -119,16 +125,56 @@ export const finalizeCheckout = (
     );
   }
   const storeId = useAuth.getState().currentStoreId;
-  const promise = runCheckout(input).finally(() => {
+  const promise = runCheckout(input, storeId).finally(() => {
     inFlight = null;
   });
   inFlight = { clientRequestId: input.clientRequestId, promise };
   return promise;
 };
 
+const validateDocumentRequest = (
+  request: SaleDocumentRequest | undefined,
+): SaleDocumentRequest => {
+  const normalized: SaleDocumentRequest = request ?? { type: "receipt" };
+  if (normalized.type === "receipt") return { type: "receipt" };
+
+  const recipient = normalized.recipient;
+  if (!recipient) {
+    throw new CheckoutError("invalid-request", "Facturatiegegevens ontbreken.");
+  }
+  const required = [recipient.name, recipient.addressLine1, recipient.postalCode, recipient.city, recipient.countryCode];
+  if (required.some((value) => !value?.trim())) {
+    throw new CheckoutError(
+      "invalid-request",
+      "Vul naam, adres, postcode, plaats en land in voor de factuur.",
+    );
+  }
+  if (normalized.type === "invoice-b2b" && !recipient.vatNumber?.trim()) {
+    throw new CheckoutError("invalid-request", "Een btw-nummer is verplicht voor een B2B-factuur.");
+  }
+  return {
+    type: normalized.type,
+    recipient: {
+      ...recipient,
+      name: recipient.name.trim(),
+      companyName: recipient.companyName?.trim() || undefined,
+      addressLine1: recipient.addressLine1.trim(),
+      postalCode: recipient.postalCode.trim(),
+      city: recipient.city.trim(),
+      countryCode: recipient.countryCode.trim().toUpperCase(),
+      vatNumber: recipient.vatNumber?.trim().toUpperCase() || undefined,
+      email: recipient.email?.trim().toLocaleLowerCase("nl-BE") || undefined,
+      purchaseOrderReference: recipient.purchaseOrderReference?.trim() || undefined,
+    },
+  };
+};
 
 
-const runCheckout = async (input: CheckoutInput): Promise<CheckoutResult> => {
+
+const runCheckout = async (
+  input: CheckoutInput,
+  storeId: string | null,
+): Promise<CheckoutResult> => {
   if (input.items.length === 0) {
     throw new CheckoutError("empty-cart", "Winkelwagen is leeg.");
   }
@@ -169,6 +215,7 @@ const runCheckout = async (input: CheckoutInput): Promise<CheckoutResult> => {
 
   const allocations = dedupeGiftCards(input.giftCards);
   const now = Date.now();
+  const documentRequest = validateDocumentRequest(input.documentRequest);
   const merchantSnapshot = { ...getMerchantProfileSnapshot() };
 
   return db.transaction(
@@ -183,6 +230,8 @@ const runCheckout = async (input: CheckoutInput): Promise<CheckoutResult> => {
       db.outbox,
       db.shifts,
       db.stock_movements,
+      db.migration_activations,
+      db.migration_activity_locks,
     ],
     async (): Promise<CheckoutResult> => {
       const existing = await db.transactions
@@ -360,6 +409,7 @@ const runCheckout = async (input: CheckoutInput): Promise<CheckoutResult> => {
         customerId: input.customerId,
         source: "live",
         kind: "sale",
+        documentRequest,
         merchantSnapshot,
         registerId: DEFAULT_REGISTER_ID,
         shiftId: openShift?.id,
@@ -367,8 +417,27 @@ const runCheckout = async (input: CheckoutInput): Promise<CheckoutResult> => {
 
       const id = (await db.transactions.add(tx)) as number;
       const documentNumber = `POS-${new Date(now).getFullYear()}-${String(id).padStart(8, "0")}`;
-      const persisted: Transaction = { ...tx, id, documentNumber };
+      const invoiceNumber = documentRequest.type === "receipt"
+        ? undefined
+        : `INV-${new Date(now).getFullYear()}-${String(id).padStart(8, "0")}`;
+      const persisted: Transaction = {
+        ...tx,
+        id,
+        documentNumber,
+        invoiceNumber,
+        invoiceIssuedAt: invoiceNumber ? now : undefined,
+      };
       await db.transactions.put(persisted);
+      await recordMeaningfulActivity(currentMigrationTransactionContext(), {
+        storeId,
+        activityType: "checkout",
+        entityType: "transaction",
+        entityId: String(id),
+        occurredAt: now,
+        actorUserId: input.userId,
+        actorName: input.userName,
+        correlationId: input.clientRequestId,
+      });
       if (redemptionEvents.length > 0) {
         await db.gift_card_events.bulkAdd(
           redemptionEvents.map((event) => ({ ...event, transactionId: id })),
