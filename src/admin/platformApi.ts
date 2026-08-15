@@ -142,6 +142,53 @@ export interface PlatformSupportSnapshot {
   recent_audit: Array<{ occurred_at: string; action: string; user_name: string | null; source: string }>;
 }
 
+export interface PlatformMember {
+  user_id: string;
+  email: string;
+  display_name: string | null;
+  role: PlatformRole;
+  scopes: string[];
+  status: "active" | "suspended";
+  created_at: string;
+  updated_at: string;
+}
+
+export type PlatformReleaseStatus = "draft" | "in_review" | "approved" | "live" | "rolled_back";
+export type PlatformReleaseRisk = "low" | "medium" | "high";
+
+export interface PlatformRelease {
+  id: string;
+  feature_key: string;
+  title: string;
+  description: string;
+  enabled: boolean;
+  risk_level: PlatformReleaseRisk;
+  target_mode: "all" | "selected";
+  target_store_ids: string[];
+  status: PlatformReleaseStatus;
+  requested_by_user_id: string;
+  reviewed_by_user_id: string | null;
+  approved_at: string | null;
+  launched_by_user_id: string | null;
+  launched_at: string | null;
+  rolled_back_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PlatformAuditEntry {
+  id: string;
+  action: string;
+  reason: string | null;
+  detail: Record<string, unknown>;
+  occurred_at: string;
+  actor_user_id: string | null;
+  actor_email: string | null;
+  actor_name: string | null;
+  target_store_id: string | null;
+  target_incident_id: string | null;
+}
+
 export interface PlatformIncidentDetail extends PlatformIncident {
   operation: string | null;
   first_seen_at: string;
@@ -209,4 +256,50 @@ export const updatePlatformIncident = (
     target_incident_id: incidentId,
     next_status: status,
     operator_note: note?.trim() || null,
+  });
+
+export const listPlatformMembers = () => call<PlatformMember[]>("platform_list_members");
+
+export const upsertPlatformMember = (
+  email: string,
+  role: PlatformRole,
+  scopes: string[],
+  status: "active" | "suspended",
+) => call<Pick<PlatformMember, "user_id" | "role" | "scopes" | "status">>("platform_upsert_member", {
+  member_email: email.trim(),
+  member_role: role,
+  member_scopes: scopes,
+  member_status: status,
+});
+
+export const listPlatformReleases = () => call<PlatformRelease[]>("platform_list_releases");
+
+export const createPlatformRelease = (input: {
+  featureKey: string;
+  title: string;
+  description: string;
+  enabled: boolean;
+  riskLevel: PlatformReleaseRisk;
+  targetMode: "all" | "selected";
+  targetStoreIds: string[];
+}) => call<{ id: string; status: PlatformReleaseStatus }>("platform_create_release", {
+  release_feature_key: input.featureKey.trim(),
+  release_title: input.title.trim(),
+  release_description: input.description.trim(),
+  release_enabled: input.enabled,
+  release_risk_level: input.riskLevel,
+  release_target_mode: input.targetMode,
+  release_target_store_ids: input.targetStoreIds,
+});
+
+export const transitionPlatformRelease = (releaseId: string, nextStatus: PlatformReleaseStatus) =>
+  call<{ id: string; status: PlatformReleaseStatus }>("platform_transition_release", {
+    target_release_id: releaseId,
+    next_status: nextStatus,
+  });
+
+export const listPlatformAuditEntries = (searchTerm = "") =>
+  call<{ items: PlatformAuditEntry[] }>("platform_list_audit_entries", {
+    search_term: searchTerm.trim() || null,
+    page_limit: 100,
   });

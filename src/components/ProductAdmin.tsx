@@ -7,6 +7,7 @@ import { centsToDecimalString, formatEUR, parseDecimalToCents } from '../utils/m
 import { parseProductsCsv, serializeProductsCsv, slugifyId } from '../utils/productCsv';
 import { isSupportedVatRate, SUPPORTED_VAT_RATES } from '../utils/vat';
 import { FEATURES } from '../config/features';
+import { usePlatformFeatureFlag } from '../billing/usePlatformFeatureFlag';
 import { Modal } from './Modal';
 import { useCategories } from '../store/useCategories';
 import { BELGIAN_RETAIL_VAT_RATE } from '../data/categories';
@@ -56,6 +57,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
   const bulkUpsert = useProducts((s) => s.bulkUpsert);
   const remove = useProducts((s) => s.remove);
   const restore = useProducts((s) => s.restore);
+  const csvImportEnabled = usePlatformFeatureFlag('csv_import', FEATURES.csvImport);
 
   const categories = useCategories((s) => s.list);
   const hydrateCategories = useCategories((s) => s.hydrate);
@@ -331,7 +333,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
   };
 
   const importProducts = async (file: File) => {
-    if (!FEATURES.csvImport) {
+    if (!csvImportEnabled) {
       alert('CSV-import is uitgeschakeld.');
       return;
     }
@@ -415,8 +417,8 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                   </button>
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={!FEATURES.csvImport}
-                    title={FEATURES.csvImport ? undefined : 'CSV-import is uitgeschakeld'}
+                    disabled={!csvImportEnabled}
+                    title={csvImportEnabled ? undefined : 'CSV-import is uitgeschakeld'}
                     className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all border border-slate-200 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                   >
                     <Upload size={15} />
@@ -457,8 +459,8 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
               </button>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                disabled={!FEATURES.csvImport}
-                title={FEATURES.csvImport ? undefined : 'CSV-import is uitgeschakeld'}
+                disabled={!csvImportEnabled}
+                title={csvImportEnabled ? undefined : 'CSV-import is uitgeschakeld'}
                 className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all border border-slate-200 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 <Upload size={15} />
