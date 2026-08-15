@@ -26,6 +26,7 @@ import {
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { Button } from "../components/ui/Button";
 import { FeedbackBanner } from "../components/ui/FeedbackBanner";
+import { TenantControls } from "./TenantControls";
 import {
   getPlatformOverview,
   getPlatformSession,
@@ -196,7 +197,8 @@ const Incidents = () => {
 
 const platformScopes = [
   "dashboard.read", "stores.read", "support.write", "incidents.write", "billing.read",
-  "team.read", "team.write", "releases.read", "releases.write", "releases.approve", "audit.read",
+  "billing.write", "integrations.read", "lifecycle.delete", "team.read", "team.write",
+  "releases.read", "releases.write", "releases.approve", "audit.read",
 ] as const;
 
 const roleLabels: Record<PlatformRole, string> = {
@@ -205,6 +207,13 @@ const roleLabels: Record<PlatformRole, string> = {
   support: "Support",
   billing: "Billing",
   read_only: "Read-only",
+};
+
+const StoreDetailWithControls = ({ storeId, onBack, onDeleted }: { storeId: string; onBack: () => void; onDeleted: () => void }) => {
+  const [detail, setDetail] = useState<PlatformStoreDetail | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => { void getPlatformStoreDetail(storeId).then(setDetail).catch((err) => setError(err instanceof Error ? err.message : "Tenantcontroles konden niet geladen worden.")); }, [storeId]);
+  return <><StoreDetail storeId={storeId} onBack={onBack} />{error ? <FeedbackBanner tone="error" className="mt-5">{error}</FeedbackBanner> : detail && <TenantControls storeId={storeId} detail={detail} onDeleted={onDeleted} />}</>;
 };
 
 const Team = ({ session }: { session: PlatformSession }) => {
@@ -257,5 +266,5 @@ export default function AdminApp() {
   const title = useMemo(() => route.view === "overview" ? "Overzicht" : route.view === "stores" ? "Winkels" : route.view === "incidents" ? "Incidenten" : route.view === "team" ? "Team & toegang" : route.view === "releases" ? "Releases" : route.view === "audit" ? "Platformaudit" : "Winkeldossier", [route.view]);
   if (checking) return <main className="flex min-h-dvh items-center justify-center bg-slate-50 text-sm font-bold text-slate-500">Platformsessie controleren…</main>;
   if (!session) return <PlatformLogin onAuthenticated={authenticate} />;
-  return <div className="flex min-h-dvh flex-col bg-slate-50 text-slate-900 lg:flex-row"><Sidebar view={route.view} onNavigate={navigate} onLogout={() => void logout()} /><main className="min-w-0 flex-1"><header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 sm:px-6"><div><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">PWAYMENT · {session.role}</p><p className="mt-0.5 text-sm font-extrabold text-slate-900">{title}</p></div><button type="button" onClick={() => void logout()} className="rounded-lg p-2 text-slate-500 hover:bg-slate-50 lg:hidden" aria-label="Afmelden"><LogOut size={17} /></button></header>{accessError && <div className="px-4 pt-4 sm:px-6"><FeedbackBanner tone="error" onDismiss={() => setAccessError(null)}>{accessError}</FeedbackBanner></div>}<div className="p-4 sm:p-6">{route.view === "overview" && <Overview overview={overview} loading={overviewLoading} onRefresh={() => void loadOverview()} onOpenStores={(storeId) => navigate(storeId ? `/admin/stores/${encodeURIComponent(storeId)}` : "/admin/stores")} />}{route.view === "stores" && <Stores onOpen={(store) => navigate(`/admin/stores/${encodeURIComponent(store.id)}`)} />}{route.view === "store" && route.storeId && <StoreDetail storeId={route.storeId} onBack={() => navigate("/admin/stores")} />}{route.view === "incidents" && <Incidents />}{route.view === "team" && <Team session={session} />}{route.view === "releases" && <Releases />}{route.view === "audit" && <Audit />}</div></main></div>;
+  return <div className="flex min-h-dvh flex-col bg-slate-50 text-slate-900 lg:flex-row"><Sidebar view={route.view} onNavigate={navigate} onLogout={() => void logout()} /><main className="min-w-0 flex-1"><header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 sm:px-6"><div><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">PWAYMENT · {session.role}</p><p className="mt-0.5 text-sm font-extrabold text-slate-900">{title}</p></div><button type="button" onClick={() => void logout()} className="rounded-lg p-2 text-slate-500 hover:bg-slate-50 lg:hidden" aria-label="Afmelden"><LogOut size={17} /></button></header>{accessError && <div className="px-4 pt-4 sm:px-6"><FeedbackBanner tone="error" onDismiss={() => setAccessError(null)}>{accessError}</FeedbackBanner></div>}<div className="p-4 sm:p-6">{route.view === "overview" && <Overview overview={overview} loading={overviewLoading} onRefresh={() => void loadOverview()} onOpenStores={(storeId) => navigate(storeId ? `/admin/stores/${encodeURIComponent(storeId)}` : "/admin/stores")} />}{route.view === "stores" && <Stores onOpen={(store) => navigate(`/admin/stores/${encodeURIComponent(store.id)}`)} />}{route.view === "store" && route.storeId && <StoreDetailWithControls storeId={route.storeId} onBack={() => navigate("/admin/stores")} onDeleted={() => navigate("/admin/stores")} />}{route.view === "incidents" && <Incidents />}{route.view === "team" && <Team session={session} />}{route.view === "releases" && <Releases />}{route.view === "audit" && <Audit />}</div></main></div>;
 }

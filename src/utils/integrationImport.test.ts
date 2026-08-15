@@ -22,8 +22,8 @@ describe("integration import", () => {
     );
   });
 
-  it("preserves unknown columns as custom fields", () => {
-    expect(inferFieldMapping("Framemaat").target).toBe("custom:framemaat");
+  it("leaves unknown columns unmapped until a merchant reviews them", () => {
+    expect(inferFieldMapping("Framemaat").target).toBe("ignore");
   });
 
   it("detects delimiters, escaped quotes, exact business fields and common price variants", () => {

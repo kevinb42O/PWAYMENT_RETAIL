@@ -189,6 +189,26 @@ export interface PlatformAuditEntry {
   target_incident_id: string | null;
 }
 
+export interface PlatformIntegrationRun {
+  id: string;
+  operation: "import" | "connection_test" | "sync" | "webhook";
+  source_name: string;
+  source_format: string | null;
+  status: "running" | "completed" | "completed_with_errors" | "failed" | "cancelled";
+  row_count: number;
+  created_count: number;
+  updated_count: number;
+  skipped_count: number;
+  error_count: number;
+  error_code: string | null;
+  error_fingerprint: string | null;
+  mapping_summary: Record<string, unknown>;
+  started_at: string;
+  completed_at: string | null;
+  actor_name: string | null;
+  actor_email: string | null;
+}
+
 export interface PlatformIncidentDetail extends PlatformIncident {
   operation: string | null;
   first_seen_at: string;
@@ -302,4 +322,29 @@ export const listPlatformAuditEntries = (searchTerm = "") =>
   call<{ items: PlatformAuditEntry[] }>("platform_list_audit_entries", {
     search_term: searchTerm.trim() || null,
     page_limit: 100,
+  });
+
+export const listPlatformIntegrationRuns = (storeId: string) =>
+  call<{ items: PlatformIntegrationRun[] }>("platform_list_integration_runs", {
+    target_store_id: storeId,
+    page_limit: 100,
+  });
+
+export const updatePlatformStoreSubscription = (
+  storeId: string,
+  plan: "basic" | "pro" | "enterprise",
+  status: "trialing" | "active" | "past_due" | "canceled" | "expired",
+  reason: string,
+) => call<{ plan_code: string; status: string; version: number }>("platform_update_store_subscription", {
+  target_store_id: storeId,
+  target_plan: plan,
+  target_status: status,
+  change_reason: reason,
+});
+
+export const deletePlatformStore = (storeId: string, expectedStoreName: string, reason: string) =>
+  call<{ deleted_store_id: string; deleted_store_name: string; deleted_orphan_users: number }>("platform_delete_store", {
+    target_store_id: storeId,
+    expected_store_name: expectedStoreName,
+    deletion_reason: reason,
   });

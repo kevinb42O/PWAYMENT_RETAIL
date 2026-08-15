@@ -241,8 +241,10 @@ export const inferFieldMapping = (header: string): ImportFieldMapping => {
   }
   return {
     source: header,
-    target: `custom:${normalizePriceGroup(header) || "veld"}`,
-    confidence: 0.55,
+    // Unknown columns must be reviewed by a merchant; silently creating a
+    // custom field makes imports impossible to reason about or roll back.
+    target: "ignore",
+    confidence: 0,
   };
 };
 

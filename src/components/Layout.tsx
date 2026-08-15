@@ -7,7 +7,7 @@ import { useProducts } from "../store/useProducts";
 import { matchesCatalogQuery } from "../utils/productLookup";
 import { FeatureGate } from "../billing/FeatureGate";
 import { TrialStatus } from "../billing/TrialStatus";
-import { FEATURE_KEYS, isFeatureEnabledForSnapshot, planLabel, useEntitlements } from "../billing/entitlements";
+import { FEATURE_KEYS, isFeatureEnabledForSnapshot, planLabel, useEntitlements, type FeatureKey } from "../billing/entitlements";
 import { supabase } from "../lib/supabase";
 import { useStoreConfiguration } from "../store/useStoreConfiguration";
 import { useWorkforce } from "../store/useWorkforce";
@@ -161,6 +161,10 @@ export const Layout: React.FC = () => {
         entitlementSnapshot.status === "trialing" ? " trial" : ""
       }`
     : undefined;
+  // Saved module preferences are only a merchant preference. Entitlements are
+  // authoritative: never advertise a module that this tenant cannot use.
+  const canOpenFeature = (feature: FeatureKey) =>
+    isFeatureEnabledForSnapshot(entitlementSnapshot, feature);
   const workforceApprovalAvailable = currentRole === "owner"
     && modulePreferences.workforce
     && isFeatureEnabledForSnapshot(entitlementSnapshot, FEATURE_KEYS.workforce);
@@ -186,27 +190,29 @@ export const Layout: React.FC = () => {
     () => [
       { view: "pos", label: "Kassa", Icon: Monitor, title: "Kassa (Alt+1)" },
       { view: "z-report", label: "Dagafsluiting", Icon: FileText, title: "Dagafsluiting (Alt+2)" },
-      { view: "audit-log", label: "Historiek", Icon: History, title: "Historiek (Alt+3)" },
-      ...(modulePreferences.customers
+      ...(canOpenFeature(FEATURE_KEYS.auditViewer)
+        ? [{ view: "audit-log" as const, label: "Historiek", Icon: History, title: "Historiek (Alt+3)" }]
+        : []),
+      ...(modulePreferences.customers && canOpenFeature(FEATURE_KEYS.customerCrm)
         ? [{ view: "customers" as const, label: "Klanten", Icon: Users, title: "Klanten (Alt+4)" }]
         : []),
-      ...(modulePreferences.service
+      ...(modulePreferences.service && canOpenFeature(FEATURE_KEYS.serviceOrders)
         ? [{ view: "service" as const, label: "Herstellingen", Icon: Wrench, title: "Hersteldienst" }]
         : []),
-      ...(modulePreferences.workforce
+      ...(modulePreferences.workforce && canOpenFeature(FEATURE_KEYS.workforce)
         ? [{ view: "workforce" as const, label: "Personeel & verlof", Icon: CalendarClock, title: "Personeel, werkuren en verlof" }]
         : []),
-      ...((currentRole === "owner" || currentRole === "manager") && modulePreferences.catalog
+      ...((currentRole === "owner" || currentRole === "manager") && modulePreferences.catalog && canOpenFeature(FEATURE_KEYS.integrations)
         ? [{ view: "integration-hub" as const, label: "Integration Hub", Icon: Cable, title: "Integration Hub" }]
         : []),
-      ...(modulePreferences.insights
+      ...(modulePreferences.insights && canOpenFeature(FEATURE_KEYS.insights)
         ? [{ view: "insights" as const, label: "Inzichten", Icon: Lightbulb, title: "Inzichten (Alt+5)" }]
         : []),
-      ...(modulePreferences.webshop
+      ...(modulePreferences.webshop && canOpenFeature(FEATURE_KEYS.webshopPublish)
         ? [{ view: "profile" as const, label: "Webshop", Icon: ShoppingBag, title: "Webshopbeheer", profileTab: "webshop-general" as const }]
         : []),
     ],
-    [currentRole, modulePreferences],
+    [currentRole, modulePreferences, entitlementSnapshot],
   );
 
   const isNavigationItemActive = (item: NavigationItem): boolean =>
@@ -390,13 +396,14 @@ export const Layout: React.FC = () => {
 
   useEffect(() => {
     const hiddenView =
-      (mainView === "customers" && !modulePreferences.customers) ||
-      (mainView === "service" && !modulePreferences.service) ||
-      (mainView === "workforce" && !modulePreferences.workforce) ||
-      (mainView === "integration-hub" && !modulePreferences.catalog) ||
-      (mainView === "insights" && !modulePreferences.insights);
+      (mainView === "audit-log" && !canOpenFeature(FEATURE_KEYS.auditViewer)) ||
+      (mainView === "customers" && (!modulePreferences.customers || !canOpenFeature(FEATURE_KEYS.customerCrm))) ||
+      (mainView === "service" && (!modulePreferences.service || !canOpenFeature(FEATURE_KEYS.serviceOrders))) ||
+      (mainView === "workforce" && (!modulePreferences.workforce || !canOpenFeature(FEATURE_KEYS.workforce))) ||
+      (mainView === "integration-hub" && (!modulePreferences.catalog || !canOpenFeature(FEATURE_KEYS.integrations))) ||
+      (mainView === "insights" && (!modulePreferences.insights || !canOpenFeature(FEATURE_KEYS.insights)));
     if (hiddenView) setMainView("pos");
-  }, [mainView, modulePreferences, setMainView]);
+  }, [mainView, modulePreferences, entitlementSnapshot, setMainView]);
 
   useEffect(() => {
     const handleGlobalHotkeys = (event: KeyboardEvent) => {
@@ -416,15 +423,15 @@ export const Layout: React.FC = () => {
           event.preventDefault();
           setMainView("z-report");
           setIsNavDropdownOpen(false);
-        } else if (event.key === "3") {
+        } else if (event.key === "3" && canOpenFeature(FEATURE_KEYS.auditViewer)) {
           event.preventDefault();
           setMainView("audit-log");
           setIsNavDropdownOpen(false);
-        } else if (event.key === "4" && modulePreferences.customers) {
+        } else if (event.key === "4" && modulePreferences.customers && canOpenFeature(FEATURE_KEYS.customerCrm)) {
           event.preventDefault();
           setMainView("customers");
           setIsNavDropdownOpen(false);
-        } else if (event.key === "5" && modulePreferences.insights) {
+        } else if (event.key === "5" && modulePreferences.insights && canOpenFeature(FEATURE_KEYS.insights)) {
           event.preventDefault();
           setMainView("insights");
           setIsNavDropdownOpen(false);

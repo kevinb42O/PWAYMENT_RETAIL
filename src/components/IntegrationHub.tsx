@@ -15,7 +15,7 @@ import {
   Cable,
   UploadCloud,
 } from "lucide-react";
-import { audit } from "../auth/useAuth";
+import { audit, useAuth } from "../auth/useAuth";
 import { db } from "../db/db";
 import { useCategories } from "../store/useCategories";
 import { useProducts } from "../store/useProducts";
@@ -34,6 +34,7 @@ import {
 } from "../utils/integrationImport";
 import { formatEUR, parseDecimalToCents } from "../utils/money";
 import { normalizePriceGroup } from "../utils/pricing";
+import { recordIntegrationRun } from "../services/integrationOperations";
 
 const CORE_TARGETS = [
   ["ignore", "Niet importeren"],
@@ -177,12 +178,12 @@ const computePreview = (
 };
 
 export const IntegrationHub: React.FC = () => {
+  const currentStoreId = useAuth((state) => state.currentStoreId);
   const products = useProducts((state) => state.list);
   const hydrateProducts = useProducts((state) => state.hydrate);
   const bulkUpsert = useProducts((state) => state.bulkUpsert);
   const categories = useCategories((state) => state.list);
   const hydrateCategories = useCategories((state) => state.hydrate);
-  const addCategory = useCategories((state) => state.addCategory);
   const storeConfiguration = useStoreConfiguration(
     (state) => state.configuration,
   );
@@ -273,30 +274,19 @@ export const IntegrationHub: React.FC = () => {
     setMessage(null);
     const jobId = globalThis.crypto.randomUUID();
     const issues: ImportJob["issues"] = [];
+    const mappingSummary = {
+      mapped_fields: mappings.filter((mapping) => mapping.target !== "ignore" && !mapping.target.startsWith("price:")).length,
+      price_groups: mappings.filter((mapping) => mapping.target.startsWith("price:")).length,
+      ignored_fields: mappings.filter((mapping) => mapping.target === "ignore").length,
+      automatic_schema_changes: false,
+    };
+    await recordIntegrationRun({ storeId: currentStoreId, runId: jobId, operation: "import", sourceName: fileName, sourceFormat: parsed.format, status: "running", rowCount: parsed.rows.length, mappingSummary });
     try {
-      const categoryNames = Array.from(
-        new Set(
-          parsed.rows
-            .map((row) => valueFor(row, parsed, mappings, "core:category").trim())
-            .filter(Boolean),
-        ),
-      );
-      if (categoryNames.length === 0) categoryNames.push("Geïmporteerd");
-
       const categoryMap = new Map(
         useCategories
           .getState()
           .list.map((category) => [category.name.toLocaleLowerCase("nl-BE"), category.id]),
       );
-      for (const name of categoryNames) {
-        const key = name.toLocaleLowerCase("nl-BE");
-        if (categoryMap.has(key)) continue;
-        const added = await addCategory(name);
-        const resolved = added ?? useCategories.getState().list.find(
-          (category) => category.name.toLocaleLowerCase("nl-BE") === key,
-        );
-        if (resolved) categoryMap.set(key, resolved.id);
-      }
 
       const currentProducts = useProducts.getState().list;
       const byId = new Map(currentProducts.map((product) => [product.id.toLocaleLowerCase("nl-BE"), product]));
@@ -370,7 +360,7 @@ export const IntegrationHub: React.FC = () => {
           ? categoryMap.get(categoryName.toLocaleLowerCase("nl-BE"))
           : existing?.category ?? categoryMap.get("geïmporteerd");
         if (!category) {
-          issues.push({ row: rowNumber, message: `Categorie “${categoryName}” kon niet worden gemaakt.` });
+          issues.push({ row: rowNumber, message: `Categorie “${categoryName}” bestaat niet. Maak of map deze categorie eerst; imports maken geen categorieën automatisch aan.` });
           return;
         }
         const priceTiers = { ...(existing?.priceTiers ?? {}) };
@@ -386,9 +376,6 @@ export const IntegrationHub: React.FC = () => {
             } else if (tierPrice != null) {
               priceTiers[normalizePriceGroup(mapping.target.slice(6))] = tierPrice;
             }
-          }
-          if (mapping.target.startsWith("custom:")) {
-            customFields[mapping.target.slice(7)] = rawValue;
           }
         });
 
@@ -470,6 +457,7 @@ export const IntegrationHub: React.FC = () => {
         updated: job.updatedCount,
         skipped: job.skippedCount,
       });
+      await recordIntegrationRun({ storeId: currentStoreId, runId: jobId, operation: "import", sourceName: fileName, sourceFormat: parsed.format, status: issues.length > 0 ? "completed_with_errors" : "completed", rowCount: parsed.rows.length, createdCount: job.importedCount, updatedCount: job.updatedCount, skippedCount: job.skippedCount, errorCount: job.errorCount, mappingSummary });
       setMessage({
         tone: "success",
         text: `${job.importedCount} nieuwe en ${job.updatedCount} bestaande producten verwerkt. Ze staan meteen in de kassa.`,
@@ -495,6 +483,7 @@ export const IntegrationHub: React.FC = () => {
         affectedProductIds: [],
         issues: [{ row: 0, message: text }],
       });
+      await recordIntegrationRun({ storeId: currentStoreId, runId: jobId, operation: "import", sourceName: fileName, sourceFormat: parsed.format, status: "failed", rowCount: parsed.rows.length, skippedCount: parsed.rows.length, errorCount: 1, errorCode: "import_failed", errorFingerprint: text.slice(0, 160), mappingSummary });
       setMessage({ tone: "error", text });
     } finally {
       setIsImporting(false);
@@ -630,8 +619,7 @@ export const IntegrationHub: React.FC = () => {
                             <optgroup label="Klantprijzen">
                               {discoveredGroups.map((group) => <option key={group} value={`price:${group}`}>Prijs · {group}</option>)}
                             </optgroup>
-                            <option value={`custom:${normalizePriceGroup(mapping.source)}`}>Eigen veld · {mapping.source}</option>
-                            {!CORE_TARGETS.some(([value]) => value === mapping.target) && !mapping.target.startsWith("price:") && !mapping.target.startsWith("custom:") && <option value={mapping.target}>{mapping.target}</option>}
+                            {!CORE_TARGETS.some(([value]) => value === mapping.target) && !mapping.target.startsWith("price:") && <option value={mapping.target}>{mapping.target}</option>}
                           </select>
                           <div className="truncate rounded-lg bg-slate-50 px-2.5 py-2 text-xs text-slate-500" title={previewValue}>{previewValue}</div>
                         </div>
@@ -661,6 +649,7 @@ export const IntegrationHub: React.FC = () => {
                 {preview.issueCount > 0 && (
                   <div className="mt-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900"><AlertTriangle size={19} className="mt-0.5 shrink-0" /><div className="text-xs leading-5"><strong>{preview.issueCount} rij(en) worden overgeslagen.</strong> Een productnaam ontbreekt, een prijs is dubbelzinnig, of het BTW-tarief is niet Belgisch ondersteund. Geldige rijen kunnen veilig verder.</div></div>
                 )}
+                <div className="mt-4 flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-slate-700"><AlertTriangle size={19} className="mt-0.5 shrink-0 text-slate-500" /><div className="text-xs leading-5"><strong>Geen automatische schemawijzigingen.</strong> Onbekende kolommen worden standaard niet geïmporteerd en ontbrekende categorieën blokkeren alleen de betrokken rij. Maak velden of categorieën bewust aan en map daarna opnieuw.</div></div>
                 <div className="mt-6 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-end sm:justify-between">
                   <label className="block flex-1"><span className="mb-1.5 block text-xs font-bold text-slate-600">Naam van deze mapping</span><input value={profileName} onChange={(event) => setProfileName(event.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-semibold focus:border-sky-500 focus:outline-none" /></label>
                   <button type="button" disabled={isImporting || preview.valid === 0} onClick={() => void performImport()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#0e7490] bg-[#0e7490] px-5 py-2.5 text-sm font-extrabold text-white shadow-[0_1px_2px_rgba(15,23,42,0.08)] transition hover:bg-[#0f6677] disabled:cursor-not-allowed disabled:opacity-50">
