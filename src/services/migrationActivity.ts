@@ -4,12 +4,14 @@ import type {
   MigrationActivityLock,
   MigrationEntityType,
   MigrationMeaningfulActivityType,
+  OutboxEntry,
 } from "../types";
+import type { MigrationLockOutboxPayload } from "./migrationSync";
 
 /**
  * Explicit transaction context required by recordMeaningfulActivity. Call
  * currentMigrationTransactionContext inside a Dexie rw transaction whose table
- * list includes migration_activations and migration_activity_locks.
+ * list includes migration_activations, migration_activity_locks, and outbox.
  */
 export interface MigrationTransactionContext {
   transaction: Transaction;
@@ -106,5 +108,13 @@ export const recordMeaningfulActivity = async (
     updatedAt: input.occurredAt,
   });
   await context.database.migration_activity_locks.add(lock);
+  const outboxPayload: MigrationLockOutboxPayload = { lock };
+  const outboxEntry: OutboxEntry = {
+    timestamp: input.occurredAt,
+    kind: "migration_lock",
+    payload: outboxPayload,
+    attempts: 0,
+  };
+  await context.database.outbox.add(outboxEntry);
   return { locked: true, migrationId: active.id };
 };

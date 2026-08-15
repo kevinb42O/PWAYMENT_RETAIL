@@ -24,6 +24,7 @@ beforeEach(async () => {
   if (!db.isOpen()) await db.open();
   await db.migration_activations.clear();
   await db.migration_activity_locks.clear();
+  await db.outbox.clear();
 });
 
 describe("recordMeaningfulActivity", () => {
@@ -40,6 +41,7 @@ describe("recordMeaningfulActivity", () => {
       "rw",
       db.migration_activations,
       db.migration_activity_locks,
+      db.outbox,
       async () => recordMeaningfulActivity(currentMigrationTransactionContext(), {
         storeId: "store-1",
         activityType: "checkout",
@@ -61,6 +63,9 @@ describe("recordMeaningfulActivity", () => {
     });
     expect(await db.migration_activity_locks.toArray()).toEqual([
       expect.objectContaining({ migrationId: "migration-1", activityType: "checkout", entityId: "42" }),
+    ]);
+    expect(await db.outbox.toArray()).toEqual([
+      expect.objectContaining({ kind: "migration_lock", payload: expect.objectContaining({ lock: expect.objectContaining({ migrationId: "migration-1" }) }) }),
     ]);
   });
 

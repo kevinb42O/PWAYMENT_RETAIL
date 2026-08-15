@@ -5,10 +5,15 @@ import type {
   MigrationEntityType,
   MigrationInverseChange,
   MigrationJson,
+  OutboxEntry,
   Product,
   ProductCategory,
 } from "../types";
 import type { RetailConfigurationProposal } from "../migration/types";
+import type {
+  MigrationActivationOutboxPayload,
+  MigrationUndoOutboxPayload,
+} from "./migrationSync";
 
 export class MigrationActivationError extends Error {
   constructor(message: string) {
@@ -138,6 +143,7 @@ export const executeMigration = async (
       db.categories,
       db.migration_activations,
       db.migration_inverse_changes,
+      db.outbox,
     ],
     async () => {
       const active = await db.migration_activations
@@ -158,6 +164,20 @@ export const executeMigration = async (
       if (inverseChanges.length > 0) {
         await db.migration_inverse_changes.bulkAdd(inverseChanges);
       }
+      const outboxPayload: MigrationActivationOutboxPayload = {
+        activation,
+        categories: mappedCategories,
+        products: mappedProducts,
+        customers: mappedCustomers,
+        inverseChanges,
+      };
+      const outboxEntry: OutboxEntry = {
+        timestamp: now,
+        kind: "migration_activate",
+        payload: outboxPayload,
+        attempts: 0,
+      };
+      await db.outbox.add(outboxEntry);
 
       return {
         activation,
@@ -199,6 +219,7 @@ export const undoMigrationActivation = async (
       db.categories,
       db.migration_activations,
       db.migration_inverse_changes,
+      db.outbox,
     ],
     async () => {
       const activation = await db.migration_activations.get(migrationId);
@@ -228,11 +249,19 @@ export const undoMigrationActivation = async (
       if (productIds.length > 0) await db.products.bulkDelete(productIds);
       if (customerIds.length > 0) await db.customers.bulkDelete(customerIds);
       if (categoryIds.length > 0) await db.categories.bulkDelete(categoryIds);
+      const undoneAt = Date.now();
       await db.migration_activations.put({
         ...activation,
         status: "undone",
-        undoneAt: Date.now(),
-        updatedAt: Date.now(),
+        undoneAt,
+        updatedAt: undoneAt,
+      });
+      const outboxPayload: MigrationUndoOutboxPayload = { migrationId };
+      await db.outbox.add({
+        timestamp: undoneAt,
+        kind: "migration_undo",
+        payload: outboxPayload,
+        attempts: 0,
       });
     },
   );

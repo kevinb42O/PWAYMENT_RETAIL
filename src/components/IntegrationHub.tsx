@@ -19,6 +19,7 @@ import { audit, useAuth } from "../auth/useAuth";
 import { db } from "../db/db";
 import { compileRetailConfiguration } from "../migration/configurationCompiler";
 import { discoverRetailBusiness } from "../migration/businessDiscovery";
+import { multiYearTelecomRetailFixture } from "../migration/testBusinessFixture";
 import {
   CUSTOMER_MAPPING_TARGETS,
   inferMigrationMappings,
@@ -28,6 +29,7 @@ import {
 } from "../migration/recordMapper";
 import { executeMigration, undoMigrationActivation } from "../services/migrationActivation";
 import { migrationStoreScope } from "../services/migrationActivity";
+import { synchronizeMigrationNow } from "../services/migrationSync";
 import { useCategories } from "../store/useCategories";
 import { useCustomers } from "../store/useCustomers";
 import { useProducts } from "../store/useProducts";
@@ -166,6 +168,26 @@ export const IntegrationHub: React.FC = () => {
     setReviewConfirmed(false);
   };
 
+  const loadRealisticTestBusiness = () => {
+    if (activeMigration || isWorking) return;
+    const fixture = multiYearTelecomRetailFixture();
+    setSources({
+      catalog: {
+        fileName: `${fixture.businessName} · catalogus.csv`,
+        parsed: fixture.catalog,
+        mappings: inferMigrationMappings("catalog", fixture.catalog.headers, inferMappings),
+      },
+      customers: {
+        fileName: `${fixture.businessName} · klanten.csv`,
+        parsed: fixture.customers,
+        mappings: inferMigrationMappings("customers", fixture.customers.headers, inferMappings),
+      },
+    });
+    setActiveSource("catalog");
+    setReviewConfirmed(false);
+    setMessage({ tone: "success", text: "Volledige fictieve telecomzaak geladen: 213 catalogusregels, 240 klanten, prijsboeken, voorraad, garantie- en herstelvelden. Dit gaat door exact dezelfde mapping en safety ledger als uw eigen export." });
+  };
+
   const activate = async () => {
     if (!proposal || !canActivate) return;
     setIsWorking(true);
@@ -178,6 +200,7 @@ export const IntegrationHub: React.FC = () => {
         mappedCustomers?.customers ?? [],
         mappedCatalog?.categories ?? [],
       );
+      const sync = await synchronizeMigrationNow(migrationStoreId);
       await Promise.all([refreshProducts(), hydrateCustomers(true), refreshCategories()]);
       await audit("migration.activate", {
         migrationId: result.activation.id,
@@ -185,7 +208,12 @@ export const IntegrationHub: React.FC = () => {
         customers: result.customerCount,
         categories: result.categoryCount,
       });
-      setMessage({ tone: "success", text: `Veilig geactiveerd: ${result.productCount} producten, ${result.customerCount} klanten en ${result.categoryCount} nieuwe categorieën. U kunt dit volledig ongedaan maken tot de eerste echte activiteit.` });
+      const serverMessage = sync.error
+        ? "De serverbevestiging wacht veilig in de synchronisatiewachtrij."
+        : sync.pending > 0
+          ? "Deze lokale test wacht op een gekoppeld winkelaccount voor serveropslag."
+          : "De serverreceipt is meteen bevestigd.";
+      setMessage({ tone: "success", text: `Veilig geactiveerd: ${result.productCount} producten, ${result.customerCount} klanten en ${result.categoryCount} nieuwe categorieën. ${serverMessage} U kunt dit volledig ongedaan maken tot de eerste echte activiteit.` });
       setReviewConfirmed(false);
     } catch (error) {
       setMessage({ tone: "error", text: error instanceof Error ? error.message : "De migratie kon niet veilig geactiveerd worden." });
@@ -200,9 +228,10 @@ export const IntegrationHub: React.FC = () => {
     setMessage(null);
     try {
       await undoMigrationActivation(migrationStoreId, activeMigration.id);
+      const sync = await synchronizeMigrationNow(migrationStoreId);
       await Promise.all([refreshProducts(), hydrateCustomers(true), refreshCategories()]);
       await audit("migration.undo", { migrationId: activeMigration.id });
-      setMessage({ tone: "success", text: "De actieve migratie is volledig ongedaan gemaakt. Uw eerdere Pwayment-gegevens bleven onaangeraakt." });
+      setMessage({ tone: "success", text: `De actieve migratie is volledig ongedaan gemaakt. Uw eerdere Pwayment-gegevens bleven onaangeraakt.${sync.error ? " De servercorrectie blijft veilig in de synchronisatiewachtrij." : ""}` });
     } catch (error) {
       setMessage({ tone: "error", text: error instanceof Error ? error.message : "Ongedaan maken is niet gelukt." });
     } finally {
@@ -242,7 +271,7 @@ export const IntegrationHub: React.FC = () => {
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_350px]">
           <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-            <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-700">Migratiewerkruimte</p><h2 className="mt-1 text-xl font-black text-slate-950">1. Voeg uw bronnen toe</h2><p className="mt-1 text-sm text-slate-500">Een catalogus, klantenbestand of beide. CSV, TSV, Excel en JSON werken lokaal in uw browser.</p></div><span className="rounded-full bg-slate-100 px-3 py-1.5 text-[11px] font-bold text-slate-600">Geen vaste template</span></div>
+            <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-700">Migratiewerkruimte</p><h2 className="mt-1 text-xl font-black text-slate-950">1. Voeg uw bronnen toe</h2><p className="mt-1 text-sm text-slate-500">Een catalogus, klantenbestand of beide. CSV, TSV, Excel en JSON werken lokaal in uw browser.</p></div><div className="flex flex-wrap items-center gap-2"><button type="button" onClick={loadRealisticTestBusiness} disabled={isWorking || Boolean(activeMigration)} className="rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-extrabold text-violet-800 hover:bg-violet-100 disabled:opacity-50">Laad volledige testzaak</button><span className="rounded-full bg-slate-100 px-3 py-1.5 text-[11px] font-bold text-slate-600">Geen vaste template</span></div></div>
 
             <div className="mt-5 grid gap-3 md:grid-cols-2">
               {(["catalog", "customers"] as const).map((kind) => {

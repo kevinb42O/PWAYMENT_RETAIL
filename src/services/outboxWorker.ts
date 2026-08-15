@@ -5,6 +5,7 @@ import type { Json } from "../types/database.generated";
 import type { DailyReport, GiftCardEvent, OutboxEntry, Transaction, WebshopOrder } from "../types";
 import { db } from "../db/db";
 import { upsertSupabaseProducts, upsertSupabaseCustomers, upsertSupabaseCategories, deleteSupabaseCategory } from "./supabaseMutations";
+import { pushMigrationOutboxEntry } from "./migrationSync";
 import {
   mutateSupabaseGiftCard,
   pushSupabaseGiftCardMutation,
@@ -323,6 +324,12 @@ const sendOutboxEntry = async (storeId: string, entry: OutboxEntry) => {
     await deleteSupabaseCategory(storeId, p.categoryId);
   } else if (entry.kind === "gift_card_mutation") {
     await mutateSupabaseGiftCard(storeId, entry.payload as any);
+  } else if (
+    entry.kind === "migration_activate"
+    || entry.kind === "migration_lock"
+    || entry.kind === "migration_undo"
+  ) {
+    await pushMigrationOutboxEntry(storeId, entry);
   } else {
     // An unknown kind must remain in the queue and become visible as a failed
     // sync. Silently deleting it would lose business data.

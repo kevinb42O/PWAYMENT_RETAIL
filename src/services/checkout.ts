@@ -21,6 +21,7 @@ import {
   currentMigrationTransactionContext,
   recordMeaningfulActivity,
 } from "./migrationActivity";
+import { synchronizeMigrationNow } from "./migrationSync";
 
 export type CheckoutErrorCode =
   | "empty-cart"
@@ -125,9 +126,16 @@ export const finalizeCheckout = (
     );
   }
   const storeId = useAuth.getState().currentStoreId;
-  const promise = runCheckout(input, storeId).finally(() => {
-    inFlight = null;
-  });
+  const promise = runCheckout(input, storeId)
+    .then(async (result) => {
+      // The sale already committed locally. A network failure must never
+      // reverse it, but an online migration seal is pushed immediately.
+      if (storeId) void synchronizeMigrationNow(storeId);
+      return result;
+    })
+    .finally(() => {
+      inFlight = null;
+    });
   inFlight = { clientRequestId: input.clientRequestId, promise };
   return promise;
 };

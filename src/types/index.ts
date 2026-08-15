@@ -554,7 +554,13 @@ export interface OutboxEntry {
     | "upsert_customer"
     | "upsert_category"
     | "delete_category"
-    | "gift_card_mutation";
+    | "gift_card_mutation"
+    /** Durable server command for a locally committed migration activation. */
+    | "migration_activate"
+    /** Durable server command that closes the automatic full-undo window. */
+    | "migration_lock"
+    /** Durable server command for a locally committed Mode 1 undo. */
+    | "migration_undo";
   payload: unknown;
   attempts: number;
   lastError?: string;
