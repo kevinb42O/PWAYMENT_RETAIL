@@ -5,8 +5,8 @@ import { inferMigrationMappings, mapMigrationRecords } from "./recordMapper";
 
 const catalog: ParsedImportFile = {
   format: "csv",
-  headers: ["Artikelcode", "Productnaam", "Categorie", "Verkoopprijs", "BTW", "IMEI"],
-  rows: [["TEL-1", "Telefoon X", "Telefoons", "99,00", "21", "356789012345678"]],
+  headers: ["Artikelcode", "Productnaam", "Categorie", "Subcategorie", "Verkoopprijs", "BTW", "IMEI"],
+  rows: [["TEL-1", "Telefoon X", "Telefoons", "Android", "99,00", "21", "356789012345678"]],
 };
 
 describe("migration record mapping", () => {
@@ -24,6 +24,7 @@ describe("migration record mapping", () => {
     expect(result.products).toMatchObject([{
       name: "Telefoon X",
       sku: "TEL-1",
+      subCategory: "Android",
       priceCents: 9900,
       vatRate: 21,
       customFields: { IMEI: "356789012345678" },

@@ -308,6 +308,13 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
     sortOrder: row.sort_order ?? undefined,
     isActive: row.is_active,
   }));
+  // The local POS stores the stable external category ID on each product,
+  // while the server also carries the human-readable category_name for SQL
+  // reporting. Restoring the name here breaks category navigation after a
+  // sync because `products.category` no longer matches `categories.id`.
+  const categoryExternalIdByDatabaseId = new Map(
+    categoryRows.map((row) => [row.id, row.external_id ?? row.id]),
+  );
 
   const products: Product[] = productRows.map((row) => {
     const id = row.external_id ?? row.id;
@@ -315,7 +322,9 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
     return {
     id,
     name: row.name,
-    category: row.category_name,
+    category: row.category_id
+      ? categoryExternalIdByDatabaseId.get(row.category_id) ?? row.category_name
+      : row.category_name,
     subCategory: row.subcategory ?? undefined,
     sku: row.sku ?? undefined,
     barcode: row.barcode ?? undefined,

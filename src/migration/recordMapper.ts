@@ -27,6 +27,7 @@ export const PRODUCT_MAPPING_TARGETS = [
   ["core:id", "Extern ID"],
   ["core:name", "Productnaam"],
   ["core:category", "Categorie"],
+  ["core:subCategory", "Subcategorie"],
   ["core:sku", "SKU / artikelcode"],
   ["core:barcode", "Barcode / EAN / GTIN"],
   ["core:brand", "Merk"],
@@ -217,6 +218,7 @@ export const mapMigrationRecords = ({
     }
     identityKeys.add(identityKey);
     const categoryName = valueFor(row, parsed, mappings, "core:category") || "Geïmporteerd";
+    const subCategory = valueFor(row, parsed, mappings, "core:subCategory") || undefined;
     const normalizedCategory = categoryName.toLocaleLowerCase("nl-BE");
     let category = categoryByName.get(normalizedCategory);
     if (!category) {
@@ -245,6 +247,7 @@ export const mapMigrationRecords = ({
       id: makeUniqueId(explicitId || sku || barcode || name, productIds, "migration-product"),
       name,
       category: category.id,
+      subCategory,
       sku,
       barcode,
       brand: valueFor(row, parsed, mappings, "core:brand") || undefined,

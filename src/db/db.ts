@@ -518,6 +518,64 @@ export class POSDatabase extends Dexie {
       service_orders:
         "id, &number, &trackingToken, createdAt, updatedAt, status, substatus, route, customerId, customerEmail, customerPhone, identifierValue",
     });
+
+    // v17 repairs a category-reference mismatch introduced by an earlier
+    // server hydration: products must store category IDs, never display names.
+    // This makes existing imported catalogs immediately navigable again.
+    this.version(17)
+      .stores({
+        transactions:
+          "++id, tableId, paymentMethod, timestamp, isFinalized, userId, shiftId, registerId, kind, source, originalTransactionId, documentNumber, &clientRequestId",
+        daily_reports: "++id, &reportNumber, timestamp, shiftId, registerId",
+        audit: "++id, timestamp, userId, action",
+        users: "id, role",
+        outbox: "++id, timestamp, kind",
+        shifts:
+          "++id, &shiftNumber, registerId, status, openedAt, closedAt, [registerId+status]",
+        voids: "++id, timestamp, tableId, productId, byUserId",
+        products: "id, category, isActive, productType, supplierCode",
+        categories: "id, name, isActive",
+        customers: "id, email, phone, priceGroup, isActive",
+        gift_cards: "id, customerId, code, isActive",
+        gift_card_events:
+          "id, giftCardId, timestamp, type, source, transactionId, dailyReportId, [giftCardId+timestamp]",
+        business_actions:
+          "id, type, status, createdAt, updatedAt, dueAt, ownerUserId",
+        purchase_orders:
+          "id, supplier, status, createdAt, updatedAt, expectedDeliveryAt",
+        stock_movements:
+          "++id, productId, reason, timestamp, purchaseOrderId, transactionId",
+        webshop_orders:
+          "id, &clientRequestId, &number, createdAt, updatedAt, status, paymentStatus, fulfillmentStatus, source",
+        import_jobs: "id, createdAt, status, fileName, profileId",
+        import_mapping_profiles: "id, name, format, updatedAt, lastUsedAt",
+        migration_activations:
+          "id, storeId, status, activatedAt, lockedAt, [storeId+status]",
+        migration_inverse_changes: "id, migrationId, sequence, [migrationId+sequence]",
+        migration_activity_locks:
+          "id, migrationId, storeId, occurredAt, [storeId+occurredAt], [migrationId+occurredAt]",
+        service_orders:
+          "id, &number, &trackingToken, createdAt, updatedAt, status, substatus, route, customerId, customerEmail, customerPhone, identifierValue",
+      })
+      .upgrade(async (tx) => {
+        const categories = (await tx.table("categories").toArray()) as ProductCategory[];
+        const categoryIds = new Set(categories.map((category) => category.id));
+        const idByName = new Map(
+          categories.map((category) => [category.name.trim().toLocaleLowerCase("nl-BE"), category.id]),
+        );
+        await tx.table("products").toCollection().modify((row: Product) => {
+          if (!categoryIds.has(row.category)) {
+            const categoryId = idByName.get(row.category.trim().toLocaleLowerCase("nl-BE"));
+            if (categoryId) row.category = categoryId;
+          }
+          if (!row.subCategory) {
+            const legacySubCategory = ["Subcategorie", "Subcategory", "Subgroep", "Artikel subgroep"]
+              .map((key) => row.customFields?.[key])
+              .find((value): value is string => typeof value === "string" && Boolean(value.trim()));
+            if (legacySubCategory) row.subCategory = legacySubCategory.trim();
+          }
+        });
+      });
   }
 }
 

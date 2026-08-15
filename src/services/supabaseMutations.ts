@@ -62,16 +62,19 @@ export const upsertSupabaseProducts = async (
     new Set(products.map((product) => product.category).filter(Boolean)),
   );
   const categoryId = new Map<string, string>();
+  const categoryName = new Map<string, string>();
   if (categoryExternalIds.length > 0) {
     const { data, error } = await supabase
       .from("categories")
-      .select("id, external_id")
+      .select("id, external_id, name")
       .eq("store_id", storeId)
       .in("external_id", categoryExternalIds);
     throwIfError(error);
     for (const category of data ?? []) {
-      if (category.external_id)
+      if (category.external_id) {
         categoryId.set(category.external_id, category.id);
+        categoryName.set(category.external_id, category.name);
+      }
     }
   }
 
@@ -80,7 +83,7 @@ export const upsertSupabaseProducts = async (
     external_id: product.id,
     category_id: categoryId.get(product.category) ?? null,
     name: product.name,
-    category_name: product.category,
+    category_name: categoryName.get(product.category) ?? product.category,
     subcategory: product.subCategory ?? null,
     sku: product.sku ?? null,
     barcode: product.barcode ?? null,

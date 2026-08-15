@@ -25,6 +25,7 @@ describe("multi-year telecom retail test fixture", () => {
     expect(customers.issues).toEqual([]);
     expect(catalog.products).toHaveLength(213);
     expect(catalog.categories).toHaveLength(6);
+    expect(catalog.products.some((product) => product.subCategory === "Android toestellen")).toBe(true);
     expect(customers.customers).toHaveLength(240);
     expect(catalog.products.some((product) => product.priceTiers?.["telenet-klant"] != null)).toBe(true);
     expect(catalog.products.some((product) => product.customFields?.["IMEI patroon"])).toBe(true);

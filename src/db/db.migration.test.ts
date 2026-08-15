@@ -73,10 +73,16 @@ describe('POSDatabase v9 → v12 migration', () => {
     await legacy.table('products').put({
       id: 'deck-1',
       name: 'Deck',
-      category: 'skateboards',
+      category: 'Smartphones',
       priceCents: 10000,
       vatRate: 21,
       stockQty: 5,
+      isActive: true,
+    });
+    await legacy.table('categories').put({
+      id: 'migration-category-smartphones',
+      name: 'Smartphones',
+      vatRate: 21,
       isActive: true,
     });
     await legacy.table('daily_reports').add({
@@ -98,7 +104,7 @@ describe('POSDatabase v9 → v12 migration', () => {
     const upgraded = new POSDatabase();
     try {
       await upgraded.open();
-      expect(upgraded.verno).toBe(16);
+      expect(upgraded.verno).toBe(17);
       expect(upgraded.webshop_orders).toBeDefined();
       expect(upgraded.import_jobs).toBeDefined();
       expect(upgraded.import_mapping_profiles).toBeDefined();
@@ -113,6 +119,7 @@ describe('POSDatabase v9 → v12 migration', () => {
       expect(rows.map((r) => r.totalCents).sort((a, b) => a - b)).toEqual([2500, 10000]);
       expect(rows.every((r) => r.clientRequestId === undefined)).toBe(true);
       expect((await upgraded.products.get('deck-1'))?.stockQty).toBe(5);
+      expect((await upgraded.products.get('deck-1'))?.category).toBe('migration-category-smartphones');
       expect(await upgraded.daily_reports.count()).toBe(1);
       expect(await upgraded.gift_card_events.where('giftCardId').equals('legacy-card').first()).toEqual(
         expect.objectContaining({

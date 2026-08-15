@@ -35,7 +35,7 @@ describe("Supabase store bootstrap", () => {
 
     const rows: Record<string, any[]> = {
       categories: [{ id: "category-db", external_id: "decks", name: "Decks", vat_rate: 21, sort_order: 2, is_active: true }],
-      products: [{ id: "product-db", external_id: "product-1", name: "Nieuwe deck", category_name: "decks", subcategory: null, sku: "DECK-1", barcode: "123", price_cents: 6500, cost_price_cents: 2500, vat_rate: 21, brand: "Pwayment", supplier: null, variant: null, stock_qty: 4, min_stock_qty: 1, color: null, product_type: "merchandise", is_active: true }],
+      products: [{ id: "product-db", external_id: "product-1", name: "Nieuwe deck", category_id: "category-db", category_name: "Decks", subcategory: null, sku: "DECK-1", barcode: "123", price_cents: 6500, cost_price_cents: 2500, vat_rate: 21, brand: "Pwayment", supplier: null, variant: null, stock_qty: 4, min_stock_qty: 1, color: null, product_type: "merchandise", is_active: true }],
       customers: [{ id: "customer-db", external_id: "customer-1", name: "Ari Klant", email: "ari@example.test", phone: null, address: null, notes: null, total_spent_cents: 6500, visit_count: 1, last_visit_at: now, created_at: now, is_active: true }],
       transactions: [{ id: "transaction-db", client_request_id: "request-1", table_id: 1, subtotal_cents: 6500, vat_12_cents: 0, vat_21_cents: 1128, total_cents: 6500, discount_cents: 0, discount_reason: null, discount_approved_by_user_id: null, tip_cents: 0, tendered_cents: null, payment_method: "PIN", occurred_at: now, is_finalized: false, user_id: "user-1", user_name: "Alex", customer_id: "customer-db", source: "live", kind: "sale", original_transaction_id: null, correction_reason: null, document_number: "2026-1", merchant_snapshot: { name: "Pwayment" }, register_id: "register-db", shift_id: "shift-db" }],
       transaction_lines: [{ id: "line-db", transaction_id: "transaction-db", line_external_id: "line-1", product_id: "product-db", product_external_id: "product-1", product_name: "Nieuwe deck", sku: "DECK-1", barcode: "123", quantity: 1, unit_price_cents: 6500, unit_cost_cents: 2500, vat_rate: 21, line_total_cents: 6500, notes: "Grip inbegrepen", modifiers: [], product_snapshot: { category: "decks", priceCents: 6500, vatRate: 21 }, created_at: now }],
@@ -75,6 +75,7 @@ describe("Supabase store bootstrap", () => {
 
     expect(await activeDb.products.get("product-1")).toMatchObject({
       name: "Nieuwe deck",
+      category: "decks",
       supplierCode: "OLD-SKU",
       priceTiers: { vip: 90 },
     });
