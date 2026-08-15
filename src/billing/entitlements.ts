@@ -13,6 +13,7 @@ export type SubscriptionStatus =
 export const FEATURE_KEYS = {
   checkout: "pos.checkout",
   zReport: "reports.z",
+  historyViewer: "history.viewer",
   fullHistory: "history.full",
   activeProducts: "catalog.active_products",
   categories: "catalog.categories",
@@ -121,6 +122,9 @@ const basicFallbackSnapshot = (): EntitlementSnapshot => ({
   features: {
     [FEATURE_KEYS.checkout]: true,
     [FEATURE_KEYS.zReport]: true,
+    // A limited sales-history viewer is part of Basis. `history.full` only
+    // controls the longer retention window offered by paid plans.
+    [FEATURE_KEYS.historyViewer]: true,
   },
   limits: {
     [FEATURE_KEYS.activeProducts]: 250,
@@ -263,7 +267,15 @@ export const isFeatureEnabledForSnapshot = (
   now = entitlementNow(),
 ): boolean => {
   if (!snapshot || isTrialExpiredLocally(snapshot, now)) {
-    return feature === FEATURE_KEYS.checkout || feature === FEATURE_KEYS.zReport;
+    return feature === FEATURE_KEYS.checkout ||
+      feature === FEATURE_KEYS.zReport ||
+      feature === FEATURE_KEYS.historyViewer;
+  }
+  // Older API deployments do not yet return this newly separated capability.
+  // Basis still contractually includes the 30-day viewer, so never hide it
+  // while the database migration is rolling out.
+  if (feature === FEATURE_KEYS.historyViewer && snapshot.effectivePlan === "basic") {
+    return true;
   }
   return snapshot.features[feature] === true;
 };

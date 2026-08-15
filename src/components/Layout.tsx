@@ -190,7 +190,7 @@ export const Layout: React.FC = () => {
     () => [
       { view: "pos", label: "Kassa", Icon: Monitor, title: "Kassa (Alt+1)" },
       { view: "z-report", label: "Dagafsluiting", Icon: FileText, title: "Dagafsluiting (Alt+2)" },
-      ...(canOpenFeature(FEATURE_KEYS.auditViewer)
+      ...(canOpenFeature(FEATURE_KEYS.historyViewer)
         ? [{ view: "audit-log" as const, label: "Historiek", Icon: History, title: "Historiek (Alt+3)" }]
         : []),
       ...(modulePreferences.customers && canOpenFeature(FEATURE_KEYS.customerCrm)
@@ -396,7 +396,7 @@ export const Layout: React.FC = () => {
 
   useEffect(() => {
     const hiddenView =
-      (mainView === "audit-log" && !canOpenFeature(FEATURE_KEYS.auditViewer)) ||
+      (mainView === "audit-log" && !canOpenFeature(FEATURE_KEYS.historyViewer)) ||
       (mainView === "customers" && (!modulePreferences.customers || !canOpenFeature(FEATURE_KEYS.customerCrm))) ||
       (mainView === "service" && (!modulePreferences.service || !canOpenFeature(FEATURE_KEYS.serviceOrders))) ||
       (mainView === "workforce" && (!modulePreferences.workforce || !canOpenFeature(FEATURE_KEYS.workforce))) ||
@@ -423,7 +423,7 @@ export const Layout: React.FC = () => {
           event.preventDefault();
           setMainView("z-report");
           setIsNavDropdownOpen(false);
-        } else if (event.key === "3" && canOpenFeature(FEATURE_KEYS.auditViewer)) {
+        } else if (event.key === "3" && canOpenFeature(FEATURE_KEYS.historyViewer)) {
           event.preventDefault();
           setMainView("audit-log");
           setIsNavDropdownOpen(false);
@@ -796,12 +796,15 @@ export const Layout: React.FC = () => {
           {mainView === "z-report" && <ZReportView />}
           {mainView === "audit-log" && (
             <FeatureGate
-              feature={FEATURE_KEYS.auditViewer}
-              title="Het volledige auditlogboek is beschikbaar in Enterprise"
-              description="Auditregistratie blijft altijd actief. Enterprise ontgrendelt de volledige viewer en export."
+              feature={FEATURE_KEYS.historyViewer}
+              title="Historiek is tijdelijk niet beschikbaar"
+              description="De verkoop- en Z-rapporthistoriek is inbegrepen in je abonnement."
               onUpgrade={() => openProfile("billing")}
             >
-              <AuditLog />
+              <AuditLog
+                canViewFullHistory={canOpenFeature(FEATURE_KEYS.fullHistory)}
+                canViewAuditLog={canOpenFeature(FEATURE_KEYS.auditViewer)}
+              />
             </FeatureGate>
           )}
           {mainView === "customers" && (

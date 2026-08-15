@@ -77,6 +77,31 @@ describe("temporal entitlement enforcement", () => {
     await expect(useEntitlements.getState().load("store-1", true)).rejects.toThrow("Onvolledige");
   });
 
+  it("keeps the 30-day history viewer available in the Basic fallback", async () => {
+    vi.spyOn(supabase, "rpc").mockResolvedValue({ data: null, error: new Error("offline") } as never);
+    await expect(useEntitlements.getState().load("store-1", true)).rejects.toThrow("offline");
+
+    expect(canUseFeature(FEATURE_KEYS.historyViewer)).toBe(true);
+    expect(canUseFeature(FEATURE_KEYS.fullHistory)).toBe(false);
+    expect(canUseFeature(FEATURE_KEYS.auditViewer)).toBe(false);
+  });
+
+  it("does not hide Basic history while the entitlement migration is rolling out", () => {
+    const preMigrationBasic = {
+      ...expiredTrial(),
+      storedPlan: "basic" as const,
+      effectivePlan: "basic" as const,
+      status: "active" as const,
+      features: {
+        [FEATURE_KEYS.checkout]: true,
+        [FEATURE_KEYS.zReport]: true,
+      },
+    };
+
+    expect(isFeatureEnabledForSnapshot(preMigrationBasic, FEATURE_KEYS.historyViewer)).toBe(true);
+    expect(isFeatureEnabledForSnapshot(preMigrationBasic, FEATURE_KEYS.fullHistory)).toBe(false);
+  });
+
   it("requires an active store for billing mutations and computes trial time deterministically", async () => {
     useEntitlements.getState().clear();
     await expect(useEntitlements.getState().changeTestPlan("pro")).rejects.toThrow("Geen actieve winkel");

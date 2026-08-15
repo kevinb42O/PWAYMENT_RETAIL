@@ -87,20 +87,43 @@ const csvCell = (value: unknown): string =>
 const toCsv = (headers: unknown[], rows: unknown[][]): string =>
   [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");
 
-export const AuditLog: React.FC = () => {
+interface AuditLogProps {
+  /** Basis includes the latest 30 days; paid plans retain the full history. */
+  canViewFullHistory: boolean;
+  /** The raw audit trail remains an Enterprise control. */
+  canViewAuditLog: boolean;
+}
+
+export const AuditLog: React.FC<AuditLogProps> = ({
+  canViewFullHistory,
+  canViewAuditLog,
+}) => {
   const merchantProfile = useMerchantProfile((state) => state.profile);
   const auth = useAuth();
   const [previewInvoice, setPreviewInvoice] = useState<InvoiceData | null>(
     null,
   );
   const [tab, setTab] = useState<Tab>("sales");
-  const [salesRange, setSalesRange] = useState<SalesRange>("12m");
+  const [salesRange, setSalesRange] = useState<SalesRange>(
+    canViewFullHistory ? "12m" : "30d",
+  );
   const [reports, setReports] = useState<DailyReport[]>([]);
   const [selectedReport, setSelectedReport] = useState<DailyReport | null>(null);
   const [auditRows, setAuditRows] = useState<AuditEntry[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [refundTransaction, setRefundTransaction] =
     useState<Transaction | null>(null);
+
+  const availableTabs = useMemo(
+    () => tabs.filter((item) => item.id !== "audit" || canViewAuditLog),
+    [canViewAuditLog],
+  );
+  const effectiveSalesRange = canViewFullHistory ? salesRange : "30d";
+
+  useEffect(() => {
+    if (!canViewFullHistory) setSalesRange("30d");
+    if (!canViewAuditLog && tab === "audit") setTab("sales");
+  }, [canViewAuditLog, canViewFullHistory, tab]);
 
   useEffect(() => {
     void load();
@@ -118,23 +141,23 @@ export const AuditLog: React.FC = () => {
   };
 
   const visibleTransactions = useMemo(() => {
-    if (salesRange === "all") return transactions;
+    if (effectiveSalesRange === "all") return transactions;
     const start = new Date();
-    if (salesRange === "30d") start.setDate(start.getDate() - 29);
+    if (effectiveSalesRange === "30d") start.setDate(start.getDate() - 29);
     else start.setMonth(start.getMonth() - 11, 1);
     start.setHours(0, 0, 0, 0);
     return transactions.filter(
       (transaction) => transaction.timestamp >= start.getTime(),
     );
-  }, [salesRange, transactions]);
+  }, [effectiveSalesRange, transactions]);
 
   const historyRows = useMemo(
     () =>
       buildSalesHistory(
         visibleTransactions,
-        salesRange === "30d" ? "day" : "month",
+        effectiveSalesRange === "30d" ? "day" : "month",
       ),
-    [salesRange, visibleTransactions],
+    [effectiveSalesRange, visibleTransactions],
   );
   const salesTotals = useMemo(
     () =>
@@ -334,9 +357,9 @@ export const AuditLog: React.FC = () => {
 
         <nav
           aria-label="Historiek onderdelen"
-          className="insights-tabs mb-5 grid grid-cols-3 gap-1 rounded-xl border border-slate-200 bg-white p-1"
+          className={`insights-tabs mb-5 grid gap-1 rounded-xl border border-slate-200 bg-white p-1 ${canViewAuditLog ? "grid-cols-3" : "grid-cols-2"}`}
         >
-          {tabs.map((item) => {
+          {availableTabs.map((item) => {
             const active = tab === item.id;
             return (
               <button
@@ -372,8 +395,9 @@ export const AuditLog: React.FC = () => {
 
         {tab === "sales" ? (
           <SalesHistory
-            range={salesRange}
+            range={effectiveSalesRange}
             onRangeChange={setSalesRange}
+            canViewFullHistory={canViewFullHistory}
             transactions={visibleTransactions}
             rows={historyRows}
             totals={salesTotals}
@@ -436,6 +460,7 @@ export const AuditLog: React.FC = () => {
 const SalesHistory = ({
   range,
   onRangeChange,
+  canViewFullHistory,
   transactions,
   rows,
   totals,
@@ -446,6 +471,7 @@ const SalesHistory = ({
 }: {
   range: SalesRange;
   onRangeChange: (range: SalesRange) => void;
+  canViewFullHistory: boolean;
   transactions: Transaction[];
   rows: SalesHistoryRow[];
   totals: {
@@ -616,18 +642,21 @@ const SalesHistory = ({
               Resultatenperiode
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Alle cijfers en facturen hieronder volgen deze selectie.
+              {canViewFullHistory
+                ? "Alle cijfers en facturen hieronder volgen deze selectie."
+                : "Basis bevat de laatste 30 dagen verkoopgeschiedenis."}
             </p>
           </div>
           <div
-            className="grid grid-cols-3 rounded-lg border border-slate-200 bg-slate-50 p-1"
+            className={`grid rounded-lg border border-slate-200 bg-slate-50 p-1 ${canViewFullHistory ? "grid-cols-3" : "grid-cols-1"}`}
             aria-label="Kies een periode"
           >
-              <RangeButton
-                label="30 dagen"
-                active={range === "30d"}
-                onClick={() => onRangeChange("30d")}
-              />
+            <RangeButton
+              label="30 dagen"
+              active={range === "30d"}
+              onClick={() => onRangeChange("30d")}
+            />
+            {canViewFullHistory && <>
               <RangeButton
                 label="12 maanden"
                 active={range === "12m"}
@@ -638,6 +667,7 @@ const SalesHistory = ({
                 active={range === "all"}
                 onClick={() => onRangeChange("all")}
               />
+            </>}
           </div>
         </div>
       </div>
