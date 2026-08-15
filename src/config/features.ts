@@ -11,7 +11,6 @@ const parseBoolean = (value: string | undefined, defaultValue: boolean): boolean
  */
 export const FEATURES = {
   seedDemoProducts: parseBoolean(import.meta.env.VITE_SEED_DEMO_PRODUCTS, false),
-  seedRetailCatalog: parseBoolean(import.meta.env.VITE_SEED_RETAIL_CATALOG, true),
   autoResetLegacyCatalog: parseBoolean(import.meta.env.VITE_AUTO_RESET_LEGACY_CATALOG, true),
   /** Kill switch for gift-card tendering (audit A1/A2). Enabled by default for retail POS. */
   giftCardPayment: parseBoolean(import.meta.env.VITE_ENABLE_GIFT_CARD_PAYMENT, true),

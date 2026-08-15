@@ -77,9 +77,9 @@ const isOldRetailBootstrapCatalog = (list: Product[]): boolean => {
 /**
  * Products live in IndexedDB so the menu can be edited at runtime.
  *
- * On first load, if the table is empty we seed it from the static catalog
- * shipped in `src/data/products.ts`. After that, the static file is only
- * used as a fallback bootstrap — all reads/writes go through Dexie.
+ * A real tenant starts with an empty table. The static catalog is available
+ * only for an explicitly flagged demo store; all real reads/writes go through
+ * Dexie.
  *
  * Soft-delete: removing a product flips `isActive` to false so historical
  * transactions keep referencing a known product, while the menu hides it.
@@ -103,7 +103,8 @@ export const useProducts = create<ProductsState>((set, get) => ({
     }
 
     if (existing.length === 0) {
-      if ((FEATURES.seedDemoProducts || FEATURES.seedRetailCatalog) && seedProducts.length > 0) {
+      const isDemoStore = useAuth.getState().currentStoreIsDemo;
+      if (isDemoStore && FEATURES.seedDemoProducts && seedProducts.length > 0) {
         const seeded: Product[] = seedProducts.map((p) => normalizeProduct({ ...p, isActive: true }));
         await db.products.bulkPut(seeded);
         set({ list: seeded, hydrated: true });

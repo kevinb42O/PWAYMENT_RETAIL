@@ -34,6 +34,24 @@ const isOldRetailCategorySeed = (list: ProductCategory[]): boolean => {
   return ids.has('decks') && ids.has('apparel') && ids.has('services');
 };
 
+/**
+ * The former browser bootstrap inserted this exact static skate-shop list for
+ * every empty tenant. The canonical ordering is not produced by the category
+ * form, so it lets us safely repair those untouched, client-only records.
+ */
+const isStaticRetailCategorySeed = (list: ProductCategory[]): boolean =>
+  list.length === productCategories.length &&
+  productCategories.every((seed) =>
+    list.some(
+      (category) =>
+        category.id === seed.id &&
+        category.name === seed.name &&
+        category.vatRate === seed.vatRate &&
+        category.sortOrder === seed.sortOrder &&
+        category.isActive === seed.isActive,
+    ),
+  );
+
 export const useCategories = create<CategoriesState>((set, get) => ({
   list: [],
   hydrated: false,
@@ -50,7 +68,16 @@ export const useCategories = create<CategoriesState>((set, get) => ({
       fromDb = [];
     }
 
-    if (fromDb.length === 0 && (FEATURES.seedDemoProducts || FEATURES.seedRetailCatalog)) {
+    const isDemoStore = useAuth.getState().currentStoreIsDemo;
+    const hasNoProducts = (await db.products.count()) === 0;
+    if (!isDemoStore && hasNoProducts && isStaticRetailCategorySeed(fromDb)) {
+      await db.categories.clear();
+      fromDb = [];
+    }
+
+    // Demo data is opt-in and restricted to an explicitly flagged demo
+    // store. A newly registered tenant always starts with zero categories.
+    if (fromDb.length === 0 && isDemoStore && FEATURES.seedDemoProducts) {
       await db.categories.bulkPut(productCategories);
       fromDb = productCategories;
     }

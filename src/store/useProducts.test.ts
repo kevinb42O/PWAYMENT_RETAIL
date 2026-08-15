@@ -56,10 +56,10 @@ describe("product repository store", () => {
     expect(useProducts.getState().hydrated).toBe(true);
   });
 
-  it("hydrates the configured catalogue once and reads persisted rows on later starts", async () => {
+  it("starts a real tenant with an empty catalogue and reads persisted rows on later starts", async () => {
     await useProducts.getState().hydrate();
     expect(useProducts.getState()).toMatchObject({ hydrated: true });
-    expect(useProducts.getState().list.length).toBeGreaterThan(0);
+    expect(useProducts.getState().list).toEqual([]);
 
     await db.products.clear();
     await db.products.put(product({ id: "persisted", name: "Persisted deck" }));

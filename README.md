@@ -301,7 +301,6 @@ Maak indien nodig een lokale `.env.local`; `.env*` wordt genegeerd door Git,
 behalve `.env.example`.
 
 ```dotenv
-VITE_SEED_RETAIL_CATALOG=true
 VITE_SEED_DEMO_PRODUCTS=false
 VITE_AUTO_RESET_LEGACY_CATALOG=true
 VITE_ENABLE_GIFT_CARD_PAYMENT=true
@@ -310,8 +309,7 @@ VITE_ENABLE_CSV_IMPORT=false
 
 | Variabele | Standaard | Betekenis |
 | --- | --- | --- |
-| `VITE_SEED_RETAIL_CATALOG` | `true` | Seed de retailcatalogus wanneer de productdatabase leeg is |
-| `VITE_SEED_DEMO_PRODUCTS` | `false` | Compatibiliteitsflag voor de oudere demo-productseed |
+| `VITE_SEED_DEMO_PRODUCTS` | `false` | Seed de catalogus uitsluitend voor een expliciet gemarkeerde demowinkel |
 | `VITE_AUTO_RESET_LEGACY_CATALOG` | `true` | Vervang de herkende legacycatalogus door de actuele retaildata |
 | `VITE_ENABLE_GIFT_CARD_PAYMENT` | `true` | Toon en activeer cadeaubonbetaling in de POS |
 | `VITE_ENABLE_CSV_IMPORT` | `false` | Schakel CSV-import in; export blijft beschikbaar |
