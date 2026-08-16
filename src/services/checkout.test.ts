@@ -361,6 +361,44 @@ describe('finalizeCheckout', () => {
     expect((await db.gift_cards.get('gc-1')).balanceCents).toBe(0);
   });
 
+  it('books an explicit cash and card split as one exact sale', async () => {
+    const result = await finalizeCheckout(
+      baseInput({
+        clientRequestId: 'cash-card-split',
+        method: 'PIN',
+        tenders: [
+          { method: 'PIN', amountCents: 2000 },
+          { method: 'Cash', amountCents: 8000 },
+        ],
+        tenderedCents: 10000,
+      }),
+    );
+
+    expect(result.transaction.paymentMethod).toBe('Split');
+    expect(result.transaction.tenders).toEqual([
+      { method: 'PIN', amountCents: 2000 },
+      { method: 'Cash', amountCents: 8000 },
+    ]);
+    expect(result.transaction.tenderedCents).toBe(10000);
+    expect(await counts()).toEqual({ transactions: 1, audit: 1, outbox: 1 });
+  });
+
+  it('rejects an explicit split that does not cover the exact remaining amount', async () => {
+    await expect(
+      finalizeCheckout(
+        baseInput({
+          clientRequestId: 'invalid-cash-card-split',
+          method: 'PIN',
+          tenders: [
+            { method: 'PIN', amountCents: 2000 },
+            { method: 'Cash', amountCents: 7999 },
+          ],
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'invalid-tender' });
+    expect(await counts()).toEqual({ transactions: 0, audit: 0, outbox: 0 });
+  });
+
   it('deducts a custom partial gift-card amount and leaves the remaining balance on the card', async () => {
     await db.gift_cards.put(giftCard({ balanceCents: 10000 }));
 

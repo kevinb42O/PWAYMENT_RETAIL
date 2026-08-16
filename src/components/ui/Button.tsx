@@ -27,12 +27,15 @@ export const Button = ({
   variant = "secondary",
   size = "md",
   className,
-  type = "button",
+  type,
   children,
   ...props
 }: ButtonProps) => (
   <button
-    type={type}
+    // Action buttons keep the safe `button` default. A Button without an
+    // onClick inside a form is the form's primary action, so it must submit.
+    // Callers can always override this explicitly with `type`.
+    type={type ?? (props.onClick ? "button" : "submit")}
     className={cn(
       "inline-flex items-center justify-center font-bold transition-colors",
       "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#38bdf8] focus-visible:ring-offset-2",

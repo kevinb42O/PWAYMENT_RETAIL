@@ -20,7 +20,7 @@ export const ACCEPTED_PAYMENT_METHOD_LABELS: Record<
   string
 > = {
   cash: "Cash",
-  card: "Kaart / PIN",
+  card: "Kaart",
   bancontact: "Bancontact",
   visa: "Visa",
   mastercard: "Mastercard",

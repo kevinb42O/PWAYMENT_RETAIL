@@ -31,7 +31,7 @@ const stockFor = (
 ): number | undefined =>
   products.find((product) => product.name === name)?.stockQty;
 
-test("PIN sale is atomic, exact and visible in Historiek", async ({
+test("card sale is atomic, exact and visible in Historiek", async ({
   appPage,
 }) => {
   await openApp(appPage);
@@ -131,7 +131,12 @@ test("gift-card issuance is a liability and redemption uses its own tender", asy
 
   await appPage.getByRole("button", { name: "Kassa" }).click();
   await addProduct(appPage, /Allen Hardware Bolts 1 inch/);
-  await appPage.getByRole("button", { name: "Cadeaubon", exact: true }).click();
+  await appPage
+    .getByRole("button", { name: "Deels betalen of cadeaubon gebruiken" })
+    .click();
+  await appPage
+    .getByRole("button", { name: "Cadeaubon gebruiken" })
+    .click();
   const paymentDialog = appPage.getByRole("dialog", {
     name: "Cadeaubonbetaling",
   });
@@ -159,6 +164,39 @@ test("gift-card issuance is a liability and redemption uses its own tender", asy
     paymentMethod: "Cadeaubon",
     tenders: [{ method: "Cadeaubon", amountCents: 595 }],
   });
+});
+
+test("cash and card split is exact and visibly explained in Historiek", async ({
+  appPage,
+}) => {
+  await openApp(appPage);
+  await addProduct(appPage, /Allen Hardware Bolts 1 inch/);
+  await appPage
+    .getByRole("button", { name: "Deels betalen of cadeaubon gebruiken" })
+    .click();
+  const splitDialog = appPage.getByRole("dialog", { name: "Deels betalen" });
+  await splitDialog.getByLabel("Kaart").fill("2,00");
+  await splitDialog.getByRole("button", { name: "Verder met betaling" }).click();
+  const cashDialog = appPage.getByRole("dialog", { name: "Contante betaling" });
+  await expect(cashDialog.getByText("€ 3,95").first()).toBeVisible();
+  await cashDialog.getByRole("button", { name: "Betaling bevestigen" }).click();
+  await expect(appPage.getByText("Betaling gelukt")).toBeVisible();
+
+  const transactions = await readStore<StoredTransaction>(appPage, "transactions");
+  expect(transactions).toHaveLength(1);
+  expect(transactions[0]).toMatchObject({
+    totalCents: 595,
+    paymentMethod: "Split",
+    tenders: [
+      { method: "PIN", amountCents: 200 },
+      { method: "Cash", amountCents: 395 },
+    ],
+  });
+
+  await closeReceipt(appPage);
+  await appPage.getByRole("button", { name: "Historiek" }).click();
+  await expect(appPage.getByText("Gesplitst").first()).toBeVisible();
+  await expect(appPage.getByText("Kaart € 2,00 · Cash € 3,95")).toBeVisible();
 });
 
 test("Z-closing finalizes the sale and records cash reconciliation", async ({

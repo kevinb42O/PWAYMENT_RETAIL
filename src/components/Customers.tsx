@@ -1447,7 +1447,7 @@ export const Customers: React.FC = () => {
                 }
                 className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2"
               >
-                <option value="PIN">Kaart / PIN</option>
+                <option value="PIN">Kaart</option>
                 <option value="Cash">Contant</option>
               </select>
             </Field>
@@ -1527,7 +1527,7 @@ export const Customers: React.FC = () => {
                 }
                 className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2"
               >
-                <option value="PIN">Kaart / PIN</option>
+                <option value="PIN">Kaart</option>
                 <option value="Cash">Contant</option>
               </select>
             </Field>

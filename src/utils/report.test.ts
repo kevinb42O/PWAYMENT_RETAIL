@@ -66,6 +66,20 @@ describe("calculateReportData", () => {
     expect(r.transactionIds).toEqual([1, 2, 3]);
   });
 
+  it("attributes each part of a cash and card split without double counting revenue", () => {
+    const split = {
+      ...tx(1, 1000, "Cash"),
+      paymentMethod: "Split" as const,
+      tenders: [
+        { method: "PIN" as const, amountCents: 200 },
+        { method: "Cash" as const, amountCents: 800 },
+      ],
+    };
+    const report = calculateReportData([split]);
+    expect(report.totalRevenueCents).toBe(1000);
+    expect(report.paymentTotalsCents).toEqual({ Cash: 800, PIN: 200, Cadeaubon: 0 });
+  });
+
   it("sums Belgian retail VAT and discount columns", () => {
     const r = calculateReportData([tx(1, 1210, "Cash"), tx(2, 2420, "Cash")]);
     expect(r.totalVat21Cents).toBe(210 + 420);

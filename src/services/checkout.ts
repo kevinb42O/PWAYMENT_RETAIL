@@ -6,6 +6,7 @@ import {
   GiftCard,
   GiftCardEvent,
   OrderItem,
+  PaymentTender,
   OutboxEntry,
   PaymentMethod,
   Product,
@@ -63,6 +64,15 @@ export type TenderMethod = Exclude<PaymentMethod, "Split">;
 
 const TENDER_METHODS: readonly TenderMethod[] = ["Cash", "PIN", "Cadeaubon"];
 
+/**
+ * A cashier-composed tender. Gift-card value is deliberately excluded here:
+ * it must always be backed by a concrete GiftCardAllocation so balance and
+ * ledger events remain atomic with the sale.
+ */
+export type CheckoutTenderInput = Omit<PaymentTender, "method"> & {
+  method: "Cash" | "PIN";
+};
+
 export interface CheckoutInput {
   /** Idempotency key — the same key can never produce a second sale. */
   clientRequestId: string;
@@ -75,6 +85,11 @@ export interface CheckoutInput {
   giftCards: GiftCardAllocation[];
   /** Tender used for whatever is left after the gift cards. */
   method: TenderMethod;
+  /**
+   * Explicit cash/card allocation for a combined payment. When omitted, the
+   * legacy `method` covers the remaining amount exactly as before.
+   */
+  tenders?: CheckoutTenderInput[];
   tenderedCents?: number;
   customerId?: string;
   userId?: string;
@@ -210,6 +225,17 @@ const runCheckout = async (
   ) {
     throw new CheckoutError("invalid-tender", "Ongeldig ontvangen bedrag.");
   }
+  if (input.tenders?.some(
+    (tender) =>
+      !["Cash", "PIN"].includes(tender.method) ||
+      !Number.isSafeInteger(tender.amountCents) ||
+      tender.amountCents <= 0,
+  )) {
+    throw new CheckoutError(
+      "invalid-tender",
+      "Elke deelbetaling moet een positief cash- of kaartbedrag hebben.",
+    );
+  }
 
   let totals: Totals;
   try {
@@ -323,17 +349,34 @@ const runCheckout = async (
       }
 
       const remainingCents = totals.total - giftCardTotal;
-      if (input.method === "Cadeaubon" && remainingCents !== 0) {
+      const hasExplicitTenders = input.tenders != null;
+      const explicitTenders = input.tenders ?? [];
+      const explicitTenderTotal = explicitTenders.reduce(
+        (sum, tender) => sum + tender.amountCents,
+        0,
+      );
+
+      if (!hasExplicitTenders && input.method === "Cadeaubon" && remainingCents !== 0) {
         throw new CheckoutError(
           "invalid-tender",
           "Cadeaubonnen dekken het totaalbedrag niet volledig; kies een tweede betaalwijze voor het restant.",
         );
       }
-      if (
-        input.method === "Cash" &&
-        input.tenderedCents != null &&
-        input.tenderedCents < remainingCents
-      ) {
+      if (hasExplicitTenders && explicitTenderTotal !== remainingCents) {
+        throw new CheckoutError(
+          "invalid-tender",
+          `Deelbetalingen (${explicitTenderTotal}c) sluiten niet aan op het resterende bedrag (${remainingCents}c).`,
+        );
+      }
+      const requestedTenders: CheckoutTenderInput[] = hasExplicitTenders
+        ? explicitTenders
+        : remainingCents > 0 && input.method !== "Cadeaubon"
+          ? [{ method: input.method, amountCents: remainingCents }]
+          : [];
+      const cashDueCents = requestedTenders
+        .filter((tender) => tender.method === "Cash")
+        .reduce((sum, tender) => sum + tender.amountCents, 0);
+      if (input.tenderedCents != null && input.tenderedCents < cashDueCents) {
         throw new CheckoutError(
           "invalid-tender",
           "Ontvangen bedrag is lager dan het te betalen restant.",
@@ -346,15 +389,7 @@ const runCheckout = async (
           amountCents: a.amountCents,
         }),
       );
-      if (remainingCents > 0) {
-        if (input.method === "Cadeaubon") {
-          throw new CheckoutError(
-            "invalid-tender",
-            "Het resterende bedrag vereist Cash of PIN.",
-          );
-        }
-        tenders.push({ method: input.method, amountCents: remainingCents });
-      }
+      tenders.push(...requestedTenders);
       const tenderSum = tenders.reduce(
         (sum, tender) => sum + tender.amountCents,
         0,

@@ -897,7 +897,7 @@ const SalesHistory = ({
                   className="h-11 w-full appearance-none rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm font-bold text-slate-700 outline-none focus:border-cyan-600 focus:ring-2 focus:ring-cyan-600/20"
                 >
                   <option value="all">Alle betalingen</option>
-                  <option value="PIN">Kaart / PIN</option>
+                  <option value="PIN">Kaart</option>
                   <option value="Cash">Cash</option>
                   <option value="Cadeaubon">Cadeaubon</option>
                   <option value="Split">Gesplitst</option>
@@ -1085,7 +1085,7 @@ const TransactionRow = ({
       </span>
     </td>
     <td className="px-5 py-4">
-      <PaymentBadge method={transaction.paymentMethod} />
+      <PaymentSummary transaction={transaction} />
     </td>
     <td className="px-5 py-4 text-slate-600">
       <span className="block font-semibold text-slate-700">
@@ -1151,7 +1151,7 @@ const TransactionCard = ({
           Betaling
         </div>
         <div className="mt-1">
-          <PaymentBadge method={transaction.paymentMethod} />
+          <PaymentSummary transaction={transaction} />
         </div>
       </div>
       <div>
@@ -1342,7 +1342,7 @@ const RefundDialog = ({
             onChange={(event) => setMethod(event.target.value as typeof method)}
             className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm"
           >
-            <option value="PIN">Kaart / PIN</option>
+            <option value="PIN">Kaart</option>
             <option value="Cash">Contant</option>
             <option value="Cadeaubon">Oorspronkelijke cadeaubon</option>
           </select>
@@ -1381,8 +1381,26 @@ const PaymentBadge = ({ method }: { method: PaymentMethod }) => {
       }`}
     >
       {isCash ? <WalletCards size={13} /> : <CreditCard size={13} />}
-      {method === "PIN" ? "Kaart" : method}
+      {method === "PIN" ? "Kaart" : method === "Split" ? "Gesplitst" : method}
     </span>
+  );
+};
+
+const PaymentSummary = ({ transaction }: { transaction: Transaction }) => {
+  const tenders = transactionTenders(transaction);
+  return (
+    <div>
+      <PaymentBadge method={transaction.paymentMethod} />
+      {tenders.length > 1 && (
+        <div className="mt-1 text-xs font-semibold leading-4 text-slate-500">
+          {tenders
+            .map((tender) =>
+              `${tender.method === "PIN" ? "Kaart" : tender.method} ${formatEUR(tender.amountCents)}`,
+            )
+            .join(" · ")}
+        </div>
+      )}
+    </div>
   );
 };
 

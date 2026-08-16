@@ -43,7 +43,7 @@ export const addProduct = async (
 };
 
 export const checkoutPin = async (page: Page): Promise<void> => {
-  await page.getByRole("button", { name: "PIN", exact: true }).click();
+  await page.getByRole("button", { name: "Kaart", exact: true }).click();
   await expect(page.getByText("Betaling gelukt")).toBeVisible();
 };
 

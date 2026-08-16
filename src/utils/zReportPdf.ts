@@ -75,7 +75,7 @@ export const createZReportPdf = (
     head: [["Financieel", "Bedrag", "Betaling", "Bedrag"]],
     body: [
       ["Netto productomzet", euro(Number(totals.totalRevenueCents ?? 0)), "Cash", euro(Number(totals.paymentTotalsCents?.Cash ?? 0))],
-      ["Kostprijs", euro(Number(totals.totalCostCents ?? 0)), "Kaart / PIN", euro(Number(totals.paymentTotalsCents?.PIN ?? 0))],
+      ["Kostprijs", euro(Number(totals.totalCostCents ?? 0)), "Kaart", euro(Number(totals.paymentTotalsCents?.PIN ?? 0))],
       ["Brutowinst", euro(Number(totals.grossProfitCents ?? 0)), "Cadeaubon", euro(Number(totals.paymentTotalsCents?.Cadeaubon ?? 0))],
       ["Kortingen", euro(Number(totals.totalDiscountCents ?? 0)), "Kasverschil", euro(report.cashDifferenceCents)],
       ["BTW 12%", euro(Number(totals.totalVat12Cents ?? 0)), "Verwacht cash", euro(report.expectedCashCents)],

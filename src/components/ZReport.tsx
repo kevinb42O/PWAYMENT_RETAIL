@@ -39,7 +39,7 @@ import {
 import { useAuth } from "../auth/useAuth";
 import { formatEUR, parseDecimalToCents } from "../utils/money";
 import { db } from "../db/db";
-import { DEFAULT_REGISTER_ID } from "../utils/financial";
+import { DEFAULT_REGISTER_ID, transactionTenders } from "../utils/financial";
 import { Modal } from "./Modal";
 
 type PaymentKey = "Cash" | "PIN" | "Cadeaubon";
@@ -55,7 +55,7 @@ const paymentMeta: Record<
     bar: "bg-emerald-500",
   },
   PIN: {
-    label: "Kaart / PIN",
+    label: "Kaart",
     Icon: CreditCard,
     tone: "bg-sky-50 text-sky-700",
     bar: "bg-cyan-600",
@@ -74,6 +74,24 @@ const signedEUR = (value: number) =>
 const paymentLabel = (method: PaymentMethod) =>
   method === "PIN" ? "Kaart" : method;
 
+const paymentTenderSummary = (transaction: Transaction) =>
+  transactionTenders(transaction)
+    .map((tender) => `${paymentLabel(tender.method)} ${formatEUR(tender.amountCents)}`)
+    .join(" · ");
+
+const splitPaymentSummary = (transactions: Transaction[]) => {
+  const combinations = new Map<string, number>();
+  let count = 0;
+  for (const transaction of transactions) {
+    const tenders = transactionTenders(transaction);
+    if (tenders.length < 2) continue;
+    count += 1;
+    const label = tenders.map((tender) => paymentLabel(tender.method)).join(" + ");
+    combinations.set(label, (combinations.get(label) ?? 0) + 1);
+  }
+  return { count, combinations: [...combinations.entries()] };
+};
+
 const ReportPrintout = ({
   report,
   transactions,
@@ -84,6 +102,7 @@ const ReportPrintout = ({
   const isFinal = "reportNumber" in report;
   const totalExcl = report.totalExclVat12Cents + report.totalExclVat21Cents;
   const totalVat = report.totalVat12Cents + report.totalVat21Cents;
+  const splitSummary = splitPaymentSummary(transactions);
 
   return (
     <article className="hidden print:block print:bg-white print:text-black">
@@ -148,7 +167,7 @@ const ReportPrintout = ({
             )}
           />
           <PrintRow
-            label="Kaart / PIN"
+            label="Kaart"
             value={formatEUR(
               report.paymentTotalsCents.PIN +
                 (report.giftCardLiabilityPaymentTotalsCents?.PIN ?? 0),
@@ -162,6 +181,21 @@ const ReportPrintout = ({
             )}
           />
         </section>
+
+        {splitSummary.count > 0 && (
+          <section>
+            <h2 className="mb-2 border-b border-gray-300 pb-1 font-bold">
+              Gesplitste betalingen
+            </h2>
+            <PrintRow label="Aantal verkopen" value={String(splitSummary.count)} />
+            {splitSummary.combinations.map(([label, count]) => (
+              <PrintRow key={label} label={label} value={`${count} verkoop${count === 1 ? "" : "en"}`} />
+            ))}
+            <p className="mt-1 text-xs text-gray-600">
+              Reeds inbegrepen in de betaalmethodetotalen hierboven.
+            </p>
+          </section>
+        )}
 
         <section>
           <h2 className="mb-2 border-b border-gray-300 pb-1 font-bold">BTW</h2>
@@ -552,6 +586,7 @@ export const ZReportView: React.FC = () => {
     ),
   );
   const recentTransactions = [...transactions].reverse().slice(0, 5);
+  const splitSummary = splitPaymentSummary(transactions);
   const canFinalize = auth.hasRole("owner", "manager");
   const parsedOpeningFloat = parseDecimalToCents(openingFloatText);
   const expectedCashCents =
@@ -834,6 +869,18 @@ export const ZReportView: React.FC = () => {
                 </span>
                 <strong>{signedEUR(analytics.paymentDifferenceCents)}</strong>
               </div>
+              {splitSummary.count > 0 && (
+                <div className="mt-4 rounded-lg border border-violet-100 bg-violet-50 px-3.5 py-3 text-xs text-violet-950">
+                  <div className="flex items-center justify-between gap-3 font-bold">
+                    <span>Gesplitste betalingen</span>
+                    <span>{splitSummary.count} verkoop{splitSummary.count === 1 ? "" : "en"}</span>
+                  </div>
+                  <div className="mt-1.5 text-violet-800">
+                    {splitSummary.combinations.map(([label, count]) => `${label}: ${count}`).join(" · ")}
+                  </div>
+                  <p className="mt-1 text-violet-700/80">Al inbegrepen in Cash, Kaart en Cadeaubon hierboven.</p>
+                </div>
+              )}
             </section>
 
             <section className="insights-panel overflow-hidden">
@@ -876,7 +923,9 @@ export const ZReportView: React.FC = () => {
                           {transaction.userName ?? "Onbekend"}
                         </td>
                         <td className="px-4 py-3.5">
-                          {paymentLabel(transaction.paymentMethod)}
+                          {transaction.paymentMethod === "Split"
+                            ? paymentTenderSummary(transaction)
+                            : paymentLabel(transaction.paymentMethod)}
                         </td>
                         <td className="px-6 py-3.5 text-right font-bold text-slate-950">
                           {formatEUR(transaction.totalCents)}

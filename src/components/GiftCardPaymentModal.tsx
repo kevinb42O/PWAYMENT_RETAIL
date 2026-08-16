@@ -470,7 +470,7 @@ export const GiftCardPaymentModal: React.FC<Props> = ({
                   onClick={() => handleConfirm("PIN")}
                   className="py-2.5 px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors shadow-xs"
                 >
-                  <CreditCard size={16} /> PIN ({formatEUR(remainingOrderCents)}
+                  <CreditCard size={16} /> Kaart ({formatEUR(remainingOrderCents)}
                   )
                 </button>
                 <button

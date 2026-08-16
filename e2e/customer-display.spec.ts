@@ -74,7 +74,7 @@ test("customer display follows the local cart and committed payment", async ({
   await expect(
     displayPage.getByRole("heading", { name: "Welkom bij de testwinkel" }),
   ).toBeVisible();
-  await expect(displayPage.getByText("Kaart / PIN")).toBeVisible();
+  await expect(displayPage.getByText("Kaart")).toBeVisible();
 
   await addProduct(appPage, /Allen Hardware Bolts 1 inch/);
   await expect(
@@ -84,7 +84,7 @@ test("customer display follows the local cart and committed payment", async ({
   ).toBeVisible();
   await expect(displayPage.getByText("€ 5,95").last()).toBeVisible();
 
-  await appPage.getByRole("button", { name: "PIN", exact: true }).click();
+  await appPage.getByRole("button", { name: "Kaart", exact: true }).click();
   await expect(
     displayPage.getByRole("heading", { name: "Bedankt voor je aankoop" }),
   ).toBeVisible();

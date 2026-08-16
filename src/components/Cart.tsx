@@ -25,6 +25,7 @@ import {
   dedupeGiftCards,
   finalizeCheckout,
   type GiftCardAllocation,
+  type CheckoutTenderInput,
   type TenderMethod,
 } from "../services/checkout";
 import { OrderItem, Transaction } from "../types";
@@ -49,6 +50,7 @@ import { useMerchantProfile } from "../store/useMerchantProfile";
 import { convertTransactionToInvoiceData } from "../utils/invoicePdfGenerator";
 import { InvoicePreviewModal } from "./InvoicePreviewModal";
 import { InvoiceCustomerModal } from "./InvoiceCustomerModal";
+import { SplitPaymentModal } from "./SplitPaymentModal";
 
 const lineUnitCents = (o: OrderItem): number =>
   o.product.priceCents +
@@ -57,6 +59,7 @@ const lineUnitCents = (o: OrderItem): number =>
 export const Cart: React.FC = () => {
   const cart = useStore((s) => s.cart);
   const updateOrderItemQuantity = useStore((s) => s.updateOrderItemQuantity);
+  const removeOrderItem = useStore((s) => s.removeOrderItem);
   const clearCart = useStore((s) => s.clearCart);
   const voidOrderItem = useStore((s) => s.voidOrderItem);
   const cartDiscount = useStore((s) => s.cartDiscount);
@@ -123,6 +126,8 @@ export const Cart: React.FC = () => {
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
   const [discountOpen, setDiscountOpen] = useState(false);
   const [cashOpen, setCashOpen] = useState(false);
+  const [splitOpen, setSplitOpen] = useState(false);
+  const [pendingSplitTenders, setPendingSplitTenders] = useState<CheckoutTenderInput[] | null>(null);
   const [linkOpen, setLinkOpen] = useState(false);
   const [giftOpen, setGiftOpen] = useState(false);
   const [invoiceCustomerOpen, setInvoiceCustomerOpen] = useState(false);
@@ -272,7 +277,11 @@ export const Cart: React.FC = () => {
 
   const runCheckout = async (
     method: TenderMethod,
-    extras: { tenderedCents?: number; giftCards?: GiftCardAllocation[] } = {},
+    extras: {
+      tenderedCents?: number;
+      giftCards?: GiftCardAllocation[];
+      tenders?: CheckoutTenderInput[];
+    } = {},
   ) => {
     if (checkoutBlocked) return;
     if (documentRequest.type !== "receipt" && (
@@ -283,7 +292,10 @@ export const Cart: React.FC = () => {
       return;
     }
     setIsProcessing(true);
-    useCustomerDisplayRuntime.getState().beginPayment(method);
+    const displayMethod = extras.tenders?.some((tender) => tender.method === "PIN")
+      ? "PIN"
+      : method;
+    useCustomerDisplayRuntime.getState().beginPayment(displayMethod);
     requestIdRef.current ??= crypto.randomUUID();
 
     try {
@@ -296,6 +308,7 @@ export const Cart: React.FC = () => {
         discountApprovedByUserId: cartDiscount?.approvedByUserId,
         giftCards: extras.giftCards ?? cartGiftCards,
         method,
+        tenders: extras.tenders,
         tenderedCents: extras.tenderedCents,
         customerId: linkedCustomerId ?? undefined,
         userId: auth.currentUserId ?? undefined,
@@ -328,7 +341,7 @@ export const Cart: React.FC = () => {
         }
       }
     } catch (error) {
-      useCustomerDisplayRuntime.getState().failPayment(method);
+      useCustomerDisplayRuntime.getState().failPayment(displayMethod);
       console.error("Checkout failed:", error);
       alert(
         error instanceof CheckoutError
@@ -342,6 +355,7 @@ export const Cart: React.FC = () => {
 
   const handleCheckout = (method: TenderMethod) => {
     if (method === "Cash") {
+      setPendingSplitTenders(null);
       setCashOpen(true);
       return;
     }
@@ -508,15 +522,31 @@ export const Cart: React.FC = () => {
                   <div className="flex items-center gap-1 bg-zinc-50 rounded-lg p-1 border border-zinc-200">
                     <button
                       type="button"
-                      aria-label={`Aantal ${order.product.name} verlagen`}
-                      onClick={() =>
+                      aria-label={
+                        order.quantity === 1
+                          ? `${order.product.name} verwijderen`
+                          : `Aantal ${order.product.name} verlagen`
+                      }
+                      title={
+                        order.quantity === 1
+                          ? "Product verwijderen"
+                          : "Aantal verlagen"
+                      }
+                      onClick={() => {
+                        if (order.quantity === 1) {
+                          removeOrderItem(order.lineId);
+                          return;
+                        }
                         updateOrderItemQuantity(
                           order.lineId,
                           order.quantity - 1,
-                        )
-                      }
-                      disabled={order.quantity <= 1}
-                      className="w-8 h-8 flex items-center justify-center bg-white hover:bg-zinc-100 rounded-md text-zinc-600"
+                        );
+                      }}
+                      className={`w-8 h-8 flex items-center justify-center bg-white hover:bg-zinc-100 rounded-md transition-colors ${
+                        order.quantity === 1
+                          ? "text-red-500 hover:bg-red-50 hover:text-red-600"
+                          : "text-zinc-600"
+                      }`}
                     >
                       <Minus size={16} />
                     </button>
@@ -624,7 +654,7 @@ export const Cart: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => handleCheckout("Cash")}
             disabled={checkoutBlocked}
@@ -639,19 +669,19 @@ export const Cart: React.FC = () => {
             className="pos-primary-action flex flex-col items-center justify-center gap-1.5 py-3 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-semibold shadow-sm transition-colors"
           >
             <CreditCard size={24} />
-            <span className="text-sm">PIN</span>
-          </button>
-          <button
-            onClick={() => {
-              if (!checkoutBlocked) setGiftOpen(true);
-            }}
-            disabled={checkoutBlocked}
-            className="pos-payment-secondary flex flex-col items-center justify-center gap-1.5 py-3 border border-zinc-200 bg-white text-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-semibold transition-colors"
-          >
-            <Gift size={24} />
-            <span className="text-sm">Cadeaubon</span>
+            <span className="text-sm">Kaart</span>
           </button>
         </div>
+        <button
+          type="button"
+          onClick={() => {
+            if (!checkoutBlocked) setSplitOpen(true);
+          }}
+          disabled={checkoutBlocked}
+          className="mt-2 w-full rounded-lg px-3 py-2 text-xs font-bold text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Deels betalen of cadeaubon gebruiken
+        </button>
       </div>
 
       <ItemEditModal
@@ -667,11 +697,43 @@ export const Cart: React.FC = () => {
       />
       <CashPaymentModal
         open={cashOpen}
-        onClose={() => setCashOpen(false)}
-        totalCents={remainingTotal}
+        onClose={() => {
+          setCashOpen(false);
+          setPendingSplitTenders(null);
+        }}
+        totalCents={
+          pendingSplitTenders?.find((tender) => tender.method === "Cash")
+            ?.amountCents ?? remainingTotal
+        }
         onConfirm={(t) => {
           setCashOpen(false);
-          void runCheckout("Cash", { tenderedCents: t });
+          const splitTenders = pendingSplitTenders;
+          setPendingSplitTenders(null);
+          void runCheckout(
+            splitTenders?.some((tender) => tender.method === "PIN")
+              ? "PIN"
+              : "Cash",
+            { tenderedCents: t, tenders: splitTenders ?? undefined },
+          );
+        }}
+      />
+      <SplitPaymentModal
+        open={splitOpen}
+        totalCents={remainingTotal}
+        onClose={() => setSplitOpen(false)}
+        onUseGiftCard={() => {
+          setSplitOpen(false);
+          setGiftOpen(true);
+        }}
+        onConfirm={(tenders) => {
+          setSplitOpen(false);
+          const cashTender = tenders.find((tender) => tender.method === "Cash");
+          if (cashTender) {
+            setPendingSplitTenders(tenders);
+            setCashOpen(true);
+            return;
+          }
+          void runCheckout("PIN", { tenders });
         }}
       />
       <CustomerLinkModal
