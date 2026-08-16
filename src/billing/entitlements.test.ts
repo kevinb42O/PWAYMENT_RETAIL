@@ -102,6 +102,21 @@ describe("temporal entitlement enforcement", () => {
     expect(isFeatureEnabledForSnapshot(preMigrationBasic, FEATURE_KEYS.fullHistory)).toBe(false);
   });
 
+  it("keeps Historiek available even if a plan response marks its legacy flag false", () => {
+    const incompletePlanResponse = {
+      ...expiredTrial(),
+      status: "active" as const,
+      effectivePlan: "pro" as const,
+      features: {
+        [FEATURE_KEYS.checkout]: true,
+        [FEATURE_KEYS.zReport]: true,
+        [FEATURE_KEYS.historyViewer]: false,
+      },
+    };
+
+    expect(isFeatureEnabledForSnapshot(incompletePlanResponse, FEATURE_KEYS.historyViewer)).toBe(true);
+  });
+
   it("requires an active store for billing mutations and computes trial time deterministically", async () => {
     useEntitlements.getState().clear();
     await expect(useEntitlements.getState().changeTestPlan("pro")).rejects.toThrow("Geen actieve winkel");

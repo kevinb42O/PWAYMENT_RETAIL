@@ -361,7 +361,7 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
     phone: row.phone ?? undefined,
     address: row.address ?? undefined,
     billingProfile: row.billing_profile && typeof row.billing_profile === "object"
-      ? row.billing_profile as Customer["billingProfile"]
+      ? row.billing_profile as unknown as Customer["billingProfile"]
       : undefined,
     notes: row.notes ?? undefined,
     priceGroup: row.price_group === undefined
@@ -483,7 +483,7 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
     correctionReason: row.correction_reason ?? undefined,
     documentNumber: row.document_number,
     documentRequest: row.document_request && typeof row.document_request === "object"
-      ? row.document_request as Transaction["documentRequest"]
+      ? row.document_request as unknown as Transaction["documentRequest"]
       : undefined,
     invoiceNumber: row.invoice_number ?? undefined,
     invoiceIssuedAt: row.invoice_issued_at ? Date.parse(row.invoice_issued_at) : undefined,

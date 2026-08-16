@@ -266,16 +266,13 @@ export const isFeatureEnabledForSnapshot = (
   feature: FeatureKey,
   now = entitlementNow(),
 ): boolean => {
+  // Historiek is a non-negotiable core workspace on every plan. Entitlements
+  // only determine its retention window (`history.full`) and whether the raw
+  // audit trail is available (`audit.viewer`); they must never hide the tab.
+  if (feature === FEATURE_KEYS.historyViewer) return true;
   if (!snapshot || isTrialExpiredLocally(snapshot, now)) {
     return feature === FEATURE_KEYS.checkout ||
-      feature === FEATURE_KEYS.zReport ||
-      feature === FEATURE_KEYS.historyViewer;
-  }
-  // Older API deployments do not yet return this newly separated capability.
-  // Basis still contractually includes the 30-day viewer, so never hide it
-  // while the database migration is rolling out.
-  if (feature === FEATURE_KEYS.historyViewer && snapshot.effectivePlan === "basic") {
-    return true;
+      feature === FEATURE_KEYS.zReport;
   }
   return snapshot.features[feature] === true;
 };
