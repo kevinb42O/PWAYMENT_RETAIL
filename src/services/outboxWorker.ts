@@ -41,6 +41,7 @@ const pushTransactionToSupabase = async (
       })),
       method: tx.paymentMethod,
       reason: tx.correctionReason ?? "Retour",
+      receipt_barcode: tx.receiptBarcode,
     };
 
     const { error } = await supabase.rpc("refund_sale", {
@@ -79,6 +80,7 @@ const pushTransactionToSupabase = async (
       customer_id: tx.customerId,
       merchant_snapshot: tx.merchantSnapshot,
       document_request: tx.documentRequest,
+      receipt_barcode: tx.receiptBarcode,
       // Repeated deliberately in the atomic checkout command. It lets the
       // server create/recover a just-added invoice customer even when a retry
       // reaches it before the separate customer outbox item.
@@ -102,12 +104,13 @@ const pushTransactionToSupabase = async (
     }
     // The server owns legal document numbering. Reconcile the optimistic local
     // number as soon as the queued command reaches Supabase.
-    const issued = data as { document_number?: string; invoice_number?: string; invoice_issued_at?: string } | null;
+    const issued = data as { document_number?: string; invoice_number?: string; invoice_issued_at?: string; receipt_barcode?: string } | null;
     if (!error && tx.id != null && issued?.document_number) {
       await db.transactions.update(tx.id, {
         documentNumber: issued.document_number,
         invoiceNumber: issued.invoice_number,
         invoiceIssuedAt: issued.invoice_issued_at ? Date.parse(issued.invoice_issued_at) : undefined,
+        receiptBarcode: issued.receipt_barcode ?? tx.receiptBarcode,
       });
     }
   }

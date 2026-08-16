@@ -1497,6 +1497,8 @@ export type Database = {
           occurred_at: string
           original_transaction_id: string | null
           payment_method: string
+          receipt_barcode: string
+          receipt_barcode_version: number
           register_id: string | null
           shift_id: string | null
           source: string
@@ -1532,6 +1534,8 @@ export type Database = {
           occurred_at: string
           original_transaction_id?: string | null
           payment_method: string
+          receipt_barcode?: string
+          receipt_barcode_version?: number
           register_id?: string | null
           shift_id?: string | null
           source?: string
@@ -1567,6 +1571,8 @@ export type Database = {
           occurred_at?: string
           original_transaction_id?: string | null
           payment_method?: string
+          receipt_barcode?: string
+          receipt_barcode_version?: number
           register_id?: string | null
           shift_id?: string | null
           source?: string

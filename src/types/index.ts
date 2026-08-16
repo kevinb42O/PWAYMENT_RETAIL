@@ -204,6 +204,9 @@ export interface Transaction {
   correctionReason?: string;
   /** Stable human-facing number and immutable merchant snapshot. */
   documentNumber?: string;
+  /** Immutable Code 128 lookup key printed on every receipt and credit note. */
+  receiptBarcode?: string;
+  receiptBarcodeVersion?: 1;
   /** Cashier-selected document intent and immutable invoice recipient data. */
   documentRequest?: SaleDocumentRequest;
   /** Invoice sequence assigned at issue time. A backend will become canonical. */

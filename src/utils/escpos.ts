@@ -278,6 +278,15 @@ export class EscPosBuilder {
     return this.push(GS, 0x56, mode, NUL);
   }
 
+  /** GS k (Function B), CODE128 subset C: compact numeric receipt code. */
+  code128C(digits: string): this {
+    if (!/^\d{2,}$/.test(digits) || digits.length % 2 !== 0) {
+      throw new Error("CODE128-C requires an even numeric value.");
+    }
+    const data = this.encodeText(`{C${digits}`);
+    return this.push(GS, 0x6b, 73, data.length, ...data);
+  }
+
   /**
    * Push raw bytes verbatim — escape hatch for commands not covered above.
    */

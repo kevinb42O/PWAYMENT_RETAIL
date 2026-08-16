@@ -5,6 +5,7 @@ import { useStore, type MainView } from "../store/useStore";
 import { useAuth } from "../auth/useAuth";
 import { useProducts } from "../store/useProducts";
 import { matchesCatalogQuery } from "../utils/productLookup";
+import { isValidReceiptBarcode } from "../utils/receiptBarcode";
 import { FeatureGate } from "../billing/FeatureGate";
 import { TrialStatus } from "../billing/TrialStatus";
 import { FEATURE_KEYS, isFeatureEnabledForSnapshot, planLabel, useEntitlements, type FeatureKey } from "../billing/entitlements";
@@ -36,6 +37,7 @@ import {
   KeyRound,
   LockKeyhole,
   ShieldCheck,
+  RotateCcw,
   type LucideIcon,
 } from "lucide-react";
 
@@ -290,6 +292,17 @@ export const Layout: React.FC = () => {
   const submitProductQuery = (rawValue?: string) => {
     const value = (rawValue ?? productQuery).trim();
     if (!value) {
+      focusScanInput();
+      return;
+    }
+
+    if (isValidReceiptBarcode(value)) {
+      setProductQuery("");
+      setScanFeedback({
+        tone: "info",
+        title: "Ticketcode gescand",
+        detail: "Dit is een kassaticket voor een retour. Gebruik de knop 'Retour' om de bon op te zoeken.",
+      });
       focusScanInput();
       return;
     }
@@ -907,6 +920,17 @@ export const Layout: React.FC = () => {
                     <span className="hidden sm:inline">Zoek</span>
                   </button>
                 </form>
+                {(currentRole === "owner" || currentRole === "manager") && (
+                  <button
+                    type="button"
+                    onClick={() => setMainView("audit-log")}
+                    className="ml-2 inline-flex shrink-0 items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm font-bold text-amber-900 hover:bg-amber-100"
+                    title="Open retour via ticketscan"
+                  >
+                    <RotateCcw size={16} />
+                    <span className="hidden lg:inline">Retour</span>
+                  </button>
+                )}
               </div>
             </div>
 

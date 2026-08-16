@@ -8,6 +8,7 @@ import { useCustomers } from '../store/useCustomers';
 import { calculateTotals } from '../utils/vat';
 import { receiptPaymentRows } from '../utils/receiptPayments';
 import { transactionTenders } from '../utils/financial';
+import { ReceiptBarcode } from './ReceiptBarcode';
 
 interface Props {
   transaction: Transaction;
@@ -230,6 +231,20 @@ export const ReceiptTicket: React.FC<Props> = ({ transaction: t, ticketNumber, m
       </div>
 
       <Sep />
+
+      {t.receiptBarcode && (
+        <div className="my-3 text-center">
+          <div className="mb-1 text-[9px] font-bold tracking-wide">
+            {t.kind === 'refund' ? 'CREDITNOTA — niet als verkoopbon retourneerbaar' : 'RETOUR VIA TICKETSCAN'}
+          </div>
+          <ReceiptBarcode value={t.receiptBarcode} className="mx-auto w-[250px] max-w-full" />
+          {t.kind !== 'refund' && (
+            <div className="mt-1 text-[9px]">Bewaar dit ticket voor een retour.</div>
+          )}
+        </div>
+      )}
+
+      {t.receiptBarcode && <Sep />}
 
       {/* Footer */}
       <div className="text-center text-[10px] mt-2">

@@ -482,6 +482,8 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
       : undefined,
     correctionReason: row.correction_reason ?? undefined,
     documentNumber: row.document_number,
+    receiptBarcode: row.receipt_barcode ?? undefined,
+    receiptBarcodeVersion: row.receipt_barcode_version === 1 ? 1 : undefined,
     documentRequest: row.document_request && typeof row.document_request === "object"
       ? row.document_request as unknown as Transaction["documentRequest"]
       : undefined,

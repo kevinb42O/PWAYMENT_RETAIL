@@ -20,6 +20,7 @@ import {
   UserRound,
   WalletCards,
   X,
+  ScanLine,
 } from "lucide-react";
 import { db } from "../db/db";
 import { MerchantInfo } from "../data/merchant";
@@ -41,6 +42,7 @@ import { Modal } from "./Modal";
 import { createRefund } from "../services/refunds";
 import { useAuth } from "../auth/useAuth";
 import { ZReportHistoryDetail } from "./ZReportHistoryDetail";
+import { isValidReceiptBarcode, normalizeReceiptBarcode } from "../utils/receiptBarcode";
 import {
   DailyReportDaySummary,
   loadDailyReportDaySummaries,
@@ -113,6 +115,7 @@ export const AuditLog: React.FC<AuditLogProps> = ({
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [refundTransaction, setRefundTransaction] =
     useState<Transaction | null>(null);
+  const [returnScanOpen, setReturnScanOpen] = useState(false);
 
   const availableTabs = useMemo(
     () => tabs.filter((item) => item.id !== "audit" || canViewAuditLog),
@@ -336,6 +339,15 @@ export const AuditLog: React.FC<AuditLogProps> = ({
           </div>
 
           <div className="flex flex-wrap gap-2">
+            {auth.hasRole("owner", "manager") && (
+              <button
+                type="button"
+                onClick={() => setReturnScanOpen(true)}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-amber-600 px-3.5 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-2"
+              >
+                <ScanLine size={16} /> Retour via ticket
+              </button>
+            )}
             <button
               type="button"
               onClick={exportCSV}
@@ -431,6 +443,15 @@ export const AuditLog: React.FC<AuditLogProps> = ({
           }}
         />
       )}
+      <ReturnTicketScanDialog
+        open={returnScanOpen}
+        transactions={transactions}
+        onClose={() => setReturnScanOpen(false)}
+        onFound={(transaction) => {
+          setReturnScanOpen(false);
+          setRefundTransaction(transaction);
+        }}
+      />
       {selectedReport && (
         <ZReportHistoryDetail
           report={selectedReport}
@@ -454,6 +475,85 @@ export const AuditLog: React.FC<AuditLogProps> = ({
         />
       )}
     </div>
+  );
+};
+
+const ReturnTicketScanDialog = ({
+  open,
+  transactions,
+  onClose,
+  onFound,
+}: {
+  open: boolean;
+  transactions: Transaction[];
+  onClose: () => void;
+  onFound: (transaction: Transaction) => void;
+}) => {
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const [value, setValue] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setValue("");
+    setError(null);
+    const frame = window.requestAnimationFrame(() => inputRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [open]);
+
+  const submit = () => {
+    const barcode = normalizeReceiptBarcode(value);
+    if (!isValidReceiptBarcode(barcode)) {
+      setError("Scan een geldige PWAYMENT-ticketbarcode of voer de 20 cijfers in.");
+      return;
+    }
+    const transaction = transactions.find((row) => row.receiptBarcode === barcode);
+    if (!transaction) {
+      setError("Dit ticket staat niet in de lokale winkeldata. Vernieuw de synchronisatie of zoek de bon handmatig op.");
+      return;
+    }
+    if ((transaction.kind ?? "sale") !== "sale") {
+      setError("Dit is een creditnota. Alleen een oorspronkelijke verkoop kan worden geretourneerd.");
+      return;
+    }
+    if ((transaction.source ?? "live") === "demo") {
+      setError("Demo-omzet kan niet als echte retour worden geboekt.");
+      return;
+    }
+    onFound(transaction);
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Retour via ticket scannen" size="md">
+      <div className="space-y-4 text-slate-900">
+        <p className="rounded-lg bg-cyan-50 p-3 text-sm text-cyan-950">
+          Scan de barcode op het oorspronkelijke kassaticket. De verkoop wordt eerst gecontroleerd; een scan boekt nooit meteen een terugbetaling.
+        </p>
+        <label className="block text-xs font-bold text-slate-600">
+          Ticketcode
+          <input
+            ref={inputRef}
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                submit();
+              }
+            }}
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="Scan barcode of voer 20 cijfers in"
+            className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-3 font-mono text-base tracking-wide"
+          />
+        </label>
+        {error && <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">{error}</p>}
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-bold text-slate-700">Annuleren</button>
+          <button type="button" onClick={submit} className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-bold text-white"><ScanLine size={15} /> Ticket openen</button>
+        </div>
+      </div>
+    </Modal>
   );
 };
 

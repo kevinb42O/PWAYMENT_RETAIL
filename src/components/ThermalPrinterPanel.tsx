@@ -28,6 +28,7 @@ import { useCustomers } from '../store/useCustomers';
 import { EscPosBuilder, formatItemLine, formatTotalLine } from '../utils/escpos';
 import { receiptPaymentRows } from '../utils/receiptPayments';
 import { transactionTenders } from '../utils/financial';
+import { formatReceiptBarcode, isValidReceiptBarcode } from '../utils/receiptBarcode';
 import {
   useThermalPrinter,
   EPSON_VENDOR_ID,
@@ -230,6 +231,20 @@ export class EscPosPrintAdapter implements PrintAdapter {
     }
 
     b.separator('-', 42);
+
+    if (isValidReceiptBarcode(t.receiptBarcode)) {
+      if (t.kind === 'refund') {
+        b.alignCenter().bold(true).text('CREDITNOTA\nniet als verkoopbon retourneerbaar\n').bold(false);
+      } else {
+        b.alignCenter().bold(true).text('RETOUR VIA TICKETSCAN\n').bold(false);
+      }
+      b.code128C(t.receiptBarcode!);
+      b.text(`\n${formatReceiptBarcode(t.receiptBarcode)}\n`);
+      if (t.kind !== 'refund') {
+        b.text('Bewaar dit ticket voor een retour.\n');
+      }
+      b.separator('-', 42);
+    }
 
     // ── Footer ────────────────────────────────────────────────────────────
     b.alignCenter();

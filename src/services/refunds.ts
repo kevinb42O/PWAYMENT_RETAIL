@@ -11,6 +11,7 @@ import {
 import { DEFAULT_REGISTER_ID, transactionTenders } from "../utils/financial";
 import { allocateCents } from "../utils/money";
 import { calculateTotals } from "../utils/vat";
+import { generateReceiptBarcode } from "../utils/receiptBarcode";
 
 export class RefundError extends Error {
   constructor(message: string) {
@@ -174,6 +175,8 @@ export const createRefund = async (
         customerId: original.customerId,
         source: "live",
         kind: "refund",
+        receiptBarcode: generateReceiptBarcode(),
+        receiptBarcodeVersion: 1,
         originalTransactionId: original.id,
         correctionReason: input.reason.trim(),
         merchantSnapshot: original.merchantSnapshot,
@@ -292,5 +295,4 @@ export const createRefund = async (
     },
   );
 };
-
 

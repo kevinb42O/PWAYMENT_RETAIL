@@ -23,6 +23,7 @@ import {
   recordMeaningfulActivity,
 } from "./migrationActivity";
 import { synchronizeMigrationNow } from "./migrationSync";
+import { generateReceiptBarcode } from "../utils/receiptBarcode";
 
 export type CheckoutErrorCode =
   | "empty-cart"
@@ -452,6 +453,8 @@ const runCheckout = async (
         customerId: input.customerId,
         source: "live",
         kind: "sale",
+        receiptBarcode: generateReceiptBarcode(),
+        receiptBarcodeVersion: 1,
         documentRequest,
         merchantSnapshot,
         registerId: DEFAULT_REGISTER_ID,
