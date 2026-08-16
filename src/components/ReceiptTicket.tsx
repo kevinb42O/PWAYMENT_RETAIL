@@ -233,14 +233,8 @@ export const ReceiptTicket: React.FC<Props> = ({ transaction: t, ticketNumber, m
       <Sep />
 
       {t.receiptBarcode && (
-        <div className="my-3 text-center">
-          <div className="mb-1 text-[9px] font-bold tracking-wide">
-            {t.kind === 'refund' ? 'CREDITNOTA — niet als verkoopbon retourneerbaar' : 'RETOUR VIA TICKETSCAN'}
-          </div>
-          <ReceiptBarcode value={t.receiptBarcode} className="mx-auto w-[250px] max-w-full" />
-          {t.kind !== 'refund' && (
-            <div className="mt-1 text-[9px]">Bewaar dit ticket voor een retour.</div>
-          )}
+        <div className="my-3 flex flex-col items-center justify-center text-center">
+          <ReceiptBarcode value={t.receiptBarcode} />
         </div>
       )}
 

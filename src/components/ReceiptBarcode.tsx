@@ -20,9 +20,11 @@ export const ReceiptBarcode: React.FC<{ value?: string; className?: string }> = 
 
   if (!value || !isValidReceiptBarcode(value)) return null;
   return (
-    <div className={className} aria-label={`Retourcode ${formatReceiptBarcode(value)}`}>
-      <svg ref={svgRef} role="img" aria-label={`Barcode ${formatReceiptBarcode(value)}`} />
-      <div className="mt-1 text-center font-mono text-[9px] tracking-[0.08em]">{formatReceiptBarcode(value)}</div>
+    <div className={`flex flex-col items-center justify-center w-full ${className ?? ""}`} aria-label={`Retourcode ${formatReceiptBarcode(value)}`}>
+      <div className="flex w-full items-center justify-center">
+        <svg ref={svgRef} className="mx-auto block" role="img" aria-label={`Barcode ${formatReceiptBarcode(value)}`} />
+      </div>
+      <div className="mt-1 text-center font-mono text-[9.5px] tracking-[0.08em] font-medium">{formatReceiptBarcode(value)}</div>
     </div>
   );
 };

@@ -233,16 +233,9 @@ export class EscPosPrintAdapter implements PrintAdapter {
     b.separator('-', 42);
 
     if (isValidReceiptBarcode(t.receiptBarcode)) {
-      if (t.kind === 'refund') {
-        b.alignCenter().bold(true).text('CREDITNOTA\nniet als verkoopbon retourneerbaar\n').bold(false);
-      } else {
-        b.alignCenter().bold(true).text('RETOUR VIA TICKETSCAN\n').bold(false);
-      }
+      b.alignCenter();
       b.code128C(t.receiptBarcode!);
       b.text(`\n${formatReceiptBarcode(t.receiptBarcode)}\n`);
-      if (t.kind !== 'refund') {
-        b.text('Bewaar dit ticket voor een retour.\n');
-      }
       b.separator('-', 42);
     }
 
