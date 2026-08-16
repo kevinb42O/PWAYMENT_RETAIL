@@ -230,16 +230,6 @@ export const ReceiptTicket: React.FC<Props> = ({ transaction: t, ticketNumber, m
         {customerDisplayName && <Row left="Klant" right={customerDisplayName} />}
       </div>
 
-      <Sep />
-
-      {t.receiptBarcode && (
-        <div className="my-3 flex flex-col items-center justify-center text-center">
-          <ReceiptBarcode value={t.receiptBarcode} />
-        </div>
-      )}
-
-      {t.receiptBarcode && <Sep />}
-
       {/* Footer */}
       <div className="text-center text-[10px] mt-2">
         {merchant.footer && <div className="font-bold">{merchant.footer}</div>}
@@ -255,6 +245,14 @@ export const ReceiptTicket: React.FC<Props> = ({ transaction: t, ticketNumber, m
           {format(t.timestamp, 'yyyyMMdd-HHmmss')}-R{t.tableId}-{t.id ?? '—'}
         </div>
       </div>
+
+      {t.receiptBarcode && <Sep />}
+
+      {t.receiptBarcode && (
+        <div className="my-3 flex flex-col items-center justify-center text-center">
+          <ReceiptBarcode value={t.receiptBarcode} />
+        </div>
+      )}
     </div>
   );
 };

@@ -230,15 +230,6 @@ export class EscPosPrintAdapter implements PrintAdapter {
       b.text(formatTotalLine('Klant', customer ? customer.name : t.customerId));
     }
 
-    b.separator('-', 42);
-
-    if (isValidReceiptBarcode(t.receiptBarcode)) {
-      b.alignCenter();
-      b.code128C(t.receiptBarcode!);
-      b.text(`\n${formatReceiptBarcode(t.receiptBarcode)}\n`);
-      b.separator('-', 42);
-    }
-
     // ── Footer ────────────────────────────────────────────────────────────
     b.alignCenter();
 
@@ -252,6 +243,13 @@ export class EscPosPrintAdapter implements PrintAdapter {
     // Unique receipt fingerprint line (date-kassa-id)
     const fingerprint = `${format(t.timestamp, 'yyyyMMdd-HHmmss')}-R${t.tableId}-${t.id ?? '--'}`;
     b.text(`${fingerprint}\n`);
+
+    if (isValidReceiptBarcode(t.receiptBarcode)) {
+      b.separator('-', 42);
+      b.alignCenter();
+      b.code128C(t.receiptBarcode!);
+      b.text(`\n${formatReceiptBarcode(t.receiptBarcode)}\n`);
+    }
 
     // ── Feed and cut ──────────────────────────────────────────────────────
     b.feedLines(4);
