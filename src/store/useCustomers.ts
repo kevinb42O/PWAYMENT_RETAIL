@@ -138,6 +138,20 @@ export const useCustomers = create<CustomersState>((set, get) => ({
       email: c.email?.trim() || undefined,
       phone: c.phone?.trim() || undefined,
       address: c.address?.trim() || undefined,
+      billingProfile: c.billingProfile
+        ? {
+            ...c.billingProfile,
+            companyName: c.billingProfile.companyName?.trim() || undefined,
+            contactName: c.billingProfile.contactName.trim(),
+            addressLine1: c.billingProfile.addressLine1.trim(),
+            postalCode: c.billingProfile.postalCode.trim(),
+            city: c.billingProfile.city.trim(),
+            countryCode: c.billingProfile.countryCode.trim().toUpperCase(),
+            vatNumber: c.billingProfile.vatNumber?.trim().toUpperCase() || undefined,
+            email: c.billingProfile.email?.trim().toLocaleLowerCase("nl-BE") || undefined,
+            purchaseOrderReference: c.billingProfile.purchaseOrderReference?.trim() || undefined,
+          }
+        : undefined,
       notes: c.notes?.trim() || undefined,
       priceGroup: c.priceGroup?.trim() || undefined,
     };

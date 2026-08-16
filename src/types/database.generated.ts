@@ -272,6 +272,7 @@ export type Database = {
       customers: {
         Row: {
           address: string | null
+          billing_profile: Json | null
           created_at: string
           email: string | null
           external_id: string | null
@@ -290,6 +291,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          billing_profile?: Json | null
           created_at?: string
           email?: string | null
           external_id?: string | null
@@ -308,6 +310,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          billing_profile?: Json | null
           created_at?: string
           email?: string | null
           external_id?: string | null
@@ -1481,11 +1484,14 @@ export type Database = {
           discount_approved_by_user_id: string | null
           discount_cents: number
           discount_reason: string | null
+          document_request: Json | null
           document_number: string
           external_id: string | null
           id: string
           is_demo: boolean | null
           is_finalized: boolean
+          invoice_issued_at: string | null
+          invoice_number: string | null
           kind: string
           merchant_snapshot: Json
           occurred_at: string
@@ -1513,11 +1519,14 @@ export type Database = {
           discount_approved_by_user_id?: string | null
           discount_cents?: number
           discount_reason?: string | null
+          document_request?: Json | null
           document_number: string
           external_id?: string | null
           id?: string
           is_demo?: boolean | null
           is_finalized?: boolean
+          invoice_issued_at?: string | null
+          invoice_number?: string | null
           kind?: string
           merchant_snapshot?: Json
           occurred_at: string
@@ -1545,11 +1554,14 @@ export type Database = {
           discount_approved_by_user_id?: string | null
           discount_cents?: number
           discount_reason?: string | null
+          document_request?: Json | null
           document_number?: string
           external_id?: string | null
           id?: string
           is_demo?: boolean | null
           is_finalized?: boolean
+          invoice_issued_at?: string | null
+          invoice_number?: string | null
           kind?: string
           merchant_snapshot?: Json
           occurred_at?: string

@@ -133,6 +133,7 @@ export const upsertSupabaseCustomers = async (
     email: customer.email ?? null,
     phone: customer.phone ?? null,
     address: customer.address ?? null,
+    billing_profile: (customer.billingProfile ?? null) as CustomerInsert["billing_profile"],
     notes: customer.notes ?? null,
     price_group: customer.priceGroup ?? null,
     total_spent_cents: customer.totalSpentCents,

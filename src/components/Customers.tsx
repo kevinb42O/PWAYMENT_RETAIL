@@ -426,6 +426,7 @@ export const Customers: React.FC = () => {
       email: editingCustomer.email,
       phone: editingCustomer.phone,
       address: editingCustomer.address,
+      billingProfile: editingCustomer.billingProfile,
       notes: editingCustomer.notes,
       priceGroup: editingCustomer.priceGroup?.trim() || undefined,
       totalSpentCents: editingCustomer.totalSpentCents || 0,

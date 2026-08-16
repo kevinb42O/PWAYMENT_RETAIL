@@ -53,6 +53,9 @@ const pushTransactionToSupabase = async (
     }
   } else {
     // Checkout
+    const invoiceCustomer = tx.documentRequest?.type !== "receipt" && tx.customerId
+      ? await db.customers.get(tx.customerId)
+      : undefined;
     const payload = {
       client_request_id: tx.clientRequestId,
       cart_id: tx.tableId,
@@ -75,15 +78,37 @@ const pushTransactionToSupabase = async (
       tendered_cents: tx.tenderedCents,
       customer_id: tx.customerId,
       merchant_snapshot: tx.merchantSnapshot,
+      document_request: tx.documentRequest,
+      // Repeated deliberately in the atomic checkout command. It lets the
+      // server create/recover a just-added invoice customer even when a retry
+      // reaches it before the separate customer outbox item.
+      invoice_customer: invoiceCustomer ? {
+        external_id: invoiceCustomer.id,
+        name: invoiceCustomer.name,
+        email: invoiceCustomer.email,
+        phone: invoiceCustomer.phone,
+        address: invoiceCustomer.address,
+        billing_profile: invoiceCustomer.billingProfile,
+      } : undefined,
     };
 
-    const { error } = await supabase.rpc("checkout_sale", {
+    const { data, error } = await supabase.rpc("checkout_sale", {
       target_store_id: storeId,
       payload: payload as unknown as Json,
     });
 
     if (error && !error.message.includes('duplicate')) {
       throw new Error(error.message);
+    }
+    // The server owns legal document numbering. Reconcile the optimistic local
+    // number as soon as the queued command reaches Supabase.
+    const issued = data as { document_number?: string; invoice_number?: string; invoice_issued_at?: string } | null;
+    if (!error && tx.id != null && issued?.document_number) {
+      await db.transactions.update(tx.id, {
+        documentNumber: issued.document_number,
+        invoiceNumber: issued.invoice_number,
+        invoiceIssuedAt: issued.invoice_issued_at ? Date.parse(issued.invoice_issued_at) : undefined,
+      });
     }
   }
 };

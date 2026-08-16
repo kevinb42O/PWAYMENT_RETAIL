@@ -104,7 +104,7 @@ describe('POSDatabase v9 → v12 migration', () => {
     const upgraded = new POSDatabase();
     try {
       await upgraded.open();
-      expect(upgraded.verno).toBe(17);
+      expect(upgraded.verno).toBe(18);
       expect(upgraded.webshop_orders).toBeDefined();
       expect(upgraded.import_jobs).toBeDefined();
       expect(upgraded.import_mapping_profiles).toBeDefined();

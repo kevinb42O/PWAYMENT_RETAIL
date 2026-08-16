@@ -38,7 +38,6 @@ import {
 } from "../hooks/useThermalPrinter";
 import { EscPosPrintAdapter } from "./ThermalPrinterPanel";
 import { CustomerLinkModal } from "./CustomerLinkModal";
-import { DocumentChoiceModal, documentChoiceLabel } from "./DocumentChoiceModal";
 import { GiftCardPaymentModal } from "./GiftCardPaymentModal";
 import { useCustomers } from "../store/useCustomers";
 import { isGiftCardExpired } from "../utils/giftCards";
@@ -49,6 +48,7 @@ import type { SaleDocumentRequest } from "../types";
 import { useMerchantProfile } from "../store/useMerchantProfile";
 import { convertTransactionToInvoiceData } from "../utils/invoicePdfGenerator";
 import { InvoicePreviewModal } from "./InvoicePreviewModal";
+import { InvoiceCustomerModal } from "./InvoiceCustomerModal";
 
 const lineUnitCents = (o: OrderItem): number =>
   o.product.priceCents +
@@ -125,7 +125,7 @@ export const Cart: React.FC = () => {
   const [cashOpen, setCashOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const [giftOpen, setGiftOpen] = useState(false);
-  const [documentChoiceOpen, setDocumentChoiceOpen] = useState(false);
+  const [invoiceCustomerOpen, setInvoiceCustomerOpen] = useState(false);
   const [documentRequest, setDocumentRequest] = useState<SaleDocumentRequest>({ type: "receipt" });
   const [invoicePreviewOpen, setInvoicePreviewOpen] = useState(false);
   // Kept across retries so a retried checkout can never create a second sale.
@@ -275,6 +275,13 @@ export const Cart: React.FC = () => {
     extras: { tenderedCents?: number; giftCards?: GiftCardAllocation[] } = {},
   ) => {
     if (checkoutBlocked) return;
+    if (documentRequest.type !== "receipt" && (
+      !linkedCustomer || documentRequest.recipient?.customerId !== linkedCustomer.id
+    )) {
+      setInvoiceCustomerOpen(true);
+      alert("Een factuur vereist een gekoppelde klant met volledige facturatiegegevens.");
+      return;
+    }
     setIsProcessing(true);
     useCustomerDisplayRuntime.getState().beginPayment(method);
     requestIdRef.current ??= crypto.randomUUID();
@@ -377,6 +384,15 @@ export const Cart: React.FC = () => {
                 </button>
               )}
             </div>
+            {documentRequest.type !== "receipt" && linkedCustomer && (
+              <button
+                type="button"
+                onClick={() => setInvoiceCustomerOpen(true)}
+                className="w-fit rounded-md border border-sky-200 bg-sky-50 px-2 py-1 text-xs font-semibold text-sky-800 hover:border-sky-300"
+              >
+                <span className="inline-flex items-center gap-1"><FileText size={13} /> Factuur voor {linkedCustomer.name}</span>
+              </button>
+            )}
             {linkedCustomerGiftCardTotal > 0 && (
               <div className="p-2 bg-emerald-950/40 border border-emerald-500/30 rounded-lg flex items-center justify-between gap-2 text-xs">
                 <div className="flex items-center gap-1.5 text-emerald-300 font-medium">
@@ -399,6 +415,15 @@ export const Cart: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setInvoiceCustomerOpen(true)}
+            className="rounded-md p-2 text-sky-700 hover:bg-sky-50"
+            title="Factuur opmaken"
+            aria-label="Factuur opmaken"
+          >
+            <FileText size={19} />
+          </button>
           {cart.orders.length > 0 && (
             <button
               onClick={() => setClearCartOpen(true)}
@@ -520,25 +545,6 @@ export const Cart: React.FC = () => {
       </div>
 
       <div className="pos-checkout border-t border-zinc-200 bg-white p-4">
-        <button
-          type="button"
-          onClick={() => setDocumentChoiceOpen(true)}
-          className={`mb-3 flex w-full items-center justify-between rounded-xl border px-3 py-3 text-left transition-colors ${documentRequest.type === "receipt" ? "border-zinc-200 bg-zinc-50 hover:border-zinc-300" : "border-sky-300 bg-sky-50 hover:border-sky-400"}`}
-        >
-          <span className="flex items-center gap-2">
-            <span className={`grid h-8 w-8 place-items-center rounded-lg ${documentRequest.type === "receipt" ? "bg-white text-zinc-600" : "bg-sky-600 text-white"}`}><FileText size={16} /></span>
-            <span>
-              <span className="block text-xs font-semibold text-zinc-500">Document voor deze verkoop</span>
-              <span className="block text-sm font-bold text-zinc-900">{documentChoiceLabel(documentRequest)}</span>
-            </span>
-          </span>
-          <span className="text-xs font-bold text-sky-700">Wijzigen</span>
-        </button>
-        {documentRequest.type !== "receipt" && !linkedCustomer && (
-          <button type="button" onClick={() => setLinkOpen(true)} className="mb-3 w-full rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-left text-xs font-semibold text-amber-900 hover:bg-amber-100">
-            Koppel een klant om factuurgegevens sneller voor in te vullen.
-          </button>
-        )}
         {vatBlockers.length > 0 && (
           <div className="mb-3 flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-800">
             <AlertTriangle size={16} className="mt-px flex-shrink-0" />
@@ -676,12 +682,14 @@ export const Cart: React.FC = () => {
           setLinkOpen(false);
         }}
       />
-      <DocumentChoiceModal
-        open={documentChoiceOpen}
-        customer={linkedCustomer}
-        value={documentRequest}
-        onClose={() => setDocumentChoiceOpen(false)}
-        onChange={setDocumentRequest}
+      <InvoiceCustomerModal
+        open={invoiceCustomerOpen}
+        linkedCustomer={linkedCustomer}
+        onClose={() => setInvoiceCustomerOpen(false)}
+        onComplete={(customer, request) => {
+          linkCustomer(customer.id);
+          setDocumentRequest(request);
+        }}
       />
       <GiftCardPaymentModal
         open={giftOpen}

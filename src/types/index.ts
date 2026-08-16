@@ -140,6 +140,23 @@ export interface SaleDocumentRequest {
   recipient?: InvoiceRecipientSnapshot;
 }
 
+/**
+ * Mutable billing profile stored on a customer. Issued invoices never resolve
+ * these fields directly: they use InvoiceRecipientSnapshot instead.
+ */
+export interface CustomerBillingProfile {
+  type: "individual" | "business";
+  companyName?: string;
+  contactName: string;
+  addressLine1: string;
+  postalCode: string;
+  city: string;
+  countryCode: string;
+  vatNumber?: string;
+  email?: string;
+  purchaseOrderReference?: string;
+}
+
 export interface Transaction {
   id?: number;
   /**
@@ -586,6 +603,8 @@ export interface Customer {
   email?: string;
   phone?: string;
   address?: string;
+  /** Default details to prefill a new invoice for this customer. */
+  billingProfile?: CustomerBillingProfile;
   notes?: string;
   /** Optional price-book/customer segment key, e.g. `telenet-klant` or `b2b`. */
   priceGroup?: string;
