@@ -4,6 +4,8 @@ import type { Customer, CustomerBillingProfile, SaleDocumentRequest } from "../t
 import { generateId, useCustomers } from "../store/useCustomers";
 import { formattedBillingAddress, invoiceRequestFromCustomer } from "../utils/invoiceCustomer";
 import { Modal } from "./Modal";
+import { Button } from "./ui/Button";
+import { TextField } from "./ui/Field";
 
 interface Props {
   open: boolean;
@@ -27,8 +29,36 @@ const blankProfile = (type: CustomerBillingProfile["type"] = "individual"): Cust
   purchaseOrderReference: "",
 });
 
-const profileFor = (customer?: Customer | null): CustomerBillingProfile =>
-  customer?.billingProfile ? { ...customer.billingProfile } : blankProfile();
+const profileFor = (customer?: Customer | null): CustomerBillingProfile => {
+  if (!customer) return blankProfile();
+
+  // Older customer cards predate billing profiles. Keep every usable detail
+  // visible instead of presenting an empty form and making the cashier type it
+  // a second time.
+  const profile = customer.billingProfile;
+  const parts = customer.address?.split(",").map((part) => part.trim()).filter(Boolean) ?? [];
+  const locality = parts[1]?.match(/^(\d{3,10})\s+(.+)$/);
+  const country = parts.at(-1)?.match(/^[A-Za-z]{2}$/) ? parts.at(-1)!.toUpperCase() : "BE";
+  const knownProfile: CustomerBillingProfile = {
+    ...blankProfile(),
+    contactName: customer.name,
+    addressLine1: parts[0] ?? customer.address ?? "",
+    postalCode: locality?.[1] ?? "",
+    city: locality?.[2] ?? "",
+    countryCode: country,
+    email: customer.email ?? "",
+  };
+  return {
+    ...knownProfile,
+    ...profile,
+    contactName: profile?.contactName || customer.name,
+    addressLine1: profile?.addressLine1 || parts[0] || customer.address || "",
+    postalCode: profile?.postalCode || locality?.[1] || "",
+    city: profile?.city || locality?.[2] || "",
+    countryCode: profile?.countryCode || country,
+    email: profile?.email || customer.email || "",
+  };
+};
 
 export const InvoiceCustomerModal: React.FC<Props> = ({ open, linkedCustomer, onClose, onComplete }) => {
   const { customers, upsertCustomer } = useCustomers();
@@ -133,38 +163,38 @@ export const InvoiceCustomerModal: React.FC<Props> = ({ open, linkedCustomer, on
     title="Factuur opmaken"
     size="lg"
     footer={editing ? <div className="flex justify-end gap-2">
-      <button type="button" onClick={() => setMode("search")} disabled={saving} className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 disabled:opacity-50">Terug</button>
-      <button type="button" onClick={() => void save()} disabled={saving} className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-bold text-white hover:bg-sky-500 disabled:opacity-50">{saving ? "Opslaan…" : selected ? "Bijwerken en koppelen" : "Klant toevoegen en koppelen"}</button>
+      <Button variant="secondary" onClick={() => setMode("search")} disabled={saving}>Terug</Button>
+      <Button variant="primary" onClick={() => void save()} disabled={saving}>{saving ? "Opslaan…" : selected ? "Bijwerken en koppelen" : "Klant toevoegen en koppelen"}</Button>
     </div> : undefined}
   >
     <div className="space-y-5 text-white">
       {mode === "search" && <>
         <p className="text-sm leading-6 text-zinc-400">Kies de klant voor deze factuur, of maak meteen een nieuwe factuurklant aan. Zonder klant kan een factuur niet betaald worden.</p>
-        <div className="relative"><Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" /><input autoFocus type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Zoek op naam, e-mail, telefoon of btw-nummer" className="w-full rounded-lg border border-zinc-700 bg-zinc-900 py-2.5 pl-10 pr-3 text-sm text-white outline-none focus:border-sky-400" /></div>
+        <div className="relative"><Search size={18} className="absolute left-3 top-[calc(50%+0.15rem)] -translate-y-1/2 text-slate-500" /><TextField autoFocus type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Zoek op naam, e-mail, telefoon of btw-nummer" className="mt-0 pl-10" /></div>
         <div className="max-h-64 space-y-2 overflow-y-auto">
-          {matches.map((customer) => <button key={customer.id} type="button" onClick={() => startCustomer(customer)} className="flex w-full items-center justify-between rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-3 text-left hover:border-sky-400">
+          {matches.map((customer) => <Button key={customer.id} variant="secondary" onClick={() => startCustomer(customer)} className="h-auto w-full justify-between px-3 py-3 text-left">
             <span><span className="block text-sm font-bold">{customer.name}</span><span className="mt-0.5 block text-xs text-zinc-400">{customer.billingProfile ? `${customer.billingProfile.city} · ${customer.billingProfile.type === "business" ? customer.billingProfile.vatNumber : "particulier"}` : "Factuurgegevens aanvullen"}</span></span>
             <FileText size={17} className="text-sky-300" />
-          </button>)}
+          </Button>)}
           {matches.length === 0 && <p className="px-1 py-6 text-center text-sm text-zinc-500">Geen klant gevonden.</p>}
         </div>
-        <button type="button" onClick={() => { setSelected(null); setProfile(blankProfile()); setMode("create"); }} className="w-full rounded-xl border border-dashed border-sky-500/70 bg-sky-500/10 px-4 py-3 text-sm font-bold text-sky-200 hover:bg-sky-500/20">+ Nieuwe factuurklant toevoegen</button>
+        <Button variant="primary" onClick={() => { setSelected(null); setProfile(blankProfile()); setMode("create"); }} className="w-full">+ Nieuwe factuurklant toevoegen</Button>
       </>}
       {editing && <>
         <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Type factuurklant">
-          <button type="button" role="radio" aria-checked={profile.type === "individual"} onClick={() => setProfile((value) => ({ ...value, type: "individual", companyName: "", vatNumber: "" }))} className={`rounded-xl border p-3 text-left ${profile.type === "individual" ? "border-sky-400 bg-sky-500/15" : "border-zinc-700 bg-zinc-950"}`}><UserRound size={18} className="text-sky-300" /><span className="mt-2 block text-sm font-bold">Particulier</span></button>
-          <button type="button" role="radio" aria-checked={profile.type === "business"} onClick={() => setProfile((value) => ({ ...value, type: "business" }))} className={`rounded-xl border p-3 text-left ${profile.type === "business" ? "border-sky-400 bg-sky-500/15" : "border-zinc-700 bg-zinc-950"}`}><Building2 size={18} className="text-sky-300" /><span className="mt-2 block text-sm font-bold">Onderneming</span></button>
+          <Button variant={profile.type === "individual" ? "primary" : "secondary"} role="radio" aria-checked={profile.type === "individual"} onClick={() => setProfile((value) => ({ ...value, type: "individual", companyName: "", vatNumber: "" }))} className="h-auto min-h-24 justify-start p-3 text-left"><span><UserRound size={18} /><span className="mt-2 block text-sm font-bold">Particulier</span></span></Button>
+          <Button variant={profile.type === "business" ? "primary" : "secondary"} role="radio" aria-checked={profile.type === "business"} onClick={() => setProfile((value) => ({ ...value, type: "business" }))} className="h-auto min-h-24 justify-start p-3 text-left"><span><Building2 size={18} /><span className="mt-2 block text-sm font-bold">Onderneming</span></span></Button>
         </div>
-        {profile.type === "business" && <Field label="Bedrijfsnaam" required><input value={profile.companyName ?? ""} onChange={(event) => set("companyName", event.target.value)} /></Field>}
-        <div className="grid gap-3 sm:grid-cols-2"><Field label={profile.type === "business" ? "Contactpersoon" : "Naam"} required><input value={profile.contactName} onChange={(event) => set("contactName", event.target.value)} /></Field>{profile.type === "business" && <Field label="Btw-nummer" required><input value={profile.vatNumber ?? ""} onChange={(event) => set("vatNumber", event.target.value)} placeholder="BE0123.456.789" /></Field>}</div>
-        <Field label="Straat en nummer" required><input value={profile.addressLine1} onChange={(event) => set("addressLine1", event.target.value)} /></Field>
-        <div className="grid grid-cols-[0.7fr_1.3fr] gap-3"><Field label="Postcode" required><input value={profile.postalCode} onChange={(event) => set("postalCode", event.target.value)} /></Field><Field label="Gemeente" required><input value={profile.city} onChange={(event) => set("city", event.target.value)} /></Field></div>
-        <div className="grid gap-3 sm:grid-cols-2"><Field label="Landcode" required><input value={profile.countryCode} onChange={(event) => set("countryCode", event.target.value)} maxLength={2} /></Field><Field label="E-mail voor PDF"><input type="email" value={profile.email ?? ""} onChange={(event) => set("email", event.target.value)} /></Field></div>
-        {profile.type === "business" && <Field label="Bestelreferentie"><input value={profile.purchaseOrderReference ?? ""} onChange={(event) => set("purchaseOrderReference", event.target.value)} /></Field>}
+        {profile.type === "business" && <Field label="Bedrijfsnaam" required><TextField value={profile.companyName ?? ""} onChange={(event) => set("companyName", event.target.value)} /></Field>}
+        <div className="grid gap-3 sm:grid-cols-2"><Field label={profile.type === "business" ? "Contactpersoon" : "Naam"} required><TextField value={profile.contactName} onChange={(event) => set("contactName", event.target.value)} /></Field>{profile.type === "business" && <Field label="Btw-nummer" required><TextField value={profile.vatNumber ?? ""} onChange={(event) => set("vatNumber", event.target.value)} placeholder="BE0123.456.789" /></Field>}</div>
+        <Field label="Straat en nummer" required><TextField value={profile.addressLine1} onChange={(event) => set("addressLine1", event.target.value)} /></Field>
+        <div className="grid grid-cols-[0.7fr_1.3fr] gap-3"><Field label="Postcode" required><TextField value={profile.postalCode} onChange={(event) => set("postalCode", event.target.value)} /></Field><Field label="Gemeente" required><TextField value={profile.city} onChange={(event) => set("city", event.target.value)} /></Field></div>
+        <div className="grid gap-3 sm:grid-cols-2"><Field label="Landcode" required><TextField value={profile.countryCode} onChange={(event) => set("countryCode", event.target.value)} maxLength={2} /></Field><Field label="E-mail voor PDF"><TextField type="email" value={profile.email ?? ""} onChange={(event) => set("email", event.target.value)} /></Field></div>
+        {profile.type === "business" && <Field label="Bestelreferentie"><TextField value={profile.purchaseOrderReference ?? ""} onChange={(event) => set("purchaseOrderReference", event.target.value)} /></Field>}
       </>}
       {error && <p role="alert" className="rounded-lg border border-red-800 bg-red-950/50 p-3 text-sm text-red-200">{error}</p>}
     </div>
   </Modal>;
 };
 
-const Field: React.FC<{ label: string; required?: boolean; children: React.ReactNode }> = ({ label, required, children }) => <label className="block text-xs font-semibold text-zinc-300">{label}{required ? " *" : ""}<span className="mt-1 block [&_input]:w-full [&_input]:rounded-lg [&_input]:border [&_input]:border-zinc-700 [&_input]:bg-zinc-900 [&_input]:px-3 [&_input]:py-2 [&_input]:text-sm [&_input]:text-white [&_input]:outline-none [&_input]:focus:border-sky-400">{children}</span></label>;
+const Field: React.FC<{ label: string; required?: boolean; children: React.ReactNode }> = ({ label, required, children }) => <label className="block text-xs font-semibold text-slate-600">{label}{required ? " *" : ""}{children}</label>;
