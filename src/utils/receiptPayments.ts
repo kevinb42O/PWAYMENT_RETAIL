@@ -7,6 +7,12 @@ export interface ReceiptPaymentRow {
   method: PaymentTender["method"];
 }
 
+export const formatPaymentLabel = (method?: string): string => {
+  if (!method) return "";
+  if (method === "PIN") return "Kaart";
+  return method;
+};
+
 /**
  * Expand the canonical tender ledger into receipt rows.
  *
@@ -37,7 +43,7 @@ export const receiptPaymentRows = (
     }
 
     rows.push({
-      label: tender.method,
+      label: formatPaymentLabel(tender.method),
       amountCents: tender.amountCents,
       method: tender.method,
     });

@@ -26,7 +26,7 @@ import { calculateTotals } from '../utils/vat';
 import { getMerchantProfileSnapshot } from '../store/useMerchantProfile';
 import { useCustomers } from '../store/useCustomers';
 import { EscPosBuilder, formatItemLine, formatTotalLine } from '../utils/escpos';
-import { receiptPaymentRows } from '../utils/receiptPayments';
+import { formatPaymentLabel, receiptPaymentRows } from '../utils/receiptPayments';
 import { transactionTenders } from '../utils/financial';
 import { formatReceiptBarcode, isValidReceiptBarcode } from '../utils/receiptBarcode';
 import {
@@ -204,7 +204,7 @@ export class EscPosPrintAdapter implements PrintAdapter {
           b.text(formatTotalLine(row.label, fmt(row.amountCents)));
         }
       } else {
-        b.text(formatTotalLine('Betaling', t.paymentMethod));
+        b.text(formatTotalLine('Betaling', formatPaymentLabel(t.paymentMethod)));
       }
       if (t.paymentMethod === 'Cash' && t.tenderedCents != null) {
         const change = Math.max(0, t.tenderedCents - t.totalCents);

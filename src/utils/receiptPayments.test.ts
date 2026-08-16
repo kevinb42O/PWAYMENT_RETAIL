@@ -67,7 +67,7 @@ describe("receiptPaymentRows", () => {
       ),
     ).toEqual([
       { label: "Cadeaubon", amountCents: 2160, method: "Cadeaubon" },
-      { label: "PIN", amountCents: 13325, method: "PIN" },
+      { label: "Kaart", amountCents: 13325, method: "PIN" },
     ]);
   });
 });

@@ -6,7 +6,7 @@ import { MerchantInfo } from '../data/merchant';
 import { useMerchantProfile } from '../store/useMerchantProfile';
 import { useCustomers } from '../store/useCustomers';
 import { calculateTotals } from '../utils/vat';
-import { receiptPaymentRows } from '../utils/receiptPayments';
+import { formatPaymentLabel, receiptPaymentRows } from '../utils/receiptPayments';
 import { transactionTenders } from '../utils/financial';
 import { ReceiptBarcode } from './ReceiptBarcode';
 
@@ -208,7 +208,7 @@ export const ReceiptTicket: React.FC<Props> = ({ transaction: t, ticketNumber, m
                 />
               ))
             ) : (
-              <Row left="Betaling" right={t.paymentMethod} />
+              <Row left="Betaling" right={formatPaymentLabel(t.paymentMethod)} />
             )}
             {t.paymentMethod === 'Cash' && t.tenderedCents != null && (
               <>
