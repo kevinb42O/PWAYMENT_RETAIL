@@ -27,8 +27,10 @@ declare
   definition text;
   rewritten text;
   declaration_needle text := $needle$  customer_id uuid;
+  customer_price_group text;
   discount_approver_id uuid;$needle$;
   declaration_replacement text := $replacement$  customer_id uuid;
+  customer_price_group text;
   discount_approver_id uuid;
   invoice_type text := coalesce(payload -> 'document_request' ->> 'type', 'receipt');
   invoice_recipient jsonb := payload -> 'document_request' -> 'recipient';
@@ -36,7 +38,7 @@ declare
   invoice_number text;
   invoice_sequence bigint;$replacement$;
   customer_needle text := $needle$  if nullif(payload ->> 'customer_id', '') is not null then
-    select id into customer_id$needle$;
+    select id, price_group into customer_id, customer_price_group$needle$;
   customer_replacement text := $replacement$  -- Invoice customers are upserted inside the sale transaction. This makes a
   -- customer, its link and its invoice inseparable at the server boundary.
   if invoice_type not in ('receipt', 'invoice-b2c', 'invoice-b2b') then
@@ -95,7 +97,7 @@ declare
   end if;
 
   if nullif(payload ->> 'customer_id', '') is not null then
-    select id into customer_id$replacement$;
+    select id, price_group into customer_id, customer_price_group$replacement$;
   insert_needle text := $needle$  insert into public.transactions (
     store_id, external_id, client_request_id, document_number, table_id,$needle$;
   insert_replacement text := $replacement$  if invoice_type <> 'receipt' then
@@ -125,12 +127,6 @@ declare
          else jsonb_build_object('type', invoice_type, 'recipient', invoice_recipient) end,
     invoice_number, case when invoice_number is null then null else checkout_at end,
     target_register_id, shift_id$replacement$;
-  return_needle text := $needle$      'document_number', document_number,
-      'duplicate', false$needle$;
-  return_replacement text := $replacement$      'document_number', document_number,
-      'invoice_number', invoice_number,
-      'invoice_issued_at', case when invoice_number is null then null else checkout_at end,
-      'duplicate', false$replacement$;
 begin
   select pg_get_functiondef('public.checkout_sale(uuid,jsonb)'::regprocedure) into strict definition;
   if position('invoice_customer jsonb' in definition) > 0 then return; end if;
@@ -148,9 +144,6 @@ begin
   definition := rewritten;
   rewritten := replace(definition, values_needle, values_replacement);
   if rewritten = definition then raise exception 'Could not patch checkout_sale invoice values.'; end if;
-  definition := rewritten;
-  rewritten := replace(definition, return_needle, return_replacement);
-  if rewritten = definition then raise exception 'Could not patch checkout_sale invoice response.'; end if;
   execute rewritten;
 end;
 $migration$;
