@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Product, Transaction } from '../types';
+import { Product, Transaction, WebshopOrder } from '../types';
 import {
   buildInventoryDraftActions,
   buildInventoryForecast,
@@ -170,6 +170,71 @@ describe('buildInventoryForecast', () => {
 
     expect(rows).toHaveLength(1);
     expect(rows[0].soldLast30Days).toBe(0);
+  });
+
+  it('uses net demand by subtracting a linked refund from its original sale', () => {
+    const product = makeProduct();
+    const sale: Transaction = {
+      ...makeTransaction(product, 3, NOW - 10 * DAY_MS),
+      id: 100,
+      kind: 'sale',
+    };
+    const refund: Transaction = {
+      ...makeTransaction(product, 1, NOW - 2 * DAY_MS),
+      id: 101,
+      kind: 'refund',
+      originalTransactionId: 100,
+      items: [{ lineId: sale.items[0].lineId, product, quantity: 1 }],
+      totalCents: -product.priceCents,
+      subtotalCents: -product.priceCents,
+    };
+
+    const [row] = buildInventoryForecast([product], [sale, refund], NOW);
+
+    expect(row.soldLast30Days).toBe(2);
+    expect(row.averageDailySales).toBeCloseTo(2 / 11, 8);
+  });
+
+  it('includes active webshop reservations as demand and excludes released/cancelled orders', () => {
+    const product = makeProduct({ stockQty: 20, minStockQty: 2 });
+    const webshopOrder = (patch: Partial<WebshopOrder> = {}): WebshopOrder => ({
+      id: 'web-1',
+      clientRequestId: 'web-request-1',
+      number: 'WEB-1',
+      source: 'live',
+      createdAt: NOW - 5 * DAY_MS,
+      updatedAt: NOW - 5 * DAY_MS,
+      status: 'confirmed',
+      paymentStatus: 'paid',
+      fulfillmentStatus: 'unfulfilled',
+      inventoryStatus: 'reserved',
+      paymentMethod: 'card',
+      paymentReference: 'pay-1',
+      deliveryMode: 'shipping',
+      customer: { firstName: 'Ari', lastName: 'Klant', email: 'ari@example.test', phone: '0123' },
+      lines: [{ productId: product.id, productName: product.name, quantity: 3, unitPriceCents: product.priceCents, lineTotalCents: product.priceCents * 3 }],
+      subtotalCents: product.priceCents * 3,
+      discountCents: 0,
+      shippingCents: 0,
+      totalCents: product.priceCents * 3,
+      confirmationEmail: { to: 'ari@example.test', status: 'queued', subject: 'Bevestiging' },
+      ...patch,
+    });
+
+    const [row] = buildInventoryForecast(
+      [product],
+      [],
+      NOW,
+      {
+        webshopOrders: [
+          webshopOrder(),
+          webshopOrder({ id: 'web-released', inventoryStatus: 'released', status: 'cancelled' }),
+        ],
+      },
+    );
+
+    expect(row.soldLast30Days).toBe(3);
+    expect(row.observedDays).toBe(6);
   });
 });
 

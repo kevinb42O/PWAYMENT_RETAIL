@@ -375,6 +375,24 @@
     .commitment-item b { display: block; font-size: 16px; line-height: 1.2; }
     .commitment-item span { display: block; margin-top: 4px; color: var(--muted); font-size: 13px; line-height: 1.35; }
     .closing-question { margin-top: 18px; color: var(--ink); font-size: 17px; font-weight: 700; line-height: 1.3; }
+    .test-access-slide { justify-content: center; }
+    .test-access-layout { min-height: 64vh; display: grid; grid-template-columns: 1.08fr .92fr; gap: 7vw; align-items: center; }
+    .test-access-layout h2 { max-width: 700px; }
+    .test-access-layout .lede { max-width: 670px; }
+    .test-credentials { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 30px; }
+    .test-credential { padding: 17px 18px; border: 1px solid rgba(99,212,239,.34); border-radius: 14px; background: linear-gradient(145deg, rgba(99,212,239,.1), rgba(21,27,33,.84)); }
+    .test-credential span { display: block; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .test-credential code { display: block; margin-top: 8px; color: var(--ink); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: clamp(15px, 1.5vw, 19px); font-weight: 700; letter-spacing: -.025em; overflow-wrap: anywhere; }
+    .test-access-card { padding: 30px; border: 1px solid rgba(200,243,108,.35); border-radius: 20px; background: linear-gradient(145deg, rgba(200,243,108,.09), rgba(21,27,33,.88) 42%); box-shadow: 0 26px 70px rgba(0,0,0,.23); }
+    .test-access-card .tag { display: inline-flex; padding: 6px 9px; border: 1px solid rgba(200,243,108,.34); border-radius: 999px; color: var(--lime); font-size: 10px; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
+    .test-access-card h3 { margin-top: 24px; font-size: 27px; line-height: 1.04; letter-spacing: -.04em; }
+    .test-access-card p { margin-top: 13px; color: var(--muted); font-size: 14px; line-height: 1.55; }
+    .test-access-actions { display: grid; gap: 10px; margin-top: 26px; }
+    .test-access-actions a { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; color: var(--ink); font-size: 14px; font-weight: 760; transition: transform .18s ease, border-color .18s ease, background .18s ease; }
+    .test-access-actions a:first-child { border-color: rgba(200,243,108,.7); background: var(--lime); color: #111814; }
+    .test-access-actions a:hover { transform: translateY(-2px); border-color: var(--cyan); background: rgba(99,212,239,.1); }
+    .test-access-actions a:first-child:hover { background: #d5fa82; }
+    .test-access-note { margin-top: 18px !important; color: #aebbc4 !important; font-size: 11px !important; line-height: 1.55 !important; }
 
     /* Investor narrative extensions */
     .retail-progress-slide .statement-layout,
@@ -853,9 +871,33 @@
           </div>
         </div>
       </section>
+
+      <section class="slide test-access-slide" data-title="Zelf testen">
+        <div class="test-access-layout">
+          <div>
+            <div class="eyebrow">14 / zelf testen in de demo-omgeving</div>
+            <h2>Bekijk de volledige flow.<br><span class="accent">Zonder een eigen account te moeten aanmaken.</span></h2>
+            <p class="lede" data-reveal="1">Gebruik dit gedeelde testaccount om de kassa, voorraad, klanten, rapportage en instellingen uitgebreid te verkennen.</p>
+            <div class="test-credentials" data-reveal="2">
+              <div class="test-credential"><span>E-mailadres</span><code>test@pwayment.be</code></div>
+              <div class="test-credential"><span>Wachtwoord</span><code>testaccount12345</code></div>
+            </div>
+          </div>
+          <aside class="test-access-card" data-reveal="3">
+            <span class="tag">Gedeelde testomgeving</span>
+            <h3>Test vrijuit.<br>Maak ook gerust je eigen account.</h3>
+            <p>Deze demo bevat voorbeeldgegevens en kan door andere testers worden gebruikt of opnieuw worden ingesteld. Voeg hier geen echte klant-, betaal- of bedrijfsgegevens toe.</p>
+            <div class="test-access-actions">
+              <a data-app-route="/login" target="_blank" rel="noreferrer">Open testaccount <span>→</span></a>
+              <a data-app-route="/register" target="_blank" rel="noreferrer">Maak een eigen account <span>→</span></a>
+            </div>
+            <p class="test-access-note">Een eigen account doorloopt de volledige winkelconfiguratie en houdt je test los van deze gedeelde demo.</p>
+          </aside>
+        </div>
+      </section>
     </div>
     <nav class="nav" aria-label="Slide navigatie"></nav>
-    <div class="num" id="slideNum" aria-live="polite">01 / 16</div>
+    <div class="num" id="slideNum" aria-live="polite">01 / 17</div>
   </main>
   <script>
     (() => {
@@ -873,6 +915,9 @@
         url.searchParams.set('view', frame.dataset.demoView);
         url.searchParams.set('presentation', '1');
         frame.src = url.toString();
+      });
+      deck.querySelectorAll('[data-app-route]').forEach((link) => {
+        link.href = new URL(link.dataset.appRoute, demoBase).toString();
       });
       slides.forEach((slide, index) => {
         const button = document.createElement('button');

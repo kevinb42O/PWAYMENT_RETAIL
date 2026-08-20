@@ -21,6 +21,9 @@ const presentationRequested = searchParams.get("presentation") === "1";
 const previewMode = searchParams.get("preview") === "1";
 const presentationBuild = import.meta.env.VITE_PRESENTATION_BUILD === "true";
 const e2eBuild = import.meta.env.VITE_E2E_BUILD === "true";
+const e2eFixtureRequested = e2eBuild && searchParams.get("e2e") === "1";
+const e2eCatalogFixtureRequested =
+  e2eFixtureRequested && searchParams.get("catalog") !== "empty";
 const presentationMode =
   presentationRequested && (import.meta.env.DEV || presentationBuild);
 const storefrontRoute =
@@ -259,6 +262,7 @@ const start = async () => {
     { migrateLegacyDatabase },
     { useCustomers },
     { useProducts },
+    { useCategories },
     { applyThemeMode, readInitialThemeMode },
   ] = await Promise.all([
     import("./App.tsx"),
@@ -266,6 +270,7 @@ const start = async () => {
     import("./db/migrateLegacyDb"),
     import("./store/useCustomers"),
     import("./store/useProducts"),
+    import("./store/useCategories"),
     import("./utils/theme"),
   ]);
 
@@ -282,14 +287,30 @@ const start = async () => {
   // before development/presentation fixture accounts exist. Production is a
   // no-op unless an explicitly gated fixture build is requested.
   await ensureSeedUsers();
+  if (e2eCatalogFixtureRequested) {
+    // The real product intentionally starts a newly provisioned tenant empty.
+    // E2E is a separate, build-time-only fixture that needs a deterministic
+    // retail catalog before the POS renders.
+    useAuth.setState({ currentStoreIsDemo: true });
+  }
   try {
     await useAuth.getState().initialize();
   } catch (error) {
     reportLoadingProgress("error");
     console.error("Sessie initialiseren mislukt:", error);
   }
-  void useProducts.getState().hydrate();
-  void useCustomers.getState().hydrate();
+  if (e2eFixtureRequested) {
+    // Await the full catalog fixture so assertions never race a background
+    // hydration on a fresh Playwright browser profile.
+    await Promise.all([
+      useProducts.getState().hydrate(),
+      useCustomers.getState().hydrate(),
+      useCategories.getState().hydrate(),
+    ]);
+  } else {
+    void useProducts.getState().hydrate();
+    void useCustomers.getState().hydrate();
+  }
 
   root.render(
     <StrictMode>

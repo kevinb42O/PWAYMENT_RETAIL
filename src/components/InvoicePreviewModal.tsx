@@ -113,6 +113,7 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({ invoic
             <span>Klant: <strong>{invoice.buyer.name}</strong></span>
             <span>•</span>
             <span>Totaal: <strong className="text-slate-900">{formatEUR(invoice.items.reduce((s, i) => s + i.totalInclCents, 0))}</strong></span>
+            {(invoice.cashRoundingAdjustmentCents ?? 0) !== 0 && <><span>•</span><span>Cash vereffend: <strong className="text-slate-900">{formatEUR(invoice.items.reduce((s, i) => s + i.totalInclCents, 0) + (invoice.cashRoundingAdjustmentCents ?? 0))}</strong></span></>}
           </div>
         </div>
       </div>

@@ -7,6 +7,7 @@ import {
   Product,
   ReorderActionItem,
   Transaction,
+  WebshopOrder,
 } from '../types';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -20,6 +21,8 @@ export interface InventoryForecastOptions {
   targetCoverDays?: number;
   /** How far ahead a row becomes an actionable recommendation. */
   actionHorizonDays?: number;
+  /** Confirmed/reserved webshop demand available to the current client. */
+  webshopOrders?: WebshopOrder[];
 }
 
 const normalizePositiveInteger = (value: number | undefined, fallback: number) =>
@@ -115,6 +118,95 @@ const forecastUrgency = (
   return 'healthy';
 };
 
+type DemandEvent = {
+  productId: string;
+  timestamp: number;
+  quantity: number;
+};
+
+const saleLineKey = (transactionId: number, lineId: string) =>
+  `${transactionId}:${lineId}`;
+
+/**
+ * Demand is based on net fulfilled sales, not on every positive transaction
+ * line. A refund is linked to its original sale, so it reduces that sale's
+ * quantity rather than becoming a second sale on the date of the return.
+ */
+const buildNetDemandEvents = (
+  transactions: Transaction[],
+  webshopOrders: WebshopOrder[],
+  windowStart: number,
+  now: number,
+): DemandEvent[] => {
+  const originalSalesById = new Map<number, Transaction>();
+  for (const transaction of transactions) {
+    if ((transaction.kind ?? 'sale') === 'sale' && transaction.id != null) {
+      originalSalesById.set(transaction.id, transaction);
+    }
+  }
+
+  const refundedByOriginalLine = new Map<string, number>();
+  for (const transaction of transactions) {
+    if (
+      transaction.kind !== 'refund'
+      || transaction.timestamp < windowStart
+      || transaction.timestamp > now
+      || transaction.originalTransactionId == null
+    ) continue;
+    const original = originalSalesById.get(transaction.originalTransactionId);
+    if (!original || original.timestamp < windowStart || original.timestamp > now) continue;
+    for (const line of transaction.items) {
+      const key = saleLineKey(transaction.originalTransactionId, line.lineId);
+      refundedByOriginalLine.set(
+        key,
+        (refundedByOriginalLine.get(key) ?? 0) + Math.max(0, line.quantity),
+      );
+    }
+  }
+
+  const events: DemandEvent[] = [];
+  for (const transaction of transactions) {
+    if (
+      (transaction.kind ?? 'sale') !== 'sale'
+      || transaction.timestamp < windowStart
+      || transaction.timestamp > now
+    ) continue;
+    for (const line of transaction.items) {
+      const refundedQuantity = transaction.id == null
+        ? 0
+        : refundedByOriginalLine.get(saleLineKey(transaction.id, line.lineId)) ?? 0;
+      const quantity = Math.max(0, line.quantity - refundedQuantity);
+      if (quantity > 0) {
+        events.push({
+          productId: line.product.id,
+          timestamp: transaction.timestamp,
+          quantity,
+        });
+      }
+    }
+  }
+
+  for (const order of webshopOrders) {
+    if (
+      order.createdAt < windowStart
+      || order.createdAt > now
+      || order.status === 'cancelled'
+      || order.inventoryStatus === 'released'
+      || (order.inventoryStatus !== 'reserved' && order.inventoryStatus !== 'committed')
+    ) continue;
+    for (const line of order.lines) {
+      if (line.quantity > 0) {
+        events.push({
+          productId: line.productId,
+          timestamp: order.createdAt,
+          quantity: line.quantity,
+        });
+      }
+    }
+  }
+  return events;
+};
+
 /**
  * Build an explainable stock forecast for every active, stock-tracked product.
  *
@@ -132,26 +224,26 @@ export const buildInventoryForecast = (
   const historyWindowDays = normalizePositiveInteger(options.historyWindowDays, 730);
   const targetCoverDays = normalizePositiveInteger(options.targetCoverDays, 30);
   const windowStart = now - historyWindowDays * DAY_MS;
-  const eligibleTransactions = transactions.filter(
-    (transaction) => transaction.timestamp >= windowStart && transaction.timestamp <= now,
+  const demandEvents = buildNetDemandEvents(
+    transactions,
+    options.webshopOrders ?? [],
+    windowStart,
+    now,
   );
-  const earliestObservedTransaction = eligibleTransactions.reduce<number | null>(
-    (earliest, transaction) => earliest == null ? transaction.timestamp : Math.min(earliest, transaction.timestamp),
+  const earliestObservedDemand = demandEvents.reduce<number | null>(
+    (earliest, event) => earliest == null ? event.timestamp : Math.min(earliest, event.timestamp),
     null,
   );
-  const observedDays = earliestObservedTransaction == null
+  const observedDays = earliestObservedDemand == null
     ? 0
-    : Math.min(historyWindowDays, Math.max(1, Math.ceil((now - earliestObservedTransaction) / DAY_MS) + 1));
+    : Math.min(historyWindowDays, Math.max(1, Math.ceil((now - earliestObservedDemand) / DAY_MS) + 1));
   const observationStart = observedDays === 0 ? now : now - (observedDays - 1) * DAY_MS;
   const eventsByProduct = new Map<string, Array<{ timestamp: number; quantity: number }>>();
 
-  for (const transaction of eligibleTransactions) {
-    for (const item of transaction.items) {
-      if (item.quantity <= 0) continue;
-      const events = eventsByProduct.get(item.product.id) ?? [];
-      events.push({ timestamp: transaction.timestamp, quantity: item.quantity });
-      eventsByProduct.set(item.product.id, events);
-    }
+  for (const event of demandEvents) {
+    const events = eventsByProduct.get(event.productId) ?? [];
+    events.push({ timestamp: event.timestamp, quantity: event.quantity });
+    eventsByProduct.set(event.productId, events);
   }
 
   return products

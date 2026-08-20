@@ -13,6 +13,9 @@ import {
   User,
   Gift,
   FileText,
+  MoreHorizontal,
+  Clock3,
+  Monitor,
 } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { useProducts } from "../store/useProducts";
@@ -45,16 +48,43 @@ import { isGiftCardExpired } from "../utils/giftCards";
 import { Modal } from "./Modal";
 import { projectCart } from "../customer-display/cartProjection";
 import { useCustomerDisplayRuntime } from "../customer-display/runtime";
-import type { SaleDocumentRequest } from "../types";
+import { openLocalCustomerDisplay } from "../customer-display/localSession";
+import {
+  customerDisplayStoreKey,
+  DEFAULT_CUSTOMER_DISPLAY_CONFIG,
+  useCustomerDisplaySettings,
+} from "../customer-display/settings";
+import {
+  FEATURE_KEYS,
+  isFeatureEnabledForSnapshot,
+  useEntitlements,
+} from "../billing/entitlements";
+import { useEntitlementClock } from "../billing/useEntitlementClock";
 import { useMerchantProfile } from "../store/useMerchantProfile";
 import { convertTransactionToInvoiceData } from "../utils/invoicePdfGenerator";
 import { InvoicePreviewModal } from "./InvoicePreviewModal";
 import { InvoiceCustomerModal } from "./InvoiceCustomerModal";
 import { SplitPaymentModal } from "./SplitPaymentModal";
+import {
+  cashRoundingAdjustmentCents,
+  roundCashSettlementCents,
+} from "../utils/cashRounding";
+import {
+  SuspendedCartsModal,
+  type SuspendedCartListItem,
+} from "./SuspendedCartsModal";
 
 const lineUnitCents = (o: OrderItem): number =>
   o.product.priceCents +
   (o.modifiers ?? []).reduce((s, m) => s + m.deltaCents, 0);
+
+const documentRequestLabel = (
+  request: { type: "receipt" | "invoice-b2c" | "invoice-b2b" },
+): string => {
+  if (request.type === "invoice-b2b") return "B2B-factuur";
+  if (request.type === "invoice-b2c") return "B2C-factuur";
+  return "Kassabon";
+};
 
 export const Cart: React.FC = () => {
   const cart = useStore((s) => s.cart);
@@ -64,12 +94,37 @@ export const Cart: React.FC = () => {
   const voidOrderItem = useStore((s) => s.voidOrderItem);
   const cartDiscount = useStore((s) => s.cartDiscount);
   const setCartDiscount = useStore((s) => s.setCartDiscount);
+  const documentRequest = useStore((s) => s.cartDocumentRequest);
+  const setDocumentRequest = useStore((s) => s.setCartDocumentRequest);
+  const cartCheckoutRequestId = useStore((s) => s.cartCheckoutRequestId);
+  const setCartCheckoutRequestId = useStore(
+    (s) => s.setCartCheckoutRequestId,
+  );
+  const suspendedCarts = useStore((s) => s.suspendedCarts);
+  const suspendCurrentCart = useStore((s) => s.suspendCurrentCart);
+  const resumeSuspendedCart = useStore((s) => s.resumeSuspendedCart);
+  const discardSuspendedCart = useStore((s) => s.discardSuspendedCart);
   const resetCartExtras = useStore((s) => s.resetCartExtras);
   const cartGiftCards = useStore((s) => s.cartGiftCards);
   const addCartGiftCard = useStore((s) => s.addCartGiftCard);
   const removeCartGiftCard = useStore((s) => s.removeCartGiftCard);
   const syncPersistedProducts = useProducts((s) => s.syncPersisted);
   const auth = useAuth();
+  const customerDisplaySettingsKey = customerDisplayStoreKey(
+    auth.currentStoreId,
+  );
+  const customerDisplayConfig = useCustomerDisplaySettings(
+    (state) =>
+      state.configsByStore[customerDisplaySettingsKey] ??
+      DEFAULT_CUSTOMER_DISPLAY_CONFIG,
+  );
+  const entitlementSnapshot = useEntitlements((state) => state.snapshot);
+  const { now: entitlementNow } = useEntitlementClock();
+  const customerDisplayEntitled = isFeatureEnabledForSnapshot(
+    entitlementSnapshot,
+    FEATURE_KEYS.customerDisplay,
+    entitlementNow,
+  );
   const [clearCartOpen, setClearCartOpen] = useState(false);
   const [clearCartReason, setClearCartReason] = useState(
     "Klant ziet af van aankoop",
@@ -94,6 +149,50 @@ export const Cart: React.FC = () => {
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
+
+  const queuedCartsForStore = useMemo(
+    () =>
+      suspendedCarts.filter((suspendedCart) =>
+        suspendedCart.storeId === auth.currentStoreId,
+      ),
+    [auth.currentStoreId, suspendedCarts],
+  );
+
+  const queuedCartItems = useMemo<SuspendedCartListItem[]>(
+    () =>
+      queuedCartsForStore
+        .map((suspendedCart) => {
+          const customer = suspendedCart.linkedCustomerId
+            ? customers.find(
+                (candidate) => candidate.id === suspendedCart.linkedCustomerId,
+              )
+            : undefined;
+          const projection = projectCart({
+            orders: suspendedCart.cart.orders,
+            linkedCustomer: customer,
+            discountCents: suspendedCart.cartDiscount?.amountCents ?? 0,
+            giftCards: suspendedCart.cartGiftCards,
+          });
+          const defaultLabel = customer?.name ?? "Wachtende klant";
+          const label = suspendedCart.label?.trim() || defaultLabel;
+          return {
+            id: suspendedCart.id,
+            label,
+            heldAt: suspendedCart.suspendedAt,
+            lineCount: suspendedCart.cart.orders.reduce(
+              (sum, order) => sum + order.quantity,
+              0,
+            ),
+            totalCents: projection.remainingCents,
+            documentLabel: documentRequestLabel(suspendedCart.documentRequest),
+            ...(customer && customer.name !== label
+              ? { customerName: customer.name }
+              : {}),
+          };
+        })
+        .sort((left, right) => left.heldAt - right.heldAt),
+    [customers, queuedCartsForStore],
+  );
 
   const appliedGiftCardCents = useMemo(() => {
     const applied: Record<string, number> = {};
@@ -131,10 +230,30 @@ export const Cart: React.FC = () => {
   const [linkOpen, setLinkOpen] = useState(false);
   const [giftOpen, setGiftOpen] = useState(false);
   const [invoiceCustomerOpen, setInvoiceCustomerOpen] = useState(false);
-  const [documentRequest, setDocumentRequest] = useState<SaleDocumentRequest>({ type: "receipt" });
   const [invoicePreviewOpen, setInvoicePreviewOpen] = useState(false);
-  // Kept across retries so a retried checkout can never create a second sale.
-  const requestIdRef = useRef<string | null>(null);
+  const [cartActionsOpen, setCartActionsOpen] = useState(false);
+  const [queueOpen, setQueueOpen] = useState(false);
+  const [resumeCartId, setResumeCartId] = useState<string | null>(null);
+  const [discardCartId, setDiscardCartId] = useState<string | null>(null);
+  const cartActionsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!cartActionsOpen) return;
+    const closeWhenOutside = (event: MouseEvent) => {
+      if (!cartActionsRef.current?.contains(event.target as Node)) {
+        setCartActionsOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setCartActionsOpen(false);
+    };
+    document.addEventListener("mousedown", closeWhenOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeWhenOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [cartActionsOpen]);
 
   // ── Thermal printer (WebUSB) ───────────────────────────────────────────
   // The hook manages the USB device lifecycle. `connect()` must be called
@@ -165,6 +284,21 @@ export const Cart: React.FC = () => {
   const grandTotal = totals.total;
 
   const remainingTotal = cartProjection.remainingCents;
+  const pendingCashTender = pendingSplitTenders?.find(
+    (tender) => tender.method === "Cash",
+  );
+  const pendingPinCents = (pendingSplitTenders ?? [])
+    .filter((tender) => tender.method === "PIN")
+    .reduce((sum, tender) => sum + tender.amountCents, 0);
+  const cashModalCommercialCents = pendingCashTender
+    ? Math.max(0, remainingTotal - pendingPinCents)
+    : remainingTotal;
+  const cashModalTotalCents = pendingCashTender
+    ? pendingCashTender.amountCents
+    : roundCashSettlementCents(cashModalCommercialCents);
+  const cashModalRoundingAdjustmentCents = cashRoundingAdjustmentCents(
+    cashModalCommercialCents,
+  );
   const checkoutBlocked =
     !hasItemsToCheckout || isProcessing || vatBlockers.length > 0;
   const completedInvoice = useMemo(
@@ -284,6 +418,13 @@ export const Cart: React.FC = () => {
     } = {},
   ) => {
     if (checkoutBlocked) return;
+    if (cartDiscount?.requiresReapproval && !auth.hasRole("owner", "manager")) {
+      setDiscountOpen(true);
+      alert(
+        "Deze korting stond in wacht. Vraag vóór betaling opnieuw managergoedkeuring.",
+      );
+      return;
+    }
     if (documentRequest.type !== "receipt" && (
       !linkedCustomer || documentRequest.recipient?.customerId !== linkedCustomer.id
     )) {
@@ -296,16 +437,18 @@ export const Cart: React.FC = () => {
       ? "PIN"
       : method;
     useCustomerDisplayRuntime.getState().beginPayment(displayMethod);
-    requestIdRef.current ??= crypto.randomUUID();
+    const clientRequestId = cartCheckoutRequestId ?? crypto.randomUUID();
+    if (!cartCheckoutRequestId) setCartCheckoutRequestId(clientRequestId);
 
     try {
       const result = await finalizeCheckout({
-        clientRequestId: requestIdRef.current,
+        clientRequestId,
         cartId: cart.id,
         items: itemsToCheckout,
         discountCents: totalDiscountCents,
         discountReason: cartDiscount?.reason,
         discountApprovedByUserId: cartDiscount?.approvedByUserId,
+        discountApprovalId: cartDiscount?.approvalId,
         giftCards: extras.giftCards ?? cartGiftCards,
         method,
         tenders: extras.tenders,
@@ -322,13 +465,12 @@ export const Cart: React.FC = () => {
         giftCards: result.updatedGiftCards,
       });
 
-      requestIdRef.current = null;
+      setCartCheckoutRequestId(null);
       useCustomerDisplayRuntime
         .getState()
         .completePayment(result.transaction);
       clearCart();
       setReceipt(result.transaction);
-      setDocumentRequest({ type: "receipt" });
 
       // Printing happens only after the commit, so a printer failure can never
       // leave a half-booked sale behind.
@@ -360,6 +502,78 @@ export const Cart: React.FC = () => {
       return;
     }
     void runCheckout(method);
+  };
+
+  const openCustomerDisplay = () => {
+    setCartActionsOpen(false);
+    if (!customerDisplayEntitled || !customerDisplayConfig.enabled) return;
+    const opened = openLocalCustomerDisplay();
+    if (!opened) {
+      alert(
+        "De browser heeft het venster geblokkeerd. Sta pop-ups toe voor PWAYMENT en probeer opnieuw.",
+      );
+      return;
+    }
+    opened.focus();
+  };
+
+  const activeCartLabel = linkedCustomer?.name;
+  const heldBy = {
+    userId: auth.currentUserId,
+    userName: auth.currentUserName,
+  };
+
+  const holdCurrentCart = () => {
+    setCartActionsOpen(false);
+    if (isProcessing || cart.orders.length === 0) return;
+    const snapshot = suspendCurrentCart({
+      storeId: auth.currentStoreId,
+      heldBy,
+      label: activeCartLabel,
+    });
+    if (snapshot) {
+      setEditingLineId(null);
+      setPendingSplitTenders(null);
+      useCustomerDisplayRuntime.getState().resetPayment();
+    }
+  };
+
+  const restoreQueuedCart = (id: string, suspendCurrent = false) => {
+    const restored = resumeSuspendedCart(id, {
+      storeId: auth.currentStoreId,
+      suspendCurrent,
+      suspendLabel: activeCartLabel,
+      heldBy,
+    });
+    if (!restored) {
+      alert("Dit wachtende mandje is niet meer beschikbaar op deze kassa.");
+      return;
+    }
+    setResumeCartId(null);
+    setQueueOpen(false);
+    setCartActionsOpen(false);
+    setEditingLineId(null);
+    setPendingSplitTenders(null);
+    useCustomerDisplayRuntime.getState().resetPayment();
+  };
+
+  const requestResumeQueuedCart = (id: string) => {
+    if (cart.orders.length > 0) {
+      setQueueOpen(false);
+      setResumeCartId(id);
+      return;
+    }
+    restoreQueuedCart(id);
+  };
+
+  const discardQueuedCart = (id: string) => {
+    const discarded = discardSuspendedCart(id, {
+      storeId: auth.currentStoreId,
+    });
+    if (!discarded) {
+      alert("Dit wachtende mandje is niet meer beschikbaar op deze kassa.");
+    }
+    setDiscardCartId(null);
   };
 
   return (
@@ -428,24 +642,122 @@ export const Cart: React.FC = () => {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div ref={cartActionsRef} className="relative shrink-0">
           <button
             type="button"
-            onClick={() => setInvoiceCustomerOpen(true)}
-            className="rounded-md p-2 text-sky-700 hover:bg-sky-50"
-            title="Factuur opmaken"
-            aria-label="Factuur opmaken"
+            onClick={() => setCartActionsOpen((open) => !open)}
+            className={`rounded-xl border p-2 transition-colors ${
+              cartActionsOpen
+                ? "border-sky-200 bg-sky-50 text-sky-800"
+                : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900"
+            }`}
+            title="Winkelwagenacties"
+            aria-label="Winkelwagenacties"
+            aria-expanded={cartActionsOpen}
+            aria-haspopup="menu"
           >
-            <FileText size={19} />
+            <MoreHorizontal size={20} />
           </button>
-          {cart.orders.length > 0 && (
-            <button
-              onClick={() => setClearCartOpen(true)}
-              className="text-red-400 hover:text-red-300 p-2 ml-1"
-              title="Winkelwagen legen"
+          {cartActionsOpen && (
+            <div
+              role="menu"
+              aria-label="Winkelwagenacties"
+              className="absolute right-0 top-11 z-40 w-64 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl"
             >
-              <Trash2 size={20} />
-            </button>
+              <button
+                type="button"
+                role="menuitem"
+                disabled={cart.orders.length === 0 || isProcessing}
+                onClick={holdCurrentCart}
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-sky-800 transition-colors hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Clock3 size={16} /> In wachtrij zetten
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setCartActionsOpen(false);
+                  setQueueOpen(true);
+                }}
+                className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Clock3 size={16} /> Wachtende klanten
+                </span>
+                {queuedCartItems.length > 0 && (
+                  <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-black text-sky-800">
+                    {queuedCartItems.length}
+                  </span>
+                )}
+              </button>
+              {customerDisplayEntitled && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={!customerDisplayConfig.enabled}
+                  onClick={openCustomerDisplay}
+                  title={
+                    customerDisplayConfig.enabled
+                      ? "Open het tweede klantenscherm"
+                      : "Schakel het klantenscherm eerst in via Instellingen → Hardware."
+                  }
+                  className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <Monitor size={16} /> Open klantenscherm
+                  </span>
+                  {!customerDisplayConfig.enabled && (
+                    <span className="text-[10px] font-bold text-slate-400">
+                      Uit
+                    </span>
+                  )}
+                </button>
+              )}
+              <div className="my-1.5 border-t border-slate-100" />
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setCartActionsOpen(false);
+                  setInvoiceCustomerOpen(true);
+                }}
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                <FileText size={16} />
+                {documentRequest.type === "receipt"
+                  ? "Factuur opmaken"
+                  : "Factuur wijzigen"}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setCartActionsOpen(false);
+                  setLinkOpen(true);
+                }}
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                <User size={16} />
+                {linkedCustomer ? "Gekoppelde klant wijzigen" : "Klant koppelen"}
+              </button>
+              {cart.orders.length > 0 && (
+                <>
+                  <div className="my-1.5 border-t border-slate-100" />
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setCartActionsOpen(false);
+                      setClearCartOpen(true);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-red-600 transition-colors hover:bg-red-50"
+                  >
+                    <Trash2 size={16} /> Winkelwagen annuleren
+                  </button>
+                </>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -462,6 +774,18 @@ export const Cart: React.FC = () => {
             <span className="pos-empty-cart-copy mt-1.5 max-w-44 text-xs leading-relaxed text-zinc-500">
               Scan een barcode of tik op een product uit de catalogus.
             </span>
+            {queuedCartItems.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setQueueOpen(true)}
+                className="mt-4 inline-flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-bold text-sky-800 transition-colors hover:bg-sky-100"
+              >
+                <Clock3 size={15} />
+                {queuedCartItems.length === 1
+                  ? "1 klant wacht"
+                  : `${queuedCartItems.length} klanten wachten`}
+              </button>
+            )}
           </div>
         ) : (
           itemsToCheckout.map((order) => {
@@ -692,6 +1016,7 @@ export const Cart: React.FC = () => {
       <DiscountModal
         open={discountOpen}
         onClose={() => setDiscountOpen(false)}
+        cartId={cart.id}
         subtotalCents={totals.subtotal}
         onApply={(d) => setCartDiscount(d)}
       />
@@ -702,9 +1027,10 @@ export const Cart: React.FC = () => {
           setPendingSplitTenders(null);
         }}
         totalCents={
-          pendingSplitTenders?.find((tender) => tender.method === "Cash")
-            ?.amountCents ?? remainingTotal
+          cashModalTotalCents
         }
+        commercialTotalCents={cashModalCommercialCents}
+        roundingAdjustmentCents={cashModalRoundingAdjustmentCents}
         onConfirm={(t) => {
           setCashOpen(false);
           const splitTenders = pendingSplitTenders;
@@ -784,6 +1110,79 @@ export const Cart: React.FC = () => {
           }
         }}
       />
+      <SuspendedCartsModal
+        open={queueOpen}
+        carts={queuedCartItems}
+        onClose={() => setQueueOpen(false)}
+        onResume={requestResumeQueuedCart}
+        onDiscard={(id) => setDiscardCartId(id)}
+      />
+      <Modal
+        open={resumeCartId !== null}
+        onClose={() => setResumeCartId(null)}
+        title="Huidige winkelwagen ook parkeren?"
+        subtitle="De huidige klant gaat veilig mee in de wachtrij."
+        icon={<Clock3 size={20} />}
+        footer={
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={() => setResumeCartId(null)}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              Annuleren
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (resumeCartId) restoreQueuedCart(resumeCartId, true);
+              }}
+              className="rounded-xl bg-sky-700 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-sky-800"
+            >
+              Huidige winkelwagen parkeren &amp; openen
+            </button>
+          </div>
+        }
+      >
+        <p className="text-sm leading-relaxed text-slate-600">
+          Je verliest niets: deze mand met {cart.orders.reduce(
+            (sum, order) => sum + order.quantity,
+            0,
+          )} artikelen wordt eerst in wacht gezet. Daarna openen we de gekozen
+          klant.
+        </p>
+      </Modal>
+      <Modal
+        open={discardCartId !== null}
+        onClose={() => setDiscardCartId(null)}
+        title="Wachtend mandje verwijderen?"
+        subtitle="Dit is nog geen verkoop."
+        footer={
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={() => setDiscardCartId(null)}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              Behouden
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (discardCartId) discardQueuedCart(discardCartId);
+              }}
+              className="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-red-700"
+            >
+              Verwijderen uit wachtrij
+            </button>
+          </div>
+        }
+      >
+        <p className="text-sm leading-relaxed text-slate-600">
+          Er is geen betaling, voorraadmutatie of cadeaubonboeking gedaan. Alleen
+          het lokaal bewaarde wachtende mandje wordt verwijderd.
+        </p>
+      </Modal>
       <Modal
         open={clearCartOpen}
         onClose={() => setClearCartOpen(false)}

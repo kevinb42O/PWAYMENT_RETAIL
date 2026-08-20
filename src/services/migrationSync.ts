@@ -1,4 +1,5 @@
 import { db } from "../db/db";
+import { drainOutbox } from "../db/outbox";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import { recordIntegrationRun, type IntegrationRunTelemetry } from "./integrationOperations";
 import { getOutboxHealthMetadata, reportPlatformHealth, safeErrorFingerprint } from "./platformTelemetry";
@@ -128,35 +129,47 @@ export const synchronizeMigrationNow = async (
     return { sent: 0, pending: migrationEntries.length };
   }
 
-  let sent = 0;
-  for (const entry of migrationEntries) {
-    try {
+  const migrationKinds = new Set<OutboxEntry["kind"]>([
+    "migration_activate",
+    "migration_lock",
+    "migration_undo",
+  ]);
+  const result = await drainOutbox(
+    async (entry) => {
       await pushMigrationOutboxEntry(storeId, entry);
-      if (entry.id != null) await db.outbox.delete(entry.id);
       await runForEntry(storeId, entry, "completed");
-      sent += 1;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Onbekende synchronisatiefout.";
-      if (entry.id != null) {
-        await db.outbox.update(entry.id, {
-          attempts: entry.attempts + 1,
-          lastError: message,
-        });
-      }
-      await runForEntry(storeId, entry, "queued", error);
-      void reportPlatformHealth({
-        storeId,
-        eventType: "sync.retrying",
-        severity: "warning",
-        operation: entry.kind,
-        errorFingerprint: safeErrorFingerprint(entry.kind, error),
-        metadata: await getOutboxHealthMetadata(),
-      });
-      return { sent, pending: migrationEntries.length - sent, error: message };
-    }
+    },
+    { shouldProcess: (entry) => migrationKinds.has(entry.kind) },
+  );
+
+  for (const entry of [...result.retried, ...result.deadLettered]) {
+    await runForEntry(storeId, entry, "queued", entry.lastError);
   }
-  if (sent > 0) {
+
+  const unresolved = [...result.retried, ...result.deadLettered];
+  const firstFailure = unresolved[0];
+  if (firstFailure) {
+    void reportPlatformHealth({
+      storeId,
+      eventType: firstFailure.deliveryStatus === "dead_letter"
+        ? "sync.failed_permanent"
+        : "sync.retrying",
+      severity: firstFailure.deliveryStatus === "dead_letter" ? "error" : "warning",
+      operation: firstFailure.kind,
+      errorFingerprint: safeErrorFingerprint(
+        firstFailure.kind,
+        firstFailure.lastError ?? "Migratiesynchronisatie mislukt.",
+      ),
+      metadata: await getOutboxHealthMetadata(),
+    });
+  }
+  if (result.delivered > 0) {
     void reportPlatformHealth({ storeId, eventType: "sync.completed", operation: "migration.import", metadata: await getOutboxHealthMetadata() });
   }
-  return { sent, pending: 0 };
+  const remaining = (await db.outbox.toArray()).filter((entry) => migrationKinds.has(entry.kind)).length;
+  return {
+    sent: result.delivered,
+    pending: remaining,
+    error: firstFailure?.lastError,
+  };
 };

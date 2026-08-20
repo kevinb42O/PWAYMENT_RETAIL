@@ -3,15 +3,23 @@ import { Modal } from './Modal';
 import { DISCOUNT_REASONS } from '../data/modifiers';
 import { useAuth } from '../auth/useAuth';
 import { formatEUR } from '../utils/money';
+import { isSupabaseConfigured } from '../lib/supabase';
+import { requestServerDiscountApproval } from '../services/discountApprovals';
 
 interface Props {
   open: boolean;
   onClose: () => void;
+  cartId: number;
   subtotalCents: number;
-  onApply: (params: { amountCents: number; reason: string; approvedByUserId: string }) => void;
+  onApply: (params: {
+    amountCents: number;
+    reason: string;
+    approvedByUserId: string;
+    approvalId?: string;
+  }) => void;
 }
 
-export const DiscountModal: React.FC<Props> = ({ open, onClose, subtotalCents, onApply }) => {
+export const DiscountModal: React.FC<Props> = ({ open, onClose, cartId, subtotalCents, onApply }) => {
   const auth = useAuth();
   const [mode, setMode] = useState<'percent' | 'amount'>('percent');
   const [percent, setPercent] = useState('10');
@@ -20,6 +28,7 @@ export const DiscountModal: React.FC<Props> = ({ open, onClose, subtotalCents, o
   const [customReason, setCustomReason] = useState('');
   const [pin, setPin] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const reset = () => {
     setMode('percent');
@@ -48,6 +57,7 @@ export const DiscountModal: React.FC<Props> = ({ open, onClose, subtotalCents, o
   };
 
   const submit = async () => {
+    if (isSubmitting) return;
     setError(null);
     const cents = computeCents();
     if (cents <= 0) {
@@ -64,7 +74,38 @@ export const DiscountModal: React.FC<Props> = ({ open, onClose, subtotalCents, o
       close();
       return;
     }
-    // Otherwise require manager approval via PIN.
+
+    // A connected production cashier needs a server-issued, single-use
+    // approval.  Demo/no-backend remains intentionally local for fixtures.
+    if (isSupabaseConfigured && !auth.currentStoreIsDemo) {
+      setIsSubmitting(true);
+      try {
+        const approval = await requestServerDiscountApproval({
+          cartId,
+          discountCents: cents,
+          reason: finalReason,
+          approvalPin: pin,
+        });
+        onApply({
+          amountCents: cents,
+          reason: finalReason,
+          approvedByUserId: approval.approvedByUserId,
+          approvalId: approval.approvalId,
+        });
+        close();
+      } catch (approvalError) {
+        const message = approvalError instanceof Error
+          ? approvalError.message
+          : 'Managergoedkeuring kon niet worden bevestigd.';
+        setError(/fetch|network|offline/i.test(message)
+          ? 'Managergoedkeuring vereist tijdelijk een online verbinding.'
+          : message);
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+    // Otherwise require the explicitly isolated demo/local manager PIN.
     const approver = await auth.verifyManager(pin);
     if (!approver) {
       setError('Ongeldige manager PIN');
@@ -92,9 +133,10 @@ export const DiscountModal: React.FC<Props> = ({ open, onClose, subtotalCents, o
           </button>
           <button
             onClick={() => void submit()}
+            disabled={isSubmitting}
             className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold"
           >
-            Toepassen ({formatEUR(cents)})
+            {isSubmitting ? 'Controleren…' : `Toepassen (${formatEUR(cents)})`}
           </button>
         </div>
       }

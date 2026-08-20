@@ -91,6 +91,7 @@ const ReportPrintout = ({ detail, merchant }: { detail: DailyReportDetail; merch
           <tr><td>Kostprijs</td><td className="text-right">{formatEUR(Number(totals.totalCostCents ?? 0))}</td></tr>
           <tr><td>Brutowinst</td><td className="text-right font-bold">{formatEUR(Number(totals.grossProfitCents ?? 0))}</td></tr>
           <tr><td>Kortingen</td><td className="text-right">{formatEUR(Number(totals.totalDiscountCents ?? 0))}</td></tr>
+          {Number(totals.totalCashRoundingAdjustmentCents ?? 0) !== 0 && <tr><td>Cashafrondingen</td><td className="text-right">{formatEUR(Number(totals.totalCashRoundingAdjustmentCents ?? 0))}</td></tr>}
           <tr><td>BTW 12%</td><td className="text-right">{formatEUR(Number(totals.totalVat12Cents ?? 0))}</td></tr>
           <tr><td>BTW 21%</td><td className="text-right">{formatEUR(Number(totals.totalVat21Cents ?? 0))}</td></tr>
         </tbody></table>
@@ -112,7 +113,7 @@ const ReportPrintout = ({ detail, merchant }: { detail: DailyReportDetail; merch
       <h3 className="mt-7 text-sm font-black uppercase tracking-wide">Transacties</h3>
       <table className="mt-2 w-full border-collapse text-[10px]">
         <thead><tr className="border-y border-black text-left"><th className="py-1">Document</th><th>Tijd</th><th>Type</th><th>Kassier</th><th className="text-right">Items</th><th>Betaling</th><th className="text-right">Totaal</th></tr></thead>
-        <tbody>{transactions.map((transaction) => <tr key={transaction.id} className="border-b border-slate-300"><td className="py-1">{transaction.documentNumber}</td><td>{format(transaction.timestamp, "HH:mm:ss")}</td><td>{transaction.kind === "refund" ? "Retour" : "Verkoop"}</td><td>{transaction.cashierName ?? "—"}</td><td className="text-right">{transaction.lines.reduce((sum, line) => sum + line.quantity, 0)}</td><td>{tenderSummary(transaction.tenders)}</td><td className="text-right">{formatEUR(transaction.totalCents)}</td></tr>)}</tbody>
+        <tbody>{transactions.map((transaction) => <tr key={transaction.id} className="border-b border-slate-300"><td className="py-1">{transaction.documentNumber}</td><td>{format(transaction.timestamp, "HH:mm:ss")}</td><td>{transaction.kind === "refund" ? "Retour" : "Verkoop"}</td><td>{transaction.cashierName ?? "—"}</td><td className="text-right">{transaction.lines.reduce((sum, line) => sum + line.quantity, 0)}</td><td>{tenderSummary(transaction.tenders)}</td><td className="text-right">{formatEUR(transaction.totalCents)}{transaction.roundingAdjustmentCents !== 0 && <><br /><span className="text-[9px]">cash {transaction.roundingAdjustmentCents > 0 ? "+" : ""}{formatEUR(transaction.roundingAdjustmentCents)}</span></>}</td></tr>)}</tbody>
       </table>
       <footer className="mt-8 break-inside-avoid border-t border-slate-400 pt-3 text-[9px] text-slate-600">
         <p>SHA-256 · hashversie {report.hashPayloadVersion}</p>

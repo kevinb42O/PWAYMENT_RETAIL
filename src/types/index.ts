@@ -4,6 +4,8 @@ export type SubCategory = string;
 
 export interface ProductCategory {
   id: string;
+  /** Internal backend identifier retained for realtime product-category mapping. */
+  serverId?: string;
   name: string;
   vatRate: number;
   sortOrder?: number;
@@ -113,6 +115,26 @@ export interface PaymentTender {
 
 export type TransactionKind = "sale" | "refund";
 
+/**
+ * Operational destination for a returned item. Only `sellable` returns to the
+ * available-to-sell quantity; the other states deliberately stay out of POS
+ * stock until a separate inspection or supplier workflow resolves them.
+ */
+export type ReturnDisposition =
+  | "sellable"
+  | "quarantine"
+  | "defective"
+  | "supplier-return";
+
+/** Reason recorded with a deliberate physical stock count/correction. */
+export type InventoryAdjustmentReason =
+  | "cycle-count"
+  | "opening-balance"
+  | "damage"
+  | "loss"
+  | "found"
+  | "other";
+
 /** The document the cashier intentionally requested before payment. */
 export type SaleDocumentType = "receipt" | "invoice-b2c" | "invoice-b2b";
 
@@ -169,11 +191,18 @@ export interface Transaction {
   subtotalCents: number;
   vat12Cents: number;
   vat21Cents: number;
+  /**
+   * Belgian five-cent cash rounding. The commercial/VAT total stays in
+   * `totalCents`; this separately records the settlement difference.
+   */
+  roundingAdjustmentCents?: number;
   totalCents: number;
   discountCents: number;
   /** Optional manager-approved cart discount metadata. */
   discountReason?: string;
   discountApprovedByUserId?: string;
+  /** Server-issued single-use approval used when a cashier applies a discount. */
+  discountApprovalId?: string;
   /** Optional gratuity (added on top of total). */
   tipCents?: number;
   /** Cash tendered, used to compute change for receipts. */
@@ -202,6 +231,8 @@ export interface Transaction {
   /** Original sale for a refund/correction row. */
   originalTransactionId?: number;
   correctionReason?: string;
+  /** Physical disposition selected when this row is a return. */
+  returnDisposition?: ReturnDisposition;
   /** Stable human-facing number and immutable merchant snapshot. */
   documentNumber?: string;
   /** Immutable Code 128 lookup key printed on every receipt and credit note. */
@@ -323,6 +354,14 @@ export interface StockMovement {
   transactionId?: number;
   userId?: string;
   userName?: string;
+  /** Snapshot fields are populated for formal physical counts/corrections. */
+  quantityBefore?: number;
+  quantityAfter?: number;
+  adjustmentReason?: InventoryAdjustmentReason;
+  note?: string;
+  /** Present for the stock movement caused by a sellable POS return. */
+  returnDisposition?: ReturnDisposition;
+  clientRequestId?: string;
 }
 
 export type WebshopOrderStatus =
@@ -432,6 +471,8 @@ export interface DailyReport {
   totalExclVat12Cents: number;
   totalExclVat21Cents: number;
   totalDiscountCents: number;
+  /** Sum of statutory cash rounding differences, kept apart from VAT revenue. */
+  totalCashRoundingAdjustmentCents?: number;
   paymentTotalsCents: {
     Cash: number;
     PIN: number;
@@ -515,6 +556,9 @@ export type AuditAction =
   | "table.clear"
   | "table.guests"
   | "table.server"
+  | "cart.suspend"
+  | "cart.resume"
+  | "cart.discard"
   | "checkout"
   | "refund.create"
   | "approve"
@@ -539,6 +583,7 @@ export type AuditAction =
   | "purchase_order.update"
   | "purchase_order.receive"
   | "purchase_order.cancel"
+  | "inventory.count"
   | "webshop_order.create"
   | "webshop_order.update"
   | "webshop_order.cancel"
@@ -584,6 +629,21 @@ export interface OutboxEntry {
   payload: unknown;
   attempts: number;
   lastError?: string;
+  /**
+   * Delivery lifecycle is persisted so a bad non-financial integration cannot
+   * pin the whole store queue forever. `in_flight` is protected with a lease
+   * to keep two browser tabs from delivering the same row concurrently.
+   */
+  deliveryStatus?: "pending" | "retrying" | "in_flight" | "dead_letter";
+  /** Earliest time at which a retrying entry may be claimed again. */
+  nextAttemptAt?: number;
+  /** Diagnostic only; no business data is stored here. */
+  lastAttemptAt?: number;
+  /** Random per-drain lease token used to safely finish or release a claim. */
+  leaseOwner?: string;
+  leaseExpiresAt?: number;
+  /** A permanent business/configuration failure needs an explicit operator retry. */
+  requiresManualResolution?: boolean;
 }
 
 /** Voided line item — surfaces in audit + Z-report variance. */

@@ -19,6 +19,8 @@ import { FeatureGate } from '../billing/FeatureGate';
 import { FEATURE_KEYS } from '../billing/entitlements';
 import { Modal } from './Modal';
 import { hashCredential } from '../utils/credentials';
+import { isSupabaseConfigured } from '../lib/supabase';
+import { setServerManagerApprovalPin } from '../services/discountApprovals';
 import { useWorkforce } from '../store/useWorkforce';
 import { useMerchantProfile } from '../store/useMerchantProfile';
 import type { User, Role } from '../types';
@@ -206,8 +208,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
   // Security state
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(true);
-  const [managerPin, setManagerPin] = useState('1234');
+  const [managerPin, setManagerPin] = useState('');
   const [showPin, setShowPin] = useState(false);
+  const [securityError, setSecurityError] = useState<string | null>(null);
+  const [securitySaving, setSecuritySaving] = useState(false);
   const [pinForVoids, setPinForVoids] = useState(true);
   const [pinForDiscounts, setPinForDiscounts] = useState(true);
   const [pinForDrawer, setPinForDrawer] = useState(true);
@@ -250,6 +254,37 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const triggerSaveNotification = (message: string) => {
     setSavedToast(message);
     setTimeout(() => setSavedToast(null), 3000);
+  };
+
+  const saveManagerApprovalPin = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setSecurityError(null);
+    if (!currentUserId || !currentRole || !['owner', 'manager'].includes(currentRole)) {
+      setSecurityError('Alleen een eigenaar of manager kan een goedkeurings-PIN instellen.');
+      return;
+    }
+    if (!/^\d{6}$/.test(managerPin)) {
+      setSecurityError('De manager-PIN moet uit exact 6 cijfers bestaan.');
+      return;
+    }
+    setSecuritySaving(true);
+    try {
+      if (isSupabaseConfigured && !currentStoreIsDemo) {
+        await setServerManagerApprovalPin(managerPin);
+      } else {
+        // Explicitly isolated demo/no-backend support. Production approval
+        // PINs are never kept in this browser database.
+        await db.users.update(currentUserId, {
+          pinHash: await hashCredential(managerPin, 'pin'),
+        });
+      }
+      setManagerPin('');
+      triggerSaveNotification('Managergoedkeurings-PIN veilig opgeslagen.');
+    } catch (error) {
+      setSecurityError(error instanceof Error ? error.message : 'Manager-PIN kon niet worden opgeslagen.');
+    } finally {
+      setSecuritySaving(false);
+    }
   };
 
   return (
@@ -1296,17 +1331,23 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </div>
             </div>
 
-            <form onSubmit={(e) => { e.preventDefault(); triggerSaveNotification('Manager PIN & Beveiliging bijgewerkt!'); }} className="space-y-6">
+            <form onSubmit={(event) => void saveManagerApprovalPin(event)} className="space-y-6">
+              {securityError && (
+                <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-semibold text-rose-800">
+                  {securityError}
+                </div>
+              )}
               {/* PIN Code Field with Eye Toggle */}
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2">
-                <label className="block text-xs font-bold text-slate-900">4-Cijferige Manager PIN-Code</label>
+                <label className="block text-xs font-bold text-slate-900">6-cijferige managergoedkeurings-PIN</label>
                 <div className="flex items-center gap-3">
                   <div className="relative inline-flex items-center">
                     <input
                       type={showPin ? 'text' : 'password'}
-                      maxLength={4}
+                      inputMode="numeric"
+                      maxLength={6}
                       value={managerPin}
-                      onChange={(e) => setManagerPin(e.target.value)}
+                      onChange={(e) => setManagerPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
                       className="w-44 text-center text-lg tracking-widest font-black py-2 px-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
                       required
                     />
@@ -1320,7 +1361,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     </button>
                   </div>
                 </div>
-                <p className="text-[11px] text-slate-500">Deze PIN-code geeft autorisatie bij gevoelige kassa-transacties.</p>
+                <p className="text-[11px] text-slate-500">Deze PIN wordt als hash op de server bewaard en geeft een kassier één korte, controleerbare goedkeuring voor de bijhorende korting.</p>
               </div>
 
               {/* Authorization Rules */}
@@ -1394,9 +1435,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <div className="pt-2 flex justify-end">
                 <button
                   type="submit"
+                  disabled={securitySaving}
                   className="py-2.5 px-6 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-xl shadow-xs transition-colors"
                 >
-                  PIN & Instellingen Opslaan
+                  {securitySaving ? 'Veilig opslaan…' : 'Manager-PIN opslaan'}
                 </button>
               </div>
             </form>

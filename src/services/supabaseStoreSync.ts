@@ -303,6 +303,7 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
 
   const categories: ProductCategory[] = categoryRows.map((row) => ({
     id: row.external_id ?? row.id,
+    serverId: row.id,
     name: row.name,
     vatRate: Number(row.vat_rate),
     sortOrder: row.sort_order ?? undefined,
@@ -457,6 +458,7 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
     vat12Cents: Number(row.vat_12_cents),
     vat21Cents: Number(row.vat_21_cents),
     totalCents: Number(row.total_cents),
+    roundingAdjustmentCents: Number(row.rounding_adjustment_cents ?? 0),
     discountCents: Number(row.discount_cents),
     discountReason: row.discount_reason ?? undefined,
     discountApprovedByUserId: row.discount_approved_by_user_id ?? undefined,
@@ -481,6 +483,9 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
       ? transactionLocalId.get(row.original_transaction_id)
       : undefined,
     correctionReason: row.correction_reason ?? undefined,
+    returnDisposition: row.return_disposition == null
+      ? undefined
+      : row.return_disposition as Transaction["returnDisposition"],
     documentNumber: row.document_number,
     receiptBarcode: row.receipt_barcode ?? undefined,
     receiptBarcodeVersion: row.receipt_barcode_version === 1 ? 1 : undefined,
@@ -575,6 +580,16 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
         : undefined,
       userId: row.user_id ?? undefined,
       userName: row.user_name ?? undefined,
+      quantityBefore: row.quantity_before ?? undefined,
+      quantityAfter: row.quantity_after ?? undefined,
+      adjustmentReason: row.adjustment_reason == null
+        ? undefined
+        : row.adjustment_reason as StockMovement["adjustmentReason"],
+      note: row.note ?? undefined,
+      returnDisposition: row.return_disposition == null
+        ? undefined
+        : row.return_disposition as StockMovement["returnDisposition"],
+      clientRequestId: row.client_request_id ?? undefined,
     }),
   );
   const voids: VoidEntry[] = voidRows.map((row, index) => ({
@@ -625,6 +640,9 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
       totalExclVat12Cents: Number(totals.totalExclVat12Cents ?? 0),
       totalExclVat21Cents: Number(totals.totalExclVat21Cents ?? 0),
       totalDiscountCents: Number(totals.totalDiscountCents ?? 0),
+      totalCashRoundingAdjustmentCents: Number(
+        totals.totalCashRoundingAdjustmentCents ?? 0,
+      ),
       paymentTotalsCents: totals.paymentTotalsCents ?? {
         Cash: 0,
         PIN: 0,

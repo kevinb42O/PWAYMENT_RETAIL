@@ -119,4 +119,44 @@ describe("createRefund", () => {
       }),
     ).rejects.toBeInstanceOf(RefundError);
   });
+
+  it("keeps a quarantined return out of sellable stock while preserving the financial credit", async () => {
+    const originalId = await db.transactions.add({
+      clientRequestId: "sale-refund-quarantine",
+      tableId: 1,
+      items: [{ lineId: "line-1", product, quantity: 1 }],
+      subtotalCents: 1210,
+      discountCents: 0,
+      totalCents: 1210,
+      vat12Cents: 0,
+      vat21Cents: 210,
+      paymentMethod: "PIN",
+      tenders: [{ method: "PIN", amountCents: 1210 }],
+      timestamp: Date.now(),
+      isFinalized: 1,
+      source: "live",
+      kind: "sale",
+    });
+
+    const refund = await createRefund({
+      clientRequestId: "refund-quarantine",
+      originalTransactionId: originalId,
+      lines: [{ lineId: "line-1", quantity: 1 }],
+      method: "PIN",
+      reason: "Inspectie vereist",
+      disposition: "quarantine",
+    });
+
+    expect(refund).toMatchObject({
+      kind: "refund",
+      totalCents: -1210,
+      returnDisposition: "quarantine",
+    });
+    expect((await db.products.get(product.id))?.stockQty).toBe(3);
+    expect(await db.stock_movements.count()).toBe(0);
+    expect(await db.audit.orderBy("id").last()).toMatchObject({
+      action: "refund.create",
+      detail: expect.objectContaining({ disposition: "quarantine" }),
+    });
+  });
 });

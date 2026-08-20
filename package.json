@@ -19,7 +19,7 @@
     "test:unit": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
-    "build:e2e": "VITE_E2E_BUILD=true vite build",
+    "build:e2e": "VITE_E2E_BUILD=true VITE_SEED_DEMO_PRODUCTS=true vite build",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
@@ -28,6 +28,7 @@
     "check:site": "node scripts/check-public-site.mjs",
     "check:bundle": "node scripts/check-bundle-budget.mjs",
     "check:security": "npm audit --audit-level=high",
+    "check:supabase-release": "node scripts/verify-supabase-release.mjs",
     "check": "npm run lint && npm run test:coverage && npm run build && npm run check:site && npm run check:bundle"
   },
   "dependencies": {

@@ -77,9 +77,10 @@ export const createZReportPdf = (
       ["Netto productomzet", euro(Number(totals.totalRevenueCents ?? 0)), "Cash", euro(Number(totals.paymentTotalsCents?.Cash ?? 0))],
       ["Kostprijs", euro(Number(totals.totalCostCents ?? 0)), "Kaart", euro(Number(totals.paymentTotalsCents?.PIN ?? 0))],
       ["Brutowinst", euro(Number(totals.grossProfitCents ?? 0)), "Cadeaubon", euro(Number(totals.paymentTotalsCents?.Cadeaubon ?? 0))],
-      ["Kortingen", euro(Number(totals.totalDiscountCents ?? 0)), "Kasverschil", euro(report.cashDifferenceCents)],
-      ["BTW 12%", euro(Number(totals.totalVat12Cents ?? 0)), "Verwacht cash", euro(report.expectedCashCents)],
-      ["BTW 21%", euro(Number(totals.totalVat21Cents ?? 0)), "Geteld cash", euro(report.countedCashCents)],
+      ["Kortingen", euro(Number(totals.totalDiscountCents ?? 0)), "Cashafrondingen", euro(Number(totals.totalCashRoundingAdjustmentCents ?? 0))],
+      ["Kasverschil", euro(report.cashDifferenceCents), "Verwacht cash", euro(report.expectedCashCents)],
+      ["BTW 12%", euro(Number(totals.totalVat12Cents ?? 0)), "Geteld cash", euro(report.countedCashCents)],
+      ["BTW 21%", euro(Number(totals.totalVat21Cents ?? 0)), "", ""],
     ],
     columnStyles: { 1: { halign: "right" }, 3: { halign: "right" } },
   });
@@ -134,7 +135,7 @@ export const createZReportPdf = (
       transaction.cashierName ?? "—",
       String(transaction.lines.reduce((sum, line) => sum + line.quantity, 0)),
       transaction.tenders.map((tender) => `${tender.method} ${euro(tender.amountCents)}`).join(" + "),
-      euro(transaction.totalCents),
+      `${euro(transaction.totalCents)}${transaction.roundingAdjustmentCents === 0 ? "" : `\nCashafronding ${transaction.roundingAdjustmentCents > 0 ? "+" : ""}${euro(transaction.roundingAdjustmentCents)}`}`,
     ]),
     columnStyles: { 4: { halign: "right" }, 6: { halign: "right" } },
   });

@@ -3,6 +3,11 @@ import { Banknote, CreditCard, Equal, Layers2 } from "lucide-react";
 import { Modal } from "./Modal";
 import { formatEUR, parseDecimalToCents } from "../utils/money";
 import type { CheckoutTenderInput } from "../services/checkout";
+import {
+  cashRoundingAdjustmentCents,
+  MAX_CASH_PAYMENT_CENTS,
+  roundCashSettlementCents,
+} from "../utils/cashRounding";
 
 interface Props {
   open: boolean;
@@ -38,21 +43,31 @@ export const SplitPaymentModal: React.FC<Props> = ({
     [cardAmountText],
   );
   const cardCents = parsedCard.ok ? parsedCard.cents : 0;
-  const cashCents = Math.max(0, totalCents - cardCents);
-  const invalid = !parsedCard.ok || cardCents < 0 || cardCents > totalCents;
+  const commercialCashCents = Math.max(0, totalCents - cardCents);
+  const cashCents = roundCashSettlementCents(commercialCashCents);
+  const roundingAdjustmentCents = cashRoundingAdjustmentCents(commercialCashCents);
+  const invalid =
+    !parsedCard.ok ||
+    cardCents < 0 ||
+    cardCents > totalCents ||
+    cashCents > MAX_CASH_PAYMENT_CENTS;
 
   const confirm = () => {
     if (invalid) {
       setError(
         !parsedCard.ok
           ? "Voer een geldig kaartbedrag in."
-          : "Het kaartbedrag kan niet hoger zijn dan het totaal.",
+          : cardCents > totalCents
+            ? "Het kaartbedrag kan niet hoger zijn dan het totaal."
+            : `Het cashdeel mag maximaal ${formatEUR(MAX_CASH_PAYMENT_CENTS)} bedragen.`,
       );
       return;
     }
     const tenders: CheckoutTenderInput[] = [];
     if (cardCents > 0) tenders.push({ method: "PIN", amountCents: cardCents });
-    if (cashCents > 0) tenders.push({ method: "Cash", amountCents: cashCents });
+    if (commercialCashCents > 0) {
+      tenders.push({ method: "Cash", amountCents: cashCents });
+    }
     if (tenders.length === 0) {
       setError("Kies minstens één betaalwijze.");
       return;
@@ -64,8 +79,8 @@ export const SplitPaymentModal: React.FC<Props> = ({
     <Modal
       open={open}
       onClose={onClose}
-      title="Deels betalen"
-      subtitle="Voer alleen het kaartbedrag in; het cash-restant wordt automatisch berekend."
+        title="Deels betalen"
+        subtitle="Voer alleen het kaartbedrag in; het cash-restant wordt automatisch berekend en volgens de 5-centregel afgerond."
       size="lg"
       variant="light"
       footer={
@@ -140,12 +155,22 @@ export const SplitPaymentModal: React.FC<Props> = ({
 
         <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
           <span className="flex items-center gap-2 text-sm font-bold text-emerald-900">
-            <Banknote size={18} /> Contant restant
+            <Banknote size={18} /> Contant restant (afgerond)
           </span>
           <strong className="text-xl tabular-nums text-emerald-950">
             {invalid ? "—" : formatEUR(cashCents)}
           </strong>
         </div>
+
+        {!invalid && roundingAdjustmentCents !== 0 && (
+          <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            <span>Wettelijke cashafronding op {formatEUR(commercialCashCents)}</span>
+            <strong className="tabular-nums">
+              {roundingAdjustmentCents > 0 ? "+" : ""}
+              {formatEUR(roundingAdjustmentCents)}
+            </strong>
+          </div>
+        )}
 
         <p id="split-payment-help" className="text-xs leading-5 text-zinc-500">
           Na deze stap registreer je het ontvangen cashbedrag en eventueel wisselgeld. Kaart en cash worden afzonderlijk op één verkoop geboekt.

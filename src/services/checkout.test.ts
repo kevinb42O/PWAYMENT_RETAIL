@@ -383,6 +383,112 @@ describe('finalizeCheckout', () => {
     expect(await counts()).toEqual({ transactions: 1, audit: 1, outbox: 1 });
   });
 
+  it('keeps VAT total exact but settles a cash sale to the nearest five cents', async () => {
+    const result = await finalizeCheckout(
+      baseInput({
+        clientRequestId: 'cash-round-down',
+        method: 'Cash',
+        items: [line(product({ priceCents: 1002 }))],
+        // 1/2-cent coins remain legal tender: received cash need not itself end in 5.
+        tenderedCents: 1002,
+      }),
+    );
+
+    expect(result.transaction.totalCents).toBe(1002);
+    expect(result.transaction.roundingAdjustmentCents).toBe(-2);
+    expect(result.transaction.tenders).toEqual([{ method: 'Cash', amountCents: 1000 }]);
+    expect(result.transaction.tenderedCents).toBe(1002);
+    expect((await db.audit.toArray())[0]?.detail).toMatchObject({
+      totalCents: 1002,
+      settlementTotalCents: 1000,
+      roundingAdjustmentCents: -2,
+    });
+  });
+
+  it('rounds the cash leg of a card/cash split, not the card leg', async () => {
+    const result = await finalizeCheckout(
+      baseInput({
+        clientRequestId: 'cash-card-round-down',
+        method: 'PIN',
+        items: [line(product({ priceCents: 1002 }))],
+        tenders: [
+          { method: 'PIN', amountCents: 200 },
+          { method: 'Cash', amountCents: 800 },
+        ],
+        tenderedCents: 802,
+      }),
+    );
+
+    expect(result.transaction.paymentMethod).toBe('Split');
+    expect(result.transaction.roundingAdjustmentCents).toBe(-2);
+    expect(result.transaction.tenders).toEqual([
+      { method: 'PIN', amountCents: 200 },
+      { method: 'Cash', amountCents: 800 },
+    ]);
+  });
+
+  it('rejects an unrounded explicit cash leg and cash input on a card sale', async () => {
+    await expect(
+      finalizeCheckout(
+        baseInput({
+          clientRequestId: 'unrounded-cash-leg',
+          method: 'PIN',
+          items: [line(product({ priceCents: 1002 }))],
+          tenders: [
+            { method: 'PIN', amountCents: 200 },
+            { method: 'Cash', amountCents: 802 },
+          ],
+          tenderedCents: 802,
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'invalid-tender' });
+
+    await expect(
+      finalizeCheckout(baseInput({
+        clientRequestId: 'cash-input-on-card-sale',
+        tenderedCents: 10000,
+      })),
+    ).rejects.toMatchObject({ code: 'invalid-tender' });
+  });
+
+  it('does not round away a cash sale of five cents or less', async () => {
+    const result = await finalizeCheckout(
+      baseInput({
+        clientRequestId: 'small-cash-exact',
+        method: 'Cash',
+        items: [line(product({ priceCents: 2 }))],
+        tenderedCents: 2,
+      }),
+    );
+
+    expect(result.transaction.roundingAdjustmentCents).toBe(0);
+    expect(result.transaction.tenders).toEqual([{ method: 'Cash', amountCents: 2 }]);
+  });
+
+  it('enforces the €3.000 cash-payment ceiling for cash and split cash legs', async () => {
+    await expect(
+      finalizeCheckout(baseInput({
+        clientRequestId: 'cash-cap',
+        method: 'Cash',
+        items: [line(product({ priceCents: 300005 }))],
+        tenderedCents: 300005,
+      })),
+    ).rejects.toMatchObject({ code: 'invalid-tender' });
+
+    await expect(
+      finalizeCheckout(baseInput({
+        clientRequestId: 'split-cash-cap',
+        method: 'PIN',
+        items: [line(product({ priceCents: 300100 }))],
+        tenders: [
+          { method: 'PIN', amountCents: 100 },
+          { method: 'Cash', amountCents: 300000 },
+        ],
+        tenderedCents: 300001,
+      })),
+    ).rejects.toMatchObject({ code: 'invalid-tender' });
+  });
+
   it('rejects an explicit split that does not cover the exact remaining amount', async () => {
     await expect(
       finalizeCheckout(

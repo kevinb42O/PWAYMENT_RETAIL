@@ -135,7 +135,7 @@ test("gift-card issuance is a liability and redemption uses its own tender", asy
     .getByRole("button", { name: "Deels betalen of cadeaubon gebruiken" })
     .click();
   await appPage
-    .getByRole("button", { name: "Cadeaubon gebruiken" })
+    .getByRole("button", { name: "Cadeaubon gebruiken", exact: true })
     .click();
   const paymentDialog = appPage.getByRole("dialog", {
     name: "Cadeaubonbetaling",
@@ -195,8 +195,12 @@ test("cash and card split is exact and visibly explained in Historiek", async ({
 
   await closeReceipt(appPage);
   await appPage.getByRole("button", { name: "Historiek" }).click();
-  await expect(appPage.getByText("Gesplitst").first()).toBeVisible();
-  await expect(appPage.getByText("Kaart € 2,00 · Cash € 3,95")).toBeVisible();
+  await expect(
+    appPage.getByRole("cell", {
+      name: "Gesplitst Kaart € 2,00 · Cash € 3,95",
+      exact: true,
+    }),
+  ).toBeVisible();
 });
 
 test("Z-closing finalizes the sale and records cash reconciliation", async ({
@@ -294,4 +298,100 @@ test("open cart survives a full reload without duplicating lines", async ({
   expect(
     await readStore<StoredTransaction>(appPage, "transactions"),
   ).toHaveLength(0);
+});
+
+test("a held cart resumes safely while the current customer is kept in the queue", async ({
+  appPage,
+}) => {
+  await openApp(appPage);
+
+  const firstCustomerProduct = /Allen Hardware Bolts 1 inch/;
+  const nextCustomerProduct = /Phillips Hardware Bolts 7\/8 inch/;
+  const stockBefore = await readStore<StoredProduct>(appPage, "products");
+
+  await addProduct(appPage, firstCustomerProduct);
+  await appPage
+    .getByRole("button", { name: "Winkelwagenacties" })
+    .click();
+  await appPage
+    .getByRole("menuitem", { name: "In wachtrij zetten" })
+    .click();
+
+  await expect(
+    appPage.getByText("Klaar voor de eerste scan", { exact: true }),
+  ).toBeVisible();
+  await expect(appPage.locator(".pos-cart-count")).toHaveText("0");
+  expect(
+    await readStore<StoredTransaction>(appPage, "transactions"),
+  ).toHaveLength(0);
+  const stockAfterHolding = await readStore<StoredProduct>(
+    appPage,
+    "products",
+  );
+  expect(stockFor(stockAfterHolding, "Allen Hardware Bolts 1 inch")).toBe(
+    stockFor(stockBefore, "Allen Hardware Bolts 1 inch"),
+  );
+
+  await addProduct(appPage, nextCustomerProduct, 2);
+  await expect(appPage.locator(".pos-cart-count")).toHaveText("2");
+
+  await appPage
+    .getByRole("button", { name: "Winkelwagenacties" })
+    .click();
+  await appPage
+    .getByRole("menuitem", { name: /Wachtende klanten/ })
+    .click();
+
+  const queueDialog = appPage.getByRole("dialog", {
+    name: "Wachtende klanten",
+  });
+  await expect(queueDialog).toBeVisible();
+  await expect(
+    queueDialog.getByText("€ 5,95", { exact: true }),
+  ).toBeVisible();
+  await queueDialog.getByRole("button", { name: "Hervatten" }).click();
+
+  await appPage
+    .getByRole("button", {
+      name: /huidige winkelwagen.*parkeren.*openen/i,
+    })
+    .click();
+
+  await expect(queueDialog).toBeHidden();
+  await expect(
+    appPage.locator(".pos-cart").getByText("Allen Hardware Bolts 1 inch"),
+  ).toBeVisible();
+  await expect(appPage.locator(".pos-cart-count")).toHaveText("1");
+  await expect(
+    appPage
+      .locator(".pos-checkout")
+      .getByText("€ 5,95", { exact: true })
+      .last(),
+  ).toBeVisible();
+
+  await appPage
+    .getByRole("button", { name: "Winkelwagenacties" })
+    .click();
+  await appPage
+    .getByRole("menuitem", { name: /Wachtende klanten/ })
+    .click();
+  await expect(
+    queueDialog.getByText("€ 11,90", { exact: true }),
+  ).toBeVisible();
+
+  expect(
+    await readStore<StoredTransaction>(appPage, "transactions"),
+  ).toHaveLength(0);
+  const stockAfterSwitching = await readStore<StoredProduct>(
+    appPage,
+    "products",
+  );
+  expect(stockFor(stockAfterSwitching, "Allen Hardware Bolts 1 inch")).toBe(
+    stockFor(stockBefore, "Allen Hardware Bolts 1 inch"),
+  );
+  expect(
+    stockFor(stockAfterSwitching, "Phillips Hardware Bolts 7/8 inch"),
+  ).toBe(
+    stockFor(stockBefore, "Phillips Hardware Bolts 7/8 inch"),
+  );
 });

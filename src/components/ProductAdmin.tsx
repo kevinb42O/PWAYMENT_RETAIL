@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, Barcode, Boxes, Building2, Check, CheckCircle2, Download, Package, PackageSearch, Palette, Pencil, Plus, RotateCcw, Search, Tag, Tags, Trash2, TrendingUp, Upload, X } from 'lucide-react';
 import { useProducts } from '../store/useProducts';
-import { Product } from '../types';
+import { InventoryAdjustmentReason, Product } from '../types';
 import { centsToDecimalString, formatEUR, parseDecimalToCents } from '../utils/money';
 import { parseProductsCsv, serializeProductsCsv, slugifyId } from '../utils/productCsv';
 import { isSupportedVatRate, SUPPORTED_VAT_RATES } from '../utils/vat';
@@ -12,6 +12,10 @@ import { Modal } from './Modal';
 import { useCategories } from '../store/useCategories';
 import { BELGIAN_RETAIL_VAT_RATE } from '../data/categories';
 import { generateInternalEAN13 } from '../utils/barcode';
+import {
+  InventoryAdjustmentError,
+  recordInventoryCount,
+} from '../services/inventoryAdjustments';
 
 const COLOR_PRESETS: { label: string; cls: string }[] = [
   { label: 'Deck blauw', cls: 'bg-sky-700' },
@@ -37,8 +41,8 @@ const parseWhole = (txt: string): number | undefined => {
   const trimmed = txt.trim();
   if (!trimmed) return undefined;
   const n = Number(trimmed);
-  if (!Number.isFinite(n) || n < 0) return undefined;
-  return Math.floor(n);
+  if (!Number.isSafeInteger(n) || n < 0) return undefined;
+  return n;
 };
 
 const marginPercent = (priceCents: number, costPriceCents?: number): number => {
@@ -57,6 +61,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
   const bulkUpsert = useProducts((s) => s.bulkUpsert);
   const remove = useProducts((s) => s.remove);
   const restore = useProducts((s) => s.restore);
+  const syncPersistedProducts = useProducts((s) => s.syncPersisted);
   const csvImportEnabled = usePlatformFeatureFlag('csv_import', FEATURES.csvImport);
 
   const categories = useCategories((s) => s.list);
@@ -80,6 +85,11 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
   const [isNew, setIsNew] = useState(false);
   const [priceText, setPriceText] = useState('0,00');
   const [costText, setCostText] = useState('0,00');
+  const [countedStockText, setCountedStockText] = useState('');
+  const [adjustmentReason, setAdjustmentReason] = useState<InventoryAdjustmentReason>('cycle-count');
+  const [adjustmentNote, setAdjustmentNote] = useState('');
+  const [adjustmentFeedback, setAdjustmentFeedback] = useState<string | null>(null);
+  const [savingAdjustment, setSavingAdjustment] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Product | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDir, setSortDir] = useState<SortDirection>('asc');
@@ -203,6 +213,10 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
     setIsNew(true);
     setPriceText('0,00');
     setCostText('0,00');
+    setCountedStockText('');
+    setAdjustmentReason('opening-balance');
+    setAdjustmentNote('');
+    setAdjustmentFeedback(null);
   };
 
   const openEdit = (p: Product) => {
@@ -210,11 +224,16 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
     setIsNew(false);
     setPriceText(centsToInput(p.priceCents));
     setCostText(centsToInput(p.costPriceCents));
+    setCountedStockText(p.stockQty == null ? '' : String(p.stockQty));
+    setAdjustmentReason('cycle-count');
+    setAdjustmentNote('');
+    setAdjustmentFeedback(null);
   };
 
   const close = () => {
     setEditing(null);
     setIsNew(false);
+    setAdjustmentFeedback(null);
   };
 
   const save = async () => {
@@ -268,12 +287,11 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
       return;
     }
 
-    const stockQty = parseWhole(String(editing.stockQty ?? ''));
+    // Stock is deliberately not editable through the catalog form. Existing
+    // products retain their current quantity; a physical count below records
+    // every actual correction with a reason and audit trail.
+    const stockQty = isNew ? editing.stockQty ?? 0 : editing.stockQty;
     const minStockQty = parseWhole(String(editing.minStockQty ?? ''));
-    if (stockQty != null && minStockQty != null && minStockQty > stockQty) {
-      alert('Minimum voorraad kan niet groter zijn dan de huidige voorraad.');
-      return;
-    }
 
     let id = editing.id.trim();
     if (isNew) {
@@ -303,6 +321,55 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
       isActive: editing.isActive ?? true,
     });
     close();
+  };
+
+  const saveInventoryCount = async () => {
+    if (!editing || isNew) return;
+    if (editing.stockQty == null) {
+      setAdjustmentFeedback('Dit product volgt geen voorraad. Activeer voorraadtracking eerst via de productconfiguratie.');
+      return;
+    }
+    const countedStockQty = parseWhole(countedStockText);
+    if (countedStockQty == null) {
+      setAdjustmentFeedback('Vul een geldig geteld aantal in.');
+      return;
+    }
+    if (adjustmentReason === 'other' && !adjustmentNote.trim()) {
+      setAdjustmentFeedback('Geef bij “Andere reden” een korte toelichting.');
+      return;
+    }
+
+    setSavingAdjustment(true);
+    setAdjustmentFeedback(null);
+    try {
+      const requestId = globalThis.crypto?.randomUUID?.()
+        ?? `inventory-count-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+      const result = await recordInventoryCount({
+        clientRequestId: requestId,
+        productId: editing.id,
+        expectedStockQty: editing.stockQty,
+        countedStockQty,
+        reason: adjustmentReason,
+        note: adjustmentNote,
+      });
+      syncPersistedProducts([result.product]);
+      setEditing((current) => current?.id === result.product.id ? { ...current, stockQty: result.product.stockQty } : current);
+      setCountedStockText(String(result.product.stockQty ?? ''));
+      setAdjustmentNote('');
+      setAdjustmentFeedback(
+        result.movement
+          ? `Telling vastgelegd: ${result.movement.quantityBefore} → ${result.movement.quantityAfter} stuks.`
+          : 'Telling vastgelegd: systeemvoorraad en fysieke telling komen overeen.',
+      );
+    } catch (error) {
+      setAdjustmentFeedback(
+        error instanceof InventoryAdjustmentError || error instanceof Error
+          ? error.message
+          : 'De voorraadtelling kon niet worden vastgelegd.',
+      );
+    } finally {
+      setSavingAdjustment(false);
+    }
   };
 
   const createCategory = async () => {
@@ -1107,14 +1174,11 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                 </div>
 
                 <div className="space-y-3.5">
-                  <Field label="Huidige Voorraad (Stuks)">
-                    <input
-                      inputMode="numeric"
-                      value={editing.stockQty ?? ''}
-                      onChange={(e) => setEditing({ ...editing, stockQty: parseWhole(e.target.value) })}
-                      placeholder="bv. 20"
-                      className="w-full bg-white border border-slate-300 focus:border-slate-900 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-slate-900/10"
-                    />
+                  <Field label="Systeemvoorraad (Stuks)">
+                    <div className="flex h-[38px] items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-xs font-bold text-slate-900 tabular-nums">
+                      <span>{editing.stockQty == null ? 'Voorraad niet gevolgd' : `${editing.stockQty} stuks`}</span>
+                      {editing.stockQty != null && <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Alleen via telling</span>}
+                    </div>
                   </Field>
 
                   <Field label="Minimum Drempelvoorraad">
@@ -1127,6 +1191,69 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                     />
                   </Field>
                 </div>
+
+                {isNew ? (
+                  <div className="rounded-xl border border-sky-100 bg-sky-50 p-3 text-[11px] font-semibold leading-5 text-sky-900">
+                    Maak het product eerst aan. Leg de openingsvoorraad daarna vast via een fysieke telling, zodat de beginstand controleerbaar blijft.
+                  </div>
+                ) : editing.stockQty == null ? (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-[11px] font-semibold leading-5 text-slate-600">
+                    Dit product is niet voorraad-getrackt. Er kan dus geen telling of voorraadcorrectie worden geboekt.
+                  </div>
+                ) : (
+                  <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+                    <div>
+                      <div className="text-[11px] font-black uppercase tracking-wider text-slate-700">Fysieke telling / correctie</div>
+                      <p className="mt-1 text-[11px] leading-4 text-slate-500">De getelde hoeveelheid vervangt de systeemvoorraad alleen na een reden, auditrecord en voorraadbeweging.</p>
+                    </div>
+                    <Field label="Geteld aantal">
+                      <input
+                        inputMode="numeric"
+                        value={countedStockText}
+                        onChange={(event) => setCountedStockText(event.target.value)}
+                        placeholder="bv. 20"
+                        className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                      />
+                    </Field>
+                    <Field label="Reden">
+                      <select
+                        value={adjustmentReason}
+                        onChange={(event) => setAdjustmentReason(event.target.value as InventoryAdjustmentReason)}
+                        className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                      >
+                        <option value="cycle-count">Fysieke telling</option>
+                        <option value="opening-balance">Openingsvoorraad</option>
+                        <option value="damage">Schade</option>
+                        <option value="loss">Verlies / derving</option>
+                        <option value="found">Teruggevonden voorraad</option>
+                        <option value="other">Andere reden</option>
+                      </select>
+                    </Field>
+                    <Field label={adjustmentReason === 'other' ? 'Toelichting *' : 'Toelichting (optioneel)'}>
+                      <textarea
+                        value={adjustmentNote}
+                        onChange={(event) => setAdjustmentNote(event.target.value)}
+                        rows={2}
+                        placeholder="bv. Telling na levering of schadecontrole"
+                        className="w-full resize-y rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                      />
+                    </Field>
+                    {adjustmentFeedback && (
+                      <p className={`rounded-lg px-3 py-2 text-[11px] font-semibold ${adjustmentFeedback.startsWith('Telling vastgelegd') ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-700'}`}>
+                        {adjustmentFeedback}
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => void saveInventoryCount()}
+                      disabled={savingAdjustment}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-3.5 py-2.5 text-xs font-black text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Boxes size={15} />
+                      {savingAdjustment ? 'Telling vastleggen…' : 'Leg telling vast'}
+                    </button>
+                  </div>
+                )}
 
                 {/* Dynamic Stock Status Chip */}
                 {editing.stockQty != null && (

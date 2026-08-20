@@ -28,7 +28,7 @@ export const OrderItemSchema = z.object({
   notes: z.string().max(200).optional(),
 });
 
-export const PaymentMethodEnum = z.enum(['Cash', 'PIN', 'Cadeaubon']);
+export const PaymentMethodEnum = z.enum(['Cash', 'PIN', 'Cadeaubon', 'Split']);
 
 export const TransactionSchema = z.object({
   id: z.number().int().optional(),
@@ -37,6 +37,9 @@ export const TransactionSchema = z.object({
   subtotalCents: z.number().int().nonnegative(),
   vat12Cents: z.number().int().nonnegative(),
   vat21Cents: z.number().int().nonnegative(),
+  // The commercial/VAT total is never changed by Belgian cash rounding.
+  // A separate, bounded settlement difference keeps the audit trail exact.
+  roundingAdjustmentCents: z.number().int().min(-2).max(2).optional(),
   totalCents: z.number().int().nonnegative(),
   discountCents: z.number().int().nonnegative(),
   paymentMethod: PaymentMethodEnum,
@@ -65,6 +68,7 @@ export const DailyReportSchema = z.object({
   totalExclVat12Cents: z.number().int().nonnegative(),
   totalExclVat21Cents: z.number().int().nonnegative(),
   totalDiscountCents: z.number().int().nonnegative(),
+  totalCashRoundingAdjustmentCents: z.number().int().optional(),
   paymentTotalsCents: PaymentTotalsSchema,
   transactionIds: z.array(z.number().int()),
   hash: z.string().regex(/^[0-9a-f]{64}$/),

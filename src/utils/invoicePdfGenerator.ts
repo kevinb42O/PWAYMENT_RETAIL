@@ -45,6 +45,8 @@ export interface InvoiceData {
   items: InvoiceLineItem[];
   paymentMethod?: string;
   paymentTimestamp?: number | Date;
+  /** Cash settlement adjustment, deliberately kept outside invoice VAT lines. */
+  cashRoundingAdjustmentCents?: number;
   notes?: string;
 }
 
@@ -346,9 +348,13 @@ export function createInvoicePdf(data: InvoiceData): jsPDF {
   // FINANCIAL SUMMARY & VAT BREAKDOWN
   const summaryBoxWidth = 85;
 
+  const cashRoundingAdjustmentCents = data.cashRoundingAdjustmentCents ?? 0;
+  const hasCashRounding = cashRoundingAdjustmentCents !== 0;
+  const summaryBoxHeight = hasCashRounding ? 48 : 34;
+
   // The financial summary must travel as a unit and never collide with the
   // fixed legal footer. Start a clean final page when the table ended too low.
-  if (cursorY > footerY - 58) {
+  if (cursorY > footerY - (summaryBoxHeight + 24)) {
     doc.addPage();
     cursorY = margin;
   }
@@ -399,9 +405,9 @@ export function createInvoicePdf(data: InvoiceData): jsPDF {
   doc.text("FINANCIEEL OVERZICHT", sumX, cursorY);
 
   doc.setFillColor(248, 250, 252);
-  doc.roundedRect(sumX, cursorY + 3, summaryBoxWidth, 34, 2, 2, "F");
+  doc.roundedRect(sumX, cursorY + 3, summaryBoxWidth, summaryBoxHeight, 2, 2, "F");
   doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(sumX, cursorY + 3, summaryBoxWidth, 34, 2, 2, "S");
+  doc.roundedRect(sumX, cursorY + 3, summaryBoxWidth, summaryBoxHeight, 2, 2, "S");
 
   let sYPos = cursorY + 10;
   doc.setFont("helvetica", "normal");
@@ -425,10 +431,38 @@ export function createInvoicePdf(data: InvoiceData): jsPDF {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.setTextColor(255, 255, 255);
-  doc.text("TOTAAL TE BETALEN:", sumX + 4, sYPos + 3);
+  doc.text(
+    hasCashRounding ? "TOTAAL FACTUUR:" : "TOTAAL TE BETALEN:",
+    sumX + 4,
+    sYPos + 3,
+  );
   doc.text(formatEUR(totalInclCents), sumX + summaryBoxWidth - 4, sYPos + 3, {
     align: "right",
   });
+
+  if (hasCashRounding) {
+    sYPos += 17;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(71, 85, 105);
+    doc.text("Cashafronding:", sumX + 4, sYPos);
+    doc.text(
+      `${cashRoundingAdjustmentCents > 0 ? "+" : ""}${formatEUR(cashRoundingAdjustmentCents)}`,
+      sumX + summaryBoxWidth - 4,
+      sYPos,
+      { align: "right" },
+    );
+    sYPos += 7;
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(15, 23, 42);
+    doc.text("CASH VEREFFEND:", sumX + 4, sYPos);
+    doc.text(
+      formatEUR(totalInclCents + cashRoundingAdjustmentCents),
+      sumX + summaryBoxWidth - 4,
+      sYPos,
+      { align: "right" },
+    );
+  }
 
   // Update Y
   const autoTableState = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable;
@@ -496,6 +530,7 @@ export function convertTransactionToInvoiceData(
     discountCents: number;
     vat12Cents: number;
     vat21Cents: number;
+    roundingAdjustmentCents?: number;
     paymentMethod: string;
     documentNumber?: string;
     invoiceNumber?: string;
@@ -620,6 +655,7 @@ export function convertTransactionToInvoiceData(
         : "receipt",
     structuredCommunication: `+++${format(txDate, "MM")}/${format(txDate, "yyyy")}/${String(t.id ?? 1).padStart(5, "0")}+++`,
     paymentMethod: t.paymentMethod,
+    cashRoundingAdjustmentCents: t.roundingAdjustmentCents ?? undefined,
     seller: {
       name: merchant.name,
       legalName: merchant.legalName || merchant.name,

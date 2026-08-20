@@ -544,7 +544,63 @@ export const LoginScreen: React.FC = () => {
 
                 {mode === "login" ? (
                   /* LOGIN FORM */
-                  <form onSubmit={handleLoginSubmit} className="space-y-4">
+                  <div className="space-y-4">
+                    <section
+                      className="rounded-2xl border border-indigo-100 bg-indigo-50/70 p-4 text-left"
+                      aria-label="Gedeelde testomgeving"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-2xs">
+                          <KeyRound size={15} aria-hidden="true" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-indigo-700">
+                            Gedeelde testomgeving
+                          </p>
+                          <p className="mt-1 text-xs font-semibold leading-5 text-zinc-900">
+                            Verken PWAyment met een rijk gevulde demo.
+                          </p>
+                          <dl className="mt-2 grid gap-1 text-xs text-zinc-700 sm:grid-cols-[auto_1fr] sm:gap-x-3">
+                            <dt className="font-medium text-zinc-500">E-mail</dt>
+                            <dd className="font-mono font-semibold">test@pwayment.be</dd>
+                            <dt className="font-medium text-zinc-500">Wachtwoord</dt>
+                            <dd className="font-mono font-semibold">testaccount12345</dd>
+                          </dl>
+                          <p className="mt-2 text-[11px] leading-4 text-zinc-500">
+                            Gedeeld en tijdelijk: gebruik uitsluitend voorbeeldgegevens. Andere testers kunnen de demo wijzigen of resetten.
+                          </p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEmail("test@pwayment.be");
+                                setPassword("testaccount12345");
+                                setError(null);
+                                setNotice(null);
+                              }}
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-[11px] font-bold text-white transition-colors hover:bg-indigo-700"
+                            >
+                              Vul testlogin in
+                              <ArrowRight size={13} aria-hidden="true" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMode("register");
+                                setError(null);
+                                setNotice(null);
+                                window.history.replaceState({}, "", "/register");
+                              }}
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-white px-3 py-2 text-[11px] font-bold text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-50"
+                            >
+                              Maak een eigen account
+                              <ArrowRight size={13} aria-hidden="true" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+                    <form onSubmit={handleLoginSubmit} className="space-y-4">
                     <div>
                       <label htmlFor="login-email" className="block text-xs font-semibold text-zinc-800 mb-1.5">
                         E-mailadres
@@ -648,7 +704,8 @@ export const LoginScreen: React.FC = () => {
                         <span className="relative z-10 flex items-center gap-2">Inloggen <ArrowRight size={16} className="transition-transform duration-300 group-hover:translate-x-1" /></span>
                       )}
                     </button>
-                  </form>
+                    </form>
+                  </div>
                 ) : (
                   /* REGISTER FORM */
                   <form onSubmit={handleRegisterSubmit} className="space-y-3.5">

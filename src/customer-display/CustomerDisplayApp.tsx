@@ -469,9 +469,6 @@ export default function CustomerDisplayApp() {
           <Expand size={18} /> Volledig scherm
         </button>
       )}
-      <div className="customer-display-live-indicator" aria-label="Verbonden">
-        <span /> Live verbonden
-      </div>
     </div>
   );
 }

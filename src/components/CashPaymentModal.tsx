@@ -1,11 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { Modal } from "./Modal";
 import { formatEUR } from "../utils/money";
+import { MAX_CASH_PAYMENT_CENTS } from "../utils/cashRounding";
 
 interface Props {
   open: boolean;
   onClose: () => void;
+  /** Amount actually due in cash after statutory five-cent rounding. */
   totalCents: number;
+  /** Exact commercial cash share before rounding, shown for transparency. */
+  commercialTotalCents?: number;
+  /** Settlement total minus commercial amount; zero for an exact multiple of €0,05. */
+  roundingAdjustmentCents?: number;
   onConfirm: (tenderedCents: number) => void;
 }
 
@@ -15,6 +21,8 @@ export const CashPaymentModal: React.FC<Props> = ({
   open,
   onClose,
   totalCents,
+  commercialTotalCents = totalCents,
+  roundingAdjustmentCents = totalCents - commercialTotalCents,
   onConfirm,
 }) => {
   const [tenderedCents, setTenderedCents] = useState<number>(totalCents);
@@ -29,6 +37,10 @@ export const CashPaymentModal: React.FC<Props> = ({
 
   const change = tenderedCents - totalCents;
   const insufficient = tenderedCents < totalCents;
+  const exceedsCashLimit =
+    totalCents > MAX_CASH_PAYMENT_CENTS ||
+    tenderedCents > MAX_CASH_PAYMENT_CENTS;
+  const cannotConfirm = insufficient || exceedsCashLimit;
 
   const setNearestNote = (note: number) => {
     // Take ceiling: smallest multiple of `note` >= total.
@@ -73,10 +85,10 @@ export const CashPaymentModal: React.FC<Props> = ({
             Annuleren
           </button>
           <button
-            disabled={insufficient}
+            disabled={cannotConfirm}
             onClick={() => onConfirm(tenderedCents)}
             className={`px-4 py-2 rounded-lg font-bold ${
-              insufficient
+              cannotConfirm
                 ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
                 : "bg-emerald-600 hover:bg-emerald-500 text-white"
             }`}
@@ -106,7 +118,7 @@ export const CashPaymentModal: React.FC<Props> = ({
             }`}
           >
             <div className="text-zinc-400 text-xs uppercase tracking-wider">
-              {insufficient ? "Tekort" : "Wisselgeld"}
+              {insufficient ? "Tekort" : exceedsCashLimit ? "Cashlimiet" : "Wisselgeld"}
             </div>
             <div
               className={`text-2xl font-bold tabular-nums ${
@@ -121,6 +133,22 @@ export const CashPaymentModal: React.FC<Props> = ({
             </div>
           </div>
         </div>
+
+        {roundingAdjustmentCents !== 0 && (
+          <div className="rounded-xl border border-amber-700/70 bg-amber-950/30 p-3 text-sm">
+            <div className="flex justify-between gap-3 text-amber-100">
+              <span>Commercieel cashbedrag</span>
+              <span className="tabular-nums">{formatEUR(commercialTotalCents)}</span>
+            </div>
+            <div className="mt-1 flex justify-between gap-3 font-bold text-amber-200">
+              <span>Wettelijke cashafronding</span>
+              <span className="tabular-nums">
+                {roundingAdjustmentCents > 0 ? "+" : ""}
+                {formatEUR(roundingAdjustmentCents)}
+              </span>
+            </div>
+          </div>
+        )}
 
         <div>
           <label className="block text-xs uppercase tracking-wider text-zinc-500 mb-2">
@@ -191,6 +219,11 @@ export const CashPaymentModal: React.FC<Props> = ({
             De eerste cijfertoets vervangt het vooringevulde bedrag. Typ "2000"
             voor €20,00.
           </p>
+          {exceedsCashLimit && (
+            <p role="alert" className="mt-2 text-xs font-medium text-amber-300">
+              Cashbetalingen zijn beperkt tot {formatEUR(MAX_CASH_PAYMENT_CENTS)}. Laat het restant elektronisch betalen.
+            </p>
+          )}
         </div>
       </div>
     </Modal>

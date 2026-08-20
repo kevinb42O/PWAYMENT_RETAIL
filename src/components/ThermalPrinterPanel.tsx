@@ -28,6 +28,7 @@ import { useCustomers } from '../store/useCustomers';
 import { EscPosBuilder, formatItemLine, formatTotalLine } from '../utils/escpos';
 import { formatPaymentLabel, receiptPaymentRows } from '../utils/receiptPayments';
 import { transactionTenders } from '../utils/financial';
+import { settlementTotalCents } from '../utils/cashRounding';
 import { formatReceiptBarcode, isValidReceiptBarcode } from '../utils/receiptBarcode';
 import {
   useThermalPrinter,
@@ -154,6 +155,16 @@ export class EscPosPrintAdapter implements PrintAdapter {
     b.bold(true).doubleHeight();
     b.text(formatTotalLine('TOTAAL', fmt(t.totalCents)));
     b.bold(false).normalSize();
+    if ((t.roundingAdjustmentCents ?? 0) !== 0) {
+      const adjustment = t.roundingAdjustmentCents ?? 0;
+      b.text(formatTotalLine(
+        'Afronding cash',
+        `${adjustment > 0 ? '+' : ''}${fmt(adjustment)}`,
+      ));
+      b.bold(true);
+      b.text(formatTotalLine('TE VEREFFENEN', fmt(settlementTotalCents(t))));
+      b.bold(false);
+    }
 
     b.separator('-', 42);
 
@@ -187,15 +198,17 @@ export class EscPosPrintAdapter implements PrintAdapter {
 
     // ── Betaling ──────────────────────────────────────────────────────────
     const tenders = transactionTenders(t);
+    const cashTenderCents = tenders
+      .filter((tender) => tender.method === 'Cash')
+      .reduce((sum, tender) => sum + tender.amountCents, 0);
     if (t.paymentMethod === 'Split' && tenders.length > 0) {
       b.text('Betalingen:\n');
       for (const row of receiptPaymentRows(t)) {
         b.text(formatTotalLine(`  ${row.label}`, fmt(row.amountCents)));
       }
-      const cashTender = tenders.find((x) => x.method === 'Cash');
-      if (cashTender && t.tenderedCents != null) {
+      if (cashTenderCents !== 0 && t.tenderedCents != null) {
         b.text(formatTotalLine('Ontvangen (Cash)', fmt(t.tenderedCents)));
-        const change = Math.max(0, t.tenderedCents - cashTender.amountCents);
+        const change = Math.max(0, t.tenderedCents - cashTenderCents);
         b.text(formatTotalLine('Wisselgeld', fmt(change)));
       }
     } else {
@@ -207,7 +220,7 @@ export class EscPosPrintAdapter implements PrintAdapter {
         b.text(formatTotalLine('Betaling', formatPaymentLabel(t.paymentMethod)));
       }
       if (t.paymentMethod === 'Cash' && t.tenderedCents != null) {
-        const change = Math.max(0, t.tenderedCents - t.totalCents);
+        const change = Math.max(0, t.tenderedCents - cashTenderCents);
         b.text(formatTotalLine('Ontvangen', fmt(t.tenderedCents)));
         b.text(formatTotalLine('Wisselgeld', fmt(change)));
       }

@@ -28,7 +28,10 @@ export interface IntegrationRunTelemetry {
 
 /** Best-effort operational telemetry: import success must never depend on it. */
 export const recordIntegrationRun = async (run: IntegrationRunTelemetry): Promise<void> => {
-  if (!run.storeId) return;
+  // A device-local migration deliberately has no server tenant yet. Sending
+  // telemetry for it can only produce an unauthorised RPC and noisy failures;
+  // its durable migration command remains queued until a store is linked.
+  if (!run.storeId || run.storeId === "local-device") return;
   const { error } = await integrationRpc.rpc("record_integration_run", {
     target_store_id: run.storeId,
     run_id: run.runId,

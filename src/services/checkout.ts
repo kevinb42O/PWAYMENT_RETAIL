@@ -24,6 +24,11 @@ import {
 } from "./migrationActivity";
 import { synchronizeMigrationNow } from "./migrationSync";
 import { generateReceiptBarcode } from "../utils/receiptBarcode";
+import {
+  cashRoundingAdjustmentCents,
+  MAX_CASH_PAYMENT_CENTS,
+  roundCashSettlementCents,
+} from "../utils/cashRounding";
 
 export type CheckoutErrorCode =
   | "empty-cart"
@@ -82,6 +87,8 @@ export interface CheckoutInput {
   discountCents: number;
   discountReason?: string;
   discountApprovedByUserId?: string;
+  /** Server-issued manager approval for a cashier-originated discount. */
+  discountApprovalId?: string;
   /** Gift cards applied to this sale, passed explicitly (never read from a store closure). */
   giftCards: GiftCardAllocation[];
   /** Tender used for whatever is left after the gift cards. */
@@ -352,10 +359,11 @@ const runCheckout = async (
       const remainingCents = totals.total - giftCardTotal;
       const hasExplicitTenders = input.tenders != null;
       const explicitTenders = input.tenders ?? [];
-      const explicitTenderTotal = explicitTenders.reduce(
-        (sum, tender) => sum + tender.amountCents,
-        0,
-      );
+      let requestedTenders: CheckoutTenderInput[] = [];
+      let cashPaymentRequested = false;
+      let commercialCashDueCents = 0;
+      let cashDueCents = 0;
+      let roundingAdjustmentCents = 0;
 
       if (!hasExplicitTenders && input.method === "Cadeaubon" && remainingCents !== 0) {
         throw new CheckoutError(
@@ -363,27 +371,101 @@ const runCheckout = async (
           "Cadeaubonnen dekken het totaalbedrag niet volledig; kies een tweede betaalwijze voor het restant.",
         );
       }
-      if (hasExplicitTenders && explicitTenderTotal !== remainingCents) {
-        throw new CheckoutError(
-          "invalid-tender",
-          `Deelbetalingen (${explicitTenderTotal}c) sluiten niet aan op het resterende bedrag (${remainingCents}c).`,
+
+      if (hasExplicitTenders) {
+        const pinTotalCents = explicitTenders
+          .filter((tender) => tender.method === "PIN")
+          .reduce((sum, tender) => sum + tender.amountCents, 0);
+        const suppliedCashCents = explicitTenders
+          .filter((tender) => tender.method === "Cash")
+          .reduce((sum, tender) => sum + tender.amountCents, 0);
+        cashPaymentRequested = explicitTenders.some(
+          (tender) => tender.method === "Cash",
         );
+
+        if (input.method === "Cadeaubon" && remainingCents !== 0) {
+          throw new CheckoutError(
+            "invalid-tender",
+            "Kies Cash of PIN voor het resterende bedrag.",
+          );
+        }
+        if (cashPaymentRequested) {
+          commercialCashDueCents = remainingCents - pinTotalCents;
+          if (commercialCashDueCents < 0) {
+            throw new CheckoutError(
+              "invalid-tender",
+              "De kaartdeelbetaling is hoger dan het resterende bedrag.",
+            );
+          }
+          cashDueCents = roundCashSettlementCents(commercialCashDueCents);
+          roundingAdjustmentCents = cashRoundingAdjustmentCents(
+            commercialCashDueCents,
+          );
+          if (suppliedCashCents !== cashDueCents) {
+            throw new CheckoutError(
+              "invalid-tender",
+              `Het cashdeel moet na 5-centafronding ${cashDueCents}c zijn (niet ${suppliedCashCents}c).`,
+            );
+          }
+          requestedTenders = explicitTenders;
+        } else {
+          if (pinTotalCents !== remainingCents) {
+            throw new CheckoutError(
+              "invalid-tender",
+              `Deelbetalingen (${pinTotalCents}c) sluiten niet aan op het resterende bedrag (${remainingCents}c).`,
+            );
+          }
+          requestedTenders = explicitTenders;
+        }
+      } else if (remainingCents > 0 && input.method === "Cash") {
+        cashPaymentRequested = true;
+        commercialCashDueCents = remainingCents;
+        cashDueCents = roundCashSettlementCents(commercialCashDueCents);
+        roundingAdjustmentCents = cashRoundingAdjustmentCents(
+          commercialCashDueCents,
+        );
+        requestedTenders = [{ method: "Cash", amountCents: cashDueCents }];
+      } else if (remainingCents > 0 && input.method === "PIN") {
+        requestedTenders = [{ method: "PIN", amountCents: remainingCents }];
       }
-      const requestedTenders: CheckoutTenderInput[] = hasExplicitTenders
-        ? explicitTenders
-        : remainingCents > 0 && input.method !== "Cadeaubon"
-          ? [{ method: input.method, amountCents: remainingCents }]
-          : [];
-      const cashDueCents = requestedTenders
-        .filter((tender) => tender.method === "Cash")
-        .reduce((sum, tender) => sum + tender.amountCents, 0);
-      if (input.tenderedCents != null && input.tenderedCents < cashDueCents) {
+
+      if (
+        cashPaymentRequested &&
+        cashDueCents > MAX_CASH_PAYMENT_CENTS
+      ) {
         throw new CheckoutError(
           "invalid-tender",
-          "Ontvangen bedrag is lager dan het te betalen restant.",
+          "Een cashbetaling mag maximaal €3.000,00 bedragen. Kies voor het restant een elektronische betaalwijze.",
         );
       }
 
+      const normalizedTenderedCents = cashPaymentRequested
+        ? input.tenderedCents ?? cashDueCents
+        : undefined;
+      if (!cashPaymentRequested && input.tenderedCents != null) {
+        throw new CheckoutError(
+          "invalid-tender",
+          "Een ontvangen cashbedrag kan alleen bij een cashbetaling worden opgegeven.",
+        );
+      }
+      if (
+        normalizedTenderedCents != null &&
+        normalizedTenderedCents < cashDueCents
+      ) {
+        throw new CheckoutError(
+          "invalid-tender",
+          "Ontvangen cashbedrag is lager dan het afgeronde cashbedrag.",
+        );
+      }
+      if (
+        normalizedTenderedCents != null &&
+        normalizedTenderedCents > MAX_CASH_PAYMENT_CENTS
+      ) {
+        throw new CheckoutError(
+          "invalid-tender",
+          "Een cashbetaling mag maximaal €3.000,00 bedragen. Kies voor het restant een elektronische betaalwijze.",
+        );
+      }
       const tenders: NonNullable<Transaction["tenders"]> = allocations.map(
         (a) => ({
           method: "Cadeaubon",
@@ -395,15 +477,26 @@ const runCheckout = async (
         (sum, tender) => sum + tender.amountCents,
         0,
       );
-      if (tenders.length === 0 || tenderSum !== totals.total) {
+      const settlementTotalCents = totals.total + roundingAdjustmentCents;
+      if (
+        tenders.length === 0 ||
+        tenderSum !== settlementTotalCents
+      ) {
         throw new CheckoutError(
           "invalid-tender",
-          `Tenders (${tenderSum}c) sluiten niet aan op het totaal (${totals.total}c).`,
+          `Tenders (${tenderSum}c) sluiten niet aan op het te vereffenen bedrag (${settlementTotalCents}c).`,
         );
       }
 
       const paymentMethod: PaymentMethod =
-        tenders.length === 1 ? tenders[0].method : "Split";
+        cashPaymentRequested &&
+        (allocations.length > 0 || requestedTenders.some((tender) => tender.method === "PIN"))
+          ? "Split"
+          : cashPaymentRequested
+            ? "Cash"
+            : tenders.length === 1
+              ? tenders[0].method
+              : "Split";
 
       let openShift = await db.shifts
         .filter(
@@ -432,14 +525,16 @@ const runCheckout = async (
         subtotalCents: totals.subtotal,
         vat12Cents: totals.vat12,
         vat21Cents: totals.vat21,
+        roundingAdjustmentCents,
         totalCents: totals.total,
         discountCents: totals.discount,
         discountReason: input.discountReason,
         discountApprovedByUserId: input.discountApprovedByUserId,
-        tenderedCents: input.tenderedCents,
+        discountApprovalId: input.discountApprovalId,
+        tenderedCents: normalizedTenderedCents,
         paymentMethod,
         tenders,
-        splitTenders: tenders.length > 1 ? tenders : undefined,
+        splitTenders: paymentMethod === "Split" ? tenders : undefined,
         giftCardAllocations: redemptionEvents.map((event) => ({
           giftCardId: event.giftCardId,
           code: event.giftCardCode,
@@ -555,6 +650,12 @@ const runCheckout = async (
           transactionId: id,
           clientRequestId: input.clientRequestId,
           totalCents: totals.total,
+          settlementTotalCents,
+          roundingAdjustmentCents,
+          commercialCashDueCents: cashPaymentRequested
+            ? commercialCashDueCents
+            : undefined,
+          cashDueCents: cashPaymentRequested ? cashDueCents : undefined,
           discountCents: totals.discount,
           method: paymentMethod,
           giftCardCents: giftCardTotal,

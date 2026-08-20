@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { CheckCircle2, ChevronDown } from "lucide-react";
 import { db } from "../db/db";
-import { Customer, Product, Transaction } from "../types";
+import { Customer, Product, Transaction, WebshopOrder } from "../types";
 import { useCustomers } from "../store/useCustomers";
 import { useCategories } from "../store/useCategories";
 import { useProducts } from "../store/useProducts";
@@ -47,6 +47,7 @@ import { FEATURE_KEYS } from "../billing/entitlements";
 import { Modal } from "./Modal";
 import { getZonedDateParts } from "../utils/time";
 import { useAuth } from "../auth/useAuth";
+import { webshopCommerce } from "../services/webshopCommerce";
 import {
   InsightsMobileNavigation,
   InsightsPage,
@@ -192,6 +193,7 @@ export const Insights = () => {
   const categories = useCategories((state) => state.list);
   const hydrateCategories = useCategories((state) => state.hydrate);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [webshopOrders, setWebshopOrders] = useState<WebshopOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<InsightPeriod>("30d");
   const [location, setLocation] = useState(initialLocation);
@@ -205,8 +207,12 @@ export const Insights = () => {
       hydrateCustomers(),
       hydrateCategories(),
     ]);
-    const rows = await db.transactions.orderBy("timestamp").reverse().toArray();
+    const [rows, orders] = await Promise.all([
+      db.transactions.orderBy("timestamp").reverse().toArray(),
+      webshopCommerce.listOrders().catch(async () => db.webshop_orders.toArray()),
+    ]);
     setTransactions(rows);
+    setWebshopOrders(orders);
     setLoading(false);
   }, [hydrateCategories, hydrateCustomers, hydrateProducts]);
 
@@ -244,6 +250,10 @@ export const Insights = () => {
           (transaction.source ?? "live") !== "demo",
       ),
     [demoStore, presentationMode, transactions],
+  );
+  const analysisWebshopOrders = useMemo(
+    () => webshopOrders.filter((order) => presentationMode || demoStore || order.source !== "demo"),
+    [demoStore, presentationMode, webshopOrders],
   );
   const periodTransactions = useMemo(
     () => filterTransactionsForPeriod(analysisTransactions, period, now),
@@ -328,12 +338,12 @@ export const Insights = () => {
     [analysisTransactions, customers, products],
   );
   const inventoryRows = useMemo(
-    () => buildInventoryForecast(products, analysisTransactions),
-    [analysisTransactions, products],
+    () => buildInventoryForecast(products, analysisTransactions, undefined, { webshopOrders: analysisWebshopOrders }),
+    [analysisTransactions, analysisWebshopOrders, products],
   );
   const inventoryRecommendations = useMemo(
-    () => buildReorderRecommendations(products, analysisTransactions),
-    [analysisTransactions, products],
+    () => buildReorderRecommendations(products, analysisTransactions, undefined, { webshopOrders: analysisWebshopOrders }),
+    [analysisTransactions, analysisWebshopOrders, products],
   );
   const seasonalSnapshot = useMemo(
     () => buildSeasonalRetailSnapshot(analysisTransactions, now),

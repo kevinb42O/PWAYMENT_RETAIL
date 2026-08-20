@@ -1,7 +1,7 @@
 import { expect, test } from "./fixtures";
 
 test("merchant can stage catalog and customers, activate, and fully undo before a sale", async ({ appPage }) => {
-  await appPage.goto("/app?e2e=1");
+  await appPage.goto("/app?e2e=1&catalog=empty");
   await expect(appPage.getByRole("navigation", { name: "Hoofdnavigatie" })).toBeVisible();
   await appPage.getByRole("button", { name: "Integration Hub" }).click();
   await expect(appPage.getByRole("heading", { name: "Stap over zonder uw winkel opnieuw op te bouwen." })).toBeVisible();

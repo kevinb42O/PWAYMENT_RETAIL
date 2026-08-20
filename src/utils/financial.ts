@@ -1,4 +1,5 @@
 import { PaymentTender, Product, Transaction } from '../types';
+import { settlementTotalCents } from './cashRounding';
 
 export const DEFAULT_REGISTER_ID = 'retail-register-1';
 
@@ -16,7 +17,9 @@ export const isGiftCardProduct = (product: Pick<Product, 'productType' | 'name' 
  */
 export const transactionTenders = (transaction: Transaction): PaymentTender[] => {
   const rows = transaction.tenders ?? transaction.splitTenders;
-  if (rows?.length) {
+  // An explicitly empty array is malformed for a positive sale and must not
+  // silently fall back to a fabricated tender; report integrity will quarantine it.
+  if (rows) {
     return rows.filter((row) =>
       ['Cash', 'PIN', 'Cadeaubon'].includes(row.method)
       && Number.isSafeInteger(row.amountCents)
@@ -24,7 +27,10 @@ export const transactionTenders = (transaction: Transaction): PaymentTender[] =>
     );
   }
   if (transaction.paymentMethod === 'Split') return [];
-  return [{ method: transaction.paymentMethod, amountCents: transaction.totalCents }];
+  return [{
+    method: transaction.paymentMethod,
+    amountCents: settlementTotalCents(transaction),
+  }];
 };
 
 export const tenderTotalCents = (transaction: Transaction): number =>

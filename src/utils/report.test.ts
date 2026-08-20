@@ -80,6 +80,21 @@ describe("calculateReportData", () => {
     expect(report.paymentTotalsCents).toEqual({ Cash: 800, PIN: 200, Cadeaubon: 0 });
   });
 
+  it("keeps a statutory cash rounding difference outside VAT revenue while balancing tenders", () => {
+    const roundedCash = {
+      ...tx(1, 1002, "Cash"),
+      roundingAdjustmentCents: -2,
+      tenders: [{ method: "Cash" as const, amountCents: 1000 }],
+    };
+
+    const report = calculateReportData([roundedCash]);
+
+    expect(report.totalRevenueCents).toBe(1002);
+    expect(report.totalCashRoundingAdjustmentCents).toBe(-2);
+    expect(report.paymentTotalsCents.Cash).toBe(1000);
+  });
+
+
   it("sums Belgian retail VAT and discount columns", () => {
     const r = calculateReportData([tx(1, 1210, "Cash"), tx(2, 2420, "Cash")]);
     expect(r.totalVat21Cents).toBe(210 + 420);

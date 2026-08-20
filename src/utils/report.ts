@@ -19,6 +19,7 @@ import {
 import { generateHash } from "./crypto";
 import { allocateCents } from "./money";
 import { calculateTotals } from "./vat";
+import { settlementTotalCents } from "./cashRounding";
 import { synchronizeFinancialLedgerBeforeReport } from "../services/outboxWorker";
 
 export class ReportIntegrityError extends Error {
@@ -109,6 +110,7 @@ export interface ReportData {
   totalExclVat12Cents: number;
   totalExclVat21Cents: number;
   totalDiscountCents: number;
+  totalCashRoundingAdjustmentCents: number;
   paymentTotalsCents: PaymentTotals;
   giftCardLiabilityAddedCents: number;
   giftCardLiabilityPaymentTotalsCents: PaymentTotals;
@@ -131,6 +133,7 @@ export const calculateReportData = (
     totalExclVat12Cents: 0,
     totalExclVat21Cents: 0,
     totalDiscountCents: 0,
+    totalCashRoundingAdjustmentCents: 0,
     paymentTotalsCents: emptyPaymentTotals(),
     giftCardLiabilityAddedCents: 0,
     giftCardLiabilityPaymentTotalsCents: emptyPaymentTotals(),
@@ -145,9 +148,13 @@ export const calculateReportData = (
       (sum, tender) => sum + tender.amountCents,
       0,
     );
-    if (tenders.length === 0 || tenderTotal !== transaction.totalCents) {
+    const settlementTotal = settlementTotalCents(transaction);
+    if (
+      tenderTotal !== settlementTotal ||
+      (tenders.length === 0 && settlementTotal !== 0)
+    ) {
       throw new ReportIntegrityError(
-        `Transactie ${transaction.id ?? "zonder ID"}: betaalmiddelen (${tenderTotal}c) sluiten niet aan op totaal (${transaction.totalCents}c).`,
+        `Transactie ${transaction.id ?? "zonder ID"}: betaalmiddelen (${tenderTotal}c) sluiten niet aan op te vereffenen bedrag (${settlementTotal}c).`,
       );
     }
     const parts = financialParts(transaction);
@@ -161,6 +168,7 @@ export const calculateReportData = (
     out.totalExclVat12Cents += parts.vat.exclVat12;
     out.totalExclVat21Cents += parts.vat.exclVat21;
     out.totalDiscountCents += transaction.discountCents;
+    out.totalCashRoundingAdjustmentCents += transaction.roundingAdjustmentCents ?? 0;
     addTenders(out.paymentTotalsCents, tenders);
     if (transaction.id != null) out.transactionIds.push(transaction.id);
   }
@@ -208,6 +216,7 @@ const canonicalTransaction = (transaction: Transaction) => ({
   subtotalCents: transaction.subtotalCents,
   discountCents: transaction.discountCents,
   totalCents: transaction.totalCents,
+  roundingAdjustmentCents: transaction.roundingAdjustmentCents ?? 0,
   vat12Cents: transaction.vat12Cents,
   vat21Cents: transaction.vat21Cents,
   tenders: transactionTenders(transaction),
@@ -305,6 +314,8 @@ export const generateZReport = async (
         totalExclVat12Cents: reportData.totalExclVat12Cents,
         totalExclVat21Cents: reportData.totalExclVat21Cents,
         totalDiscountCents: reportData.totalDiscountCents,
+        totalCashRoundingAdjustmentCents:
+          reportData.totalCashRoundingAdjustmentCents,
         paymentTotalsCents: reportData.paymentTotalsCents,
         giftCardLiabilityAddedCents: reportData.giftCardLiabilityAddedCents,
         giftCardLiabilityPaymentTotalsCents:

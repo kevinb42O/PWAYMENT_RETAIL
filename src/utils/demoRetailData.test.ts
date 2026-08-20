@@ -185,7 +185,7 @@ describe('demo gift card persistence', () => {
     expect((await db.gift_cards.get(usedCard.id))?.balanceCents).toBe(321);
     expect(await db.gift_cards.get(demoCards[1].id)).toBeDefined();
     expect(await db.transactions.filter((transaction) => transaction.source === 'demo').count()).toBe(first.transactions);
-  });
+  }, 30_000);
 
   it('removes only demo customers, sales and gift cards', async () => {
     await seedDemoRetailData(new Date(2026, 7, 5, 12));

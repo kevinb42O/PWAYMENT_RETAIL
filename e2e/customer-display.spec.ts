@@ -48,6 +48,48 @@ test("owner can opt in and open the module from Hardware settings", async ({
   await displayPage.close();
 });
 
+test("cashier can open an enabled customer display from cart actions", async ({
+  appPage,
+}) => {
+  await appPage.addInitScript((config) => {
+    localStorage.setItem(
+      "pwayment:customer-display-settings-v1",
+      JSON.stringify({
+        state: { configsByStore: { __local__: config } },
+        version: 1,
+      }),
+    );
+  }, enabledConfig);
+  await openApp(appPage);
+
+  await appPage
+    .getByRole("button", { name: "Winkelwagenacties" })
+    .click();
+  const openDisplay = appPage.getByRole("menuitem", {
+    name: "Open klantenscherm",
+  });
+  await expect(openDisplay).toBeEnabled();
+
+  const popupPromise = appPage.waitForEvent("popup");
+  await openDisplay.click();
+  const displayPage = await popupPromise;
+  await expect(
+    displayPage.getByRole("heading", { name: "Welkom bij de testwinkel" }),
+  ).toBeVisible();
+
+  // The Cart action must start the same live connection that remains observable
+  // in the existing hardware module; it is not a detached preview window.
+  await appPage
+    .getByRole("button", { name: "Profiel en instellingen" })
+    .click();
+  await appPage.getByRole("menuitem", { name: "Instellingen" }).click();
+  await appPage.getByRole("button", { name: "Hardware" }).click();
+  await appPage.getByRole("button", { name: "Klantenscherm" }).click();
+  await expect(appPage.getByText("Live verbonden")).toBeVisible();
+
+  await displayPage.close();
+});
+
 test("customer display follows the local cart and committed payment", async ({
   appPage,
   context,

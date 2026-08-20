@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { FeatureGate } from '../billing/FeatureGate';
 import { canUseFeature, FEATURE_KEYS } from '../billing/entitlements';
 import {
@@ -56,6 +57,7 @@ import {
   SyncSchedule,
   useIntegrations,
 } from '../store/useIntegrations';
+import { getOutboxEntriesNeedingResolution, retryOutboxEntry } from '../db/outbox';
 
 type Section = 'overview' | 'suppliers' | 'channels' | 'finance' | 'developer' | 'activity';
 
@@ -507,6 +509,11 @@ export const IntegrationsSettings: React.FC = () => {
   const [keyScopes, setKeyScopes] = useState<string[]>(['sales:read']);
   const [keyExpiry, setKeyExpiry] = useState('');
   const [activityFilter, setActivityFilter] = useState('all');
+  const [retryingOutboxId, setRetryingOutboxId] = useState<number | null>(null);
+  const unresolvedOutbox = useLiveQuery(
+    () => getOutboxEntriesNeedingResolution(),
+    [],
+  ) ?? [];
 
   const notify = (message: string, success = true) => {
     setToast({ message, success });
@@ -539,6 +546,26 @@ export const IntegrationsSettings: React.FC = () => {
     setTemplate(undefined);
     setEditing(integration);
     setModal('integration');
+  };
+
+  const retryDelivery = async (id: number) => {
+    setRetryingOutboxId(id);
+    try {
+      const requeued = await retryOutboxEntry(id);
+      if (!requeued) {
+        notify('Deze herstelactie bestaat niet meer.', false);
+        return;
+      }
+      // The running outbox worker owns the actual send and its durable lease.
+      // Trigger its online listener so the corrected row does not wait for the
+      // next interval when this browser is already online.
+      window.dispatchEvent(new Event('online'));
+      notify('Opnieuw in de synchronisatiewachtrij gezet.');
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Opnieuw plannen mislukt.', false);
+    } finally {
+      setRetryingOutboxId(null);
+    }
   };
 
   const editingForm = editing ? {
@@ -590,6 +617,31 @@ export const IntegrationsSettings: React.FC = () => {
           <button onClick={() => { setSection('developer'); if (canUseFeature(FEATURE_KEYS.webhooksManage)) setModal('webhook'); }} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-800 hover:bg-slate-50 cursor-pointer"><Webhook size={14} /> Webhook maken</button>
         </div>
       </div>
+
+      {unresolvedOutbox.length > 0 && (
+        <section className="rounded-2xl border border-rose-200 bg-rose-50 p-4 shadow-2xs" aria-live="polite">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex min-w-0 gap-2.5">
+              <AlertCircle size={19} className="mt-0.5 shrink-0 text-rose-700" />
+              <div>
+                <h2 className="text-sm font-black text-rose-950">Herstelwachtrij: {unresolvedOutbox.length} synchronisatie{unresolvedOutbox.length === 1 ? '' : 's'} vraagt aandacht</h2>
+                <p className="mt-1 max-w-3xl text-xs font-medium leading-relaxed text-rose-800">Geen gegevens zijn verwijderd. Los eerst de oorzaak op (bijvoorbeeld een ontbrekende koppeling of een afgewezen verkoop) en plan daarna alleen de juiste rij opnieuw in. Financiële rijen blokkeren bewust de betrokken dagafsluiting tot ze zijn hersteld.</p>
+              </div>
+            </div>
+          </div>
+          <div className="mt-3 space-y-2">
+            {unresolvedOutbox.map((entry) => (
+              <div key={entry.id} className="flex flex-col gap-2 rounded-xl border border-rose-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-black text-slate-900"><span>{entry.kind === 'transaction' ? 'Verkoop' : entry.kind === 'gift_card_mutation' ? 'Cadeaubonmutatie' : entry.kind}</span><span className="text-[10px] font-medium text-slate-400">{formatDate(new Date(entry.timestamp).toISOString())} · poging {entry.attempts}</span></div>
+                  <p className="mt-1 break-words text-[11px] font-medium leading-relaxed text-rose-700">{entry.lastError ?? 'Onbekende synchronisatiefout.'}</p>
+                </div>
+                <button type="button" onClick={() => entry.id != null && void retryDelivery(entry.id)} disabled={entry.id == null || retryingOutboxId === entry.id} className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-rose-300 bg-white px-3 py-2 text-[11px] font-bold text-rose-800 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"><RefreshCw size={14} className={retryingOutboxId === entry.id ? 'animate-spin' : ''} />{retryingOutboxId === entry.id ? 'Inplannen…' : 'Opnieuw proberen'}</button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[

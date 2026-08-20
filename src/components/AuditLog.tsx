@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { db } from "../db/db";
 import { MerchantInfo } from "../data/merchant";
-import { AuditEntry, DailyReport, PaymentMethod, Transaction } from "../types";
+import { AuditEntry, DailyReport, PaymentMethod, ReturnDisposition, Transaction } from "../types";
 import { formatEUR } from "../utils/money";
 import {
   SalesHistoryRow,
@@ -1334,6 +1334,7 @@ const RefundDialog = ({
     return tenders.length === 1 ? tenders[0].method : "PIN";
   });
   const [reason, setReason] = useState("");
+  const [disposition, setDisposition] = useState<ReturnDisposition>("sellable");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const submit = async () => {
@@ -1351,6 +1352,7 @@ const RefundDialog = ({
           .filter((line) => line.quantity > 0),
         method,
         reason,
+        disposition,
         userId: auth.currentUserId ?? undefined,
         userName: auth.currentUserName ?? undefined,
       });
@@ -1391,8 +1393,9 @@ const RefundDialog = ({
     >
       <div className="space-y-4 text-slate-900">
         <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
-          Een retour maakt een afzonderlijk correctiedocument, zet voorraad
-          terug en blijft gekoppeld aan de oorspronkelijke verkoop.
+          Een retour maakt een afzonderlijk correctiedocument en blijft gekoppeld
+          aan de oorspronkelijke verkoop. Alleen een verkoopbare retour komt
+          terug in de beschikbare voorraad.
         </p>
         <fieldset>
           <legend className="text-xs font-bold uppercase tracking-wide text-slate-500">
@@ -1446,6 +1449,24 @@ const RefundDialog = ({
             <option value="Cash">Contant</option>
             <option value="Cadeaubon">Oorspronkelijke cadeaubon</option>
           </select>
+        </label>
+        <label className="block text-xs font-bold text-slate-600">
+          Bestemming retourartikel
+          <select
+            value={disposition}
+            onChange={(event) => setDisposition(event.target.value as ReturnDisposition)}
+            className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm"
+          >
+            <option value="sellable">Verkoopbaar — terug in beschikbare voorraad</option>
+            <option value="quarantine">Quarantaine — eerst controleren</option>
+            <option value="defective">Defect — niet verkoopbaar</option>
+            <option value="supplier-return">Retour leverancier — niet verkoopbaar</option>
+          </select>
+          <span className="mt-1 block text-[11px] font-medium text-slate-500">
+            {disposition === "sellable"
+              ? "Deze artikelen verhogen de beschikbare voorraad."
+              : "Deze artikelen worden financieel geretourneerd, maar verhogen de beschikbare voorraad niet."}
+          </span>
         </label>
         <label className="block text-xs font-bold text-slate-600">
           Retourreden

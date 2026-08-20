@@ -1018,48 +1018,63 @@ export type Database = {
       }
       stock_movements: {
         Row: {
+          adjustment_reason: string | null
           client_request_id: string | null
           created_at: string
           id: string
           is_demo: boolean
+          note: string | null
           occurred_at: string
           product_id: string
           product_name: string
           purchase_order_id: string | null
+          quantity_after: number | null
+          quantity_before: number | null
           quantity_delta: number
           reason: string
+          return_disposition: string | null
           store_id: string
           transaction_id: string | null
           user_id: string | null
           user_name: string | null
         }
         Insert: {
+          adjustment_reason?: string | null
           client_request_id?: string | null
           created_at?: string
           id?: string
           is_demo?: boolean
+          note?: string | null
           occurred_at: string
           product_id: string
           product_name: string
           purchase_order_id?: string | null
+          quantity_after?: number | null
+          quantity_before?: number | null
           quantity_delta: number
           reason: string
+          return_disposition?: string | null
           store_id: string
           transaction_id?: string | null
           user_id?: string | null
           user_name?: string | null
         }
         Update: {
+          adjustment_reason?: string | null
           client_request_id?: string | null
           created_at?: string
           id?: string
           is_demo?: boolean
+          note?: string | null
           occurred_at?: string
           product_id?: string
           product_name?: string
           purchase_order_id?: string | null
+          quantity_after?: number | null
+          quantity_before?: number | null
           quantity_delta?: number
           reason?: string
+          return_disposition?: string | null
           store_id?: string
           transaction_id?: string | null
           user_id?: string | null
@@ -1500,6 +1515,8 @@ export type Database = {
           receipt_barcode: string
           receipt_barcode_version: number
           register_id: string | null
+          return_disposition: string | null
+          rounding_adjustment_cents: number
           shift_id: string | null
           source: string
           store_id: string
@@ -1537,6 +1554,8 @@ export type Database = {
           receipt_barcode?: string
           receipt_barcode_version?: number
           register_id?: string | null
+          return_disposition?: string | null
+          rounding_adjustment_cents?: number
           shift_id?: string | null
           source?: string
           store_id: string
@@ -1574,6 +1593,8 @@ export type Database = {
           receipt_barcode?: string
           receipt_barcode_version?: number
           register_id?: string | null
+          return_disposition?: string | null
+          rounding_adjustment_cents?: number
           shift_id?: string | null
           source?: string
           store_id?: string
@@ -1950,6 +1971,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_pos_discount: {
+        Args: { payload: Json; target_store_id: string }
+        Returns: Json
+      }
       append_audit: {
         Args: {
           event_action: string
@@ -2002,6 +2027,10 @@ export type Database = {
         Args: { payload: Json; target_store_id: string }
         Returns: string
       }
+      record_inventory_adjustment: {
+        Args: { payload: Json; target_store_id: string }
+        Returns: Json
+      }
       refund_sale: {
         Args: { payload: Json; target_store_id: string }
         Returns: Json
@@ -2013,6 +2042,10 @@ export type Database = {
       save_purchase_order_internal: {
         Args: { payload: Json; target_store_id: string }
         Returns: string
+      }
+      set_pos_manager_approval_pin: {
+        Args: { payload: Json; target_store_id: string }
+        Returns: Json
       }
       simulate_test_trial: {
         Args: { days_remaining: number; target_store_id: string }

@@ -86,6 +86,8 @@ export default function App() {
     presentationRequested &&
     (import.meta.env.DEV || import.meta.env.VITE_PRESENTATION_BUILD === "true");
   const e2eMode = e2eRequested && import.meta.env.VITE_E2E_BUILD === "true";
+  const e2eCatalogFixtureRequested =
+    e2eMode && new URLSearchParams(window.location.search).get("catalog") !== "empty";
 
   useEffect(() => {
     applyThemeMode(themeMode);
@@ -99,10 +101,11 @@ export default function App() {
         currentUserName: "Eigenaar",
         currentRole: "owner",
         currentStoreName: "PWAyment Store",
+        currentStoreIsDemo: e2eCatalogFixtureRequested,
         unlocked: true,
       });
     }
-  }, [e2eMode, presentationMode, unlocked]);
+  }, [e2eCatalogFixtureRequested, e2eMode, presentationMode, unlocked]);
 
   useEffect(() => {
     if (unlocked) {

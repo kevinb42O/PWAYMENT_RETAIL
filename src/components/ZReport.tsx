@@ -144,6 +144,12 @@ const ReportPrintout = ({
             label="Kortingen"
             value={`-${formatEUR(report.totalDiscountCents)}`}
           />
+          {(report.totalCashRoundingAdjustmentCents ?? 0) !== 0 && (
+            <PrintRow
+              label="Cashafrondingen"
+              value={`${(report.totalCashRoundingAdjustmentCents ?? 0) > 0 ? "+" : ""}${formatEUR(report.totalCashRoundingAdjustmentCents ?? 0)}`}
+            />
+          )}
           <PrintRow
             label="Inkoopwaarde"
             value={formatEUR(report.totalCostCents)}
@@ -404,7 +410,8 @@ export const ZReportView: React.FC = () => {
         salesPaymentTotal +
         liabilityPaymentTotal -
         revenue -
-        (reportData?.giftCardLiabilityAddedCents ?? 0),
+        (reportData?.giftCardLiabilityAddedCents ?? 0) -
+        (reportData?.totalCashRoundingAdjustmentCents ?? 0),
       vatDifferenceCents: accountedRevenue - revenue,
       vatTotal,
       firstSaleAt: transactions[0]?.timestamp,
@@ -576,7 +583,9 @@ export const ZReportView: React.FC = () => {
 
   const totalRevenueCents = reportData.totalRevenueCents;
   const totalCollectedCents =
-    totalRevenueCents + reportData.giftCardLiabilityAddedCents;
+    totalRevenueCents +
+    reportData.giftCardLiabilityAddedCents +
+    reportData.totalCashRoundingAdjustmentCents;
   const paymentMax = Math.max(
     1,
     ...(Object.keys(paymentMeta) as PaymentKey[]).map(

@@ -8,6 +8,7 @@ import { useCustomers } from '../store/useCustomers';
 import { calculateTotals } from '../utils/vat';
 import { formatPaymentLabel, receiptPaymentRows } from '../utils/receiptPayments';
 import { transactionTenders } from '../utils/financial';
+import { settlementTotalCents } from '../utils/cashRounding';
 import { ReceiptBarcode } from './ReceiptBarcode';
 
 interface Props {
@@ -46,6 +47,10 @@ export const ReceiptTicket: React.FC<Props> = ({ transaction: t, ticketNumber, m
   const totals = calculateTotals(t.items, t.discountCents);
   const paymentRows = receiptPaymentRows(t);
   const tenders = transactionTenders(t);
+  const cashTenderCents = tenders
+    .filter((tender) => tender.method === 'Cash')
+    .reduce((sum, tender) => sum + tender.amountCents, 0);
+  const settlementTotal = settlementTotalCents(t);
 
   return (
     <div
@@ -132,6 +137,18 @@ export const ReceiptTicket: React.FC<Props> = ({ transaction: t, ticketNumber, m
         <span>TOTAAL</span>
         <span className="tabular-nums">{formatEUR(t.totalCents)}</span>
       </div>
+      {(t.roundingAdjustmentCents ?? 0) !== 0 && (
+        <>
+          <Row
+            left="Afronding cash"
+            right={`${(t.roundingAdjustmentCents ?? 0) > 0 ? '+' : ''}${formatEUR(t.roundingAdjustmentCents ?? 0)}`}
+          />
+          <div className="flex justify-between font-bold">
+            <span>TE VEREFFENEN</span>
+            <span className="tabular-nums">{formatEUR(settlementTotal)}</span>
+          </div>
+        </>
+      )}
 
       <Sep />
 
@@ -190,7 +207,7 @@ export const ReceiptTicket: React.FC<Props> = ({ transaction: t, ticketNumber, m
                     Math.max(
                       0,
                       t.tenderedCents -
-                        (tenders.find((x) => x.method === 'Cash')?.amountCents || 0),
+                        cashTenderCents,
                     ),
                   )}
                 />
@@ -213,7 +230,7 @@ export const ReceiptTicket: React.FC<Props> = ({ transaction: t, ticketNumber, m
             {t.paymentMethod === 'Cash' && t.tenderedCents != null && (
               <>
                 <Row left="Ontvangen" right={formatEUR(t.tenderedCents)} />
-                <Row left="Wisselgeld" right={formatEUR(Math.max(0, t.tenderedCents - t.totalCents))} />
+                <Row left="Wisselgeld" right={formatEUR(Math.max(0, t.tenderedCents - cashTenderCents))} />
               </>
             )}
           </>

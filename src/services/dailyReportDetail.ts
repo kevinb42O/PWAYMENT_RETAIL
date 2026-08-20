@@ -33,6 +33,8 @@ export interface DailyReportTransactionDetail {
   subtotalCents: number;
   discountCents: number;
   totalCents: number;
+  /** Cash settlement difference; commercial/VAT total remains `totalCents`. */
+  roundingAdjustmentCents: number;
   vat12Cents: number;
   vat21Cents: number;
   paymentMethod: string;
@@ -170,6 +172,7 @@ const mapServerDetail = (value: Json): DailyReportDetail => {
         subtotalCents: number(row.subtotalCents),
         discountCents: number(row.discountCents),
         totalCents: number(row.totalCents),
+        roundingAdjustmentCents: number(row.roundingAdjustmentCents),
         vat12Cents: number(row.vat12Cents),
         vat21Cents: number(row.vat21Cents),
         paymentMethod: string(row.paymentMethod),
@@ -308,6 +311,7 @@ const deriveOfflineDetail = (
         subtotalCents: transaction.subtotalCents,
         discountCents: transaction.discountCents,
         totalCents: transaction.totalCents,
+        roundingAdjustmentCents: transaction.roundingAdjustmentCents ?? 0,
         vat12Cents: transaction.vat12Cents,
         vat21Cents: transaction.vat21Cents,
         paymentMethod: transaction.paymentMethod,

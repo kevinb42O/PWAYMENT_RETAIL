@@ -22,9 +22,9 @@ test("mobile catalog, cart and navigation remain usable without page overflow", 
   ).toBeVisible();
   await expect(
     appPage.getByRole("button", {
-      name: "Aantal Allen Hardware Bolts 1 inch verlagen",
+      name: "Allen Hardware Bolts 1 inch verwijderen",
     }),
-  ).toBeDisabled();
+  ).toBeEnabled();
   await appPage
     .getByRole("button", {
       name: "Aantal Allen Hardware Bolts 1 inch verhogen",
@@ -32,12 +32,33 @@ test("mobile catalog, cart and navigation remain usable without page overflow", 
     .click();
   await expect(appPage.getByText("2", { exact: true }).last()).toBeVisible();
 
+  await appPage
+    .getByRole("button", { name: "Winkelwagenacties" })
+    .click();
+  await expect(
+    appPage.getByRole("menu", { name: "Winkelwagenacties" }),
+  ).toBeVisible();
+  await appPage
+    .getByRole("menuitem", { name: "In wachtrij zetten" })
+    .click();
+  await appPage
+    .getByRole("button", { name: "Winkelwagenacties" })
+    .click();
+  await appPage
+    .getByRole("menuitem", { name: /Wachtende klanten/ })
+    .click();
+  const queueDialog = appPage.getByRole("dialog", {
+    name: "Wachtende klanten",
+  });
+  await expect(queueDialog).toBeVisible();
+
   const hasPageOverflow = await appPage.evaluate(
     () =>
       document.documentElement.scrollWidth >
       document.documentElement.clientWidth,
   );
   expect(hasPageOverflow).toBe(false);
+  await queueDialog.getByRole("button", { name: "Venster sluiten" }).click();
 
   await appPage.getByRole("button", { name: "Navigatie openen" }).click();
   await appPage.getByRole("menuitem", { name: "Historiek" }).click();

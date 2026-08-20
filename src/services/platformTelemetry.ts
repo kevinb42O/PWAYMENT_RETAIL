@@ -18,6 +18,8 @@ export interface PlatformHealthMetadata {
   oldest_queue_age_seconds?: number;
   attempts?: number;
   online?: boolean;
+  retrying_queue_depth?: number;
+  dead_letter_queue_depth?: number;
 }
 
 type TelemetryRpc = {
@@ -100,14 +102,21 @@ export const reportPlatformHealth = async ({
  * "there is work waiting to be confirmed".
  */
 export const getOutboxHealthMetadata = async (): Promise<PlatformHealthMetadata> => {
-  const oldest = await db.outbox.orderBy("timestamp").first();
-  const queueDepth = await db.outbox.count();
+  const entries = await db.outbox.toArray();
+  const oldest = entries.reduce<typeof entries[number] | undefined>(
+    (current, entry) => !current || entry.timestamp < current.timestamp ? entry : current,
+    undefined,
+  );
+  const retrying = entries.filter((entry) => entry.deliveryStatus === "retrying").length;
+  const deadLetters = entries.filter((entry) => entry.deliveryStatus === "dead_letter").length;
   return {
-    queue_depth: queueDepth,
+    queue_depth: entries.length,
     oldest_queue_age_seconds: oldest
       ? Math.max(0, Math.floor((Date.now() - oldest.timestamp) / 1000))
       : 0,
     online: globalThis.navigator?.onLine !== false,
+    retrying_queue_depth: retrying,
+    dead_letter_queue_depth: deadLetters,
   };
 };
 

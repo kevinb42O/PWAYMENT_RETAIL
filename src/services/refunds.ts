@@ -1,11 +1,13 @@
 import { db } from "../db/db";
 import { useAuth } from "../auth/useAuth";
+import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import type { Json } from "../types/database.generated";
 import {
   GiftCard,
   GiftCardEvent,
   OrderItem,
   PaymentTender,
+  ReturnDisposition,
   Transaction,
 } from "../types";
 import { DEFAULT_REGISTER_ID, transactionTenders } from "../utils/financial";
@@ -31,9 +33,18 @@ export interface RefundInput {
   lines: RefundLineInput[];
   method: "Cash" | "PIN" | "Cadeaubon";
   reason: string;
+  /** Only sellable returns are put back into available POS stock. */
+  disposition?: ReturnDisposition;
   userId?: string;
   userName?: string;
 }
+
+const returnDispositions: readonly ReturnDisposition[] = [
+  "sellable",
+  "quarantine",
+  "defective",
+  "supplier-return",
+];
 
 const lineGrossCents = (item: OrderItem) => {
   const modifiers = (item.modifiers ?? []).reduce(
@@ -55,6 +66,57 @@ const refundedQuantities = (rows: Transaction[]) => {
   return quantities;
 };
 
+type RemoteRefundResult = {
+  document_number?: string;
+  receipt_barcode?: string;
+  duplicate?: boolean;
+};
+
+/**
+ * The legacy transaction outbox cannot carry the newly introduced disposition
+ * field. Non-sellable returns therefore go directly through the authoritative
+ * RPC while connected; this keeps local and central available stock equal
+ * without changing checkout/outbox transport in this hardening change.
+ */
+const synchronizeNonSellableRefund = async (
+  input: RefundInput,
+  original: Transaction,
+  disposition: Exclude<ReturnDisposition, "sellable">,
+  receiptBarcode: string,
+): Promise<RemoteRefundResult | null> => {
+  const storeId = useAuth.getState().currentStoreId;
+  if (!storeId || !isSupabaseConfigured) return null;
+  if (globalThis.navigator?.onLine === false) {
+    throw new RefundError(
+      "Maak verbinding met internet om een retour naar quarantaine, defect of leverancier centraal vast te leggen.",
+    );
+  }
+  if (!original.clientRequestId) {
+    throw new RefundError("De oorspronkelijke verkoop mist een centrale synchronisatiereferentie.");
+  }
+
+  const { data, error } = await supabase.rpc("refund_sale", {
+    target_store_id: storeId,
+    payload: {
+      client_request_id: input.clientRequestId,
+      original_client_request_id: original.clientRequestId,
+      lines: input.lines.map((line) => ({
+        line_id: line.lineId,
+        quantity: line.quantity,
+      })),
+      method: input.method,
+      reason: input.reason.trim(),
+      disposition,
+      receipt_barcode: receiptBarcode,
+    } as unknown as Json,
+  });
+  if (error) {
+    const match = error.message.match(/refund:[a-z-]+:(.+)/s);
+    throw new RefundError(match?.[1]?.trim() || error.message);
+  }
+  return (data ?? {}) as RemoteRefundResult;
+};
+
 export const createRefund = async (
   input: RefundInput,
 ): Promise<Transaction> => {
@@ -63,7 +125,34 @@ export const createRefund = async (
   if (input.lines.length === 0)
     throw new RefundError("Selecteer minstens één retourregel.");
 
+  const disposition = input.disposition ?? "sellable";
+  if (!returnDispositions.includes(disposition)) {
+    throw new RefundError("Kies een geldige bestemming voor de retour.");
+  }
 
+  const duplicate = await db.transactions
+    .where("clientRequestId")
+    .equals(input.clientRequestId)
+    .first();
+  if (duplicate) return duplicate;
+
+  const receiptBarcode = generateReceiptBarcode();
+  let remoteRefund: RemoteRefundResult | null = null;
+  if (disposition !== "sellable") {
+    const original = await db.transactions.get(input.originalTransactionId);
+    if (!original || (original.kind ?? "sale") !== "sale") {
+      throw new RefundError("De oorspronkelijke verkoop bestaat niet.");
+    }
+    if ((original.source ?? "live") === "demo") {
+      throw new RefundError("Demo-omzet kan niet als echte retour worden geboekt.");
+    }
+    remoteRefund = await synchronizeNonSellableRefund(
+      input,
+      original,
+      disposition,
+      receiptBarcode,
+    );
+  }
 
   return db.transaction(
     "rw",
@@ -175,10 +264,11 @@ export const createRefund = async (
         customerId: original.customerId,
         source: "live",
         kind: "refund",
-        receiptBarcode: generateReceiptBarcode(),
+        receiptBarcode: remoteRefund?.receipt_barcode ?? receiptBarcode,
         receiptBarcodeVersion: 1,
         originalTransactionId: original.id,
         correctionReason: input.reason.trim(),
+        returnDisposition: disposition,
         merchantSnapshot: original.merchantSnapshot,
         registerId: original.registerId ?? DEFAULT_REGISTER_ID,
         shiftId: openShift?.id,
@@ -187,27 +277,31 @@ export const createRefund = async (
       const persisted: Transaction = {
         ...row,
         id,
-        documentNumber: `CR-${new Date(now).getFullYear()}-${String(id).padStart(8, "0")}`,
+        documentNumber: remoteRefund?.document_number
+          ?? `CR-${new Date(now).getFullYear()}-${String(id).padStart(8, "0")}`,
       };
       await db.transactions.put(persisted);
 
-      for (const item of selectedItems) {
-        const product = await db.products.get(item.product.id);
-        if (product?.stockQty != null) {
-          await db.products.put({
-            ...product,
-            stockQty: product.stockQty + item.quantity,
-          });
-          await db.stock_movements.add({
-            productId: product.id,
-            productName: product.name,
-            quantityDelta: item.quantity,
-            reason: "pos-refund",
-            timestamp: now,
-            transactionId: id,
-            userId: input.userId,
-            userName: input.userName,
-          });
+      if (disposition === "sellable") {
+        for (const item of selectedItems) {
+          const product = await db.products.get(item.product.id);
+          if (product?.stockQty != null) {
+            await db.products.put({
+              ...product,
+              stockQty: product.stockQty + item.quantity,
+            });
+            await db.stock_movements.add({
+              productId: product.id,
+              productName: product.name,
+              quantityDelta: item.quantity,
+              reason: "pos-refund",
+              timestamp: now,
+              transactionId: id,
+              userId: input.userId,
+              userName: input.userName,
+              returnDisposition: disposition,
+            });
+          }
         }
       }
 
@@ -283,16 +377,18 @@ export const createRefund = async (
           amountCents: refundCents,
           reason: input.reason.trim(),
           method: input.method,
+          disposition,
         },
       });
-      await db.outbox.add({
-        timestamp: now,
-        kind: "transaction",
-        payload: persisted,
-        attempts: 0,
-      });
+      if (!remoteRefund) {
+        await db.outbox.add({
+          timestamp: now,
+          kind: "transaction",
+          payload: persisted,
+          attempts: 0,
+        });
+      }
       return persisted;
     },
   );
 };
-

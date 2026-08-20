@@ -18,6 +18,33 @@ import {
   reportPlatformHealth,
   safeErrorFingerprint,
 } from "./platformTelemetry";
+import { settlementTotalCents } from "../utils/cashRounding";
+
+/**
+ * New checkouts carry an explicit tender ledger.  The fallback keeps historic
+ * single-tender rows synchronisable without inventing a split allocation.
+ */
+const terminalTendersForServer = (tx: Transaction) => {
+  const recorded = tx.tenders?.length
+    ? tx.tenders
+    : tx.splitTenders ?? [];
+  const cashOrPin = recorded.filter(
+    (tender) => tender.method === "Cash" || tender.method === "PIN",
+  );
+  if (cashOrPin.length > 0) {
+    return cashOrPin.map((tender) => ({
+      method: tender.method,
+      amount_cents: tender.amountCents,
+    }));
+  }
+  if (tx.paymentMethod === "Cash" || tx.paymentMethod === "PIN") {
+    return [{
+      method: tx.paymentMethod,
+      amount_cents: settlementTotalCents(tx),
+    }];
+  }
+  return [];
+};
 
 const pushTransactionToSupabase = async (
   storeId: string,
@@ -57,6 +84,8 @@ const pushTransactionToSupabase = async (
     const invoiceCustomer = tx.documentRequest?.type !== "receipt" && tx.customerId
       ? await db.customers.get(tx.customerId)
       : undefined;
+    const tenders = terminalTendersForServer(tx);
+    const hasCashTender = tenders.some((tender) => tender.method === "Cash");
     const payload = {
       client_request_id: tx.clientRequestId,
       cart_id: tx.tableId,
@@ -70,13 +99,17 @@ const pushTransactionToSupabase = async (
       discount_cents: tx.discountCents,
       discount_reason: tx.discountReason,
       discount_approved_by_user_id: tx.discountApprovedByUserId,
+      discount_approval_id: tx.discountApprovalId,
       gift_cards: (tx.giftCardAllocations ?? []).map((card) => ({
         id: card.giftCardId,
         code: card.code,
         amount_cents: card.amountCents,
       })),
       method: tx.paymentMethod,
-      tendered_cents: tx.tenderedCents,
+      tenders,
+      ...(hasCashTender
+        ? { tendered_cents: tx.tenderedCents ?? tenders.find((tender) => tender.method === "Cash")?.amount_cents }
+        : {}),
       customer_id: tx.customerId,
       merchant_snapshot: tx.merchantSnapshot,
       document_request: tx.documentRequest,
@@ -258,11 +291,15 @@ export const synchronizeFinancialLedgerBeforeReport = async (
   const pending = await db.outbox.orderBy("id").toArray();
   const transactionOutboxIds = new Map<string, number[]>();
   const giftCardOutboxIds = new Map<string, number[]>();
+  const permanentlyRejectedFinancialRows: OutboxEntry[] = [];
   for (const entry of pending) {
     if (entry.id == null) continue;
     if (entry.kind === "transaction") {
       const requestId = (entry.payload as Transaction).clientRequestId;
       if (!requestId) continue;
+      if (entry.deliveryStatus === "dead_letter") {
+        permanentlyRejectedFinancialRows.push(entry);
+      }
       transactionOutboxIds.set(requestId, [
         ...(transactionOutboxIds.get(requestId) ?? []),
         entry.id,
@@ -270,11 +307,29 @@ export const synchronizeFinancialLedgerBeforeReport = async (
     } else if (entry.kind === "gift_card_mutation") {
       const eventId = (entry.payload as GiftCardMutation).event?.id;
       if (!eventId) continue;
+      if (entry.deliveryStatus === "dead_letter") {
+        permanentlyRejectedFinancialRows.push(entry);
+      }
       giftCardOutboxIds.set(eventId, [
         ...(giftCardOutboxIds.get(eventId) ?? []),
         entry.id,
       ]);
     }
+  }
+
+  const requestedTransactionIds = new Set(
+    transactions.map((transaction) => transaction.clientRequestId).filter(Boolean),
+  );
+  const requestedGiftCardEventIds = new Set(giftCardEvents.map((event) => event.id));
+  const blockingDeadLetter = permanentlyRejectedFinancialRows.find((entry) =>
+    entry.kind === "transaction"
+      ? requestedTransactionIds.has((entry.payload as Transaction).clientRequestId)
+      : requestedGiftCardEventIds.has((entry.payload as GiftCardMutation).event?.id),
+  );
+  if (blockingDeadLetter) {
+    throw new Error(
+      `De dagafsluiting is geblokkeerd door een afgewezen ${blockingDeadLetter.kind === "transaction" ? "verkoop" : "cadeaubonmutatie"}. Los eerst de synchronisatiefout op in Integraties → Herstelwachtrij: ${blockingDeadLetter.lastError ?? "onbekende fout"}`,
+    );
   }
 
   const operations: Array<
@@ -371,6 +426,34 @@ let workerInterval: ReturnType<typeof setInterval> | null = null;
 let onlineListener: (() => void) | null = null;
 let tickInFlight = false;
 
+type BrowserLockManager = {
+  request: <T>(
+    name: string,
+    options: { ifAvailable: boolean },
+    callback: (lock: unknown | null) => T | Promise<T>,
+  ) => Promise<T>;
+};
+
+/**
+ * The persisted per-row lease in `drainOutbox` is the safety net. Browser
+ * Locks avoids even starting duplicate work when a cashier accidentally opens
+ * the same tenant in two tabs.
+ */
+const withOutboxLeader = async (
+  storeId: string,
+  task: () => Promise<void>,
+): Promise<void> => {
+  const locks = (globalThis.navigator as Navigator & { locks?: BrowserLockManager } | undefined)?.locks;
+  if (!locks) {
+    await task();
+    return;
+  }
+  await locks.request(`pwayment:outbox:${storeId}`, { ifAvailable: true }, async (lock) => {
+    if (!lock) return;
+    await task();
+  });
+};
+
 export const startOutboxWorker = () => {
   if (isWorkerRunning) return;
   isWorkerRunning = true;
@@ -382,47 +465,57 @@ export const startOutboxWorker = () => {
       const storeId = useAuth.getState().currentStoreId;
       if (!storeId || !isSupabaseConfigured || !navigator.onLine) return;
 
-      const result = await drainOutbox(async (entry) => {
-        await sendOutboxEntry(storeId, entry);
-        if (entry.kind === "migration_activate") {
-          const telemetry = (entry.payload as MigrationActivationOutboxPayload).integrationRun;
-          if (telemetry) {
-            await recordIntegrationRun({
-              ...telemetry,
-              storeId,
-              status: "completed",
-              eventType: "delivery.confirmed",
-              eventMessage: "Server receipt bevestigd via de achtergrondwachtrij.",
-            });
+      await withOutboxLeader(storeId, async () => {
+        const result = await drainOutbox(async (entry) => {
+          await sendOutboxEntry(storeId, entry);
+          if (entry.kind === "migration_activate") {
+            const telemetry = (entry.payload as MigrationActivationOutboxPayload).integrationRun;
+            if (telemetry) {
+              await recordIntegrationRun({
+                ...telemetry,
+                storeId,
+                status: "completed",
+                eventType: "delivery.confirmed",
+                eventMessage: "Server receipt bevestigd via de achtergrondwachtrij.",
+              });
+            }
           }
+        });
+        const metadata = await getOutboxHealthMetadata();
+        if (result.deadLettered.length > 0) {
+          const failed = result.deadLettered[0];
+          void reportPlatformHealth({
+            storeId,
+            eventType: "sync.failed_permanent",
+            severity: failed.kind === "transaction" ? "critical" : "error",
+            operation: failed.kind,
+            errorFingerprint: safeErrorFingerprint(
+              failed.kind,
+              failed.lastError ?? "outbox delivery needs manual resolution",
+            ),
+            metadata: { attempts: failed.attempts, ...metadata },
+          });
+        } else if (result.retried.length > 0) {
+          const failed = result.retried[0];
+          void reportPlatformHealth({
+            storeId,
+            eventType: "sync.retrying",
+            severity: "warning",
+            operation: failed.kind,
+            errorFingerprint: safeErrorFingerprint(
+              failed.kind,
+              failed.lastError ?? "outbox delivery failed",
+            ),
+            metadata: { attempts: failed.attempts, ...metadata },
+          });
+        } else if (result.delivered > 0) {
+          void reportPlatformHealth({
+            storeId,
+            eventType: "sync.completed",
+            metadata,
+          });
         }
       });
-      const metadata = await getOutboxHealthMetadata();
-      if (result.failed) {
-        void reportPlatformHealth({
-          storeId,
-          // The outbox deliberately keeps retrying every failed delivery. Do
-          // not label an entry as permanent while it remains retryable; that
-          // would make the platform console show a false current outage.
-          eventType: "sync.retrying",
-          severity: "warning",
-          operation: result.failed.kind,
-          errorFingerprint: safeErrorFingerprint(
-            result.failed.kind,
-            result.failed.lastError ?? "outbox delivery failed",
-          ),
-          metadata: {
-            attempts: result.failed.attempts + 1,
-            ...metadata,
-          },
-        });
-      } else if (result.delivered > 0) {
-        void reportPlatformHealth({
-          storeId,
-          eventType: "sync.completed",
-          metadata,
-        });
-      }
     } finally {
       tickInFlight = false;
     }

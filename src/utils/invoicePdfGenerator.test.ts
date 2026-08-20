@@ -65,4 +65,29 @@ describe("convertTransactionToInvoiceData", () => {
     expect(invoice.items.reduce((sum, line) => sum + line.totalVatCents, 0)).toBe(totals.vat12 + totals.vat21);
     expect(invoice.items.reduce((sum, line) => sum + line.totalExclCents, 0)).toBe(totals.exclVat12 + totals.exclVat21);
   });
+
+  it("keeps a cash rounding adjustment separate from commercial invoice VAT totals", () => {
+    const items = [item("cash-rounding", 1002, 21)];
+    const totals = calculateTotals(items, 0);
+    const transaction: Transaction = {
+      id: 43,
+      tableId: 1,
+      items,
+      subtotalCents: totals.subtotal,
+      discountCents: totals.discount,
+      totalCents: totals.total,
+      vat12Cents: totals.vat12,
+      vat21Cents: totals.vat21,
+      roundingAdjustmentCents: -2,
+      paymentMethod: "Cash",
+      timestamp: Date.UTC(2026, 7, 15),
+      isFinalized: 1,
+      documentNumber: "POS-2026-00000043",
+    };
+
+    const invoice = convertTransactionToInvoiceData(transaction, merchant);
+
+    expect(invoice.items.reduce((sum, line) => sum + line.totalInclCents, 0)).toBe(1002);
+    expect(invoice.cashRoundingAdjustmentCents).toBe(-2);
+  });
 });
