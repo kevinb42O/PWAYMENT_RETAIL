@@ -5,7 +5,7 @@ begin;
 -- Real GitHub push webhooks take over after this import and remain idempotent by push id.
 drop function public.platform_list_development_updates(integer);
 
-create function public.platform_list_development_updates(
+create or replace function public.platform_list_development_updates(
   page_limit integer default 100,
   before_pushed_at timestamptz default null,
   before_id uuid default null

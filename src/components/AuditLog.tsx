@@ -36,17 +36,26 @@ import {
   downloadInvoicePdf,
   InvoiceData,
 } from "../utils/invoicePdfGenerator";
-import { InvoicePreviewModal } from "./InvoicePreviewModal";
 import { transactionTenders } from "../utils/financial";
 import { Modal } from "./Modal";
 import { createRefund } from "../services/refunds";
 import { useAuth } from "../auth/useAuth";
-import { ZReportHistoryDetail } from "./ZReportHistoryDetail";
 import { isValidReceiptBarcode, normalizeReceiptBarcode } from "../utils/receiptBarcode";
 import {
   DailyReportDaySummary,
   loadDailyReportDaySummaries,
 } from "../services/dailyReportDetail";
+
+const InvoicePreviewModal = React.lazy(() =>
+  import("./InvoicePreviewModal").then((module) => ({
+    default: module.InvoicePreviewModal,
+  })),
+);
+const ZReportHistoryDetail = React.lazy(() =>
+  import("./ZReportHistoryDetail").then((module) => ({
+    default: module.ZReportHistoryDetail,
+  })),
+);
 
 type Tab = "sales" | "reports" | "audit";
 type SalesRange = "30d" | "12m" | "all";

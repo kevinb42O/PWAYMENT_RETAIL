@@ -3,16 +3,34 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Layout } from "./components/Layout";
-import { LoginScreen } from "./auth/LoginScreen";
 import { useAuth } from "./auth/useAuth";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useTheme } from "./store/useTheme";
 import { applyThemeMode } from "./utils/theme";
-import { startOutboxWorker, stopOutboxWorker } from "./services/outboxWorker";
-import { startRealtimeSync, stopRealtimeSync } from "./services/realtimeSync";
-import { CustomerDisplayPublisher } from "./customer-display/CustomerDisplayPublisher";
-import { startPlatformHealthMonitoring } from "./services/platformTelemetry";
+
+const Layout = lazy(() =>
+  import("./components/Layout").then((module) => ({ default: module.Layout })),
+);
+const LoginScreen = lazy(() =>
+  import("./auth/LoginScreen").then((module) => ({
+    default: module.LoginScreen,
+  })),
+);
+const CustomerDisplayPublisher = lazy(() =>
+  import("./customer-display/CustomerDisplayPublisher").then((module) => ({
+    default: module.CustomerDisplayPublisher,
+  })),
+);
+
+const AppLoading = () => (
+  <div
+    className="flex min-h-screen items-center justify-center bg-slate-50 text-sm font-semibold text-slate-500"
+    role="status"
+    aria-live="polite"
+  >
+    PWAYMENT laden…
+  </div>
+);
 
 const RecordingCursor = () => {
   const [cursor, setCursor] = useState({
@@ -108,31 +126,53 @@ export default function App() {
   }, [e2eCatalogFixtureRequested, e2eMode, presentationMode, unlocked]);
 
   useEffect(() => {
+    let active = true;
+    let stopWorkers: (() => void) | undefined;
     if (unlocked) {
-      startOutboxWorker();
-      startRealtimeSync();
-    } else {
-      stopOutboxWorker();
-      stopRealtimeSync();
+      void Promise.all([
+        import("./services/outboxWorker"),
+        import("./services/realtimeSync"),
+      ]).then(([outbox, realtime]) => {
+        if (!active) return;
+        outbox.startOutboxWorker();
+        realtime.startRealtimeSync();
+        stopWorkers = () => {
+          outbox.stopOutboxWorker();
+          realtime.stopRealtimeSync();
+        };
+      });
     }
     return () => {
-      stopOutboxWorker();
-      stopRealtimeSync();
+      active = false;
+      stopWorkers?.();
     };
   }, [unlocked]);
 
   useEffect(() => {
     if (!unlocked || !currentStoreId) return;
-    return startPlatformHealthMonitoring(currentStoreId);
+    let active = true;
+    let stopMonitoring: (() => void) | undefined;
+    void import("./services/platformTelemetry").then((telemetry) => {
+      if (!active) return;
+      stopMonitoring = telemetry.startPlatformHealthMonitoring(currentStoreId);
+    });
+    return () => {
+      active = false;
+      stopMonitoring?.();
+    };
   }, [currentStoreId, unlocked]);
 
-  return unlocked ? (
-    <>
-      <CustomerDisplayPublisher />
-      <Layout />
-      {recordingMode && <RecordingCursor />}
-    </>
-  ) : (
-    <LoginScreen />
+  return (
+    <Suspense fallback={<AppLoading />}>
+      {unlocked ? (
+        <>
+          <CustomerDisplayPublisher />
+          <Layout />
+          {recordingMode && <RecordingCursor />}
+        </>
+      ) : (
+        <LoginScreen />
+      )}
+    </Suspense>
   );
 }

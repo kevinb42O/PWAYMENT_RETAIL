@@ -52,7 +52,7 @@ create index if not exists integration_run_events_store_occurred_idx
 alter table private.integration_run_events enable row level security;
 
 drop function if exists public.record_integration_run(uuid, uuid, text, text, text, text, integer, integer, integer, integer, integer, text, text, jsonb);
-create function public.record_integration_run(
+create or replace function public.record_integration_run(
   target_store_id uuid,
   run_id uuid,
   run_operation text,

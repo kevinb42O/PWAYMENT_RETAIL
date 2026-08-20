@@ -1,6 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Menu } from "./Menu";
-import { Cart } from "./Cart";
 import { useStore, type MainView } from "../store/useStore";
 import { useAuth } from "../auth/useAuth";
 import { useProducts } from "../store/useProducts";
@@ -64,6 +62,12 @@ const ServiceDesk = React.lazy(() =>
 );
 const Workforce = React.lazy(() =>
   import("./Workforce").then((module) => ({ default: module.Workforce })),
+);
+const Menu = React.lazy(() =>
+  import("./Menu").then((module) => ({ default: module.Menu })),
+);
+const Cart = React.lazy(() =>
+  import("./Cart").then((module) => ({ default: module.Cart })),
 );
 
 const ViewLoading = () => (
@@ -934,6 +938,7 @@ export const Layout: React.FC = () => {
               </div>
             </div>
 
+            <React.Suspense fallback={<ViewLoading />}>
             <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
               {!isDesktop ? (
                 <>
@@ -992,6 +997,7 @@ export const Layout: React.FC = () => {
                 </div>
               )}
             </div>
+            </React.Suspense>
           </div>
         )}
       </main>

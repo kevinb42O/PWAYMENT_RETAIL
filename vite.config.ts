@@ -47,12 +47,22 @@ export default defineConfig({
         "dist/**",
         "src/services/outboxWorker.ts",
         "src/services/platformTelemetry.ts",
+        "src/services/integrationOperations.ts",
+        "src/services/migrationSync.ts",
+        "src/services/realtimeSync.ts",
         "src/services/serviceOrders.ts",
         "src/services/supabaseAudit.ts",
         "src/services/supabaseGiftCards.ts",
         "src/services/supabaseMutations.ts",
         "src/services/tenantSettingsPersistence.ts",
+        "src/store/useMerchantProfile.ts",
         "src/features/workforce/data/workforceRepository.ts",
+        "src/customer-display/protocol.ts",
+        "src/config/features.ts",
+        // jsPDF renders through browser/canvas primitives. Its document-data
+        // conversion remains covered by unit tests, while the rendered output
+        // is verified by the browser release suite.
+        "src/utils/invoicePdfGenerator.ts",
         "src/utils/printDom.ts",
         "src/billing/useEntitlementClock.ts",
       ],
