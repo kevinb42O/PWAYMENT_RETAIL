@@ -4,6 +4,9 @@ import { nl } from "date-fns/locale";
 import {
   AlertTriangle,
   ArrowRight,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   Banknote,
   Check,
   CheckCircle2,
@@ -43,6 +46,8 @@ import { DEFAULT_REGISTER_ID, transactionTenders } from "../utils/financial";
 import { Modal } from "./Modal";
 
 type PaymentKey = "Cash" | "PIN" | "Cadeaubon";
+type XReportSortKey = "time" | "transaction" | "cashier" | "payment" | "total";
+type SortDirection = "asc" | "desc";
 
 const paymentMeta: Record<
   PaymentKey,
@@ -90,6 +95,53 @@ const splitPaymentSummary = (transactions: Transaction[]) => {
     combinations.set(label, (combinations.get(label) ?? 0) + 1);
   }
   return { count, combinations: [...combinations.entries()] };
+};
+
+const sortLabels: Record<XReportSortKey, string> = {
+  time: "tijd",
+  transaction: "transactie",
+  cashier: "medewerker",
+  payment: "betaling",
+  total: "totaal",
+};
+
+const XReportSortableHeader = ({
+  label,
+  sortKey,
+  activeKey,
+  direction,
+  onSort,
+  align = "left",
+  className = "",
+}: {
+  label: string;
+  sortKey: XReportSortKey;
+  activeKey: XReportSortKey;
+  direction: SortDirection;
+  onSort: (key: XReportSortKey) => void;
+  align?: "left" | "right";
+  className?: string;
+}) => {
+  const isActive = activeKey === sortKey;
+  const Icon = isActive ? (direction === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+
+  return (
+    <th
+      scope="col"
+      aria-sort={isActive ? (direction === "asc" ? "ascending" : "descending") : "none"}
+      className={`px-4 py-3 ${align === "right" ? "text-right" : "text-left"} ${className}`}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className={`inline-flex min-h-8 items-center gap-1.5 rounded px-1 font-bold uppercase tracking-[0.1em] outline-none transition hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-cyan-700 ${align === "right" ? "ml-auto" : ""}`}
+        aria-label={`${label} sorteren${isActive ? `, momenteel ${direction === "asc" ? "oplopend" : "aflopend"}` : ""}`}
+      >
+        {label}
+        <Icon size={14} aria-hidden="true" />
+      </button>
+    </th>
+  );
 };
 
 const ReportPrintout = ({
@@ -273,6 +325,10 @@ export const ZReportView: React.FC = () => {
   const [countedCashText, setCountedCashText] = useState("");
   const [openingFloatText, setOpeningFloatText] = useState("0,00");
   const [cashDifferenceReason, setCashDifferenceReason] = useState("");
+  const [transactionSort, setTransactionSort] = useState<{
+    key: XReportSortKey;
+    direction: SortDirection;
+  }>({ key: "time", direction: "desc" });
 
   const loadData = async () => {
     setLoading(true);
@@ -424,6 +480,54 @@ export const ZReportView: React.FC = () => {
       ).length,
     };
   }, [reportData, transactions]);
+
+  const sortedTransactions = useMemo(() => {
+    const direction = transactionSort.direction === "asc" ? 1 : -1;
+    const compareText = (left: string, right: string) =>
+      left.localeCompare(right, "nl-BE", {
+        numeric: true,
+        sensitivity: "base",
+      });
+    const paymentFor = (transaction: Transaction) =>
+      transaction.paymentMethod === "Split"
+        ? paymentTenderSummary(transaction)
+        : paymentLabel(transaction.paymentMethod);
+
+    return [...transactions].sort((left, right) => {
+      let comparison: number;
+      switch (transactionSort.key) {
+        case "transaction":
+          comparison = (left.id ?? 0) - (right.id ?? 0);
+          break;
+        case "cashier":
+          comparison = compareText(
+            left.userName ?? "Onbekend",
+            right.userName ?? "Onbekend",
+          );
+          break;
+        case "payment":
+          comparison = compareText(paymentFor(left), paymentFor(right));
+          break;
+        case "total":
+          comparison = left.totalCents - right.totalCents;
+          break;
+        case "time":
+          comparison = left.timestamp - right.timestamp;
+          break;
+      }
+      return comparison === 0
+        ? right.timestamp - left.timestamp
+        : comparison * direction;
+    });
+  }, [transactionSort, transactions]);
+
+  const changeTransactionSort = (key: XReportSortKey) => {
+    setTransactionSort((current) => ({
+      key,
+      direction:
+        current.key === key && current.direction === "desc" ? "asc" : "desc",
+    }));
+  };
 
   if (loading) {
     return (
@@ -594,7 +698,6 @@ export const ZReportView: React.FC = () => {
         reportData.giftCardLiabilityPaymentTotalsCents[key],
     ),
   );
-  const recentTransactions = [...transactions].reverse().slice(0, 5);
   const splitSummary = splitPaymentSummary(transactions);
   const canFinalize = auth.hasRole("owner", "manager");
   const parsedOpeningFloat = parseDecimalToCents(openingFloatText);
@@ -893,29 +996,74 @@ export const ZReportView: React.FC = () => {
             </section>
 
             <section className="insights-panel overflow-hidden">
-              <div className="p-5 sm:p-6">
+              <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-start sm:justify-between sm:p-6">
                 <SectionHeading
                   icon={ReceiptText}
-                  title="Laatste transacties"
-                  subtitle="Snelle eindcontrole van de meest recente verkopen."
+                  title="Transacties in dit X-rapport"
+                  subtitle="Live overzicht van alle nog niet afgesloten transacties. Kies een kolomkop om te sorteren."
                 />
+                <p
+                  className="shrink-0 text-sm font-bold tabular-nums text-slate-600"
+                  aria-live="polite"
+                >
+                  {sortedTransactions.length} {sortedTransactions.length === 1 ? "transactie" : "transacties"}
+                  <span className="sr-only">
+                    {`, gesorteerd op ${sortLabels[transactionSort.key]} ${transactionSort.direction === "asc" ? "oplopend" : "aflopend"}`}
+                  </span>
+                </p>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[620px] text-left text-sm">
+                  <caption className="sr-only">
+                    Transacties die in het voorlopige X-rapport worden opgenomen.
+                  </caption>
                   <thead className="border-y border-slate-100 bg-slate-50/70 text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">
                     <tr>
-                      <th className="px-6 py-3">Tijd</th>
-                      <th className="px-4 py-3">Transactie</th>
-                      <th className="px-4 py-3">Medewerker</th>
-                      <th className="px-4 py-3">Betaling</th>
-                      <th className="px-6 py-3 text-right">Totaal</th>
+                      <XReportSortableHeader
+                        label="Tijd"
+                        sortKey="time"
+                        activeKey={transactionSort.key}
+                        direction={transactionSort.direction}
+                        onSort={changeTransactionSort}
+                        className="px-6"
+                      />
+                      <XReportSortableHeader
+                        label="Transactie"
+                        sortKey="transaction"
+                        activeKey={transactionSort.key}
+                        direction={transactionSort.direction}
+                        onSort={changeTransactionSort}
+                      />
+                      <XReportSortableHeader
+                        label="Medewerker"
+                        sortKey="cashier"
+                        activeKey={transactionSort.key}
+                        direction={transactionSort.direction}
+                        onSort={changeTransactionSort}
+                      />
+                      <XReportSortableHeader
+                        label="Betaling"
+                        sortKey="payment"
+                        activeKey={transactionSort.key}
+                        direction={transactionSort.direction}
+                        onSort={changeTransactionSort}
+                      />
+                      <XReportSortableHeader
+                        label="Totaal"
+                        sortKey="total"
+                        activeKey={transactionSort.key}
+                        direction={transactionSort.direction}
+                        onSort={changeTransactionSort}
+                        align="right"
+                        className="px-6"
+                      />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {recentTransactions.map((transaction) => (
+                    {sortedTransactions.map((transaction) => (
                       <tr
                         key={transaction.id ?? transaction.clientRequestId}
-                        className="text-slate-600"
+                        className="text-slate-600 hover:bg-cyan-50/50"
                       >
                         <td className="px-6 py-3.5 font-semibold text-slate-900">
                           {format(transaction.timestamp, "HH:mm")}
