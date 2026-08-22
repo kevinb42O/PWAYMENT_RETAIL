@@ -55,7 +55,7 @@ export const PLAN_CATALOG: Record<PublicPlanCode, PlanCatalogEntry> = {
     audience: 'Voor ketens, franchises en multichannel retail.',
     cta: 'Kies Enterprise',
     href: '/register?plan=enterprise',
-    features: ['Multi-store en voorraadoverdrachten', 'Workforce, planning, uren en verlof', 'AI-voorraadprognose en purchase orders', 'Onbeperkte ServiceDesk en geavanceerde workflow', 'Fijnmazige rechten en volledig auditlogboek', 'REST API en webhooks', 'Multi-storefront ecommerce', 'SLA en support volgens overeenkomst'],
+    features: ['Meerdere locaties en voorraadoverdrachten', 'Personeelsplanning, uren en verlof', 'Voorraadprognose met AI en inkooporders', 'Onbeperkte ServiceDesk met uitgebreide werkwijze', 'Fijnmazige rechten en volledig auditlogboek', 'REST API en webhooks', 'Meerdere webshops', 'SLA en ondersteuning volgens overeenkomst'],
   },
 };
 
@@ -91,7 +91,7 @@ export const PLAN_COMPARISON_GROUPS: PlanComparisonGroup[] = [
   {
     category: 'Webshop & integraties',
     rows: [
-      { label: 'PWAYMENT Webshop', basic: '—', pro: '1 storefront', enterprise: 'Multi-storefront' },
+      { label: 'PWAYMENT Webshop', basic: '—', pro: '1 webshop', enterprise: 'Meerdere webshops' },
       { label: 'Boekhouding & Peppol', basic: '—', pro: 'Volgens connectorstatus', enterprise: 'Inbegrepen/maatwerk' },
       { label: 'REST API & webhooks', basic: '—', pro: '—', enterprise: 'Inbegrepen' },
     ],
@@ -101,7 +101,7 @@ export const PLAN_COMPARISON_GROUPS: PlanComparisonGroup[] = [
     rows: [
       { label: 'Volledige transactiehistoriek', basic: '30 dagen', pro: 'Inbegrepen', enterprise: 'Inbegrepen' },
       { label: 'Verkoop-, marge- en klantinzichten', basic: '—', pro: 'Inbegrepen', enterprise: 'Inbegrepen' },
-      { label: 'Workforce, planning, uren en verlof', basic: '—', pro: '—', enterprise: 'Inbegrepen' },
+      { label: 'Personeelsplanning, uren en verlof', basic: '—', pro: '—', enterprise: 'Inbegrepen' },
       { label: 'Volledige auditviewer en export', basic: '—', pro: '—', enterprise: 'Inbegrepen' },
       { label: 'Multi-store en transfers', basic: '—', pro: '—', enterprise: 'Inbegrepen' },
     ],
