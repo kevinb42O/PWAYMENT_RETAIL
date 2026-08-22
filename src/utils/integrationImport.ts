@@ -212,6 +212,25 @@ export const inferFieldMapping = (header: string): ImportFieldMapping => {
   const exact = exactMappings[compact];
   if (exact) return { source: header, target: exact, confidence: 1 };
 
+  // Do not collapse a second declared identifier into the primary barcode
+  // field. It remains a reviewable extra identifier and gets a source-driven
+  // type only when the header itself makes that type explicit.
+  if (/(ean|upc|gtin|barcode|sku|artikelcode|artikelnummer|supplier|leverancier|vendor)/.test(normalized)
+      && /(extra|alternatief|alternate|secondary|second|\b2\b|\b3\b)/.test(normalized)) {
+    const identifierType = /\bupc\b/.test(normalized)
+      ? "upc"
+      : /\bgtin\b/.test(normalized)
+        ? "gtin"
+        : /supplier|leverancier|vendor/.test(normalized)
+          ? "supplier-code"
+          : /sku|artikelcode|artikelnummer/.test(normalized)
+            ? "internal-sku"
+            : /ean|barcode/.test(normalized)
+              ? "ean"
+              : "alternate";
+    return { source: header, target: `identifier:${identifierType}`, confidence: 0.82 };
+  }
+
   if (
     /(niet klant|geen klant|standaard|regular|retail)/.test(normalized) &&
     /(prijs|price|vk)/.test(normalized)
@@ -237,6 +256,12 @@ export const inferFieldMapping = (header: string): ImportFieldMapping => {
   }
   if (/(voorraad|stock|quantity|qty)/.test(normalized)) {
     return { source: header, target: "core:stockQty", confidence: 0.72 };
+  }
+  if (/(^| )(maat|size|grootte|width|breedte|length|lengte)( |$)/.test(normalized)) {
+    return { source: header, target: "variant-option:Maat", confidence: 0.9 };
+  }
+  if (/(^| )(kleur|colour|color)( |$)/.test(normalized)) {
+    return { source: header, target: "variant-option:Kleur", confidence: 0.9 };
   }
   if (/(verkoop|selling|retail).*(prijs|price)/.test(normalized)) {
     return { source: header, target: "core:sellingPrice", confidence: 0.78 };

@@ -6,6 +6,8 @@
  */
 export interface MerchantInfo {
   name: string;
+  /** Optional public logo used on customer-facing surfaces. */
+  logoUrl?: string;
   legalName?: string;
   addressLine1: string;
   addressLine2: string;

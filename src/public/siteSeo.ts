@@ -48,7 +48,7 @@ const structuredDataFor = (metadata: PublicRouteMetadata, canonical: string) => 
     '@id': `${PRIMARY_SITE_ORIGIN}/#organization`,
     name: 'PWAYMENT',
     url: PRIMARY_SITE_ORIGIN,
-    logo: `${PRIMARY_SITE_ORIGIN}/branding/pwayment-logo.svg`,
+    logo: `${PRIMARY_SITE_ORIGIN}/branding/PWAYMENTLOGOFINAL.png`,
   };
   const breadcrumb = {
     '@type': 'BreadcrumbList',

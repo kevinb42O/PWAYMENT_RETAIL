@@ -1,5 +1,12 @@
 import { chromium } from 'playwright';
 
+const testEmail = process.env.PWAYMENT_TEST_EMAIL;
+const testPassword = process.env.PWAYMENT_TEST_PASSWORD;
+
+if (!testEmail || !testPassword) {
+  throw new Error('Set PWAYMENT_TEST_EMAIL and PWAYMENT_TEST_PASSWORD before running this script.');
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
@@ -12,8 +19,8 @@ import { chromium } from 'playwright';
   await page.goto("http://localhost:3000/login");
 
   await page.waitForSelector('input[type="email"]', { timeout: 15000 });
-  await page.fill('input[type="email"]', 'kevin@webaanzee.be');
-  await page.fill('input[type="password"]', 'Pinakaaz420420');
+  await page.fill('input[type="email"]', testEmail);
+  await page.fill('input[type="password"]', testPassword);
 
   console.log("Clicking login button...");
   await page.click('button:has-text("Inloggen")');

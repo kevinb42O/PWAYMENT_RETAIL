@@ -16,6 +16,8 @@ import {
   InventoryAdjustmentError,
   recordInventoryCount,
 } from '../services/inventoryAdjustments';
+import { useStoreConfiguration } from '../store/useStoreConfiguration';
+import { configuredVatFallback } from '../onboarding/storeConfiguration';
 
 const COLOR_PRESETS: { label: string; cls: string }[] = [
   { label: 'Deck blauw', cls: 'bg-sky-700' },
@@ -69,6 +71,8 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
   const addCategory = useCategories((s) => s.addCategory);
   const removeCategory = useCategories((s) => s.removeCategory);
   const renameCategory = useCategories((s) => s.renameCategory);
+  const setCategoryVatRate = useCategories((s) => s.setCategoryVatRate);
+  const configuredDefaultVat = useStoreConfiguration((s) => configuredVatFallback(s.configuration));
 
   type SortKey = 'name' | 'category' | 'subCategory' | 'sku' | 'costPriceCents' | 'priceCents' | 'margin' | 'stockQty' | 'vatRate' | 'isActive';
   type SortDirection = 'asc' | 'desc';
@@ -79,6 +83,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
   const [categoryFilter, setCategoryFilter] = useState<string | 'all'>('all');
   const [search, setSearch] = useState('');
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryVatRate, setNewCategoryVatRate] = useState<number>(configuredDefaultVat);
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
   const [editingCatName, setEditingCatName] = useState<string>('');
   const [editing, setEditing] = useState<Product | null>(null);
@@ -98,6 +103,10 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
   useEffect(() => {
     setViewTab(initialTab);
   }, [initialTab]);
+
+  useEffect(() => {
+    setNewCategoryVatRate(configuredDefaultVat);
+  }, [configuredDefaultVat]);
 
   useEffect(() => {
     setHeaderContainer(document.getElementById('catalog-header-actions'));
@@ -125,9 +134,9 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
 
   const categoryVatById = useMemo(() => {
     const m = new Map<string, number>();
-    for (const c of categories) m.set(c.id, c.vatRate || BELGIAN_RETAIL_VAT_RATE);
+    for (const c of categories) m.set(c.id, c.vatRate ?? configuredDefaultVat);
     return m;
-  }, [categories]);
+  }, [categories, configuredDefaultVat]);
 
   const productCountByCat = useMemo(() => {
     const map = new Map<string, number>();
@@ -159,7 +168,10 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
         if (!term) return true;
 
         const catName = categoryNameById.get(p.category) ?? p.category;
-        const searchHaystack = [p.name, p.brand, p.supplier, p.variant, p.sku, p.barcode, p.subCategory, catName]
+        const searchHaystack = [
+          p.name, p.brand, p.supplier, p.variant, p.sku, p.barcode,
+          p.subCategory, catName, ...(p.identifiers ?? []).map((identifier) => identifier.value),
+        ]
           .filter(Boolean)
           .join(' ')
           .toLowerCase();
@@ -181,7 +193,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
         if (sortKey === 'priceCents') return mult * (a.priceCents - b.priceCents);
         if (sortKey === 'margin') return mult * (marginPercent(a.priceCents, a.costPriceCents) - marginPercent(b.priceCents, b.costPriceCents));
         if (sortKey === 'stockQty') return mult * ((a.stockQty ?? -1) - (b.stockQty ?? -1));
-        if (sortKey === 'vatRate') return mult * ((a.vatRate || BELGIAN_RETAIL_VAT_RATE) - (b.vatRate || BELGIAN_RETAIL_VAT_RATE));
+        if (sortKey === 'vatRate') return mult * ((a.vatRate ?? BELGIAN_RETAIL_VAT_RATE) - (b.vatRate ?? BELGIAN_RETAIL_VAT_RATE));
         if (sortKey === 'isActive') return mult * ((a.isActive === false ? 0 : 1) - (b.isActive === false ? 0 : 1));
 
         return 0;
@@ -189,7 +201,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
   }, [list, filter, categoryFilter, search, sortKey, sortDir, categoryNameById]);
 
   const openNew = () => {
-    const category = categories[0] || { id: 'algemeen', vatRate: BELGIAN_RETAIL_VAT_RATE };
+    const category = categories[0] || { id: 'algemeen', vatRate: configuredDefaultVat };
     setEditing({
       id: '',
       name: '',
@@ -197,7 +209,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
       subCategory: '',
       priceCents: 0,
       costPriceCents: 0,
-      vatRate: category.vatRate || BELGIAN_RETAIL_VAT_RATE,
+      vatRate: category.vatRate ?? configuredDefaultVat,
       brand: '',
       supplier: '',
       supplierCode: '',
@@ -373,7 +385,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
   };
 
   const createCategory = async () => {
-    const created = await addCategory(newCategoryName);
+    const created = await addCategory(newCategoryName, newCategoryVatRate);
     if (!created) {
       alert('Categorie kon niet toegevoegd worden (bestaat al of is ongeldig).');
       return;
@@ -562,6 +574,14 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                 placeholder="bv. Accessoires, Skateboards, Kleding, Protection..."
                 className="flex-1 bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
               />
+              <select
+                aria-label="BTW-tarief voor nieuwe categorie"
+                value={newCategoryVatRate}
+                onChange={(event) => setNewCategoryVatRate(Number(event.target.value))}
+                className="bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
+              >
+                {SUPPORTED_VAT_RATES.map((rate) => <option key={rate} value={rate}>{rate}% BTW</option>)}
+              </select>
               <button
                 onClick={() => void createCategory()}
                 className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-black shadow-xs transition-all shrink-0 cursor-pointer"
@@ -579,7 +599,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                 Alle Categorieën ({categories.length})
               </span>
               <span className="text-[11px] font-bold text-slate-400">
-                Standaard retail BTW: {BELGIAN_RETAIL_VAT_RATE}%
+                Onboarding-default: {configuredDefaultVat}%
               </span>
             </div>
 
@@ -644,13 +664,23 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                             </button>
                           </div>
                           <div className="text-[11px] text-slate-400 font-medium mt-0.5">
-                            ID: <code className="font-mono text-slate-600">{c.id}</code> • BTW: {c.vatRate || BELGIAN_RETAIL_VAT_RATE}%
+                            ID: <code className="font-mono text-slate-600">{c.id}</code> • BTW: {c.vatRate ?? BELGIAN_RETAIL_VAT_RATE}%
                           </div>
                         </div>
                       )}
                     </div>
 
                     <div className="flex items-center gap-3 shrink-0">
+                      <label className="flex items-center gap-2 text-[11px] font-bold text-slate-500">
+                        <span className="sr-only">BTW-tarief voor {c.name}</span>
+                        <select
+                          value={c.vatRate ?? configuredDefaultVat}
+                          onChange={(event) => void setCategoryVatRate(c.id, Number(event.target.value))}
+                          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                        >
+                          {SUPPORTED_VAT_RATES.map((rate) => <option key={rate} value={rate}>{rate}% BTW</option>)}
+                        </select>
+                      </label>
                       <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
                         {productCount} {productCount === 1 ? 'product' : 'producten'}
                       </span>
@@ -825,7 +855,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                           )}
                         </td>
                         <td className="py-3 px-3 text-center text-slate-500 whitespace-nowrap">
-                          {p.vatRate || BELGIAN_RETAIL_VAT_RATE}%
+                          {p.vatRate ?? BELGIAN_RETAIL_VAT_RATE}%
                         </td>
                         <td className="py-3 px-3 text-center whitespace-nowrap">
                           {p.isActive === false ? (
@@ -978,7 +1008,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                     >
                       {categories.map((c) => (
                         <option key={c.id} value={c.id}>
-                          {c.name} ({c.vatRate || BELGIAN_RETAIL_VAT_RATE}% BTW)
+                          {c.name} ({c.vatRate ?? BELGIAN_RETAIL_VAT_RATE}% BTW)
                         </option>
                       ))}
                     </select>

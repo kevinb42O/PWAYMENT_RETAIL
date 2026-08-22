@@ -4,17 +4,20 @@ import { Transaction } from '../types';
 import { formatEUR } from '../utils/money';
 import { MerchantInfo } from '../data/merchant';
 import { useMerchantProfile } from '../store/useMerchantProfile';
-import { useCustomers } from '../store/useCustomers';
-import { calculateTotals } from '../utils/vat';
+import { vatBreakdownForTransaction } from '../utils/vat';
 import { formatPaymentLabel, receiptPaymentRows } from '../utils/receiptPayments';
 import { transactionTenders } from '../utils/financial';
 import { settlementTotalCents } from '../utils/cashRounding';
 import { ReceiptBarcode } from './ReceiptBarcode';
+import {
+  receiptDiscountLabel,
+  receiptDocumentReference,
+  receiptFingerprint,
+  receiptItemDescription,
+} from '../utils/receiptPresentation';
 
 interface Props {
   transaction: Transaction;
-  /** Optional sequential ticket number shown at the top. */
-  ticketNumber?: number;
   merchantOverride?: MerchantInfo;
 }
 
@@ -35,16 +38,19 @@ const padRight = (s: string, n: number) => (s.length >= n ? s.slice(0, n) : s + 
  * The component prints cleanly via window.print() — the parent modal sets
  * a `print:` class so only the receipt appears on paper.
  */
-export const ReceiptTicket: React.FC<Props> = ({ transaction: t, ticketNumber, merchantOverride }) => {
+export const ReceiptTicket: React.FC<Props> = ({ transaction: t, merchantOverride }) => {
   const storedMerchant = useMerchantProfile((state) => state.profile);
   const merchant = merchantOverride ?? t.merchantSnapshot ?? storedMerchant;
-  const customers = useCustomers((state) => state.customers);
-  const customer = t.customerId ? customers.find((c) => c.id === t.customerId) : null;
-  const customerDisplayName = customer ? customer.name : t.customerId;
 
-  // Recompute VAT splits from items so the on-screen ticket also has excl values
-  // (the persisted Transaction only stores vat12/vat21, not excl per bracket).
-  const totals = calculateTotals(t.items, t.discountCents);
+  const vatBreakdown = vatBreakdownForTransaction(t);
+  const vatTotals = vatBreakdown.reduce(
+    (sum, line) => ({
+      exclCents: sum.exclCents + line.exclCents,
+      vatCents: sum.vatCents + line.vatCents,
+      grossCents: sum.grossCents + line.grossCents,
+    }),
+    { exclCents: 0, vatCents: 0, grossCents: 0 },
+  );
   const paymentRows = receiptPaymentRows(t);
   const tenders = transactionTenders(t);
   const cashTenderCents = tenders
@@ -65,7 +71,6 @@ export const ReceiptTicket: React.FC<Props> = ({ transaction: t, ticketNumber, m
         <div>{merchant.addressLine2}</div>
         <div className="mt-1">BTW: {merchant.vatNumber}</div>
         {merchant.phone && <div>Tel: {merchant.phone}</div>}
-        {merchant.website && <div>{merchant.website}</div>}
       </div>
 
       <Sep />
@@ -73,10 +78,7 @@ export const ReceiptTicket: React.FC<Props> = ({ transaction: t, ticketNumber, m
       {/* Meta */}
       <div className="space-y-0.5">
         <Row left="Datum" right={format(t.timestamp, 'dd/MM/yyyy HH:mm')} />
-        {ticketNumber != null && (
-          <Row left="Ticket" right={`#${String(ticketNumber).padStart(5, '0')}`} />
-        )}
-        {t.id != null && <Row left="Transactie" right={`#${t.id}`} />}
+        <Row left="Ticketnr." right={receiptDocumentReference(t)} />
         <Row left="Kassa" right={`${t.tableId}`} />
         {t.userName && <Row left="Kassier" right={t.userName} />}
       </div>
@@ -91,16 +93,16 @@ export const ReceiptTicket: React.FC<Props> = ({ transaction: t, ticketNumber, m
           const lineTotal = unit * item.quantity;
           return (
             <div key={item.lineId ?? idx}>
-              <div className="flex justify-between">
-                <span className="truncate pr-2">
+              <div className="flex justify-between gap-2">
+                <span className="min-w-0 break-words pr-2">
                   {padRight(`${item.quantity}x`, 4)}
-                  {item.product.name}
+                  {receiptItemDescription(item)}
                 </span>
                 <span className="tabular-nums whitespace-nowrap">{formatEUR(lineTotal)}</span>
               </div>
               <div className="text-zinc-600 text-[10px] pl-7">
                 à {formatEUR(unit)}
-                {`  (${item.product.vatRate || 21}%)`}
+                {`  (${item.product.vatRate ?? 21}%)`}
               </div>
               {(item.modifiers ?? []).map((m) => (
                 <div key={m.id} className="pl-7 flex justify-between text-[10px]">
@@ -125,7 +127,7 @@ export const ReceiptTicket: React.FC<Props> = ({ transaction: t, ticketNumber, m
         <Row left="Subtotaal" right={formatEUR(t.subtotalCents)} />
         {t.discountCents > 0 && (
           <Row
-            left={`Korting${t.discountReason ? ` (${t.discountReason})` : ''}`}
+            left={receiptDiscountLabel()}
             right={`-${formatEUR(t.discountCents)}`}
           />
         )}
@@ -161,29 +163,24 @@ export const ReceiptTicket: React.FC<Props> = ({ transaction: t, ticketNumber, m
           <span className="text-right">BTW</span>
           <span className="text-right">Incl.</span>
 
-          {totals.discounted12 > 0 && (
-            <>
-              <span>12%</span>
-              <span className="text-right tabular-nums">{formatEUR(totals.exclVat12)}</span>
-              <span className="text-right tabular-nums">{formatEUR(totals.vat12)}</span>
-              <span className="text-right tabular-nums">{formatEUR(totals.discounted12)}</span>
-            </>
-          )}
-
-          <span>21%</span>
-          <span className="text-right tabular-nums">{formatEUR(totals.exclVat21)}</span>
-          <span className="text-right tabular-nums">{formatEUR(totals.vat21)}</span>
-          <span className="text-right tabular-nums">{formatEUR(totals.discounted21)}</span>
+          {vatBreakdown.map((line) => (
+            <React.Fragment key={line.rate}>
+              <span>{line.rate}%</span>
+              <span className="text-right tabular-nums">{formatEUR(line.exclCents)}</span>
+              <span className="text-right tabular-nums">{formatEUR(line.vatCents)}</span>
+              <span className="text-right tabular-nums">{formatEUR(line.grossCents)}</span>
+            </React.Fragment>
+          ))}
 
           <span className="font-bold">Totaal</span>
           <span className="text-right tabular-nums font-bold">
-            {formatEUR(totals.exclVat12 + totals.exclVat21)}
+            {formatEUR(vatTotals.exclCents)}
           </span>
           <span className="text-right tabular-nums font-bold">
-            {formatEUR(totals.vat12 + totals.vat21)}
+            {formatEUR(vatTotals.vatCents)}
           </span>
           <span className="text-right tabular-nums font-bold">
-            {formatEUR(totals.discounted12 + totals.discounted21)}
+            {formatEUR(vatTotals.grossCents)}
           </span>
         </div>
       </div>
@@ -244,7 +241,6 @@ export const ReceiptTicket: React.FC<Props> = ({ transaction: t, ticketNumber, m
             />
           ) : null,
         )}
-        {customerDisplayName && <Row left="Klant" right={customerDisplayName} />}
       </div>
 
       {/* Footer */}
@@ -259,7 +255,7 @@ export const ReceiptTicket: React.FC<Props> = ({ transaction: t, ticketNumber, m
           BTW inbegrepen — bewaar uw ticket.
         </div>
         <div className="mt-2 break-all opacity-60">
-          {format(t.timestamp, 'yyyyMMdd-HHmmss')}-R{t.tableId}-{t.id ?? '—'}
+          {receiptFingerprint(t, format(t.timestamp, 'yyyyMMdd-HHmmss'))}
         </div>
       </div>
 
@@ -268,6 +264,7 @@ export const ReceiptTicket: React.FC<Props> = ({ transaction: t, ticketNumber, m
       {t.receiptBarcode && (
         <div className="my-3 flex flex-col items-center justify-center text-center">
           <ReceiptBarcode value={t.receiptBarcode} />
+          <span className="mt-1 text-[9px]">Voor retour of omruiling in deze winkel.</span>
         </div>
       )}
     </div>

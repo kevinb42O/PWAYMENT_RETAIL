@@ -7,6 +7,7 @@ export interface CustomerDisplayConfig {
   idleHeadline: string;
   idleMessage: string;
   accentColor: string;
+  logoUrl?: string;
   showClock: boolean;
   showVatBreakdown: boolean;
   showPaymentMethods: boolean;
@@ -19,6 +20,7 @@ export const DEFAULT_CUSTOMER_DISPLAY_CONFIG: CustomerDisplayConfig = {
   idleHeadline: "Welkom",
   idleMessage: "We helpen je zo verder.",
   accentColor: "#0891b2",
+  logoUrl: "",
   showClock: true,
   showVatBreakdown: false,
   showPaymentMethods: true,

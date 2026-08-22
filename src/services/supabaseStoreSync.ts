@@ -70,6 +70,32 @@ const jsonArray = <T>(value: Json | null): T[] =>
 
 const jsonObject = <T>(value: Json | null): T => (value ?? {}) as T;
 
+/** Accept only a complete, internally reconciling VAT snapshot from the API. */
+const validVatBreakdown = (value: unknown): Transaction["vatBreakdown"] => {
+  const rows = Array.isArray(value) ? value as Array<{
+    rate?: unknown;
+    grossCents?: unknown;
+    exclCents?: unknown;
+    vatCents?: unknown;
+  }> : [];
+  const allowed = new Set([0, 6, 12, 21]);
+  const parsed = rows.flatMap((row) => {
+    const rate = Number(row.rate);
+    const grossCents = Number(row.grossCents);
+    const exclCents = Number(row.exclCents);
+    const vatCents = Number(row.vatCents);
+    return allowed.has(rate)
+      && [grossCents, exclCents, vatCents].every(Number.isSafeInteger)
+      && grossCents === exclCents + vatCents
+      ? [{ rate: rate as 0 | 6 | 12 | 21, grossCents, exclCents, vatCents }]
+      : [];
+  });
+  const hasUniqueRates = new Set(parsed.map((line) => line.rate)).size === parsed.length;
+  return parsed.length > 0 && parsed.length === rows.length && hasUniqueRates
+    ? parsed
+    : undefined;
+};
+
 const blankMerchant = (name: string): MerchantInfo => ({
   ...DEFAULT_MERCHANT,
   name,
@@ -101,6 +127,12 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
   const [
     categoryRows,
     productRows,
+    productFamilyRows,
+    productFamilyVariantRows,
+    optionDefinitionRows,
+    optionValueRows,
+    variantOptionRows,
+    productIdentifierRows,
     customerRows,
     transactionRows,
     transactionLineRows,
@@ -117,6 +149,7 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
     dailyReportRows,
     dailyReportTransactionRows,
     membershipRows,
+    capabilityAssessmentRows,
     storeResult,
     webshopResult,
   ] = await Promise.all([
@@ -134,6 +167,51 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
         .select("*")
         .eq("store_id", storeId)
         .order("name")
+        .range(from, to),
+    ),
+    // Catalog relations are a rolling-deployment addition. An older project
+    // may not expose these tables yet; in that case legacy SKU/barcode POS
+    // behaviour remains intact rather than failing the whole store hydration.
+    fetchAllSafe<Row<"product_families">>((from, to) =>
+      supabase
+        .from("product_families")
+        .select("*")
+        .eq("store_id", storeId)
+        .range(from, to),
+    ),
+    fetchAllSafe<Row<"product_family_variants">>((from, to) =>
+      supabase
+        .from("product_family_variants")
+        .select("*")
+        .eq("store_id", storeId)
+        .range(from, to),
+    ),
+    fetchAllSafe<Row<"product_family_option_definitions">>((from, to) =>
+      supabase
+        .from("product_family_option_definitions")
+        .select("*")
+        .eq("store_id", storeId)
+        .range(from, to),
+    ),
+    fetchAllSafe<Row<"product_family_option_values">>((from, to) =>
+      supabase
+        .from("product_family_option_values")
+        .select("*")
+        .eq("store_id", storeId)
+        .range(from, to),
+    ),
+    fetchAllSafe<Row<"product_variant_option_values">>((from, to) =>
+      supabase
+        .from("product_variant_option_values")
+        .select("*")
+        .eq("store_id", storeId)
+        .range(from, to),
+    ),
+    fetchAllSafe<Row<"product_identifiers">>((from, to) =>
+      supabase
+        .from("product_identifiers")
+        .select("*")
+        .eq("store_id", storeId)
         .range(from, to),
     ),
     fetchAll<Row<"customers">>((from, to) =>
@@ -263,6 +341,13 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
         .eq("status", "active")
         .range(from, to),
     ),
+    fetchAllSafe<Row<"store_capability_assessments">>((from, to) =>
+      supabase
+        .from("store_capability_assessments")
+        .select("*")
+        .eq("store_id", storeId)
+        .range(from, to),
+    ),
     supabase.from("stores").select("*").eq("id", storeId).single(),
     supabase
       .from("webshop_settings")
@@ -301,14 +386,6 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
     };
   });
 
-  const categories: ProductCategory[] = categoryRows.map((row) => ({
-    id: row.external_id ?? row.id,
-    serverId: row.id,
-    name: row.name,
-    vatRate: Number(row.vat_rate),
-    sortOrder: row.sort_order ?? undefined,
-    isActive: row.is_active,
-  }));
   // The local POS stores the stable external category ID on each product,
   // while the server also carries the human-readable category_name for SQL
   // reporting. Restoring the name here breaks category navigation after a
@@ -316,10 +393,59 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
   const categoryExternalIdByDatabaseId = new Map(
     categoryRows.map((row) => [row.id, row.external_id ?? row.id]),
   );
+  const categories: ProductCategory[] = categoryRows.map((row) => ({
+    id: row.external_id ?? row.id,
+    serverId: row.id,
+    parentId: row.parent_id
+      ? categoryExternalIdByDatabaseId.get(row.parent_id)
+      : undefined,
+    name: row.name,
+    vatRate: Number(row.vat_rate),
+    sortOrder: row.sort_order ?? undefined,
+    isActive: row.is_active,
+  }));
+
+  const familyVariantByProductId = new Map(
+    productFamilyVariantRows.map((variant) => [variant.product_id, variant]),
+  );
+  const optionDefinitionById = new Map(
+    optionDefinitionRows
+      .filter((definition) => definition.is_active)
+      .map((definition) => [definition.id, definition]),
+  );
+  const optionValueById = new Map(
+    optionValueRows
+      .filter((optionValue) => optionValue.is_active)
+      .map((optionValue) => [optionValue.id, optionValue]),
+  );
+  const variantOptionsByProductId = new Map<string, Record<string, string>>();
+  for (const assignment of variantOptionRows) {
+    const definition = optionDefinitionById.get(assignment.definition_id);
+    const optionValue = optionValueById.get(assignment.value_id);
+    if (!definition || !optionValue || definition.family_id !== assignment.family_id || optionValue.family_id !== assignment.family_id) continue;
+    const options = variantOptionsByProductId.get(assignment.product_id) ?? {};
+    options[definition.name] = optionValue.value;
+    variantOptionsByProductId.set(assignment.product_id, options);
+  }
+  const identifiersByProductId = new Map<string, Product["identifiers"]>();
+  for (const identifier of productIdentifierRows) {
+    if (!identifier.is_active) continue;
+    const list = identifiersByProductId.get(identifier.product_id) ?? [];
+    list.push({
+      type: identifier.identifier_type as NonNullable<Product["identifiers"]>[number]["type"],
+      value: identifier.identifier_value,
+      isScannable: identifier.is_scannable,
+      isPrimary: identifier.is_primary,
+    });
+    identifiersByProductId.set(identifier.product_id, list);
+  }
 
   const products: Product[] = productRows.map((row) => {
     const id = row.external_id ?? row.id;
     const previous = previousProductById.get(id);
+    const familyVariant = familyVariantByProductId.get(row.id);
+    const variantOptions = variantOptionsByProductId.get(row.id);
+    const identifiers = identifiersByProductId.get(row.id);
     return {
     id,
     name: row.name,
@@ -336,7 +462,10 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
     brand: row.brand ?? undefined,
     supplier: row.supplier ?? undefined,
     supplierCode: row.supplier_code === undefined ? previous?.supplierCode : row.supplier_code ?? undefined,
-    variant: row.variant ?? undefined,
+    variant: row.variant ?? familyVariant?.display_name ?? undefined,
+    familyId: familyVariant?.family_id,
+    variantOptions: variantOptions && Object.keys(variantOptions).length > 0 ? variantOptions : undefined,
+    identifiers: identifiers?.length ? identifiers : previous?.identifiers,
     priceTiers: row.price_tiers === undefined
       ? previous?.priceTiers
       : jsonObject<Record<string, number>>(row.price_tiers),
@@ -455,6 +584,7 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
       };
     }),
     subtotalCents: Number(row.subtotal_cents),
+    vatBreakdown: validVatBreakdown(row.vat_breakdown),
     vat12Cents: Number(row.vat_12_cents),
     vat21Cents: Number(row.vat_21_cents),
     totalCents: Number(row.total_cents),
@@ -626,6 +756,7 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
   );
   const dailyReports: DailyReport[] = dailyReportRows.map((row, index) => {
     const totals = jsonObject<Partial<DailyReport>>(row.totals);
+    const totalVatBreakdown = validVatBreakdown(totals.totalVatBreakdown);
     return {
       ...totals,
       id: index + 1,
@@ -639,6 +770,7 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
       totalVat21Cents: Number(totals.totalVat21Cents ?? 0),
       totalExclVat12Cents: Number(totals.totalExclVat12Cents ?? 0),
       totalExclVat21Cents: Number(totals.totalExclVat21Cents ?? 0),
+      totalVatBreakdown,
       totalDiscountCents: Number(totals.totalDiscountCents ?? 0),
       totalCashRoundingAdjustmentCents: Number(
         totals.totalCashRoundingAdjustmentCents ?? 0,
@@ -758,9 +890,25 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
   });
 
   const store = storeResult.data;
-  const storeConfiguration = normalizeStoreConfiguration(
+  const persistedStoreConfiguration = normalizeStoreConfiguration(
     store.onboarding_config,
   );
+  // Platform-confirmed lifecycle states (`enabled` and `blocked`) are stored
+  // relationally, so a stale browser payload can never present them as a
+  // merchant-editable answer. Missing rows are intentionally left unknown for
+  // stores that predate the retail-profile migration.
+  const storeConfiguration = {
+    ...persistedStoreConfiguration,
+    capabilities: {
+      ...persistedStoreConfiguration.capabilities,
+      ...Object.fromEntries(
+        capabilityAssessmentRows.map((assessment) => [
+          assessment.capability_code,
+          assessment.state,
+        ]),
+      ),
+    },
+  };
   const shouldOpenRecommendedStart =
     Boolean(storeConfiguration.completedAt) &&
     !storeConfiguration.firstRunCompleted;

@@ -6,8 +6,8 @@ import { OrderItem } from '../types';
 /**
  * The old database name that was shared (same localhost origin, same name)
  * with the pwayment_horeca project, which let foreign horeca rows leak into
- * the retail data. We copy the retail-compatible rows out exactly once and
- * leave the legacy database untouched for the other project.
+ * the retail data. We copy only rows whose VAT can be booked by the retail
+ * engine, without treating a valid rate such as 6% as proof of horeca.
  */
 export const LEGACY_DB_NAME = 'POSDatabase';
 
@@ -51,7 +51,8 @@ const transactionIsRetail = (t: { items?: OrderItem[] }): boolean =>
 /**
  * One-time copy of the legacy shared 'POSDatabase' into the renamed
  * per-project database. Rows with VAT rates this engine cannot book
- * (horeca leakage) are skipped. Idempotent via a localStorage flag.
+ * are skipped. A VAT rate alone does not identify horeca, so every valid
+ * Belgian retail rate is preserved. Idempotent via a localStorage flag.
  */
 export const migrateLegacyDatabase = async (): Promise<LegacyMigrationResult> => {
   if (localStorage.getItem(MIGRATION_FLAG)) return NOOP;

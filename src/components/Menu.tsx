@@ -352,7 +352,7 @@ export const Menu: React.FC<MenuProps> = ({ query, onQueryChange }) => {
               <div className="mt-1 text-xs text-slate-500">
                 {term
                   ? exactCodeMatch
-                    ? `${resultLabel}. Exacte ${exactCodeMatch.matchedOn === "barcode" ? "barcode" : "SKU"}-match voor ${exactCodeMatch.product.name}.`
+                    ? `${resultLabel}. Exacte ${exactCodeMatch.matchedOn === "barcode" ? "barcode" : exactCodeMatch.matchedOn === "identifier" ? "productidentificatie" : "SKU"}-match voor ${exactCodeMatch.product.name}.`
                     : `${resultLabel}. Zoek op barcode, SKU, product, merk of subcategorie.`
                   : `${resultLabel}. Filter verder op merk of kies een product.`}
               </div>

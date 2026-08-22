@@ -253,6 +253,12 @@ export const createRefund = async (
         subtotalCents: -positiveTotals.subtotal,
         discountCents: -positiveTotals.discount,
         totalCents: -positiveTotals.total,
+        vatBreakdown: positiveTotals.vatBreakdown.map((line) => ({
+          ...line,
+          grossCents: -line.grossCents,
+          exclCents: -line.exclCents,
+          vatCents: -line.vatCents,
+        })),
         vat12Cents: -positiveTotals.vat12,
         vat21Cents: -positiveTotals.vat21,
         paymentMethod: input.method,

@@ -1,5 +1,9 @@
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  completeStoreConfiguration,
+  createStoreConfigurationDraft,
+} from "../onboarding/storeConfiguration";
 
 const loadFixtureAuth = async () => {
   vi.resetModules();
@@ -43,6 +47,10 @@ describe("fixture authentication", () => {
 
   it("creates an isolated fixture owner only with a valid six-digit PIN", async () => {
     const { db, useAuth } = await loadFixtureAuth();
+    const onboardingConfiguration = completeStoreConfiguration({
+      ...createStoreConfigurationDraft(),
+      industry: "general-retail",
+    });
     const invalid = await useAuth.getState().registerAccount({
       firstName: "E2E",
       lastName: "Owner",
@@ -50,6 +58,7 @@ describe("fixture authentication", () => {
       email: "owner@example.test",
       password: "CorrectHorseBattery12!",
       pin: "123",
+      onboardingConfiguration,
     });
     expect(invalid).toMatchObject({ success: false });
 
@@ -60,6 +69,7 @@ describe("fixture authentication", () => {
       email: "owner@example.test",
       password: "CorrectHorseBattery12!",
       pin: "654321",
+      onboardingConfiguration,
     });
     expect(created).toEqual({ success: true });
     expect(useAuth.getState()).toMatchObject({

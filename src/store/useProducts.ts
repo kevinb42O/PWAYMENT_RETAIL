@@ -44,6 +44,12 @@ const normalizeProduct = (p: Product): Product => {
       : Number.isFinite(p.minStockQty)
         ? Math.max(0, Math.floor(p.minStockQty))
         : undefined;
+  const identifiers = (p.identifiers ?? [])
+    .map((identifier) => ({
+      ...identifier,
+      value: identifier.value.trim(),
+    }))
+    .filter((identifier) => Boolean(identifier.value));
 
   return {
     ...p,
@@ -58,6 +64,7 @@ const normalizeProduct = (p: Product): Product => {
     vatRate: p.vatRate,
     stockQty,
     minStockQty,
+    identifiers: identifiers.length > 0 ? identifiers : undefined,
   };
 };
 

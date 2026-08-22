@@ -18,7 +18,7 @@ import {
 } from "./financial";
 import { generateHash } from "./crypto";
 import { allocateCents } from "./money";
-import { calculateTotals } from "./vat";
+import { calculateTotals, vatBreakdownForTransaction } from "./vat";
 import { settlementTotalCents } from "./cashRounding";
 import { synchronizeFinancialLedgerBeforeReport } from "../services/outboxWorker";
 
@@ -88,15 +88,37 @@ const financialParts = (transaction: Transaction) => {
     0,
   );
   const liabilityAddedCents = transaction.totalCents - commerceRevenueCents;
-  const rawVat =
-    commerceItems.length > 0
+  const rawVat = commerceItems.length === transaction.items.length
+    ? (() => {
+      const vatBreakdown = vatBreakdownForTransaction(transaction).map((line) => ({
+        ...line,
+        grossCents: Math.abs(line.grossCents),
+        exclCents: Math.abs(line.exclCents),
+        vatCents: Math.abs(line.vatCents),
+      }));
+      const byRate = new Map(vatBreakdown.map((line) => [line.rate, line]));
+      return {
+        vat12: byRate.get(12)?.vatCents ?? 0,
+        vat21: byRate.get(21)?.vatCents ?? 0,
+        exclVat12: byRate.get(12)?.exclCents ?? 0,
+        exclVat21: byRate.get(21)?.exclCents ?? 0,
+        vatBreakdown,
+      };
+    })()
+    : commerceItems.length > 0
       ? calculateTotals(commerceItems, commerceDiscount)
-      : { vat12: 0, vat21: 0, exclVat12: 0, exclVat21: 0 };
+      : { vat12: 0, vat21: 0, exclVat12: 0, exclVat21: 0, vatBreakdown: [] };
   const vat = {
     vat12: rawVat.vat12 * direction,
     vat21: rawVat.vat21 * direction,
     exclVat12: rawVat.exclVat12 * direction,
     exclVat21: rawVat.exclVat21 * direction,
+    breakdown: rawVat.vatBreakdown.map((line) => ({
+      ...line,
+      grossCents: line.grossCents * direction,
+      exclCents: line.exclCents * direction,
+      vatCents: line.vatCents * direction,
+    })),
   };
   return { commerceRevenueCents, liabilityAddedCents, vat };
 };
@@ -109,6 +131,7 @@ export interface ReportData {
   totalVat21Cents: number;
   totalExclVat12Cents: number;
   totalExclVat21Cents: number;
+  totalVatBreakdown: NonNullable<DailyReport["totalVatBreakdown"]>;
   totalDiscountCents: number;
   totalCashRoundingAdjustmentCents: number;
   paymentTotalsCents: PaymentTotals;
@@ -132,6 +155,12 @@ export const calculateReportData = (
     totalVat21Cents: 0,
     totalExclVat12Cents: 0,
     totalExclVat21Cents: 0,
+    totalVatBreakdown: [0, 6, 12, 21].map((rate) => ({
+      rate: rate as 0 | 6 | 12 | 21,
+      grossCents: 0,
+      exclCents: 0,
+      vatCents: 0,
+    })),
     totalDiscountCents: 0,
     totalCashRoundingAdjustmentCents: 0,
     paymentTotalsCents: emptyPaymentTotals(),
@@ -167,6 +196,13 @@ export const calculateReportData = (
     out.totalVat21Cents += parts.vat.vat21;
     out.totalExclVat12Cents += parts.vat.exclVat12;
     out.totalExclVat21Cents += parts.vat.exclVat21;
+    for (const line of parts.vat.breakdown) {
+      const target = out.totalVatBreakdown.find((candidate) => candidate.rate === line.rate);
+      if (!target) continue;
+      target.grossCents += line.grossCents;
+      target.exclCents += line.exclCents;
+      target.vatCents += line.vatCents;
+    }
     out.totalDiscountCents += transaction.discountCents;
     out.totalCashRoundingAdjustmentCents += transaction.roundingAdjustmentCents ?? 0;
     addTenders(out.paymentTotalsCents, tenders);
@@ -219,6 +255,7 @@ const canonicalTransaction = (transaction: Transaction) => ({
   roundingAdjustmentCents: transaction.roundingAdjustmentCents ?? 0,
   vat12Cents: transaction.vat12Cents,
   vat21Cents: transaction.vat21Cents,
+  vatBreakdown: transaction.vatBreakdown ?? [],
   tenders: transactionTenders(transaction),
   giftCardAllocations: transaction.giftCardAllocations ?? [],
   userId: transaction.userId,
@@ -239,7 +276,11 @@ export const verifyZReport = async (
   transactions: Transaction[],
   events: GiftCardEvent[] = [],
 ): Promise<boolean> => {
-  if (report.hashPayloadVersion === 3 && report.serverHashPayload) {
+  // Server-authoritative hashes use the exact canonical payload held by the
+  // server. Version 4 adds the retail VAT matrix; keep all future server
+  // versions on this path rather than accidentally rebuilding a different
+  // browser payload.
+  if ((report.hashPayloadVersion ?? 0) >= 3 && report.serverHashPayload) {
     return (await generateHash(report.serverHashPayload)) === report.hash;
   }
   const payload = JSON.stringify({
@@ -313,6 +354,7 @@ export const generateZReport = async (
         totalVat21Cents: reportData.totalVat21Cents,
         totalExclVat12Cents: reportData.totalExclVat12Cents,
         totalExclVat21Cents: reportData.totalExclVat21Cents,
+        totalVatBreakdown: reportData.totalVatBreakdown,
         totalDiscountCents: reportData.totalDiscountCents,
         totalCashRoundingAdjustmentCents:
           reportData.totalCashRoundingAdjustmentCents,

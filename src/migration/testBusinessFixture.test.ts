@@ -24,7 +24,14 @@ describe("multi-year telecom retail test fixture", () => {
     expect(catalog.issues).toEqual([]);
     expect(customers.issues).toEqual([]);
     expect(catalog.products).toHaveLength(213);
-    expect(catalog.categories).toHaveLength(6);
+    // The importer must retain the source taxonomy, not collapse every
+    // subcategory into a display-only string. This fixture has six roots and
+    // ten children (one child is used by each product family).
+    expect(catalog.categories).toHaveLength(16);
+    expect(catalog.categories.filter((category) => !category.parentId)).toHaveLength(6);
+    expect(catalog.categories.filter((category) => category.parentId)).toHaveLength(10);
+    expect(catalog.categories.every((category) => !category.parentId
+      || catalog.categories.some((parent) => parent.id === category.parentId))).toBe(true);
     expect(catalog.products.some((product) => product.subCategory === "Android toestellen")).toBe(true);
     expect(customers.customers).toHaveLength(240);
     expect(catalog.products.some((product) => product.priceTiers?.["telenet-klant"] != null)).toBe(true);

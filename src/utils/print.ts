@@ -2,6 +2,8 @@ import { Transaction } from '../types';
 import { formatEUR } from './money';
 import { getMerchantProfileSnapshot } from '../store/useMerchantProfile';
 import { receiptPaymentRows } from './receiptPayments';
+import { vatBreakdownForTransaction } from './vat';
+import { receiptDiscountLabel, receiptDocumentReference } from './receiptPresentation';
 
 /**
  * Receipt printing adapter. The default ConsolePrintAdapter writes a formatted
@@ -9,12 +11,12 @@ import { receiptPaymentRows } from './receiptPayments';
  * ESC/POS WebUSB adapter in production.
  */
 export interface PrintAdapter {
-  printReceipt(transaction: Transaction): Promise<void>;
+  printReceipt(transaction: Transaction, options?: { copy?: "original" | "reprint" }): Promise<void>;
 }
 
 class ConsolePrintAdapter implements PrintAdapter {
-  async printReceipt(t: Transaction): Promise<void> {
-    const merchant = getMerchantProfileSnapshot();
+  async printReceipt(t: Transaction, options?: { copy?: "original" | "reprint" }): Promise<void> {
+    const merchant = t.merchantSnapshot ?? getMerchantProfileSnapshot();
     const lines: string[] = [];
     lines.push(`-------------------- ${merchant.name} --------------------`);
     if (merchant.legalName && merchant.legalName !== merchant.name) lines.push(merchant.legalName);
@@ -22,6 +24,8 @@ class ConsolePrintAdapter implements PrintAdapter {
     lines.push(merchant.addressLine2);
     lines.push(`BTW: ${merchant.vatNumber}`);
     if (merchant.website) lines.push(merchant.website);
+    if (options?.copy === "reprint") lines.push('*** HERDRUK ***');
+    lines.push(`Ticketnr.: ${receiptDocumentReference(t)}`);
     lines.push(`Kassa ${t.tableId}    ${new Date(t.timestamp).toLocaleString('nl-BE')}`);
     if (t.userName) lines.push(`Kassier: ${t.userName}`);
     lines.push('--------------------------------------------------');
@@ -40,9 +44,10 @@ class ConsolePrintAdapter implements PrintAdapter {
     }
     lines.push('--------------------------------------------------');
     lines.push(`Subtotaal:               ${formatEUR(t.subtotalCents)}`);
-    if (t.discountCents > 0) lines.push(`Korting:                -${formatEUR(t.discountCents)}`);
-    lines.push(`BTW 21%:                 ${formatEUR(t.vat21Cents)}`);
-    if (t.vat12Cents > 0) lines.push(`BTW 12%:                 ${formatEUR(t.vat12Cents)}`);
+    if (t.discountCents > 0) lines.push(`${receiptDiscountLabel()}:                -${formatEUR(t.discountCents)}`);
+    for (const vat of vatBreakdownForTransaction(t)) {
+      lines.push(`BTW ${String(vat.rate).padEnd(2)}%:                 ${formatEUR(vat.vatCents)}`);
+    }
     lines.push(`TOTAAL:                  ${formatEUR(t.totalCents)}`);
     lines.push(`Betaald via: ${t.paymentMethod}`);
     if (t.paymentMethod === 'Split' || t.paymentMethod === 'Cadeaubon') {
@@ -76,5 +81,5 @@ export const setPrintAdapter = (a: PrintAdapter): void => {
   adapter = a;
 };
 
-export const printReceipt = (t: Transaction): Promise<void> =>
-  adapter.printReceipt(t);
+export const printReceipt = (t: Transaction, options?: { copy?: "original" | "reprint" }): Promise<void> =>
+  adapter.printReceipt(t, options);

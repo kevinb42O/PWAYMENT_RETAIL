@@ -142,7 +142,11 @@ const getProductImage = (product: Product, configuredImages: Record<string, stri
 const buildProductGroups = (products: Product[]): ProductGroup[] => {
   const grouped = new Map<string, ProductGroup>();
   products.forEach((product) => {
-    const key = `${product.brand || ''}|${product.category}|${product.name}`.toLowerCase();
+    // A relational family is explicit merchant data. Only older local caches
+    // without one fall back to the original name-based grouping heuristic.
+    const key = product.familyId
+      ? `family:${product.familyId}`
+      : `legacy:${product.brand || ''}|${product.category}|${product.name}`.toLowerCase();
     const existing = grouped.get(key);
     if (existing) {
       existing.products.push(product);

@@ -10,6 +10,7 @@ import type {
   ProductCategory,
 } from "../types";
 import type { RetailConfigurationProposal } from "../migration/types";
+import type { RetailCatalogFamilyRelation } from "../migration/recordMapper";
 import type {
   MigrationActivationOutboxPayload,
   MigrationUndoOutboxPayload,
@@ -27,6 +28,7 @@ export interface MigrationExecutionResult {
   productCount: number;
   customerCount: number;
   categoryCount: number;
+  catalogFamilyCount: number;
 }
 
 const assertDistinctIds = (
@@ -96,6 +98,7 @@ export const executeMigration = async (
   mappedCustomers: Customer[],
   mappedCategories: ProductCategory[] = [],
   integrationRun?: MigrationActivationOutboxPayload["integrationRun"],
+  catalogFamilies: RetailCatalogFamilyRelation[] = [],
 ): Promise<MigrationExecutionResult> => {
   const normalizedStoreId = storeId.trim();
   if (!normalizedStoreId) {
@@ -123,6 +126,7 @@ export const executeMigration = async (
       createdProducts: mappedProducts.length,
       createdCustomers: mappedCustomers.length,
       createdCategories: mappedCategories.length,
+      createdCatalogFamilies: catalogFamilies.length,
     },
     activatedAt: now,
     createdAt: now,
@@ -170,6 +174,7 @@ export const executeMigration = async (
         categories: mappedCategories,
         products: mappedProducts,
         customers: mappedCustomers,
+        catalogFamilies,
         inverseChanges,
         integrationRun,
       };
@@ -186,6 +191,7 @@ export const executeMigration = async (
         productCount: mappedProducts.length,
         customerCount: mappedCustomers.length,
         categoryCount: mappedCategories.length,
+        catalogFamilyCount: catalogFamilies.length,
       };
     },
   );

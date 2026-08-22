@@ -48,7 +48,7 @@ describe('calculateTotals', () => {
     const t = calculateTotals(orders, 137);
     expect(t.subtotal).toBe(6495 + 3995 * 2 + 995);
     expect(t.total).toBe(t.subtotal - 137);
-    expect(t.exclVat12 + t.vat12 + t.exclVat21 + t.vat21).toBe(t.total);
+    expect(t.vatBreakdown.reduce((sum, line) => sum + line.exclCents + line.vatCents, 0)).toBe(t.total);
   });
 
   it('allocates discount proportionally when multiple rates exist', () => {
@@ -57,8 +57,21 @@ describe('calculateTotals', () => {
     expect(t.discounted21).toBe(900);
   });
 
-  it('rejects rates the engine cannot book instead of silently taxing at 21%', () => {
-    for (const rate of [0, 6, 9, 25, Number.NaN]) {
+  it('books 0%, 6%, 12% and 21% separately while preserving every cent', () => {
+    const t = calculateTotals([
+      item(1_060, 1, 0),
+      item(1_060, 1, 6),
+      item(1_120, 1, 12),
+      item(1_210, 1, 21),
+    ], 137);
+    expect(t.total).toBe(4_313);
+    expect(t.vatBreakdown.map((line) => line.rate)).toEqual([0, 6, 12, 21]);
+    expect(t.vatBreakdown.reduce((sum, line) => sum + line.grossCents, 0)).toBe(t.total);
+    expect(t.vatBreakdown.reduce((sum, line) => sum + line.exclCents + line.vatCents, 0)).toBe(t.total);
+  });
+
+  it('rejects rates the engine cannot book instead of silently taxing at a supported rate', () => {
+    for (const rate of [9, 25, Number.NaN]) {
       const order = item(1060, 1);
       order.product.vatRate = rate;
       expect(() => calculateTotals([order])).toThrow(UnsupportedVatRateError);
@@ -67,8 +80,8 @@ describe('calculateTotals', () => {
 
   it('reports which lines block checkout', () => {
     const bad = item(1060, 1);
-    bad.product.vatRate = 6;
+    bad.product.vatRate = 9;
     expect(findUnsupportedVatItems([item(1210, 1), bad])).toEqual([bad]);
-    expect(findUnsupportedVatItems([item(1210, 1), item(1120, 1, 12)])).toEqual([]);
+    expect(findUnsupportedVatItems([item(1210, 1), item(1060, 1, 6), item(1120, 1, 12)])).toEqual([]);
   });
 });

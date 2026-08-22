@@ -46,6 +46,14 @@ import {
   loadDailyReportDaySummaries,
 } from "../services/dailyReportDetail";
 import { Button } from "./ui/Button";
+import { vatBreakdownForReport } from "../utils/vatReport";
+
+const reportVatTotal = (report: DailyReport) =>
+  vatBreakdownForReport(report).reduce((sum, line) => sum + line.vatCents, 0);
+
+const dayVatTotal = (day: DailyReportDaySummary) => day.totalVatBreakdown.length > 0
+  ? day.totalVatBreakdown.reduce((sum, line) => sum + line.vatCents, 0)
+  : day.totalVat12Cents + day.totalVat21Cents;
 
 const InvoicePreviewModal = React.lazy(() =>
   import("./InvoicePreviewModal").then((module) => ({
@@ -237,6 +245,8 @@ export const AuditLog: React.FC<AuditLogProps> = ({
         "Cash",
         "PIN",
         "Cadeaubon",
+        "BTW 0%",
+        "BTW 6%",
         "BTW 12%",
         "BTW 21%",
         "Kasverschil",
@@ -250,8 +260,10 @@ export const AuditLog: React.FC<AuditLogProps> = ({
         (report.paymentTotalsCents.Cash / 100).toFixed(2),
         (report.paymentTotalsCents.PIN / 100).toFixed(2),
         (report.paymentTotalsCents.Cadeaubon / 100).toFixed(2),
-        (report.totalVat12Cents / 100).toFixed(2),
-        (report.totalVat21Cents / 100).toFixed(2),
+        ((vatBreakdownForReport(report).find((line) => line.rate === 0)?.vatCents ?? 0) / 100).toFixed(2),
+        ((vatBreakdownForReport(report).find((line) => line.rate === 6)?.vatCents ?? 0) / 100).toFixed(2),
+        ((vatBreakdownForReport(report).find((line) => line.rate === 12)?.vatCents ?? 0) / 100).toFixed(2),
+        ((vatBreakdownForReport(report).find((line) => line.rate === 21)?.vatCents ?? 0) / 100).toFixed(2),
         ((report.cashDifferenceCents ?? 0) / 100).toFixed(2),
         report.hash,
       ]);
@@ -289,6 +301,7 @@ export const AuditLog: React.FC<AuditLogProps> = ({
             subtotalCents: transaction.subtotalCents,
             discountCents: transaction.discountCents,
             totalCents: transaction.totalCents,
+            vatBreakdown: transaction.vatBreakdown,
             vat12Cents: transaction.vat12Cents,
             vat21Cents: transaction.vat21Cents,
             tenders: transactionTenders(transaction),
@@ -1622,7 +1635,7 @@ const ReportsTable = ({
         case "card":
           return report.paymentTotalsCents.PIN;
         case "vat":
-          return report.totalVat21Cents;
+          return reportVatTotal(report);
       }
     };
     const direction = sort.direction === "asc" ? 1 : -1;
@@ -1667,7 +1680,7 @@ const ReportsTable = ({
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs font-bold uppercase tracking-[0.07em] text-slate-500"><tr><th className="px-6 py-3">Werkdag</th><th className="px-4 py-3 text-right">Z-rapporten</th><th className="px-4 py-3 text-right">Transacties</th><th className="px-4 py-3 text-right">Omzet</th><th className="px-4 py-3 text-right">Cash</th><th className="px-4 py-3 text-right">Kaart</th><th className="px-4 py-3 text-right">BTW</th><th className="px-6 py-3 text-right">Brutowinst</th></tr></thead>
-            <tbody className="divide-y divide-slate-100">{daySummaries.length === 0 ? <tr><td colSpan={8} className="px-6 py-14 text-center text-slate-500">Nog geen afgesloten werkdagen.</td></tr> : daySummaries.map((day) => <tr key={day.date} className="hover:bg-slate-50"><td className="px-6 py-4"><div className="font-bold text-slate-900">{format(new Date(`${day.date}T12:00:00`), "dd/MM/yyyy")}</div><div className="mt-0.5 text-xs text-slate-500">Rapport #{day.firstReportNumber}{day.lastReportNumber !== day.firstReportNumber ? `–#${day.lastReportNumber}` : ""}</div></td><td className="px-4 py-4 text-right font-semibold tabular-nums">{day.reportCount}</td><td className="px-4 py-4 text-right font-semibold tabular-nums">{day.transactionCount}</td><td className="px-4 py-4 text-right font-extrabold tabular-nums">{formatEUR(day.totalRevenueCents)}</td><td className="px-4 py-4 text-right tabular-nums">{formatEUR(day.cashCents)}</td><td className="px-4 py-4 text-right tabular-nums">{formatEUR(day.pinCents)}</td><td className="px-4 py-4 text-right tabular-nums">{formatEUR(day.totalVat12Cents + day.totalVat21Cents)}</td><td className="px-6 py-4 text-right font-bold tabular-nums text-emerald-700">{formatEUR(day.grossProfitCents)}</td></tr>)}</tbody>
+            <tbody className="divide-y divide-slate-100">{daySummaries.length === 0 ? <tr><td colSpan={8} className="px-6 py-14 text-center text-slate-500">Nog geen afgesloten werkdagen.</td></tr> : daySummaries.map((day) => <tr key={day.date} className="hover:bg-slate-50"><td className="px-6 py-4"><div className="font-bold text-slate-900">{format(new Date(`${day.date}T12:00:00`), "dd/MM/yyyy")}</div><div className="mt-0.5 text-xs text-slate-500">Rapport #{day.firstReportNumber}{day.lastReportNumber !== day.firstReportNumber ? `–#${day.lastReportNumber}` : ""}</div></td><td className="px-4 py-4 text-right font-semibold tabular-nums">{day.reportCount}</td><td className="px-4 py-4 text-right font-semibold tabular-nums">{day.transactionCount}</td><td className="px-4 py-4 text-right font-extrabold tabular-nums">{formatEUR(day.totalRevenueCents)}</td><td className="px-4 py-4 text-right tabular-nums">{formatEUR(day.cashCents)}</td><td className="px-4 py-4 text-right tabular-nums">{formatEUR(day.pinCents)}</td><td className="px-4 py-4 text-right tabular-nums">{formatEUR(dayVatTotal(day))}</td><td className="px-6 py-4 text-right font-bold tabular-nums text-emerald-700">{formatEUR(day.grossProfitCents)}</td></tr>)}</tbody>
           </table>
         </div>
       ) : <div className="overflow-x-auto">
@@ -1716,7 +1729,7 @@ const ReportsTable = ({
               <th className="px-5 py-3 text-right">Cadeaubon</th>
               <th className="px-5 py-3 text-right">Kasverschil</th>
               <SortableHeader
-                label="BTW 21%"
+                label="BTW"
                 sortKey="vat"
                 activeKey={sort.key}
                 direction={sort.direction}
@@ -1769,7 +1782,7 @@ const ReportsTable = ({
                     {formatEUR(report.cashDifferenceCents ?? 0)}
                   </td>
                   <td className="px-6 py-4 text-right tabular-nums text-slate-600">
-                    {formatEUR(report.totalVat21Cents)}
+                    {formatEUR(reportVatTotal(report))}
                   </td>
                   <td className="px-5 py-4 text-right">
                     <button type="button" onClick={(event) => { event.stopPropagation(); onOpen(report); }} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-cyan-50 px-3 py-2 text-xs font-extrabold text-cyan-800 transition hover:bg-cyan-100 focus:outline-none focus:ring-2 focus:ring-cyan-600" aria-label={`Bekijk Z-rapport ${report.reportNumber}`}><Eye size={15} /> Bekijken</button>

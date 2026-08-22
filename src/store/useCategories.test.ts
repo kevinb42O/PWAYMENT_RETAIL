@@ -27,4 +27,15 @@ describe("category repository store", () => {
     expect(await db.categories.count()).toBe(0);
     expect(useCategories.getState().list).toEqual([]);
   });
+
+  it("persists 0% and reduced VAT as a category policy instead of coercing it to 21%", async () => {
+    const created = await useCategories.getState().addCategory("Boeken", 6);
+    await useCategories.getState().setCategoryVatRate(created!.id, 0);
+
+    expect(await db.categories.get(created!.id)).toMatchObject({ vatRate: 0 });
+    expect((await db.outbox.toArray()).map((entry) => entry.kind)).toEqual([
+      "upsert_category",
+      "upsert_category",
+    ]);
+  });
 });

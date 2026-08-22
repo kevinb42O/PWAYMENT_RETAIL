@@ -287,6 +287,43 @@ export class EscPosBuilder {
     return this.push(GS, 0x6b, 73, data.length, ...data);
   }
 
+  /** GS w n — select the barcode module width (2–6 dots). */
+  barcodeWidth(dots: number): this {
+    return this.push(GS, 0x77, Math.max(2, Math.min(6, Math.round(dots))));
+  }
+
+  /** GS h n — select the barcode height in printer dots (1–255). */
+  barcodeHeight(dots: number): this {
+    return this.push(GS, 0x68, Math.max(1, Math.min(255, Math.round(dots))));
+  }
+
+  /** GS H n — choose whether the printer adds human-readable barcode text. */
+  barcodeHriPosition(position: 0 | 1 | 2 | 3): this {
+    return this.push(GS, 0x48, position);
+  }
+
+  /**
+   * GS v 0 — print a monochrome raster image. Unlike GS k, this works through
+   * ESC/POS bridges that filter or ignore native barcode commands.
+   */
+  rasterImage(widthBytes: number, height: number, data: Uint8Array): this {
+    if (!Number.isInteger(widthBytes) || widthBytes < 1 || widthBytes > 0xffff) {
+      throw new Error("Raster width must be between 1 and 65535 bytes.");
+    }
+    if (!Number.isInteger(height) || height < 1 || height > 0xffff) {
+      throw new Error("Raster height must be between 1 and 65535 rows.");
+    }
+    if (data.length !== widthBytes * height) {
+      throw new Error("Raster byte count does not match its dimensions.");
+    }
+    return this.push(
+      GS, 0x76, 0x30, 0,
+      widthBytes & 0xff, (widthBytes >> 8) & 0xff,
+      height & 0xff, (height >> 8) & 0xff,
+      ...data,
+    );
+  }
+
   /**
    * Push raw bytes verbatim — escape hatch for commands not covered above.
    */
@@ -331,6 +368,55 @@ export function formatItemLine(
     name.length > maxNameWidth ? name.slice(0, maxNameWidth - 1) + ">" : name;
   const padding = lineWidth - qtyStr.length - displayName.length - rightWidth;
   return `${qtyStr}${displayName}${" ".repeat(Math.max(1, padding))}${priceStr}\n`;
+}
+
+/**
+ * Fixed-width receipt item lines that preserve, rather than truncate, a long
+ * product description. The price stays on the first line; continuation lines
+ * are indented underneath it.
+ */
+export function formatWrappedItemLines(
+  qty: number,
+  name: string,
+  priceStr: string,
+  lineWidth = 42,
+): string[] {
+  const qtyStr = `${qty}x `;
+  const firstNameWidth = Math.max(1, lineWidth - qtyStr.length - priceStr.length - 1);
+  const continuationWidth = Math.max(1, lineWidth - 2);
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const chunks: string[] = [];
+  let current = "";
+  const pushWord = (word: string, width: number) => {
+    if (!current) {
+      current = word;
+    } else if (current.length + 1 + word.length <= width) {
+      current += ` ${word}`;
+    } else {
+      chunks.push(current);
+      current = word;
+    }
+  };
+
+  for (const word of words) pushWord(word, chunks.length === 0 ? firstNameWidth : continuationWidth);
+  if (current) chunks.push(current);
+  if (chunks.length === 0) chunks.push("Artikel");
+
+  const splitLong = (value: string, width: number): string[] =>
+    value.length <= width
+      ? [value]
+      : Array.from({ length: Math.ceil(value.length / width) }, (_, index) =>
+          value.slice(index * width, (index + 1) * width),
+        );
+  const expanded = chunks.flatMap((chunk, index) =>
+    splitLong(chunk, index === 0 ? firstNameWidth : continuationWidth),
+  );
+  const first = expanded.shift() ?? "Artikel";
+  const padding = lineWidth - qtyStr.length - first.length - priceStr.length;
+  return [
+    `${qtyStr}${first}${" ".repeat(Math.max(1, padding))}${priceStr}\n`,
+    ...expanded.map((line) => `  ${line}\n`),
+  ];
 }
 
 /**

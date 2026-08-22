@@ -28,6 +28,21 @@ describe('findProductByScanCode', () => {
     expect(match?.matchedOn).toBe('sku');
   });
 
+  it('matches an approved extra retail identifier, without treating supplier references as scan codes', () => {
+    const product = makeProduct({
+      identifiers: [
+        { type: 'ean', value: '5410 0000 0001 1', isScannable: true, isPrimary: true },
+        { type: 'supplier-code', value: 'SUP-42', isScannable: false, isPrimary: false },
+      ],
+    });
+
+    expect(findProductByScanCode([product], '5410000000011')).toMatchObject({
+      product: { id: product.id },
+      matchedOn: 'identifier',
+    });
+    expect(findProductByScanCode([product], 'SUP-42')).toBeNull();
+  });
+
   it('prefers an exact barcode match over a numeric SKU match', () => {
     const barcodeProduct = makeProduct({ id: 'barcode', barcode: '123456' });
     const skuProduct = makeProduct({ id: 'sku', sku: '123456' });
@@ -50,11 +65,13 @@ describe('findProductByScanCode', () => {
       sku: 'DECK-HSC-825',
       barcode: '5407000000011',
       brand: 'House Skate Co.',
+      identifiers: [{ type: 'alternate', value: 'ALT-DECK-1', isScannable: true, isPrimary: false }],
     });
 
     expect(matchesCatalogQuery(product, 'popsicle')).toBe(true);
     expect(matchesCatalogQuery(product, 'deck-hsc-825')).toBe(true);
     expect(matchesCatalogQuery(product, 'house skate')).toBe(true);
+    expect(matchesCatalogQuery(product, 'alt-deck')).toBe(true);
     expect(matchesCatalogQuery(product, 'wheels')).toBe(false);
   });
 });

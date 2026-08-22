@@ -33,13 +33,26 @@ interface StoreConfigurationState {
 const cloneDefault = (): StoreConfiguration => ({
   ...DEFAULT_STORE_CONFIGURATION,
   modules: { ...DEFAULT_STORE_CONFIGURATION.modules },
+  capabilities: { ...DEFAULT_STORE_CONFIGURATION.capabilities },
 });
 
 let moduleSaveQueue: Promise<void> = Promise.resolve();
 let moduleSaveRevision = 0;
 
 const persistenceError =
-  "De modulekeuze kon niet worden bewaard. Controleer uw verbinding en probeer opnieuw.";
+  "De winkelinstellingen konden niet worden bewaard. Controleer uw verbinding en probeer opnieuw.";
+
+const serializeConfiguration = (configuration: StoreConfiguration): Json =>
+  JSON.parse(JSON.stringify(configuration)) as Json;
+
+const saveRetailProfile = (
+  storeId: string,
+  configuration: StoreConfiguration,
+) =>
+  supabase.rpc("save_store_retail_profile", {
+    target_store_id: storeId,
+    profile_payload: serializeConfiguration(configuration),
+  });
 
 export const useStoreConfiguration = create<StoreConfigurationState>()(
   persist(
@@ -74,16 +87,7 @@ export const useStoreConfiguration = create<StoreConfigurationState>()(
           return { success: true };
         }
 
-        const { error } = await supabase
-          .from("stores")
-          .update({
-            industry_code: normalized.industry,
-            onboarding_config: JSON.parse(
-              JSON.stringify(normalized),
-            ) as Json,
-            onboarding_completed_at: normalized.completedAt,
-          })
-          .eq("id", storeId);
+        const { error } = await saveRetailProfile(storeId, normalized);
 
         if (error) {
           const message =
@@ -123,14 +127,7 @@ export const useStoreConfiguration = create<StoreConfigurationState>()(
 
         let result: { success: boolean; message?: string } = { success: true };
         const persist = async () => {
-          const { error } = await supabase
-            .from("stores")
-            .update({
-              industry_code: next.industry,
-              onboarding_config: JSON.parse(JSON.stringify(next)) as Json,
-              onboarding_completed_at: next.completedAt,
-            })
-            .eq("id", storeId);
+          const { error } = await saveRetailProfile(storeId, next);
 
           if (error) {
             result = { success: false, message: persistenceError };

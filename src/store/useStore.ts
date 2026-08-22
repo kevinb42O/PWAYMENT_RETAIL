@@ -89,7 +89,7 @@ export interface CartScanResult {
   status: 'empty' | 'matched' | 'not-found' | 'out-of-stock';
   code: string;
   product?: Product;
-  matchedOn?: 'barcode' | 'sku';
+  matchedOn?: 'barcode' | 'sku' | 'identifier';
 }
 
 interface POSState {

@@ -2,10 +2,30 @@ export type Category = string;
 
 export type SubCategory = string;
 
+/** A retail identifier attached to one sellable SKU. */
+export type ProductIdentifierType =
+  | "internal-sku"
+  | "ean"
+  | "upc"
+  | "gtin"
+  | "supplier-code"
+  | "alternate";
+
+export interface ProductIdentifier {
+  type: ProductIdentifierType;
+  value: string;
+  /** Only unambiguous, merchant-approved identifiers are eligible for POS scan. */
+  isScannable: boolean;
+  /** Display/label preference; at most one active identifier per SKU is primary. */
+  isPrimary: boolean;
+}
+
 export interface ProductCategory {
   id: string;
   /** Internal backend identifier retained for realtime product-category mapping. */
   serverId?: string;
+  /** Optional parent category, expressed as the stable local/external ID. */
+  parentId?: string;
   name: string;
   vatRate: number;
   sortOrder?: number;
@@ -32,6 +52,12 @@ export interface Product {
   /** Product reference used by the primary supplier. */
   supplierCode?: string;
   variant?: string;
+  /** Explicit option tuple such as Maat: M and Kleur: Blauw. */
+  variantOptions?: Record<string, string>;
+  /** Stable database family reference when relational catalog support is live. */
+  familyId?: string;
+  /** Additional scannable or traceability identifiers; legacy SKU/barcode remain supported. */
+  identifiers?: ProductIdentifier[];
   /**
    * Deterministic customer-group prices in integer cents. The standard price
    * remains `priceCents`; a missing group always falls back to that value.
@@ -189,6 +215,16 @@ export interface Transaction {
   tableId: number;
   items: OrderItem[];
   subtotalCents: number;
+  /**
+   * Immutable legal VAT snapshot by rate. It supersedes the two legacy fields
+   * below for new rows, while they remain projections for rolling upgrades.
+   */
+  vatBreakdown?: Array<{
+    rate: 0 | 6 | 12 | 21;
+    grossCents: number;
+    exclCents: number;
+    vatCents: number;
+  }>;
   vat12Cents: number;
   vat21Cents: number;
   /**
@@ -470,6 +506,13 @@ export interface DailyReport {
   totalVat21Cents: number;
   totalExclVat12Cents: number;
   totalExclVat21Cents: number;
+  /** Complete tax totals for new retail reports; old 12/21 fields stay readable. */
+  totalVatBreakdown?: Array<{
+    rate: 0 | 6 | 12 | 21;
+    grossCents: number;
+    exclCents: number;
+    vatCents: number;
+  }>;
   totalDiscountCents: number;
   /** Sum of statutory cash rounding differences, kept apart from VAT revenue. */
   totalCashRoundingAdjustmentCents?: number;

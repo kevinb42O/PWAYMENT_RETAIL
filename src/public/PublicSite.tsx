@@ -506,7 +506,15 @@ const PublicSite: React.FC = () => {
 export const SiteHeader = ({ mobileOpen, setMobileOpen }: { mobileOpen: boolean; setMobileOpen: (value: boolean) => void }) => {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const navigationRef = useRef<HTMLDivElement>(null);
+  const closeMenuTimer = useRef<number | null>(null);
+  const clearPendingMenuClose = () => {
+    if (closeMenuTimer.current) {
+      window.clearTimeout(closeMenuTimer.current);
+      closeMenuTimer.current = null;
+    }
+  };
   const closeNavigation = () => {
+    clearPendingMenuClose();
     setActiveMenu(null);
     setMobileOpen(false);
   };
@@ -523,6 +531,7 @@ export const SiteHeader = ({ mobileOpen, setMobileOpen }: { mobileOpen: boolean;
     window.addEventListener('scroll', closeNavigation, { passive: true });
     window.addEventListener('resize', closeNavigation);
     return () => {
+      clearPendingMenuClose();
       document.removeEventListener('pointerdown', closeOnPointerDown);
       document.removeEventListener('keydown', closeOnEscape);
       window.removeEventListener('scroll', closeNavigation);
@@ -531,8 +540,25 @@ export const SiteHeader = ({ mobileOpen, setMobileOpen }: { mobileOpen: boolean;
   }, []);
 
   const toggleMenu = (label: string) => {
+    clearPendingMenuClose();
     setMobileOpen(false);
     setActiveMenu((current) => (current === label ? null : label));
+  };
+
+  const openMenuOnHover = (label: string) => {
+    clearPendingMenuClose();
+    setMobileOpen(false);
+    setActiveMenu(label);
+  };
+
+  const closeMenuOnHoverExit = () => {
+    clearPendingMenuClose();
+    // A tiny exit delay makes the diagonal move from trigger to panel feel solid,
+    // without making the menu feel sticky once the pointer has truly left it.
+    closeMenuTimer.current = window.setTimeout(() => {
+      setActiveMenu(null);
+      closeMenuTimer.current = null;
+    }, 110);
   };
 
   return (
@@ -540,18 +566,18 @@ export const SiteHeader = ({ mobileOpen, setMobileOpen }: { mobileOpen: boolean;
       <motion.header className="pw-header" initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .55, ease: motionEase }}>
       <div className="pw-header-inner">
         <a href="/" className="pw-logo" aria-label="PWAYMENT home" onClick={closeNavigation}>
-          <img src="/branding/pwayment-logo.svg" alt="PWAYMENT" />
+          <span className="pw-wordmark" aria-hidden="true"><span>P</span>WAYMENT</span>
         </a>
         <nav className="pw-nav" aria-label="Hoofdnavigatie">
           <NavGroup label="Product" columns={[
             { title: 'Verkopen & bedienen', links: [['/pos', 'Kassa & betalingen', 'Scan-first, offline en gecontroleerd afrekenen'], ['/customers', 'Klanten & loyaliteit', 'Van klantbeeld tot cadeaubon'], ['/service-desk', 'ServiceDesk & herstellingen', 'Intake, status en aflevering samen'], ['/webshop', 'Webshop & orders', 'Eén voorraad voor winkel en online']] },
             { title: 'Voorraad & beslissingen', links: [['/inventory', 'Producten & voorraad', 'Van barcode tot besteladvies'], ['/purchasing-suppliers', 'Inkoop & leveranciers', 'Forecast, order en ontvangst'], ['/insights', 'Retail intelligence', 'Van data naar concrete actie'], ['/daily-close-reporting', 'Dagafsluiting & rapportage', 'Btw, cash en controle per dag']] },
             { title: 'Groei & controle', links: [['/workforce', 'Team & planning', 'Roosters, verlof en rechten'], ['/history-returns-invoices', 'Retouren & facturen', 'Elke correctie blijft controleerbaar'], ['/offline', 'Offline-first', 'Blijf verkopen als verbinding wegvalt'], ['/integrations', 'Hardware & koppelingen', 'Open waar nodig, helder per status']] },
-          ]} active={activeMenu === 'Product'} onToggle={() => toggleMenu('Product')} onNavigate={closeNavigation} />
+          ]} active={activeMenu === 'Product'} onToggle={() => toggleMenu('Product')} onHoverStart={() => openMenuOnHover('Product')} onHoverEnd={closeMenuOnHoverExit} onNavigate={closeNavigation} />
           <NavGroup label="Voor jouw winkel" columns={[
             { title: 'Type winkel', links: [['/solutions/independent-retail', 'Onafhankelijke retail', 'Professionele controle zonder complexiteit'], ['/solutions/specialist-retail', 'Speciaalzaken', 'Varianten, merken en advies'], ['/service-desk', 'Herstelgedreven retail', 'Service naast verkoop op één plek']] },
             { title: 'Groeipad', links: [['/solutions/multi-location', 'Keten & multi-location', 'Centraal sturen, lokaal verkopen'], ['/solutions/accountants', 'Accountants & partners', 'Schone data, minder herstelwerk'], ['/migrate', 'Overstappen naar PWAYMENT', 'Gecontroleerd live zonder onrust']] },
-          ]} active={activeMenu === 'Voor jouw winkel'} onToggle={() => toggleMenu('Voor jouw winkel')} onNavigate={closeNavigation} />
+          ]} active={activeMenu === 'Voor jouw winkel'} onToggle={() => toggleMenu('Voor jouw winkel')} onHoverStart={() => openMenuOnHover('Voor jouw winkel')} onHoverEnd={closeMenuOnHoverExit} onNavigate={closeNavigation} />
           <a href="/pricing" onClick={closeNavigation}>Prijzen</a>
           <a href="/resources" onClick={closeNavigation}>Resources</a>
         </nav>
@@ -576,8 +602,8 @@ export const SiteHeader = ({ mobileOpen, setMobileOpen }: { mobileOpen: boolean;
   );
 };
 
-const NavGroup = ({ label, columns, active, onToggle, onNavigate }: { label: string; columns: Array<{ title: string; links: string[][] }>; active: boolean; onToggle: () => void; onNavigate: () => void }) => (
-  <div className="pw-nav-group">
+const NavGroup = ({ label, columns, active, onToggle, onHoverStart, onHoverEnd, onNavigate }: { label: string; columns: Array<{ title: string; links: string[][] }>; active: boolean; onToggle: () => void; onHoverStart: () => void; onHoverEnd: () => void; onNavigate: () => void }) => (
+  <div className="pw-nav-group" onMouseEnter={onHoverStart} onMouseLeave={onHoverEnd} onFocus={onHoverStart} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) onHoverEnd(); }}>
     <button type="button" aria-expanded={active} aria-controls={`pw-menu-${label.toLowerCase().replaceAll(' ', '-')}`} onClick={onToggle}>{label} <ChevronDown size={14} /></button>
     <div id={`pw-menu-${label.toLowerCase().replaceAll(' ', '-')}`} className={`pw-mega pw-mega-${columns.length}${active ? ' is-open' : ''}`}>
       {columns.map(column => <section key={column.title}><strong className="pw-mega-title">{column.title}</strong>{column.links.map(([href, title, description]) => <a href={href} key={href} onClick={onNavigate}><strong>{title}</strong><span>{description}</span></a>)}</section>)}
@@ -1083,7 +1109,7 @@ const NotFoundPage = () => <motion.section className="pw-not-found pw-shell" ini
 const FinalCta = ({ eyebrow = 'Klaar voor je volgende stap?', title = <>Begin gratis.<br />Probeer Professional 1 maand.</> }: { eyebrow?: string; title?: React.ReactNode }) => <motion.section className="pw-final" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><div className="pw-shell"><motion.span className="pw-eyebrow" variants={fadeUp}>{eyebrow}</motion.span><motion.h2 variants={fadeUp}>{title}</motion.h2><motion.p variants={fadeUp}>Basis blijft gratis. Na de proefperiode activeer je Professional of blijf je Basis gebruiken.</motion.p><motion.div variants={fadeUp}><a href="/register?plan=professional" className="pw-button pw-button-dark">Probeer Professional gratis <ArrowRight size={17} /></a><a href="/demo" className="pw-text-link">Plan liever een demo <ArrowRight size={15} /></a></motion.div></div></motion.section>;
 
 const SiteFooter = () => (
-  <footer className="pw-footer"><div className="pw-shell"><div className="pw-footer-top"><div className="pw-footer-brand"><img src="/branding/pwayment-logo.svg" alt="PWAYMENT" /><p>Retailsoftware voor winkels die willen verkopen, beheren en groeien.</p></div><div className="pw-footer-links"><div><strong>Product</strong><a href="/pos">POS & betalingen</a><a href="/history-returns-invoices">Retouren & facturen</a><a href="/daily-close-reporting">Dagafsluiting</a><a href="/purchasing-suppliers">Inkoop</a><a href="/team-permissions">Team & rechten</a></div><div><strong>Platform</strong><a href="/inventory">Voorraad</a><a href="/insights">Inzichten</a><a href="/customers">Klanten</a><a href="/webshop">Webshop</a><a href="/integrations">Integraties & status</a><a href="/hardware">Hardwarematrix</a></div><div><strong>Bedrijf</strong><a href="/about">Over PWAYMENT</a><a href="/customer-stories">Klantverhalen</a><a href="/resources">Resources</a><a href="/migrate">Migreren</a><a href="/contact">Contact</a></div><div><strong>Account</strong><a href="/pricing">Prijzen</a><a href="/login">Log in</a><a href="/register">Start gratis</a><a href="/demo">Plan een demo</a><a href="/contact">Support</a></div></div></div><div className="pw-footer-bottom"><span>© 2026 PWAYMENT. Alle rechten voorbehouden.</span><div><a href="/legal/privacy">Privacy</a><a href="/legal/cookies">Cookies</a><a href="/legal/terms">Voorwaarden</a><a href="/legal/dpa">Verwerkersovereenkomst</a><a href="/legal/subprocessors">Subverwerkers</a></div><span>NL <ChevronDown size={13} /></span></div></div></footer>
+  <footer className="pw-footer"><div className="pw-shell"><div className="pw-footer-top"><div className="pw-footer-brand"><img src="/branding/PWAYMENTLOGOFINAL.png" alt="PWAYMENT" /><p>Retailsoftware voor winkels die willen verkopen, beheren en groeien.</p></div><div className="pw-footer-links"><div><strong>Product</strong><a href="/pos">POS & betalingen</a><a href="/history-returns-invoices">Retouren & facturen</a><a href="/daily-close-reporting">Dagafsluiting</a><a href="/purchasing-suppliers">Inkoop</a><a href="/team-permissions">Team & rechten</a></div><div><strong>Platform</strong><a href="/inventory">Voorraad</a><a href="/insights">Inzichten</a><a href="/customers">Klanten</a><a href="/webshop">Webshop</a><a href="/integrations">Integraties & status</a><a href="/hardware">Hardwarematrix</a></div><div><strong>Bedrijf</strong><a href="/about">Over PWAYMENT</a><a href="/customer-stories">Klantverhalen</a><a href="/resources">Resources</a><a href="/migrate">Migreren</a><a href="/contact">Contact</a></div><div><strong>Account</strong><a href="/pricing">Prijzen</a><a href="/login">Log in</a><a href="/register">Start gratis</a><a href="/demo">Plan een demo</a><a href="/contact">Support</a></div></div></div><div className="pw-footer-bottom"><span>© 2026 PWAYMENT. Alle rechten voorbehouden.</span><div><a href="/legal/privacy">Privacy</a><a href="/legal/cookies">Cookies</a><a href="/legal/terms">Voorwaarden</a><a href="/legal/dpa">Verwerkersovereenkomst</a><a href="/legal/subprocessors">Subverwerkers</a></div><span>NL <ChevronDown size={13} /></span></div></div></footer>
 );
 
 export default PublicSite;

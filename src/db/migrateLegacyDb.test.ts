@@ -40,7 +40,7 @@ describe('migrateLegacyDatabase', () => {
     await Dexie.delete(LEGACY_DB_NAME);
   });
 
-  it('copies retail rows and skips horeca leakage with unsupported VAT rates', async () => {
+  it('keeps every retail-compatible VAT rate and only skips values that cannot be booked', async () => {
     const legacy = new Dexie(LEGACY_DB_NAME);
     legacy.version(9).stores({
       transactions: '++id, timestamp, isFinalized',
@@ -51,7 +51,7 @@ describe('migrateLegacyDatabase', () => {
     await legacy.open();
     await legacy.table('transactions').bulkAdd([
       tx([item('Skateboard Deck', 21)]),
-      // Horeca row that leaked in: no representable VAT rate.
+      // A malformed historic row: no representable VAT rate.
       tx([item('Warme Melk + Callebaut Chocolade*', undefined)]),
       tx([item('Koffie', 6)]),
     ]);
@@ -68,15 +68,16 @@ describe('migrateLegacyDatabase', () => {
 
     const result = await migrateLegacyDatabase();
     expect(result.migrated).toBe(true);
-    expect(result.skippedTransactions).toBe(2);
-    expect(result.skippedProducts).toBe(1);
-    expect(result.skippedCategories).toBe(1);
+    expect(result.skippedTransactions).toBe(1);
+    expect(result.skippedProducts).toBe(0);
+    expect(result.skippedCategories).toBe(0);
 
     const txs = await db.transactions.toArray();
-    expect(txs).toHaveLength(1);
+    expect(txs).toHaveLength(2);
     expect(txs[0].items[0].product.name).toBe('Skateboard Deck');
-    expect((await db.products.toArray()).map((p) => p.id)).toEqual(['p-deck']);
-    expect((await db.categories.toArray()).map((c) => c.id)).toEqual(['skateboards']);
+    expect(txs[1].items[0].product.name).toBe('Koffie');
+    expect((await db.products.toArray()).map((p) => p.id).sort()).toEqual(['p-deck', 'p-melk']);
+    expect((await db.categories.toArray()).map((c) => c.id).sort()).toEqual(['dranken', 'skateboards']);
     expect(await db.customers.count()).toBe(1);
 
     // Legacy database stays untouched for the other project.

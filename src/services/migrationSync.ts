@@ -12,12 +12,15 @@ import type {
   Product,
   ProductCategory,
 } from "../types";
+import type { RetailCatalogFamilyRelation } from "../migration/recordMapper";
 
 export interface MigrationActivationOutboxPayload {
   activation: MigrationActivation;
   categories: ProductCategory[];
   products: Product[];
   customers: Customer[];
+  /** Omitted by V1 receipts created before relational catalog support. */
+  catalogFamilies?: RetailCatalogFamilyRelation[];
   inverseChanges: MigrationInverseChange[];
   integrationRun?: Omit<IntegrationRunTelemetry, "storeId" | "status" | "eventType" | "eventMessage">;
 }
@@ -86,6 +89,26 @@ export const pushMigrationOutboxEntry = async (
       migration_payload: payload,
     });
     throwIfError(error);
+    if (payload.categories.some((category) => Boolean(category.parentId))) {
+      const { error: categoryError } = await migrationRpc.rpc("apply_migration_category_relations", {
+        target_store_id: storeId,
+        relations_payload: {
+          activationId: payload.activation.id,
+          categories: payload.categories,
+        },
+      });
+      throwIfError(categoryError);
+    }
+    if ((payload.catalogFamilies?.length ?? 0) > 0) {
+      const { error: catalogError } = await migrationRpc.rpc("apply_retail_catalog_relations", {
+        target_store_id: storeId,
+        relations_payload: {
+          activationId: payload.activation.id,
+          families: payload.catalogFamilies,
+        },
+      });
+      throwIfError(catalogError);
+    }
     return;
   }
   if (entry.kind === "migration_lock") {

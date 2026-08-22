@@ -6,6 +6,7 @@ import { ReceiptTicket } from './ReceiptTicket';
 
 const sampleTransaction: Transaction = {
   id: 1024,
+  documentNumber: 'VOORBEELD-2026-00001024',
   tableId: 1,
   items: [
     {
@@ -170,7 +171,7 @@ export const MerchantSettings: React.FC = () => {
           <p className="text-sm text-zinc-400">Thermal layout met correcte Belgische BTW-uitsplitsing.</p>
         </div>
         <div className="overflow-auto rounded-lg bg-zinc-950 p-3">
-          <ReceiptTicket transaction={sampleTransaction} ticketNumber={1024} merchantOverride={draft} />
+          <ReceiptTicket transaction={sampleTransaction} merchantOverride={draft} />
         </div>
       </section>
     </div>

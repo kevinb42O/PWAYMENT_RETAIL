@@ -24,6 +24,7 @@ import {
   useCustomerDisplaySettings,
 } from "../customer-display/settings";
 import { useCustomerDisplayRuntime } from "../customer-display/runtime";
+import { createAccessibleCustomerDisplayTheme } from "../customer-display/theme";
 
 const statusPresentation = {
   disconnected: {
@@ -110,6 +111,10 @@ export const CustomerDisplaySettings = () => {
   const viewport = useCustomerDisplayRuntime((state) => state.viewport);
   const [launchMessage, setLaunchMessage] = useState<string | null>(null);
   const status = statusPresentation[connectionStatus];
+  const accessibleTheme = useMemo(
+    () => createAccessibleCustomerDisplayTheme(config.accentColor),
+    [config.accentColor],
+  );
 
   const lastSeenLabel = useMemo(() => {
     if (!lastAckAt) return null;
@@ -290,6 +295,24 @@ export const CustomerDisplaySettings = () => {
                   placeholder="We helpen je zo verder."
                 />
               </label>
+              <label className="block">
+                <span className="text-[11px] font-extrabold text-slate-700">
+                  Winkellogo
+                </span>
+                <span className="mt-0.5 block text-[10px] text-slate-500">
+                  Optionele HTTPS-afbeelding. Bij een fout blijft de winkelnaam zichtbaar.
+                </span>
+                <input
+                  type="url"
+                  inputMode="url"
+                  disabled={!config.enabled || !canManage}
+                  maxLength={500}
+                  value={config.logoUrl ?? ""}
+                  onChange={(event) => set("logoUrl", event.target.value)}
+                  className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/15 disabled:cursor-not-allowed"
+                  placeholder="https://uw-winkel.be/logo.png"
+                />
+              </label>
               <label className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-3">
                 <div>
                   <span className="block text-[11px] font-extrabold text-slate-700">
@@ -308,12 +331,21 @@ export const CustomerDisplaySettings = () => {
                   aria-label="Accentkleur klantenscherm"
                 />
               </label>
+              {accessibleTheme.adjustedForContrast && (
+                <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[10px] font-semibold leading-4 text-amber-950">
+                  <Info size={14} className="mt-0.5 shrink-0" />
+                  De gekozen kleur is te licht voor bedragen en labels. Het
+                  klantenscherm gebruikt daar automatisch een donkerdere,
+                  leesbare variant ({accessibleTheme.accentText}).
+                </div>
+              )}
             </div>
 
             <div
               className="relative flex aspect-video min-h-52 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-5 text-white shadow-xl"
               style={{
                 background: `radial-gradient(circle at 80% 20%, ${config.accentColor}55, transparent 35%), #0f172a`,
+                color: accessibleTheme.onAccent,
               }}
               aria-label="Voorbeeld idle klantenscherm"
             >

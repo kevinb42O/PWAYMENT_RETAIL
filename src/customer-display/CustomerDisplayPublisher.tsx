@@ -7,9 +7,10 @@ import type { PaymentMethod, TenderMethod, Transaction } from "../types";
 import { projectCart } from "./cartProjection";
 import {
   CUSTOMER_DISPLAY_PROTOCOL_VERSION,
+  customerDisplaySnapshotSchema,
+  parseCustomerDisplayMessage,
   type CustomerDisplayMessage,
   type CustomerDisplaySnapshot,
-  isCustomerDisplayMessage,
 } from "./protocol";
 import {
   customerDisplayChannelName,
@@ -27,6 +28,8 @@ import {
   useEntitlements,
 } from "../billing/entitlements";
 import { useEntitlementClock } from "../billing/useEntitlementClock";
+import { vatBreakdownForTransaction } from "../utils/vat";
+import { cashRoundingAdjustmentCents } from "../utils/cashRounding";
 
 const REGISTER_ID = "retail-register-1";
 const HEARTBEAT_MS = 5_000;
@@ -47,9 +50,16 @@ const toDisplayPaymentMethod = (
 };
 
 const transactionGiftCardCents = (transaction: Transaction): number =>
-  (transaction.tenders ?? transaction.splitTenders ?? [])
-    .filter((tender) => tender.method === "Cadeaubon")
-    .reduce((sum, tender) => sum + tender.amountCents, 0);
+  (transaction.tenders ?? transaction.splitTenders ?? []).some(
+    (tender) => tender.method === "Cadeaubon",
+  )
+    ? (transaction.tenders ?? transaction.splitTenders ?? [])
+        .filter((tender) => tender.method === "Cadeaubon")
+        .reduce((sum, tender) => sum + tender.amountCents, 0)
+    : (transaction.giftCardAllocations ?? []).reduce(
+        (sum, allocation) => sum + allocation.amountCents,
+        0,
+      );
 
 const transactionCashTenderCents = (transaction: Transaction): number =>
   (transaction.tenders ?? transaction.splitTenders ?? [])
@@ -73,6 +83,9 @@ export const CustomerDisplayPublisher = () => {
   );
   const paymentMethod = useCustomerDisplayRuntime(
     (state) => state.paymentMethod,
+  );
+  const paymentMessageCode = useCustomerDisplayRuntime(
+    (state) => state.paymentMessageCode,
   );
   const completedTransaction = useCustomerDisplayRuntime(
     (state) => state.completedTransaction,
@@ -122,15 +135,22 @@ export const CustomerDisplayPublisher = () => {
   const buildSnapshot = useCallback((): CustomerDisplaySnapshot => {
     const enabled = config.enabled && displayEntitled;
     let phase: CustomerDisplaySnapshot["phase"] = enabled ? "idle" : "disabled";
-    let lines = projectedCart.displayLines;
+    let lines = enabled ? projectedCart.displayLines : [];
     let totals: CustomerDisplaySnapshot["totals"] = {
-      subtotalCents: projectedCart.totals.subtotal,
-      discountCents: projectedCart.totals.discount,
-      giftCardCents: projectedCart.giftCardCents,
-      totalCents: projectedCart.totals.total,
-      remainingCents: projectedCart.remainingCents,
-      vat12Cents: projectedCart.totals.vat12,
-      vat21Cents: projectedCart.totals.vat21,
+      subtotalCents: enabled ? projectedCart.totals.subtotal : 0,
+      discountCents: enabled ? projectedCart.totals.discount : 0,
+      giftCardCents: enabled ? projectedCart.giftCardCents : 0,
+      totalCents: enabled ? projectedCart.totals.total : 0,
+      remainingCents: enabled ? projectedCart.remainingCents : 0,
+      roundingAdjustmentCents: 0,
+      vat12Cents: enabled ? projectedCart.totals.vat12 : 0,
+      vat21Cents: enabled ? projectedCart.totals.vat21 : 0,
+      vatBreakdown: enabled
+        ? projectedCart.totals.vatBreakdown.map((line) => ({
+            rate: line.rate,
+            vatCents: line.vatCents,
+          }))
+        : [],
     };
     let payment: CustomerDisplaySnapshot["payment"];
 
@@ -156,8 +176,13 @@ export const CustomerDisplayPublisher = () => {
         giftCardCents,
         totalCents: completedTransaction.totalCents,
         remainingCents: 0,
+        roundingAdjustmentCents: completedTransaction.roundingAdjustmentCents ?? 0,
         vat12Cents: completedTransaction.vat12Cents,
         vat21Cents: completedTransaction.vat21Cents,
+        vatBreakdown: vatBreakdownForTransaction(completedTransaction).map((line) => ({
+          rate: line.rate,
+          vatCents: Math.abs(line.vatCents),
+        })),
       };
       payment = {
         method: toDisplayPaymentMethod(completedTransaction.paymentMethod),
@@ -170,16 +195,23 @@ export const CustomerDisplayPublisher = () => {
     } else if (enabled && projectedCart.items.length > 0) {
       if (paymentPhase === "payment-pending") {
         phase = "payment-pending";
+        if (paymentMethod === "Cash") {
+          totals = {
+            ...totals,
+            roundingAdjustmentCents: cashRoundingAdjustmentCents(
+              totals.remainingCents,
+            ),
+          };
+        }
         payment = {
           method: toDisplayPaymentMethod(paymentMethod),
-          messageCode:
-            paymentMethod === "PIN" ? "follow-terminal" : "processing",
+          messageCode: paymentMessageCode ?? "processing",
         };
       } else if (paymentPhase === "payment-failed") {
         phase = "payment-failed";
         payment = {
           method: toDisplayPaymentMethod(paymentMethod),
-          messageCode: "commit-error",
+          messageCode: paymentMessageCode ?? "commit-error",
         };
       } else {
         phase = "cart";
@@ -201,7 +233,7 @@ export const CustomerDisplayPublisher = () => {
       merchant: {
         displayName:
           merchant.name.trim() || currentStoreName?.trim() || "PWAYMENT",
-        logoUrl: "/branding/pwayment-logo.svg",
+        logoUrl: config.logoUrl?.trim() || merchant.logoUrl?.trim() || undefined,
         locale: "nl-BE",
         currency: "EUR",
       },
@@ -217,6 +249,11 @@ export const CustomerDisplayPublisher = () => {
       totals,
       payment,
       acceptedPaymentMethods: config.acceptedPaymentMethods,
+      availabilityReason: !displayEntitled
+        ? "not-entitled"
+        : !config.enabled
+          ? "module-disabled"
+          : undefined,
     };
   }, [
     completedTransaction,
@@ -224,8 +261,10 @@ export const CustomerDisplayPublisher = () => {
     currentStoreId,
     currentStoreName,
     displayEntitled,
+    merchant.logoUrl,
     merchant.name,
     paymentMethod,
+    paymentMessageCode,
     paymentPhase,
     projectedCart,
   ]);
@@ -236,18 +275,27 @@ export const CustomerDisplayPublisher = () => {
   const publishSnapshot = useCallback(() => {
     const channel = channelRef.current;
     if (!channel) return;
+    const candidate = latestSnapshotFactoryRef.current();
+    const validated = customerDisplaySnapshotSchema.safeParse(candidate);
+    if (!validated.success) {
+      console.error(
+        "Klantenscherm-snapshot geweigerd wegens inconsistente presentatiegegevens.",
+        validated.error.issues.map((issue) => ({
+          path: issue.path.join("."),
+          message: issue.message,
+        })),
+      );
+      useCustomerDisplayRuntime.getState().setConnectionStatus("stale");
+      return;
+    }
     const message: CustomerDisplayMessage = {
       type: "SNAPSHOT",
-      snapshot: latestSnapshotFactoryRef.current(),
+      snapshot: validated.data,
     };
     channel.postMessage(message);
   }, []);
 
   useEffect(() => {
-    if (!displayEntitled) {
-      useCustomerDisplayRuntime.getState().setConnectionStatus("disconnected");
-      return;
-    }
     if (typeof BroadcastChannel === "undefined") {
       useCustomerDisplayRuntime
         .getState()
@@ -262,8 +310,8 @@ export const CustomerDisplayPublisher = () => {
     useCustomerDisplayRuntime.getState().setConnectionStatus("connecting");
 
     channel.onmessage = (event: MessageEvent<unknown>) => {
-      if (!isCustomerDisplayMessage(event.data)) return;
-      const message = event.data;
+      const message = parseCustomerDisplayMessage(event.data);
+      if (!message) return;
       if (
         "displaySessionId" in message &&
         message.displaySessionId !== sessionIdRef.current
@@ -319,7 +367,7 @@ export const CustomerDisplayPublisher = () => {
       runtime.setConnectionStatus("disconnected");
       runtime.resetPayment();
     };
-  }, [displayEntitled, publishSnapshot]);
+  }, [publishSnapshot]);
 
   useEffect(() => {
     publishSnapshot();

@@ -59,6 +59,9 @@ export const mapRealtimeProduct = async (
     supplier: row.supplier ?? undefined,
     supplierCode: row.supplier_code ?? undefined,
     variant: row.variant ?? undefined,
+    familyId: existing?.familyId,
+    variantOptions: existing?.variantOptions,
+    identifiers: existing?.identifiers,
     priceTiers: (row.price_tiers ?? {}) as Product["priceTiers"],
     customFields: (row.custom_fields ?? {}) as Product["customFields"],
     stockQty: row.stock_qty ?? undefined,
@@ -84,16 +87,36 @@ const mapCustomer = (row: Row<"customers">): Customer => ({
   isActive: row.is_active,
 });
 
-const mapCategory = (row: Row<"categories">): ProductCategory => ({
-  id: row.external_id ?? row.id,
-  serverId: row.id,
-  name: row.name,
-  vatRate: row.vat_rate == null ? undefined : Number(row.vat_rate),
-  sortOrder: row.sort_order ?? undefined,
-  isActive: row.is_active,
-});
+const mapCategory = async (row: Row<"categories">): Promise<ProductCategory> => {
+  const parent = row.parent_id
+    ? (await db.categories.toArray()).find((category) => category.serverId === row.parent_id)
+    : undefined;
+  return {
+    id: row.external_id ?? row.id,
+    serverId: row.id,
+    parentId: parent?.id,
+    name: row.name,
+    vatRate: row.vat_rate == null ? undefined : Number(row.vat_rate),
+    sortOrder: row.sort_order ?? undefined,
+    isActive: row.is_active,
+  };
+};
 
 let syncChannel: ReturnType<typeof supabase.channel> | null = null;
+let authoritativeRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+const scheduleAuthoritativeStoreRefresh = (storeId: string) => {
+  if (authoritativeRefreshTimer) clearTimeout(authoritativeRefreshTimer);
+  authoritativeRefreshTimer = setTimeout(() => {
+    authoritativeRefreshTimer = null;
+    // Catalog relations and normalized retail-profile rows can arrive in a
+    // batch. One debounced authoritative hydrate avoids transient tuples and
+    // ensures platform-confirmed capability states reach every open device.
+    void import("./supabaseStoreSync")
+      .then(({ syncStoreFromSupabase }) => syncStoreFromSupabase(storeId))
+      .catch((error) => console.error("Authoritative retail refresh failed:", error));
+  }, 300);
+};
 
 export const startRealtimeSync = () => {
   if (syncChannel) return;
@@ -122,7 +145,7 @@ export const startRealtimeSync = () => {
             await db.customers.put(next);
             useCustomers.getState().syncPersisted({ customer: next });
           } else if (payload.table === "categories" && payload.new) {
-            const next = mapCategory(payload.new as Row<"categories">);
+            const next = await mapCategory(payload.new as Row<"categories">);
             await db.categories.put(next);
             await useCategories.getState().refresh();
           } else if (payload.table === "categories" && payload.eventType === "DELETE") {
@@ -130,6 +153,17 @@ export const startRealtimeSync = () => {
             const id = oldRow.external_id ?? oldRow.id;
             await db.categories.delete(id);
             await useCategories.getState().refresh();
+          } else if ([
+            "product_families",
+            "product_family_variants",
+            "product_family_option_definitions",
+            "product_family_option_values",
+            "product_variant_option_values",
+            "product_identifiers",
+            "store_retail_profiles",
+            "store_capability_assessments",
+          ].includes(payload.table)) {
+            scheduleAuthoritativeStoreRefresh(storeId);
           }
         } catch (err) {
           console.error("Realtime sync mapping error:", err);
@@ -140,6 +174,10 @@ export const startRealtimeSync = () => {
 };
 
 export const stopRealtimeSync = () => {
+  if (authoritativeRefreshTimer) {
+    clearTimeout(authoritativeRefreshTimer);
+    authoritativeRefreshTimer = null;
+  }
   if (syncChannel) {
     supabase.removeChannel(syncChannel);
     syncChannel = null;

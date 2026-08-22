@@ -85,7 +85,7 @@ describe("projectCart", () => {
     expect(serialized).not.toContain("Niet tonen");
   });
 
-  it("blocks unsupported VAT from producing a misleading total", () => {
+  it("keeps a supported 6% retail line in the customer-facing total", () => {
     const projected = projectCart({
       orders: [
         {
@@ -95,8 +95,11 @@ describe("projectCart", () => {
       ],
     });
 
-    expect(projected.vatBlockers).toHaveLength(1);
-    expect(projected.totals.total).toBe(0);
-    expect(projected.remainingCents).toBe(0);
+    expect(projected.vatBlockers).toEqual([]);
+    expect(projected.totals.total).toBeGreaterThan(0);
+    expect(projected.remainingCents).toBeGreaterThan(0);
+    expect(projected.totals.vatBreakdown).toEqual(expect.arrayContaining([
+      expect.objectContaining({ rate: 6 }),
+    ]));
   });
 });

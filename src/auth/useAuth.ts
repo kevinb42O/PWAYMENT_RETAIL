@@ -13,6 +13,7 @@ import type { Json } from "../types/database.generated";
 import { useEntitlements } from "../billing/entitlements";
 import { reportLoadingProgress } from "../services/loadingProgress";
 import {
+  isCompleteStoreConfiguration,
   recommendedStartView,
   type StoreConfiguration,
 } from "../onboarding/storeConfiguration";
@@ -40,7 +41,7 @@ interface AuthState {
     lastName: string;
     storeName: string;
     pin: string;
-    onboardingConfiguration?: StoreConfiguration;
+    onboardingConfiguration: StoreConfiguration;
   }) => Promise<{ success: boolean; message?: string }>;
   logout: () => Promise<void>;
   hasRole: (...roles: Role[]) => boolean;
@@ -461,6 +462,12 @@ export const useAuth = create<AuthState>()(
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
           return { success: false, message: "Vul een geldig e-mailadres in" };
         }
+        if (!isCompleteStoreConfiguration(onboardingConfiguration)) {
+          return {
+            success: false,
+            message: "Kies en bevestig eerst het type retailwinkel.",
+          };
+        }
         if (
           import.meta.env.VITE_E2E_BUILD === "true" &&
           !/^\d{6}$/.test(pin)
@@ -484,15 +491,13 @@ export const useAuth = create<AuthState>()(
             createdAt: new Date().toISOString(),
           };
           await db.users.put(newUser);
-          if (onboardingConfiguration) {
-            const { useStore } = await import("../store/useStore");
-            await useStoreConfiguration
-              .getState()
-              .save(onboardingConfiguration, null);
-            useStore
-              .getState()
-              .setMainView(recommendedStartView(onboardingConfiguration));
-          }
+          const { useStore } = await import("../store/useStore");
+          await useStoreConfiguration
+            .getState()
+            .save(onboardingConfiguration, null);
+          useStore
+            .getState()
+            .setMainView(recommendedStartView(onboardingConfiguration));
           set({
             currentUserId: newUser.id,
             currentUserName: newUser.name,
@@ -514,7 +519,7 @@ export const useAuth = create<AuthState>()(
                 first_name: cleanFirst,
                 last_name: cleanLast,
                 store_name: cleanStore,
-                onboarding_config: onboardingConfiguration ?? null,
+                onboarding_config: onboardingConfiguration,
               },
             },
           });

@@ -37,7 +37,7 @@ const RoleIcon: React.FC<{ role: Role }> = ({ role }) => {
 };
 
 export const LoginScreen: React.FC = () => {
-  const { loginWithEmail, registerAccount, login: loginWithPin } = useAuth();
+  const { loginWithEmail, login: loginWithPin } = useAuth();
 
   const [mode, setMode] = useState<"login" | "register">(() =>
     window.location.pathname.startsWith("/register") ? "register" : "login",
@@ -104,51 +104,17 @@ export const LoginScreen: React.FC = () => {
     window.history.replaceState(window.history.state, "", "/app");
   };
 
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
+  // The normal registration screen is the retail onboarding wizard. Keep this
+  // defensive handler because the legacy form can be revealed from the local
+  // PIN drawer in development builds: it must never create a profile before
+  // the merchant has explicitly selected their retail type.
+  const handleRegisterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setNotice(null);
-
-    if (!firstName.trim() || !lastName.trim()) {
-      setError("Vul alstublieft zowel uw voornaam als familienaam in");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError("De ingevoerde wachtwoorden komen niet overeen");
-      return;
-    }
-
-    if (password.length < 12) {
-      setError("Het wachtwoord moet minstens 12 tekens bevatten");
-      return;
-    }
-
-    if (pinLoginEnabled && !/^\d{6}$/.test(pinCode)) {
-      setError("Kies een snel-PIN van exact 6 cijfers");
-      return;
-    }
-
-    beginLoading();
-    const res = await registerAccount({
-      email,
-      password,
-      firstName,
-      lastName,
-      storeName,
-      pin: pinCode,
-    });
-    if (!res.success) {
-      reportLoadingProgress("error");
-      stopLoading();
-      setError(res.message || "Registratie mislukt");
-      return;
-    }
-    stopLoading();
-    if (res.message) {
-      setNotice(res.message);
-      setMode("login");
-    }
+    setShowPinDrawer(false);
+    setMode("register");
+    window.history.replaceState({}, "", "/register");
   };
 
   const handlePinSubmit = async (uId: string, candidatePin: string) => {
@@ -267,7 +233,7 @@ export const LoginScreen: React.FC = () => {
         </div>
 
         <a href="/" className="group flex shrink-0 items-center gap-2" aria-label="Naar de Pwayment-website">
-          <img src="/branding/pwayment-logo.svg" alt="PWAYMENT" className="h-7 w-auto transition-transform duration-300 group-hover:scale-[1.03]" />
+          <img src="/branding/PWAYMENTLOGOFINAL.png" alt="PWAYMENT" className="h-7 w-auto transition-transform duration-300 group-hover:scale-[1.03]" />
           <span className="hidden border-l border-zinc-300 pl-3 text-xs font-semibold text-zinc-500 sm:inline">Retail intelligence</span>
         </a>
 
@@ -504,8 +470,10 @@ export const LoginScreen: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => {
+                      setShowPinDrawer(false);
                       setMode("register");
                       setError(null);
+                      window.history.replaceState({}, "", "/register");
                     }}
                     className={`py-2.5 text-xs font-bold rounded-xl transition-all ${
                       mode === "register"
@@ -586,6 +554,7 @@ export const LoginScreen: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => {
+                                setShowPinDrawer(false);
                                 setMode("register");
                                 setError(null);
                                 setNotice(null);

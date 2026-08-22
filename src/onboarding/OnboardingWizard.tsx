@@ -23,11 +23,14 @@ import { useAuth } from "../auth/useAuth";
 import { useStoreConfiguration } from "../store/useStoreConfiguration";
 import {
   CATALOG_SOURCES,
+  capabilityCodesForIndustry,
   completeStoreConfiguration,
   createStoreConfigurationDraft,
   labelFor,
   MODULE_DETAILS,
   PRICING_MODELS,
+  RETAIL_CAPABILITIES,
+  type RetailCapabilityCode,
   recommendedModulesForIndustry,
   recommendedStartView,
   RETAIL_INDUSTRIES,
@@ -41,7 +44,7 @@ import {
 } from "./storeConfiguration";
 
 type WizardMode = "registration" | "settings";
-type WizardStep = "account" | "store" | "modules" | "data" | "review";
+type WizardStep = "account" | "store" | "retail-needs" | "modules" | "data" | "review";
 
 interface OnboardingWizardProps {
   mode: WizardMode;
@@ -72,6 +75,7 @@ const EMPTY_ACCOUNT: AccountDraft = {
 const STEP_LABELS: Record<WizardStep, string> = {
   account: "Account",
   store: "Winkel",
+  "retail-needs": "Assortiment",
   modules: "Werkstromen",
   data: "Data & prijzen",
   review: "Klaarzetten",
@@ -131,13 +135,15 @@ const SelectField = <T extends string>({
   options,
   onChange,
   hint,
+  placeholder,
 }: {
   id: string;
   label: string;
-  value: T;
+  value: T | "";
   options: readonly { value: T; label: string }[];
   onChange: (value: T) => void;
   hint?: string;
+  placeholder?: string;
 }) => (
   <label htmlFor={id} className="block text-xs font-bold text-slate-700">
     {label}
@@ -148,6 +154,7 @@ const SelectField = <T extends string>({
         onChange={(event) => onChange(event.target.value as T)}
         className={selectClass}
       >
+        {placeholder && <option value="" disabled>{placeholder}</option>}
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
@@ -182,14 +189,18 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   }));
   const [configuration, setConfiguration] = useState<StoreConfiguration>(() =>
     mode === "settings"
-      ? { ...storedConfiguration, modules: { ...storedConfiguration.modules } }
+      ? {
+          ...storedConfiguration,
+          modules: { ...storedConfiguration.modules },
+          capabilities: { ...storedConfiguration.capabilities },
+        }
       : createStoreConfigurationDraft(),
   );
   const steps = useMemo<WizardStep[]>(
     () =>
       mode === "registration"
-        ? ["account", "store", "modules", "data", "review"]
-        : ["store", "modules", "data", "review"],
+        ? ["account", "store", "retail-needs", "modules", "data", "review"]
+        : ["store", "retail-needs", "modules", "data", "review"],
     [mode],
   );
   const [stepIndex, setStepIndex] = useState(0);
@@ -197,9 +208,24 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [industrySelected, setIndustrySelected] = useState(mode === "settings");
   const currentStep = steps[stepIndex];
   const selectedModules = MODULE_DETAILS.filter(
     (module) => configuration.modules[module.key],
+  );
+  const relevantCapabilities = useMemo(
+    () =>
+      RETAIL_CAPABILITIES.filter((capability) =>
+        capabilityCodesForIndustry(configuration.industry).includes(capability.code)
+        || configuration.capabilities[capability.code] !== "unknown",
+      ),
+    [configuration.capabilities, configuration.industry],
+  );
+  const requiredCapabilities = RETAIL_CAPABILITIES.filter(
+    (capability) => configuration.capabilities[capability.code] === "required",
+  );
+  const undecidedCapabilities = relevantCapabilities.filter(
+    (capability) => configuration.capabilities[capability.code] === "unknown",
   );
   const progress = Math.round(((stepIndex + 1) / steps.length) * 100);
 
@@ -217,10 +243,27 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   };
 
   const chooseIndustry = (industry: RetailIndustry) => {
+    setIndustrySelected(true);
     setConfiguration((current) => ({
       ...current,
       industry,
-      modules: recommendedModulesForIndustry(industry),
+      // A sector change in existing settings must not silently overwrite the
+      // merchant's navigation choices. New registrations still receive the
+      // sector's intentional starting recommendation.
+      modules: mode === "registration"
+        ? recommendedModulesForIndustry(industry)
+        : current.modules,
+    }));
+    setError(null);
+  };
+
+  const setCapabilityState = (
+    code: RetailCapabilityCode,
+    state: "unknown" | "not-needed" | "required",
+  ) => {
+    setConfiguration((current) => ({
+      ...current,
+      capabilities: { ...current.capabilities, [code]: state },
     }));
     setError(null);
   };
@@ -240,6 +283,10 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
         return;
       }
     }
+    if (currentStep === "store" && !industrySelected) {
+      setError("Kies eerst bewust welk type retailwinkel u heeft.");
+      return;
+    }
     setError(null);
     setStepIndex((current) => Math.min(current + 1, steps.length - 1));
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -254,6 +301,13 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   const submit = async () => {
     setError(null);
     setIsSubmitting(true);
+
+    if (mode === "registration" && !industrySelected) {
+      setIsSubmitting(false);
+      setError("Kies eerst bewust welk type retailwinkel u heeft.");
+      setStepIndex(1);
+      return;
+    }
 
     if (mode === "registration") {
       const nextError = accountError(account, pinLoginEnabled);
@@ -308,7 +362,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
             <img
-              src="/branding/pwayment-logo.svg"
+              src="/branding/PWAYMENTLOGOFINAL.png"
               alt="Pwayment"
               className="h-7 w-auto"
             />
@@ -413,13 +467,15 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
               <h1 className="mt-2 text-2xl font-black tracking-[-0.025em] sm:text-3xl">
                 {currentStep === "account" && "Eerst uw veilige account"}
                 {currentStep === "store" && "Wat voor winkel bouwt u?"}
+                {currentStep === "retail-needs" && "Wat moet uw assortiment echt kunnen?"}
                 {currentStep === "modules" && "Wat moet vanaf dag één klaarstaan?"}
                 {currentStep === "data" && "Hoe werkt uw productwereld vandaag?"}
                 {currentStep === "review" && "Dit zetten we voor u klaar"}
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
                 {currentStep === "account" && "Alleen wat nodig is om de winkel veilig aan u te koppelen."}
-                {currentStep === "store" && "Uw sector bepaalt slimme beginwaarden, maar beperkt nooit wat PWAYMENT kan doen."}
+                {currentStep === "store" && "Uw sector bepaalt welke retailvragen we eerst zorgvuldig moeten beoordelen."}
+                {currentStep === "retail-needs" && "Dit zijn geen functieschakelaars. Uw antwoorden worden als retailvereisten bewaard en sturen latere import, catalogus en POS-inrichting."}
                 {currentStep === "modules" && "Kassa, dagafsluiting en historiek zijn altijd aanwezig. Kies de extra werkstromen die relevant zijn."}
                 {currentStep === "data" && "Deze antwoorden sturen uw import, prijsopbouw en eerste aanbevolen actie."}
                 {currentStep === "review" && "Controleer de kern. U kunt alles later opnieuw aanpassen."}
@@ -548,9 +604,10 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                     <SelectField
                       id="onboarding-industry"
                       label="Welke zaak heeft u?"
-                      value={configuration.industry}
+                      value={industrySelected ? configuration.industry : ""}
                       options={RETAIL_INDUSTRIES}
                       onChange={chooseIndustry}
+                      placeholder="Kies uw winkeltype"
                       hint="We gebruiken dit alleen om relevante beginwaarden klaar te zetten. Elke module blijft beschikbaar."
                     />
                   </div>
@@ -568,14 +625,61 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                     options={TEAM_SIZES}
                     onChange={(value) => updateConfiguration("teamSize", value)}
                   />
-                  <div className="sm:col-span-2 rounded-2xl border border-sky-100 bg-sky-50/80 p-4 text-sm leading-6 text-sky-950">
+                  {industrySelected && <div className="sm:col-span-2 rounded-2xl border border-sky-100 bg-sky-50/80 p-4 text-sm leading-6 text-sky-950">
                     <div className="flex items-center gap-2 font-extrabold">
                       <Clock3 size={16} className="text-sky-600" /> Slim startpunt
                     </div>
                     <p className="mt-1 text-xs leading-5 text-sky-800">
                       Voor {labelFor(RETAIL_INDUSTRIES, configuration.industry).toLowerCase()} stellen we op de volgende stap een passende werkruimte voor. U houdt altijd het laatste woord.
                     </p>
+                  </div>}
+                </div>
+              )}
+
+              {currentStep === "retail-needs" && (
+                <div className="space-y-4">
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-950">
+                    <p className="font-extrabold">Beoordeel alleen wat u zeker weet.</p>
+                    <p className="mt-1">“Nodig” betekent dat Pwayment dit als vereiste voor uw winkel bewaart; het zet geen onvoltooide functie stilzwijgend aan. “Nog niet zeker” blijft zichtbaar bij een volgende catalogusimport.</p>
                   </div>
+                  {relevantCapabilities.map((capability) => {
+                    const state = configuration.capabilities[capability.code];
+                    const managedByPlatform = state === "enabled" || state === "blocked";
+                    return (
+                      <fieldset key={capability.code} className="rounded-2xl border border-slate-200 bg-white p-4">
+                        <legend className="sr-only">{capability.title}</legend>
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="max-w-xl">
+                            <p className="text-sm font-extrabold text-slate-900">{capability.title}</p>
+                            <p className="mt-1 text-xs leading-5 text-slate-500">{capability.description}</p>
+                          </div>
+                          {managedByPlatform ? (
+                            <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${state === "enabled" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>
+                              {state === "enabled" ? "Ingericht" : "Opvolging nodig"}
+                            </span>
+                          ) : (
+                            <div className="grid shrink-0 grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1 text-[10px] font-bold sm:w-[255px]">
+                              {([
+                                ["unknown", "Nog niet zeker"],
+                                ["not-needed", "Niet nodig"],
+                                ["required", "Nodig"],
+                              ] as const).map(([value, label]) => (
+                                <button
+                                  key={value}
+                                  type="button"
+                                  aria-pressed={state === value}
+                                  onClick={() => setCapabilityState(capability.code, value)}
+                                  className={`min-h-10 rounded-lg px-2 py-1.5 leading-3 transition ${state === value ? "bg-white text-slate-950 shadow-sm ring-1 ring-slate-200" : "text-slate-500 hover:text-slate-800"}`}
+                                >
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </fieldset>
+                    );
+                  })}
                 </div>
               )}
 
@@ -771,6 +875,24 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                         <span key={module.key} className="rounded-full bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-800 ring-1 ring-sky-100">{module.title}</span>
                       ))}
                     </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 p-5">
+                    <p className="text-xs font-black uppercase tracking-wider text-slate-400">Assortimentvereisten</p>
+                    {requiredCapabilities.length > 0 ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {requiredCapabilities.map((capability) => (
+                          <span key={capability.code} className="rounded-full bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-900 ring-1 ring-amber-100">
+                            {capability.title}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-xs leading-5 text-slate-500">U hebt nog geen extra assortimentvereiste bevestigd. Dat is veilig: bij een catalogusimport blijven onbesliste punten zichtbaar.</p>
+                    )}
+                    {undecidedCapabilities.length > 0 && (
+                      <p className="mt-3 text-xs leading-5 text-slate-500">Nog te beoordelen voor dit winkelprofiel: {undecidedCapabilities.map((capability) => capability.title.toLocaleLowerCase("nl-BE")).join(", ")}.</p>
+                    )}
                   </div>
 
                   <p className="text-xs leading-5 text-slate-500">

@@ -2,6 +2,7 @@ import type {
   Customer,
   ImportFieldMapping,
   Product,
+  ProductIdentifierType,
   ProductCategory,
 } from "../types";
 import type { ParsedImportFile } from "../utils/integrationImport";
@@ -19,7 +20,37 @@ export interface MappedMigrationRecords {
   products: Product[];
   customers: Customer[];
   categories: ProductCategory[];
+  catalogFamilies: RetailCatalogFamilyRelation[];
   issues: MigrationMappingIssue[];
+}
+
+export type RetailCatalogIdentifierType = ProductIdentifierType;
+
+export interface RetailCatalogIdentifierRelation {
+  identifierType: RetailCatalogIdentifierType;
+  identifierValue: string;
+  isScannable: boolean;
+  isPrimary: boolean;
+}
+
+export interface RetailCatalogVariantOptionRelation {
+  name: string;
+  value: string;
+}
+
+export interface RetailCatalogVariantRelation {
+  productExternalId: string;
+  displayName?: string;
+  options: RetailCatalogVariantOptionRelation[];
+  identifiers: RetailCatalogIdentifierRelation[];
+}
+
+export interface RetailCatalogFamilyRelation {
+  externalId: string;
+  name: string;
+  brand?: string;
+  categoryExternalId?: string;
+  variants: RetailCatalogVariantRelation[];
 }
 
 export const PRODUCT_MAPPING_TARGETS = [
@@ -34,6 +65,8 @@ export const PRODUCT_MAPPING_TARGETS = [
   ["core:supplier", "Leverancier"],
   ["core:supplierCode", "Leverancierscode"],
   ["core:variant", "Variant"],
+  ["variant-option", "Variantoptie (naam uit bronkolom)"],
+  ["identifier", "Extra productidentificatie (naam uit bronkolom)"],
   ["core:costPrice", "Aankoopprijs"],
   ["core:sellingPrice", "Standaard verkoopprijs"],
   ["core:vatRate", "BTW-percentage"],
@@ -80,8 +113,146 @@ const rawCustomFields = (
   mappings
     .filter((mapping) => mapping.target === "ignore")
     .map((mapping) => [mapping.source, row[parsed.headers.indexOf(mapping.source)]?.trim() ?? ""])
-    .filter(([, value]) => Boolean(value)),
+  .filter(([, value]) => Boolean(value)),
 );
+
+const variantOptionsFor = (
+  row: string[],
+  parsed: ParsedImportFile,
+  mappings: ImportFieldMapping[],
+): RetailCatalogVariantOptionRelation[] =>
+  mappings.flatMap((mapping) => {
+    if (mapping.target !== "variant-option" && !mapping.target.startsWith("variant-option:")) return [];
+    const name = (mapping.target === "variant-option"
+      ? mapping.source
+      : mapping.target.slice("variant-option:".length)).trim();
+    const index = parsed.headers.indexOf(mapping.source);
+    const value = index < 0 ? "" : row[index]?.trim() ?? "";
+    return name && value ? [{ name, value }] : [];
+  });
+
+const identifierTypeForHeader = (header: string): RetailCatalogIdentifierType => {
+  const normalized = header.toLocaleLowerCase("nl-BE");
+  if (/\bupc\b/.test(normalized)) return "upc";
+  if (/\bgtin\b/.test(normalized)) return "gtin";
+  if (/\bean\b|barcode/.test(normalized)) return "ean";
+  if (/supplier|leverancier|vendor/.test(normalized)) return "supplier-code";
+  if (/sku|artikelcode|artikelnummer|productcode/.test(normalized)) return "internal-sku";
+  return "alternate";
+};
+
+const additionalIdentifierRelationsFor = (
+  row: string[],
+  parsed: ParsedImportFile,
+  mappings: ImportFieldMapping[],
+): RetailCatalogIdentifierRelation[] =>
+  mappings.flatMap((mapping) => {
+    if (mapping.target !== "identifier" && !mapping.target.startsWith("identifier:")) return [];
+    const index = parsed.headers.indexOf(mapping.source);
+    const identifierValue = index < 0 ? "" : row[index]?.trim() ?? "";
+    if (!identifierValue) return [];
+    const requestedType = mapping.target.startsWith("identifier:")
+      ? mapping.target.slice("identifier:".length) as RetailCatalogIdentifierType
+      : identifierTypeForHeader(mapping.source);
+    const identifierType: RetailCatalogIdentifierType = [
+      "internal-sku", "ean", "upc", "gtin", "supplier-code", "alternate",
+    ].includes(requestedType) ? requestedType : "alternate";
+    return [{
+      identifierType,
+      identifierValue,
+      isScannable: identifierType !== "supplier-code",
+      isPrimary: false,
+    }];
+  });
+
+const identifierRelationsFor = (
+  product: Product,
+  additional: RetailCatalogIdentifierRelation[] = [],
+): RetailCatalogIdentifierRelation[] => {
+  const values: RetailCatalogIdentifierRelation[] = [];
+  const barcode = product.barcode?.trim();
+  const sku = product.sku?.trim();
+  const supplierCode = product.supplierCode?.trim();
+  if (sku) {
+    values.push({
+      identifierType: "internal-sku",
+      identifierValue: sku,
+      isScannable: true,
+      isPrimary: !barcode,
+    });
+  }
+  if (barcode) {
+    const digits = barcode.replace(/\s/g, "");
+    values.push({
+      identifierType: /^\d{12}$/.test(digits) ? "upc" : /^\d{8}$|^\d{13}$|^\d{14}$/.test(digits) ? "ean" : "alternate",
+      identifierValue: barcode,
+      isScannable: true,
+      isPrimary: true,
+    });
+  }
+  if (supplierCode) {
+    values.push({
+      identifierType: "supplier-code",
+      identifierValue: supplierCode,
+      isScannable: false,
+      isPrimary: false,
+    });
+  }
+  const seen = new Set<string>();
+  return [...values, ...additional].filter((value) => {
+    const key = `${value.identifierType}\u001f${value.identifierValue.replace(/\s/g, "").toLocaleLowerCase("nl-BE")}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
+const catalogFamiliesFor = (
+  products: Product[],
+  variantOptionsByProductId: Map<string, RetailCatalogVariantOptionRelation[]>,
+  additionalIdentifiersByProductId: Map<string, RetailCatalogIdentifierRelation[]>,
+): RetailCatalogFamilyRelation[] => {
+  const grouped = new Map<string, Product[]>();
+  for (const product of products) {
+    const options = variantOptionsByProductId.get(product.id) ?? [];
+    // Only an explicit variant/option mapping groups multiple sellable SKUs.
+    // Equal product names alone are never enough evidence for a family.
+    const key = options.length > 0 || product.variant
+      ? [product.category, product.brand ?? "", product.name].map((value) => value.toLocaleLowerCase("nl-BE").trim()).join("\u001f")
+      : product.id;
+    const current = grouped.get(key) ?? [];
+    current.push(product);
+    grouped.set(key, current);
+  }
+  const familyIds = new Set<string>();
+  return Array.from(grouped.entries()).map(([key, familyProducts]) => {
+    const first = familyProducts[0];
+    return {
+      externalId: makeUniqueId(key, familyIds, "migration-family"),
+      name: first.name,
+      brand: first.brand,
+      categoryExternalId: first.category || undefined,
+      variants: familyProducts.map((product) => {
+        const explicitOptions = variantOptionsByProductId.get(product.id) ?? [];
+        // `product.variant` is a readable POS label. When actual option
+        // columns exist it is derived from those columns, so adding it as a
+        // second option would create a fake dimension in the matrix.
+        const options = explicitOptions.length === 0 && product.variant
+          ? [{ name: "Variant", value: product.variant }]
+          : explicitOptions;
+        return {
+          productExternalId: product.id,
+          displayName: product.variant,
+          options,
+          identifiers: identifierRelationsFor(
+            product,
+            additionalIdentifiersByProductId.get(product.id),
+          ),
+        };
+      }),
+    };
+  });
+};
 
 const parsePrice = (value: string): number | null | undefined => {
   if (!value.trim()) return undefined;
@@ -153,9 +324,18 @@ export const mapMigrationRecords = ({
   const products: Product[] = [];
   const customers: Customer[] = [];
   const categories: ProductCategory[] = [];
+  const variantOptionsByProductId = new Map<string, RetailCatalogVariantOptionRelation[]>();
+  const additionalIdentifiersByProductId = new Map<string, RetailCatalogIdentifierRelation[]>();
   const productIds = new Set<string>();
   const customerIds = new Set<string>();
-  const categoryByName = new Map(existingCategories.map((category) => [category.name.toLocaleLowerCase("nl-BE"), category]));
+  const categoryPathKey = (name: string, parentId?: string): string =>
+    `${parentId ?? ""}\u001f${name.toLocaleLowerCase("nl-BE")}`;
+  const categoryByPath = new Map(
+    existingCategories.map((category) => [
+      categoryPathKey(category.name, category.parentId),
+      category,
+    ]),
+  );
   const categoryIds = new Set(existingCategories.map((category) => category.id.toLocaleLowerCase("nl-BE")));
   const identityKeys = new Set<string>();
 
@@ -210,17 +390,26 @@ export const mapMigrationRecords = ({
     const explicitId = valueFor(row, parsed, mappings, "core:id");
     const sku = valueFor(row, parsed, mappings, "core:sku") || undefined;
     const barcode = valueFor(row, parsed, mappings, "core:barcode") || undefined;
-    const identity = explicitId || sku || barcode || name;
+    const categoryName = valueFor(row, parsed, mappings, "core:category") || "Geïmporteerd";
+    const subCategory = valueFor(row, parsed, mappings, "core:subCategory") || undefined;
+    const variantOptions = variantOptionsFor(row, parsed, mappings);
+    const explicitVariant = valueFor(row, parsed, mappings, "core:variant") || undefined;
+    const variant = explicitVariant
+      ?? (variantOptions.length > 0
+        ? variantOptions.map((option) => `${option.name}: ${option.value}`).join(" · ")
+        : undefined);
+    // A source may legitimately have no SKU/EAN yet. Its explicit category
+    // path and option tuple still distinguish sellable variants; two rows with
+    // the same tuple remain an import error instead of a guessed merge.
+    const fallbackIdentity = [categoryName, subCategory ?? "", name, variant ?? ""].join("\u001f");
+    const identity = explicitId || sku || barcode || fallbackIdentity;
     const identityKey = identity.toLocaleLowerCase("nl-BE");
     if (identityKeys.has(identityKey)) {
-      issues.push({ row: rowNumber, message: "Dubbel extern ID, SKU, barcode of productnaam in dit bestand." });
+      issues.push({ row: rowNumber, message: "Dubbel extern ID, SKU, barcode of product/variantcombinatie in dit bestand." });
       return;
     }
     identityKeys.add(identityKey);
-    const categoryName = valueFor(row, parsed, mappings, "core:category") || "Geïmporteerd";
-    const subCategory = valueFor(row, parsed, mappings, "core:subCategory") || undefined;
-    const normalizedCategory = categoryName.toLocaleLowerCase("nl-BE");
-    let category = categoryByName.get(normalizedCategory);
+    let category = categoryByPath.get(categoryPathKey(categoryName));
     if (!category) {
       category = {
         id: makeUniqueId(categoryName, categoryIds, "migration-category"),
@@ -228,8 +417,25 @@ export const mapMigrationRecords = ({
         vatRate,
         isActive: true,
       };
-      categoryByName.set(normalizedCategory, category);
+      categoryByPath.set(categoryPathKey(categoryName), category);
       categories.push(category);
+    }
+    let productCategory = category;
+    if (subCategory) {
+      const childKey = categoryPathKey(subCategory, category.id);
+      let childCategory = categoryByPath.get(childKey);
+      if (!childCategory) {
+        childCategory = {
+          id: makeUniqueId(`${categoryName}-${subCategory}`, categoryIds, "migration-category"),
+          parentId: category.id,
+          name: subCategory,
+          vatRate,
+          isActive: true,
+        };
+        categoryByPath.set(childKey, childCategory);
+        categories.push(childCategory);
+      }
+      productCategory = childCategory;
     }
     const priceTiers: Record<string, number> = {};
     let invalidTier = false;
@@ -243,17 +449,22 @@ export const mapMigrationRecords = ({
       issues.push({ row: rowNumber, message: "Een klantprijs is ongeldig." });
       return;
     }
-    products.push({
-      id: makeUniqueId(explicitId || sku || barcode || name, productIds, "migration-product"),
+    const id = makeUniqueId(explicitId || sku || barcode || fallbackIdentity, productIds, "migration-product");
+    const additionalIdentifiers = additionalIdentifierRelationsFor(row, parsed, mappings);
+    const mappedProduct: Product = {
+      id,
       name,
-      category: category.id,
+      category: productCategory.id,
       subCategory,
       sku,
       barcode,
       brand: valueFor(row, parsed, mappings, "core:brand") || undefined,
       supplier: valueFor(row, parsed, mappings, "core:supplier") || undefined,
       supplierCode: valueFor(row, parsed, mappings, "core:supplierCode") || undefined,
-      variant: valueFor(row, parsed, mappings, "core:variant") || undefined,
+      variant,
+      variantOptions: variantOptions.length > 0
+        ? Object.fromEntries(variantOptions.map((option) => [option.name, option.value]))
+        : undefined,
       priceCents: standardPrice,
       costPriceCents: costPrice,
       vatRate,
@@ -262,8 +473,34 @@ export const mapMigrationRecords = ({
       customFields: rawCustomFields(row, parsed, mappings),
       productType: "merchandise",
       isActive: true,
-    });
+    };
+    mappedProduct.identifiers = identifierRelationsFor(mappedProduct, additionalIdentifiers)
+      .map((identifier) => ({
+        type: identifier.identifierType,
+        value: identifier.identifierValue,
+        isScannable: identifier.isScannable,
+        isPrimary: identifier.isPrimary,
+      }));
+    products.push(mappedProduct);
+    variantOptionsByProductId.set(id, variantOptions);
+    additionalIdentifiersByProductId.set(id, additionalIdentifiers);
   });
 
-  return { products, customers, categories, issues };
+  const catalogFamilies = kind === "catalog"
+    ? catalogFamiliesFor(products, variantOptionsByProductId, additionalIdentifiersByProductId)
+    : [];
+  for (const family of catalogFamilies) {
+    for (const familyVariant of family.variants) {
+      const product = products.find((candidate) => candidate.id === familyVariant.productExternalId);
+      if (product) product.familyId = family.externalId;
+    }
+  }
+
+  return {
+    products,
+    customers,
+    categories,
+    catalogFamilies,
+    issues,
+  };
 };

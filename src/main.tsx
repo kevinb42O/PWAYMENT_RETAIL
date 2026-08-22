@@ -131,12 +131,12 @@ const StartupScreen = () => {
     <div className="z-10 flex w-full max-w-sm flex-col items-center rounded-[2rem] border border-white/80 bg-white/70 px-8 py-10 text-center shadow-[0_32px_90px_-42px_rgba(15,23,42,0.45)] backdrop-blur-xl sm:px-10">
       <div className="flex items-center justify-center sm:translate-x-3">
         <img
-          src="/branding/pwayment-logo.svg"
+          src="/branding/PWAYMENTLOGOFINAL.png"
           alt="Pwayment"
           className="hidden sm:block h-12 w-auto object-contain"
         />
         <img
-          src="/branding/pwayment-mark.svg"
+          src="/branding/PWAYMENTLOGOFINAL.png"
           alt="Pwayment"
           className="block sm:hidden h-16 w-16 object-contain"
         />

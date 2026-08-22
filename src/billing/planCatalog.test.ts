@@ -17,7 +17,7 @@ describe("billing plan catalog", () => {
 
   it("keeps Enterprise capabilities out of Professional in the shared matrix", () => {
     const rows = PLAN_COMPARISON_GROUPS.flatMap((group) => group.rows);
-    expect(rows.find((row) => row.label.startsWith("Workforce"))?.pro).toBe("—");
+    expect(rows.find((row) => row.label.startsWith("Personeelsplanning"))?.pro).toBe("—");
     expect(rows.find((row) => row.label === "AI-voorraadprognose")?.pro).toBe("—");
     expect(rows.find((row) => row.label === "Volledige auditviewer en export")?.pro).toBe("—");
   });

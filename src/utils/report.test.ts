@@ -102,6 +102,79 @@ describe("calculateReportData", () => {
     expect(r.totalDiscountCents).toBe(0);
   });
 
+  it("preserves 0%, 6%, 12% and 21% tax buckets in a retail report", () => {
+    const rates = [0, 6, 12, 21] as const;
+    const transactions = rates.map((vatRate, index) => {
+      const totalCents = 1_000 + vatRate;
+      const vatCents = vatRate === 0
+        ? 0
+        : totalCents - Math.round(totalCents / (1 + vatRate / 100));
+      return {
+        ...tx(index + 1, totalCents, "PIN"),
+        items: [{
+          lineId: `vat-${vatRate}`,
+          product: {
+            id: `product-${vatRate}`,
+            name: `Artikel ${vatRate}%`,
+            category: "retail",
+            priceCents: totalCents,
+            vatRate,
+          },
+          quantity: 1,
+        }],
+        vatBreakdown: [{
+          rate: vatRate,
+          grossCents: totalCents,
+          exclCents: totalCents - vatCents,
+          vatCents,
+        }],
+        vat12Cents: vatRate === 12 ? vatCents : 0,
+        vat21Cents: vatRate === 21 ? vatCents : 0,
+      };
+    });
+
+    const report = calculateReportData(transactions);
+
+    expect(report.totalVatBreakdown.map((line) => line.rate)).toEqual([0, 6, 12, 21]);
+    expect(report.totalVatBreakdown.reduce((sum, line) => sum + line.grossCents, 0))
+      .toBe(report.totalRevenueCents);
+    expect(report.totalVatBreakdown.find((line) => line.rate === 6)?.vatCents).toBeGreaterThan(0);
+  });
+
+  it("subtracts an immutable signed refund VAT snapshot exactly once", () => {
+    const sale = {
+      ...tx(1, 1_060, "PIN"),
+      items: [{
+        lineId: "six-percent-sale",
+        product: { ...tx(1, 1_060, "PIN").items[0].product, vatRate: 6 },
+        quantity: 1,
+      }],
+      vatBreakdown: [{ rate: 6 as const, grossCents: 1_060, exclCents: 1_000, vatCents: 60 }],
+      vat12Cents: 0,
+      vat21Cents: 0,
+    };
+    const refund = {
+      ...sale,
+      id: 2,
+      clientRequestId: "refund-2",
+      kind: "refund" as const,
+      subtotalCents: -1_060,
+      totalCents: -1_060,
+      discountCents: 0,
+      vatBreakdown: [{ rate: 6 as const, grossCents: -1_060, exclCents: -1_000, vatCents: -60 }],
+      tenders: [{ method: "PIN" as const, amountCents: -1_060 }],
+    };
+
+    const report = calculateReportData([sale, refund]);
+
+    expect(report.totalRevenueCents).toBe(0);
+    expect(report.totalVatBreakdown.find((line) => line.rate === 6)).toMatchObject({
+      grossCents: 0,
+      exclCents: 0,
+      vatCents: 0,
+    });
+  });
+
   it("tracks cost and gross profit", () => {
     const r = calculateReportData([
       tx(1, 10000, "PIN", 4500),
@@ -164,6 +237,29 @@ describe("calculateReportData", () => {
     await expect(
       verifyZReport({ ...report, serverHashPayload: `${serverHashPayload}tampered` }, []),
     ).resolves.toBe(false);
+  });
+
+  it("verifies a generic-retail VAT server hash at version 4", async () => {
+    const serverHashPayload = JSON.stringify({
+      version: 4,
+      report: {
+        totalVatBreakdown: [
+          { rate: 0, grossCents: 100, exclCents: 100, vatCents: 0 },
+          { rate: 6, grossCents: 106, exclCents: 100, vatCents: 6 },
+        ],
+      },
+    });
+    const report = {
+      ...calculateReportData([tx(1, 1210, "PIN")]),
+      reportNumber: 43,
+      transactionIds: [1],
+      prevHash: null,
+      hashPayloadVersion: 4,
+      serverHashPayload,
+      hash: await generateHash(serverHashPayload),
+    };
+
+    await expect(verifyZReport(report, [])).resolves.toBe(true);
   });
 });
 

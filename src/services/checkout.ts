@@ -29,6 +29,7 @@ import {
   MAX_CASH_PAYMENT_CENTS,
   roundCashSettlementCents,
 } from "../utils/cashRounding";
+import { assertRetailVatServerSupport } from "./retailPlatformCapabilities";
 
 export type CheckoutErrorCode =
   | "empty-cart"
@@ -253,6 +254,18 @@ const runCheckout = async (
       throw new CheckoutError("unsupported-vat", err.message);
     }
     throw err;
+  }
+
+  try {
+    await assertRetailVatServerSupport(
+      storeId,
+      totals.vatBreakdown.map((line) => line.rate),
+    );
+  } catch (err) {
+    throw new CheckoutError(
+      "unsupported-vat",
+      err instanceof Error ? err.message : "De centrale retail-btwversie kon niet worden bevestigd.",
+    );
   }
 
   const allocations = dedupeGiftCards(input.giftCards);
@@ -523,6 +536,7 @@ const runCheckout = async (
         tableId: input.cartId,
         items: input.items,
         subtotalCents: totals.subtotal,
+        vatBreakdown: totals.vatBreakdown,
         vat12Cents: totals.vat12,
         vat21Cents: totals.vat21,
         roundingAdjustmentCents,

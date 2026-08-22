@@ -34,10 +34,19 @@ describe("Supabase store bootstrap", () => {
     });
 
     const rows: Record<string, any[]> = {
-      categories: [{ id: "category-db", external_id: "decks", name: "Decks", vat_rate: 21, sort_order: 2, is_active: true }],
+      categories: [
+        { id: "category-root-db", external_id: "hardware", name: "Hardware", parent_id: null, vat_rate: 21, sort_order: 1, is_active: true },
+        { id: "category-db", external_id: "decks", name: "Decks", parent_id: "category-root-db", vat_rate: 21, sort_order: 2, is_active: true },
+      ],
       products: [{ id: "product-db", external_id: "product-1", name: "Nieuwe deck", category_id: "category-db", category_name: "Decks", subcategory: null, sku: "DECK-1", barcode: "123", price_cents: 6500, cost_price_cents: 2500, vat_rate: 21, brand: "Pwayment", supplier: null, variant: null, stock_qty: 4, min_stock_qty: 1, color: null, product_type: "merchandise", is_active: true }],
+      product_families: [{ id: "family-db", external_id: "family-1", name: "Nieuwe deck", brand: "Pwayment", category_id: "category-db", description: null, is_active: true, created_at: now, updated_at: now }],
+      product_family_variants: [{ store_id: storeId, product_id: "product-db", family_id: "family-db", display_name: "8.25 inch", display_order: 0, option_signature: "size:value", created_at: now, updated_at: now }],
+      product_family_option_definitions: [{ id: "option-definition-db", store_id: storeId, family_id: "family-db", name: "Maat", normalized_name: "maat", display_order: 0, is_active: true, created_at: now, updated_at: now }],
+      product_family_option_values: [{ id: "option-value-db", store_id: storeId, family_id: "family-db", definition_id: "option-definition-db", value: "8.25", normalized_value: "8.25", display_order: 0, is_active: true, created_at: now, updated_at: now }],
+      product_variant_option_values: [{ store_id: storeId, product_id: "product-db", family_id: "family-db", definition_id: "option-definition-db", value_id: "option-value-db", created_at: now }],
+      product_identifiers: [{ id: "identifier-db", store_id: storeId, product_id: "product-db", identifier_type: "ean", identifier_value: "5410000000011", normalized_value: "5410000000011", is_scannable: true, is_primary: true, is_active: true, created_at: now, updated_at: now }],
       customers: [{ id: "customer-db", external_id: "customer-1", name: "Ari Klant", email: "ari@example.test", phone: null, address: null, notes: null, total_spent_cents: 6500, visit_count: 1, last_visit_at: now, created_at: now, is_active: true }],
-      transactions: [{ id: "transaction-db", client_request_id: "request-1", table_id: 1, subtotal_cents: 6500, vat_12_cents: 0, vat_21_cents: 1128, total_cents: 6500, discount_cents: 0, discount_reason: null, discount_approved_by_user_id: null, tip_cents: 0, tendered_cents: null, payment_method: "PIN", occurred_at: now, is_finalized: false, user_id: "user-1", user_name: "Alex", customer_id: "customer-db", source: "live", kind: "sale", original_transaction_id: null, correction_reason: null, document_number: "2026-1", merchant_snapshot: { name: "Pwayment" }, register_id: "register-db", shift_id: "shift-db" }],
+      transactions: [{ id: "transaction-db", client_request_id: "request-1", table_id: 1, subtotal_cents: 6500, vat_0_cents: 0, vat_6_cents: 60, vat_12_cents: 0, vat_21_cents: 944, vat_breakdown: [{ rate: 6, grossCents: 1060, exclCents: 1000, vatCents: 60 }, { rate: 21, grossCents: 5440, exclCents: 4496, vatCents: 944 }], total_cents: 6500, discount_cents: 0, discount_reason: null, discount_approved_by_user_id: null, tip_cents: 0, tendered_cents: null, payment_method: "PIN", occurred_at: now, is_finalized: false, user_id: "user-1", user_name: "Alex", customer_id: "customer-db", source: "live", kind: "sale", original_transaction_id: null, correction_reason: null, document_number: "2026-1", merchant_snapshot: { name: "Pwayment" }, register_id: "register-db", shift_id: "shift-db" }],
       transaction_lines: [{ id: "line-db", transaction_id: "transaction-db", line_external_id: "line-1", product_id: "product-db", product_external_id: "product-1", product_name: "Nieuwe deck", sku: "DECK-1", barcode: "123", quantity: 1, unit_price_cents: 6500, unit_cost_cents: 2500, vat_rate: 21, line_total_cents: 6500, notes: "Grip inbegrepen", modifiers: [], product_snapshot: { category: "decks", priceCents: 6500, vatRate: 21 }, created_at: now }],
       transaction_tenders: [{ id: "tender-db", transaction_id: "transaction-db", method: "PIN", amount_cents: 6500, created_at: now }],
       gift_cards: [{ id: "gift-db", external_id: "gift-1", customer_id: "customer-db", code: "PW-1", initial_cents: 5000, balance_cents: 3000, issued_at: now, expires_at: null, is_active: true }],
@@ -49,9 +58,19 @@ describe("Supabase store bootstrap", () => {
       purchase_order_lines: [{ id: "purchase-line-db", purchase_order_id: "purchase-db", product_id: "product-db", product_external_id: "product-1", product_name: "Nieuwe deck", sku: "DECK-1", ordered_qty: 3, received_qty: 0, unit_cost_cents: 2500, forecast_snapshot: { currentStockQtyAtDraft: 4, minStockQtyAtDraft: 1, forecastConfidence: "high", forecastTrend: "up" }, created_at: now }],
       void_entries: [{ id: "void-db", occurred_at: now, table_id: 1, product_id: "product-db", product_name: "Nieuwe deck", quantity: 1, amount_cents: 6500, reason: "Invoerfout", by_user_id: "user-1", by_user_name: "Alex" }],
       audit_entries: [{ id: "audit-db", occurred_at: now, user_id: "user-1", user_name: "Alex", action: "login", detail: { source: "test" } }],
-      daily_reports: [{ id: "report-db", report_number: 1, occurred_at: now, totals: { totalRevenueCents: 6500, paymentTotalsCents: { Cash: 0, PIN: 6500, Cadeaubon: 0 } }, hash: "hash-1", previous_hash: null, closed_by_user_id: "user-1", closed_by_user_name: "Alex", register_id: "register-db", shift_id: "shift-db", opening_float_cents: 1000, counted_cash_cents: 1000, expected_cash_cents: 1000, cash_difference_cents: 0, cash_difference_reason: null, hash_payload_version: 3 }],
+      daily_reports: [{ id: "report-db", report_number: 1, occurred_at: now, totals: { totalRevenueCents: 6500, paymentTotalsCents: { Cash: 0, PIN: 6500, Cadeaubon: 0 }, totalVatBreakdown: [{ rate: 6, grossCents: 1060, exclCents: 1000, vatCents: 60 }, { rate: 21, grossCents: 5440, exclCents: 4496, vatCents: 944 }], serverHashPayload: "canonical-v4-payload" }, hash: "hash-1", previous_hash: null, closed_by_user_id: "user-1", closed_by_user_name: "Alex", register_id: "register-db", shift_id: "shift-db", opening_float_cents: 1000, counted_cash_cents: 1000, expected_cash_cents: 1000, cash_difference_cents: 0, cash_difference_reason: null, hash_payload_version: 4 }],
       daily_report_transactions: [{ daily_report_id: "report-db", transaction_id: "transaction-db" }],
       store_memberships: [{ user_id: "user-1", role: "owner" }],
+      store_capability_assessments: [{
+        store_id: storeId,
+        capability_code: "variant-matrix",
+        state: "enabled",
+        source: "platform",
+        assessed_by_user_id: null,
+        assessment_note: null,
+        assessed_at: now,
+        updated_at: now,
+      }],
       profiles: [{ id: "user-1", display_name: "Alex Owner", first_name: "Alex", last_name: "Owner", phone: null }],
     };
     const result = (table: string) => ({ data: rows[table] ?? [], error: null });
@@ -78,6 +97,12 @@ describe("Supabase store bootstrap", () => {
       category: "decks",
       supplierCode: "OLD-SKU",
       priceTiers: { vip: 90 },
+      familyId: "family-db",
+      variantOptions: { Maat: "8.25" },
+      identifiers: [{ type: "ean", value: "5410000000011", isScannable: true, isPrimary: true }],
+    });
+    expect(await activeDb.categories.get("decks")).toMatchObject({
+      parentId: "hardware",
     });
     expect(await activeDb.customers.get("customer-1")).toMatchObject({ name: "Ari Klant" });
     expect(await activeDb.transactions.get(1)).toMatchObject({
@@ -85,8 +110,24 @@ describe("Supabase store bootstrap", () => {
       customerId: "customer-1",
       registerId: "register-1",
       tenders: [{ method: "PIN", amountCents: 6500 }],
+      vatBreakdown: [
+        { rate: 6, grossCents: 1060, exclCents: 1000, vatCents: 60 },
+        { rate: 21, grossCents: 5440, exclCents: 4496, vatCents: 944 },
+      ],
     });
-    expect(await activeDb.daily_reports.get(1)).toMatchObject({ reportNumber: 1, transactionIds: [1] });
+    expect(await activeDb.daily_reports.get(1)).toMatchObject({
+      reportNumber: 1,
+      transactionIds: [1],
+      hashPayloadVersion: 4,
+      serverHashPayload: "canonical-v4-payload",
+      totalVatBreakdown: [
+        { rate: 6, grossCents: 1060, exclCents: 1000, vatCents: 60 },
+        { rate: 21, grossCents: 5440, exclCents: 4496, vatCents: 944 },
+      ],
+    });
     expect(await activeDb.gift_card_events.get("event-1")).toMatchObject({ giftCardId: "gift-1", dailyReportId: 1 });
+    const { useStoreConfiguration } = await import("../store/useStoreConfiguration");
+    expect(useStoreConfiguration.getState().configuration.capabilities["variant-matrix"])
+      .toBe("enabled");
   });
 });

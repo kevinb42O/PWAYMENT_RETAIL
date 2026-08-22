@@ -4,6 +4,8 @@ import type { DailyReport, Transaction } from "../types";
 import type { Json } from "../types/database.generated";
 import { transactionTenders } from "../utils/financial";
 import { allocateCents } from "../utils/money";
+import { vatBreakdownForTransaction } from "../utils/vat";
+import { vatBreakdownForReport } from "../utils/vatReport";
 
 export interface DailyReportProductDetail {
   key: string;
@@ -35,6 +37,8 @@ export interface DailyReportTransactionDetail {
   totalCents: number;
   /** Cash settlement difference; commercial/VAT total remains `totalCents`. */
   roundingAdjustmentCents: number;
+  vatBreakdown?: NonNullable<Transaction["vatBreakdown"]>;
+  /** Legacy compatibility projections. New consumers must prefer vatBreakdown. */
   vat12Cents: number;
   vat21Cents: number;
   paymentMethod: string;
@@ -88,6 +92,7 @@ export interface DailyReportDaySummary {
   grossProfitCents: number;
   totalVat12Cents: number;
   totalVat21Cents: number;
+  totalVatBreakdown: NonNullable<DailyReport["totalVatBreakdown"]>;
   cashCents: number;
   pinCents: number;
   giftCardCents: number;
@@ -108,6 +113,26 @@ const object = (value: unknown): Record<string, unknown> =>
     : {};
 
 const array = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
+
+const vatBreakdown = (value: unknown): NonNullable<Transaction["vatBreakdown"]> | undefined => {
+  const lines = array(value).flatMap((item) => {
+    const row = object(item);
+    const rate = number(row.rate, -1);
+    const grossCents = number(row.grossCents, Number.NaN);
+    const exclCents = number(row.exclCents, Number.NaN);
+    const vatCents = number(row.vatCents, Number.NaN);
+    return ([0, 6, 12, 21].includes(rate) &&
+      [grossCents, exclCents, vatCents].every(Number.isSafeInteger) &&
+      grossCents === exclCents + vatCents)
+      ? [{ rate: rate as 0 | 6 | 12 | 21, grossCents, exclCents, vatCents }]
+      : [];
+  });
+  const source = array(value);
+  const hasUniqueRates = new Set(lines.map((line) => line.rate)).size === lines.length;
+  return lines.length > 0 && lines.length === source.length && hasUniqueRates
+    ? lines
+    : undefined;
+};
 
 const mapServerDetail = (value: Json): DailyReportDetail => {
   const root = object(value);
@@ -173,6 +198,7 @@ const mapServerDetail = (value: Json): DailyReportDetail => {
         discountCents: number(row.discountCents),
         totalCents: number(row.totalCents),
         roundingAdjustmentCents: number(row.roundingAdjustmentCents),
+        vatBreakdown: vatBreakdown(row.vatBreakdown),
         vat12Cents: number(row.vat12Cents),
         vat21Cents: number(row.vat21Cents),
         paymentMethod: string(row.paymentMethod),
@@ -230,9 +256,10 @@ const deriveOfflineDetail = (
       byRate.set(item.product.vatRate, indexes);
     });
     const vatByLine = Array(transaction.items.length).fill(0) as number[];
+    const transactionVatBreakdown = vatBreakdownForTransaction(transaction);
     for (const [rate, indexes] of byRate) {
       const target = Math.abs(
-        rate === 12 ? transaction.vat12Cents : rate === 21 ? transaction.vat21Cents : 0,
+        transactionVatBreakdown.find((line) => line.rate === rate)?.vatCents ?? 0,
       );
       const allocated = allocateCents(target, indexes.map((index) => netLines[index]));
       indexes.forEach((index, position) => {
@@ -312,6 +339,7 @@ const deriveOfflineDetail = (
         discountCents: transaction.discountCents,
         totalCents: transaction.totalCents,
         roundingAdjustmentCents: transaction.roundingAdjustmentCents ?? 0,
+        vatBreakdown: vatBreakdownForTransaction(transaction),
         vat12Cents: transaction.vat12Cents,
         vat21Cents: transaction.vat21Cents,
         paymentMethod: transaction.paymentMethod,
@@ -370,6 +398,7 @@ const mapDaySummary = (value: unknown): DailyReportDaySummary => {
     grossProfitCents: number(row.grossProfitCents),
     totalVat12Cents: number(row.totalVat12Cents),
     totalVat21Cents: number(row.totalVat21Cents),
+    totalVatBreakdown: vatBreakdown(row.totalVatBreakdown) ?? [],
     cashCents: number(row.cashCents),
     pinCents: number(row.pinCents),
     giftCardCents: number(row.giftCardCents),
@@ -403,6 +432,12 @@ export const loadDailyReportDaySummaries = async (
       grossProfitCents: 0,
       totalVat12Cents: 0,
       totalVat21Cents: 0,
+      totalVatBreakdown: [0, 6, 12, 21].map((rate) => ({
+        rate: rate as 0 | 6 | 12 | 21,
+        grossCents: 0,
+        exclCents: 0,
+        vatCents: 0,
+      })),
       cashCents: 0,
       pinCents: 0,
       giftCardCents: 0,
@@ -417,6 +452,13 @@ export const loadDailyReportDaySummaries = async (
     current.grossProfitCents += report.grossProfitCents;
     current.totalVat12Cents += report.totalVat12Cents;
     current.totalVat21Cents += report.totalVat21Cents;
+    for (const line of vatBreakdownForReport(report)) {
+      const target = current.totalVatBreakdown.find((candidate) => candidate.rate === line.rate);
+      if (!target) continue;
+      target.grossCents += line.grossCents;
+      target.exclCents += line.exclCents;
+      target.vatCents += line.vatCents;
+    }
     current.cashCents += report.paymentTotalsCents.Cash;
     current.pinCents += report.paymentTotalsCents.PIN;
     current.giftCardCents += report.paymentTotalsCents.Cadeaubon;

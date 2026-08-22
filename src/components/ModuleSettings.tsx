@@ -16,6 +16,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "../auth/useAuth";
+import { OnboardingWizard } from "../onboarding/OnboardingWizard";
 import type { ConfigurableModule } from "../onboarding/storeConfiguration";
 import { useStoreConfiguration } from "../store/useStoreConfiguration";
 import {
@@ -107,6 +108,7 @@ export const ModuleSettings: React.FC = () => {
   const entitlementSnapshot = useEntitlements((state) => state.snapshot);
   const { now } = useEntitlementClock();
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [profileOpen, setProfileOpen] = useState(false);
   const latestRequest = useRef(0);
 
   const enabledCount = MODULE_OPTIONS.filter((option) => modules[option.key]).length;
@@ -168,6 +170,15 @@ export const ModuleSettings: React.FC = () => {
         </div>
       </section>
 
+      <section className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <div>
+          <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-sky-700">Retailprofiel</p>
+          <h2 className="mt-1 text-lg font-black text-slate-950">Winkeltype en assortimentsvereisten</h2>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">Herbekijk wanneer uw assortiment verandert welke catalogusdiepte u nodig hebt: varianten, serienummers, loten, meeteenheden, locaties en prijsboeken.</p>
+        </div>
+        <button type="button" onClick={() => setProfileOpen(true)} className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl bg-slate-950 px-4 py-2 text-sm font-extrabold text-white hover:bg-slate-800">Winkelprofiel openen</button>
+      </section>
+
       <div className="grid gap-3 md:grid-cols-2">
         {MODULE_OPTIONS.map((option) => {
           const enabled = modules[option.key];
@@ -218,6 +229,7 @@ export const ModuleSettings: React.FC = () => {
           );
         })}
       </div>
+      {profileOpen && <OnboardingWizard mode="settings" onExit={() => setProfileOpen(false)} />}
 
       <section className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
         <div>

@@ -1,7 +1,7 @@
 # PWAYMENT Retail Intelligence
 
 <p align="center">
-  <img src="public/branding/pwayment-logo.svg" alt="PWAYMENT" width="280" />
+  <img src="public/branding/PWAYMENTLOGOFINAL.png" alt="PWAYMENT" width="280" />
 </p>
 
 <p align="center">

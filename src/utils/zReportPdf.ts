@@ -3,6 +3,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { MerchantInfo } from "../data/merchant";
 import type { DailyReportDetail } from "../services/dailyReportDetail";
+import { vatBreakdownForReport } from "./vatReport";
 
 const euro = (cents: number) =>
   new Intl.NumberFormat("nl-BE", {
@@ -31,6 +32,13 @@ export const createZReportPdf = (
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const report = detail.report;
   const totals = report.totals;
+  const vatRows = vatBreakdownForReport({
+    totalVat12Cents: Number(totals.totalVat12Cents ?? 0),
+    totalVat21Cents: Number(totals.totalVat21Cents ?? 0),
+    totalExclVat12Cents: Number(totals.totalExclVat12Cents ?? 0),
+    totalExclVat21Cents: Number(totals.totalExclVat21Cents ?? 0),
+    totalVatBreakdown: totals.totalVatBreakdown,
+  });
   const margin = 14;
   const pageWidth = doc.internal.pageSize.getWidth();
 
@@ -79,8 +87,12 @@ export const createZReportPdf = (
       ["Brutowinst", euro(Number(totals.grossProfitCents ?? 0)), "Cadeaubon", euro(Number(totals.paymentTotalsCents?.Cadeaubon ?? 0))],
       ["Kortingen", euro(Number(totals.totalDiscountCents ?? 0)), "Cashafrondingen", euro(Number(totals.totalCashRoundingAdjustmentCents ?? 0))],
       ["Kasverschil", euro(report.cashDifferenceCents), "Verwacht cash", euro(report.expectedCashCents)],
-      ["BTW 12%", euro(Number(totals.totalVat12Cents ?? 0)), "Geteld cash", euro(report.countedCashCents)],
-      ["BTW 21%", euro(Number(totals.totalVat21Cents ?? 0)), "", ""],
+      ...vatRows.map((line, index) => [
+        `BTW ${line.rate}%`,
+        euro(line.vatCents),
+        index === 0 ? "Geteld cash" : "",
+        index === 0 ? euro(report.countedCashCents) : "",
+      ]),
     ],
     columnStyles: { 1: { halign: "right" }, 3: { halign: "right" } },
   });

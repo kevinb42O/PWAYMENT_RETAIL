@@ -1,4 +1,9 @@
-export const STORE_CONFIGURATION_VERSION = 1 as const;
+/**
+ * V2 adds declared retail capability needs. These are deliberately separate
+ * from enabled product features: choosing a shop type must never silently
+ * turn on a workflow that the merchant has not confirmed.
+ */
+export const STORE_CONFIGURATION_VERSION = 2 as const;
 
 export const RETAIL_INDUSTRIES = [
   { value: "telecom-it", label: "Telecom & IT" },
@@ -53,6 +58,7 @@ export const VAT_DEFAULTS = [
   { value: "21", label: "Meestal 21%" },
   { value: "12", label: "Meestal 12%" },
   { value: "6", label: "Meestal 6%" },
+  { value: "0", label: "Meestal 0% / vrijgesteld" },
 ] as const;
 
 export const SERVICE_CONTACT_OPTIONS = [
@@ -70,6 +76,62 @@ export type VatDefault = (typeof VAT_DEFAULTS)[number]["value"];
 export type ServiceContactPreference =
   (typeof SERVICE_CONTACT_OPTIONS)[number]["value"];
 export type ImportTiming = "now" | "later";
+export const RETAIL_CAPABILITIES = [
+  {
+    code: "variant-matrix",
+    title: "Maten, kleuren of andere varianten",
+    description: "Eén artikel kan meerdere geldige combinaties hebben, zoals maat × kleur of lengte × breedte.",
+  },
+  {
+    code: "multiple-identifiers",
+    title: "Meerdere productcodes",
+    description: "Een SKU kan naast zijn interne code ook EAN/GTIN, alternatieve scanlabels of leverancierscodes hebben.",
+  },
+  {
+    code: "stock-locations",
+    title: "Voorraad op meerdere plaatsen",
+    description: "U wilt voorraad onderscheiden tussen winkel, magazijn, reserve, quarantaine of filialen.",
+  },
+  {
+    code: "serial-numbers",
+    title: "Serienummers of unieke items",
+    description: "Een verkocht exemplaar moet individueel identificeerbaar zijn, bijvoorbeeld via IMEI, frame- of serienummer.",
+  },
+  {
+    code: "lot-traceability",
+    title: "Lot-, batch- of vervaldatumtracking",
+    description: "Voorraad moet per batch, lot of vervaldatum traceerbaar blijven.",
+  },
+  {
+    code: "measurable-quantities",
+    title: "Verkoop per gewicht, lengte of volume",
+    description: "Aantallen zijn niet altijd hele stuks, bijvoorbeeld kilo, meter of liter.",
+  },
+  {
+    code: "packaging",
+    title: "Verpakkingen en omrekeningen",
+    description: "Een stuk, doos, pak of display verwijst naar dezelfde onderliggende voorraad.",
+  },
+  {
+    code: "customer-pricing",
+    title: "Prijsboeken of klantprijzen",
+    description: "Prijzen kunnen verschillen per klantgroep, B2B-relatie, contract of kanaal.",
+  },
+  {
+    code: "webshop-variants",
+    title: "Variantkeuze in de webshop",
+    description: "Online klanten moeten een concrete beschikbare variant kiezen vóór ze toevoegen aan hun mandje.",
+  },
+] as const;
+
+export type RetailCapabilityCode =
+  (typeof RETAIL_CAPABILITIES)[number]["code"];
+export type RetailCapabilityState =
+  | "unknown"
+  | "not-needed"
+  | "required"
+  | "enabled"
+  | "blocked";
 export type ConfigurableModule =
   | "catalog"
   | "customers"
@@ -101,7 +163,45 @@ export interface StoreConfiguration {
   pricingModel: PricingModel;
   defaultVat: VatDefault;
   serviceContactPreference: ServiceContactPreference;
+  /**
+   * Merchant-declared needs, not feature flags. `enabled` and `blocked` are
+   * reserved for a server-confirmed capability lifecycle and cannot be set
+   * by the onboarding UI.
+   */
+  capabilities: Record<RetailCapabilityCode, RetailCapabilityState>;
 }
+
+export const capabilityCodesForIndustry = (
+  industry: RetailIndustry,
+): RetailCapabilityCode[] => {
+  const common: RetailCapabilityCode[] = ["multiple-identifiers"];
+  const relevant: Partial<Record<RetailIndustry, RetailCapabilityCode[]>> = {
+    "telecom-it": ["variant-matrix", "serial-numbers", "stock-locations"],
+    fashion: ["variant-matrix", "stock-locations", "webshop-variants"],
+    lingerie: ["variant-matrix", "stock-locations", "webshop-variants"],
+    bicycles: ["variant-matrix", "serial-numbers", "stock-locations", "packaging"],
+    toys: ["variant-matrix", "stock-locations", "webshop-variants"],
+    "skate-sports": ["variant-matrix", "stock-locations", "webshop-variants"],
+    electronics: ["variant-matrix", "serial-numbers", "stock-locations"],
+    "home-living": ["variant-matrix", "stock-locations", "packaging"],
+    beauty: ["variant-matrix", "lot-traceability", "stock-locations", "webshop-variants"],
+    food: ["lot-traceability", "measurable-quantities", "packaging", "stock-locations"],
+    jewelry: ["variant-matrix", "serial-numbers", "stock-locations"],
+    "books-hobby": ["variant-matrix", "stock-locations", "webshop-variants"],
+    "general-retail": ["variant-matrix", "stock-locations", "webshop-variants"],
+    "repair-service": ["serial-numbers", "stock-locations"],
+    other: ["variant-matrix", "stock-locations", "packaging"],
+  };
+  return Array.from(new Set([...common, ...(relevant[industry] ?? [])]));
+};
+
+export const emptyCapabilityAssessments = (): Record<
+  RetailCapabilityCode,
+  RetailCapabilityState
+> =>
+  Object.fromEntries(
+    RETAIL_CAPABILITIES.map((capability) => [capability.code, "unknown"]),
+  ) as Record<RetailCapabilityCode, RetailCapabilityState>;
 
 export const MODULE_DETAILS: Array<{
   key: ConfigurableModule;
@@ -195,12 +295,14 @@ export const DEFAULT_STORE_CONFIGURATION: StoreConfiguration = {
   pricingModel: "single",
   defaultVat: "mixed",
   serviceContactPreference: "both",
+  capabilities: emptyCapabilityAssessments(),
 };
 
 export const createStoreConfigurationDraft = (): StoreConfiguration => ({
   ...DEFAULT_STORE_CONFIGURATION,
   firstRunCompleted: false,
   modules: recommendedModulesForIndustry("general-retail"),
+  capabilities: emptyCapabilityAssessments(),
 });
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -215,13 +317,66 @@ const optionValue = <T extends string>(
     ? (value as T)
     : fallback;
 
+/**
+ * Strict runtime contract used before account creation. Normalization remains
+ * intentionally forgiving for historic V1 stores; registration must not be.
+ */
+export const isCompleteStoreConfiguration = (
+  value: unknown,
+): value is StoreConfiguration => {
+  if (!isRecord(value) || value.version !== STORE_CONFIGURATION_VERSION) {
+    return false;
+  }
+  if (
+    typeof value.completedAt !== "string" ||
+    !value.completedAt.trim() ||
+    !Number.isFinite(Date.parse(value.completedAt)) ||
+    typeof value.firstRunCompleted !== "boolean" ||
+    !RETAIL_INDUSTRIES.some((option) => option.value === value.industry) ||
+    !SALES_MODELS.some((option) => option.value === value.salesModel) ||
+    !TEAM_SIZES.some((option) => option.value === value.teamSize) ||
+    !CATALOG_SOURCES.some((option) => option.value === value.catalogSource) ||
+    (value.importTiming !== "now" && value.importTiming !== "later") ||
+    !PRICING_MODELS.some((option) => option.value === value.pricingModel) ||
+    !VAT_DEFAULTS.some((option) => option.value === value.defaultVat) ||
+    !SERVICE_CONTACT_OPTIONS.some(
+      (option) => option.value === value.serviceContactPreference,
+    ) ||
+    !isRecord(value.modules) ||
+    !isRecord(value.capabilities)
+  ) {
+    return false;
+  }
+
+  if (
+    (Object.keys(broadModuleDefaults) as ConfigurableModule[]).some(
+      (module) => typeof value.modules[module] !== "boolean",
+    )
+  ) {
+    return false;
+  }
+
+  return RETAIL_CAPABILITIES.every((capability) => {
+    const state = value.capabilities[capability.code];
+    return (
+      state === "unknown" ||
+      state === "not-needed" ||
+      state === "required"
+    );
+  });
+};
+
 export const normalizeStoreConfiguration = (
   value: unknown,
 ): StoreConfiguration => {
-  if (!isRecord(value) || value.version !== STORE_CONFIGURATION_VERSION) {
+  if (
+    !isRecord(value) ||
+    (value.version !== STORE_CONFIGURATION_VERSION && value.version !== 1)
+  ) {
     return {
       ...DEFAULT_STORE_CONFIGURATION,
       modules: { ...DEFAULT_STORE_CONFIGURATION.modules },
+      capabilities: emptyCapabilityAssessments(),
     };
   }
 
@@ -234,6 +389,24 @@ export const normalizeStoreConfiguration = (
         : broadModuleDefaults[key],
     ]),
   ) as unknown as StoreModulePreferences;
+  const sourceCapabilities = isRecord(value.capabilities)
+    ? value.capabilities
+    : {};
+  const capabilities = Object.fromEntries(
+    RETAIL_CAPABILITIES.map((capability) => {
+      const state = sourceCapabilities[capability.code];
+      return [
+        capability.code,
+        state === "unknown" ||
+        state === "not-needed" ||
+        state === "required" ||
+        state === "enabled" ||
+        state === "blocked"
+          ? state
+          : "unknown",
+      ];
+    }),
+  ) as Record<RetailCapabilityCode, RetailCapabilityState>;
 
   return {
     version: STORE_CONFIGURATION_VERSION,
@@ -283,6 +456,7 @@ export const normalizeStoreConfiguration = (
       value.serviceContactPreference,
       DEFAULT_STORE_CONFIGURATION.serviceContactPreference,
     ),
+    capabilities,
   };
 };
 

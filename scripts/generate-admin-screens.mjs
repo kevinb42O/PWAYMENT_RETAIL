@@ -5,6 +5,12 @@ import path from 'path';
 const ARTIFACT_DIR = '/Users/kevin/.gemini/antigravity-ide/brain/27ea57c7-0438-494c-961e-d678ae2288b7';
 const PREVIOUS_BRAIN_DIR = '/Users/kevin/.gemini/antigravity-ide/brain/46ed5fb7-a649-4b9d-a37e-8bd2568efe23';
 const WORKSPACE_DIR = '/Users/kevin/PROJECTS/pwayment RETAIL';
+const testEmail = process.env.PWAYMENT_TEST_EMAIL;
+const testPassword = process.env.PWAYMENT_TEST_PASSWORD;
+
+if (!testEmail || !testPassword) {
+  throw new Error('Set PWAYMENT_TEST_EMAIL and PWAYMENT_TEST_PASSWORD before running this script.');
+}
 
 const saveFileEverywhere = (filename, buffer) => {
   const paths = [
@@ -282,8 +288,8 @@ const renderComposedWindow = async (composeBrowser, config) => {
 
   const emailInput = page.locator('input[type="email"]').first();
   if (await emailInput.isVisible()) {
-    await emailInput.fill("kevin@webaanzee.be");
-    await page.locator('input[type="password"]').first().fill("Pinakaaz420420");
+    await emailInput.fill(testEmail);
+    await page.locator('input[type="password"]').first().fill(testPassword);
     await page.locator('button[type="submit"]').first().click();
     await page.waitForTimeout(2500);
   }

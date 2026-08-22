@@ -44,6 +44,7 @@ import { formatEUR, parseDecimalToCents } from "../utils/money";
 import { db } from "../db/db";
 import { DEFAULT_REGISTER_ID, transactionTenders } from "../utils/financial";
 import { Modal } from "./Modal";
+import { vatBreakdownForReport } from "../utils/vatReport";
 
 type PaymentKey = "Cash" | "PIN" | "Cadeaubon";
 type XReportSortKey = "time" | "transaction" | "cashier" | "payment" | "total";
@@ -152,8 +153,9 @@ const ReportPrintout = ({
   transactions: Transaction[];
 }) => {
   const isFinal = "reportNumber" in report;
-  const totalExcl = report.totalExclVat12Cents + report.totalExclVat21Cents;
-  const totalVat = report.totalVat12Cents + report.totalVat21Cents;
+  const vatBreakdown = vatBreakdownForReport(report);
+  const totalExcl = vatBreakdown.reduce((sum, line) => sum + line.exclCents, 0);
+  const totalVat = vatBreakdown.reduce((sum, line) => sum + line.vatCents, 0);
   const splitSummary = splitPaymentSummary(transactions);
 
   return (
@@ -257,18 +259,13 @@ const ReportPrintout = ({
 
         <section>
           <h2 className="mb-2 border-b border-gray-300 pb-1 font-bold">BTW</h2>
-          {report.totalExclVat12Cents > 0 && (
+          {vatBreakdown.map((line) => (
             <PrintRow
-              label="12% · excl. / BTW"
-              value={`${formatEUR(report.totalExclVat12Cents)} / ${formatEUR(report.totalVat12Cents)}`}
+              key={line.rate}
+              label={`${line.rate}% · excl. / BTW`}
+              value={`${formatEUR(line.exclCents)} / ${formatEUR(line.vatCents)}`}
             />
-          )}
-          {(report.totalExclVat21Cents > 0 || report.totalVat21Cents > 0) && (
-            <PrintRow
-              label="21% · excl. / btw"
-              value={`${formatEUR(report.totalExclVat21Cents)} / ${formatEUR(report.totalVat21Cents)}`}
-            />
-          )}
+          ))}
           <PrintRow
             label="Totaal excl. / BTW"
             value={`${formatEUR(totalExcl)} / ${formatEUR(totalVat)}`}
@@ -446,14 +443,12 @@ export const ZReportView: React.FC = () => {
         reportData.giftCardLiabilityPaymentTotalsCents.PIN +
         reportData.giftCardLiabilityPaymentTotalsCents.Cadeaubon
       : 0;
-    const vatTotal = reportData
-      ? reportData.totalVat12Cents + reportData.totalVat21Cents
-      : 0;
-    const accountedRevenue = reportData
-      ? reportData.totalExclVat12Cents +
-        reportData.totalExclVat21Cents +
-        vatTotal
-      : 0;
+    const vatBreakdown = reportData ? vatBreakdownForReport(reportData) : [];
+    const vatTotal = vatBreakdown.reduce((sum, line) => sum + line.vatCents, 0);
+    const accountedRevenue = vatBreakdown.reduce(
+      (sum, line) => sum + line.exclCents + line.vatCents,
+      0,
+    );
     const margin =
       revenue > 0 ? ((reportData?.grossProfitCents ?? 0) / revenue) * 100 : 0;
 
@@ -1148,20 +1143,19 @@ export const ZReportView: React.FC = () => {
                 />
                 <ValueRow
                   label="Omzet excl. BTW"
-                  value={formatEUR(
-                    reportData.totalExclVat12Cents +
-                      reportData.totalExclVat21Cents,
-                  )}
+                  value={formatEUR(vatBreakdownForReport(reportData).reduce(
+                    (sum, line) => sum + line.exclCents,
+                    0,
+                  ))}
                 />
-                <ValueRow
-                  label="BTW 12%"
-                  value={formatEUR(reportData.totalVat12Cents)}
-                  muted={reportData.totalVat12Cents === 0}
-                />
-                <ValueRow
-                  label="BTW 21%"
-                  value={formatEUR(reportData.totalVat21Cents)}
-                />
+                {vatBreakdownForReport(reportData).map((line) => (
+                  <ValueRow
+                    key={line.rate}
+                    label={`BTW ${line.rate}%`}
+                    value={formatEUR(line.vatCents)}
+                    muted={line.vatCents === 0}
+                  />
+                ))}
                 <div className="border-t border-slate-100 pt-3">
                   <ValueRow
                     label="Kortingen"

@@ -75,7 +75,7 @@ describe('product CSV round trip', () => {
     const csv = [
       'name,category,sellingPrice,vatRate',
       'Deck,skateboards,12.50,21',
-      'Boek,books,10.60,6',
+      'Boek,books,10.60,9',
     ].join('\n');
 
     const { issues } = parseProductsCsv(csv, ctx);

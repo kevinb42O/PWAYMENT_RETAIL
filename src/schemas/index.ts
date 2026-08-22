@@ -30,11 +30,21 @@ export const OrderItemSchema = z.object({
 
 export const PaymentMethodEnum = z.enum(['Cash', 'PIN', 'Cadeaubon', 'Split']);
 
+export const VatBreakdownLineSchema = z.object({
+  rate: z.union([z.literal(0), z.literal(6), z.literal(12), z.literal(21)]),
+  grossCents: z.number().int(),
+  exclCents: z.number().int(),
+  vatCents: z.number().int(),
+}).refine((line) => line.grossCents === line.exclCents + line.vatCents, {
+  message: 'BTW-regel sluit niet aan: bruto moet exclusief plus BTW zijn.',
+});
+
 export const TransactionSchema = z.object({
   id: z.number().int().optional(),
   tableId: z.number().int(),
   items: z.array(OrderItemSchema).min(1),
   subtotalCents: z.number().int().nonnegative(),
+  vatBreakdown: z.array(VatBreakdownLineSchema).max(4).optional(),
   vat12Cents: z.number().int().nonnegative(),
   vat21Cents: z.number().int().nonnegative(),
   // The commercial/VAT total is never changed by Belgian cash rounding.
@@ -67,6 +77,7 @@ export const DailyReportSchema = z.object({
   totalVat21Cents: z.number().int().nonnegative(),
   totalExclVat12Cents: z.number().int().nonnegative(),
   totalExclVat21Cents: z.number().int().nonnegative(),
+  totalVatBreakdown: z.array(VatBreakdownLineSchema).max(4).optional(),
   totalDiscountCents: z.number().int().nonnegative(),
   totalCashRoundingAdjustmentCents: z.number().int().optional(),
   paymentTotalsCents: PaymentTotalsSchema,

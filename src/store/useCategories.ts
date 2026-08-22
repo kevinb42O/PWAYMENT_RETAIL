@@ -6,6 +6,7 @@ import { BELGIAN_RETAIL_VAT_RATE, productCategories } from '../data/categories';
 import { useAuth } from '../auth/useAuth';
 import { enqueueOutbox } from '../db/outbox';
 import { FEATURE_KEYS, featureLimit } from '../billing/entitlements';
+import { isSupportedVatRate } from '../utils/vat';
 
 interface CategoriesState {
   list: ProductCategory[];
@@ -13,8 +14,9 @@ interface CategoriesState {
   hydrate: () => Promise<void>;
   /** Re-read categories committed by a migration or another application tab. */
   refresh: () => Promise<void>;
-  addCategory: (name: string) => Promise<ProductCategory | null>;
+  addCategory: (name: string, vatRate?: number) => Promise<ProductCategory | null>;
   renameCategory: (id: string, name: string) => Promise<void>;
+  setCategoryVatRate: (id: string, vatRate: number) => Promise<void>;
   removeCategory: (id: string) => Promise<boolean>;
 }
 
@@ -92,7 +94,7 @@ export const useCategories = create<CategoriesState>((set, get) => ({
     set({ list: sortByName(categories), hydrated: true });
   },
 
-  addCategory: async (rawName) => {
+  addCategory: async (rawName, requestedVatRate = BELGIAN_RETAIL_VAT_RATE) => {
     const name = rawName.trim();
     if (!name) return null;
 
@@ -113,7 +115,8 @@ export const useCategories = create<CategoriesState>((set, get) => ({
     let i = 2;
     while (state.list.some((c) => c.id === id)) id = `${base}-${i++}`;
 
-    const category: ProductCategory = { id, name, vatRate: BELGIAN_RETAIL_VAT_RATE, isActive: true };
+    if (!isSupportedVatRate(requestedVatRate)) return null;
+    const category: ProductCategory = { id, name, vatRate: requestedVatRate, isActive: true };
     await enqueueOutbox('upsert_category', [category]);
     await db.categories.put(category);
     set((s) => ({ list: sortByName([...s.list, category]) }));
@@ -130,6 +133,18 @@ export const useCategories = create<CategoriesState>((set, get) => ({
     await db.categories.put(next);
     set((s) => ({
       list: sortByName(s.list.map((c) => (c.id === id ? next : c))),
+    }));
+  },
+
+  setCategoryVatRate: async (id, vatRate) => {
+    if (!isSupportedVatRate(vatRate)) return;
+    const current = await db.categories.get(id);
+    if (!current || current.vatRate === vatRate) return;
+    const next = { ...current, vatRate };
+    await enqueueOutbox('upsert_category', [next]);
+    await db.categories.put(next);
+    set((state) => ({
+      list: sortByName(state.list.map((category) => category.id === id ? next : category)),
     }));
   },
 

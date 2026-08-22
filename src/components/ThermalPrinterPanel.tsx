@@ -22,14 +22,20 @@ import React, { useCallback } from 'react';
 import { format } from 'date-fns';
 import type { Transaction } from '../types';
 import { formatEUR } from '../utils/money';
-import { calculateTotals } from '../utils/vat';
+import { vatBreakdownForTransaction } from '../utils/vat';
 import { getMerchantProfileSnapshot } from '../store/useMerchantProfile';
-import { useCustomers } from '../store/useCustomers';
-import { EscPosBuilder, formatItemLine, formatTotalLine } from '../utils/escpos';
+import { EscPosBuilder, formatItemLine, formatTotalLine, formatWrappedItemLines } from '../utils/escpos';
 import { formatPaymentLabel, receiptPaymentRows } from '../utils/receiptPayments';
 import { transactionTenders } from '../utils/financial';
 import { settlementTotalCents } from '../utils/cashRounding';
-import { formatReceiptBarcode, isValidReceiptBarcode } from '../utils/receiptBarcode';
+import { formatReceiptBarcode, isValidReceiptBarcode, normalizeReceiptBarcode } from '../utils/receiptBarcode';
+import { receiptBarcodeRaster } from '../utils/receiptBarcodeRaster';
+import {
+  receiptDiscountLabel,
+  receiptDocumentReference,
+  receiptFingerprint,
+  receiptItemDescription,
+} from '../utils/receiptPresentation';
 import {
   useThermalPrinter,
   EPSON_VENDOR_ID,
@@ -56,9 +62,9 @@ export class EscPosPrintAdapter implements PrintAdapter {
     private readonly sendRaw: (data: Uint8Array) => Promise<void>,
   ) {}
 
-  async printReceipt(t: Transaction): Promise<void> {
+  async printReceipt(t: Transaction, options?: { copy?: "original" | "reprint" }): Promise<void> {
     const merchant = t.merchantSnapshot ?? getMerchantProfileSnapshot();
-    const totals   = calculateTotals(t.items, t.discountCents);
+    const vatBreakdown = vatBreakdownForTransaction(t);
 
     // ── Helper: format price consistently ───────────────────────────────
     // `formatEUR` returns "€ 3,50" (Belgian nl-BE locale).
@@ -67,8 +73,7 @@ export class EscPosPrintAdapter implements PrintAdapter {
     const fmt = (cents: number) =>
       formatEUR(cents).replace('\u00a0', ' ');
 
-    // ── Ticket number (if available) ─────────────────────────────────────
-    const ticketStr = t.id != null ? `#${String(t.id).padStart(5, '0')}` : '';
+    const ticketStr = receiptDocumentReference(t);
 
     // ── Build ESC/POS byte stream ────────────────────────────────────────
     const b = new EscPosBuilder();
@@ -105,7 +110,8 @@ export class EscPosPrintAdapter implements PrintAdapter {
     const dateStr = format(t.timestamp, 'dd/MM/yyyy HH:mm');
     b.text(formatTotalLine('Datum', dateStr));
 
-    if (ticketStr) b.text(formatTotalLine('Ticket', ticketStr));
+    b.text(formatTotalLine('Ticketnr.', ticketStr));
+    if (options?.copy === "reprint") b.bold(true).text('*** HERDRUK ***\n').bold(false);
 
     b.text(formatTotalLine('Kassa', String(t.tableId)));
     if (t.userName) b.text(formatTotalLine('Kassier', t.userName));
@@ -119,7 +125,9 @@ export class EscPosPrintAdapter implements PrintAdapter {
       const unit      = item.product.priceCents + modSum;
       const lineTotal = unit * item.quantity;
 
-      b.text(formatItemLine(item.quantity, item.product.name, fmt(lineTotal)));
+      for (const line of formatWrappedItemLines(item.quantity, receiptItemDescription(item), fmt(lineTotal))) {
+        b.text(line);
+      }
 
       // Unit price + VAT rate on second line, indented
       const vatRate = item.product.vatRate ?? 21;
@@ -143,10 +151,7 @@ export class EscPosPrintAdapter implements PrintAdapter {
     b.text(formatTotalLine('Subtotaal', fmt(t.subtotalCents)));
 
     if (t.discountCents > 0) {
-      const discLabel = t.discountReason
-        ? `Korting (${t.discountReason})`
-        : 'Korting';
-      b.text(formatTotalLine(discLabel, `-${fmt(t.discountCents)}`));
+      b.text(formatTotalLine(receiptDiscountLabel(), `-${fmt(t.discountCents)}`));
     }
 
     b.separator('-', 42);
@@ -178,21 +183,14 @@ export class EscPosPrintAdapter implements PrintAdapter {
       `${'Incl.'.padStart(10)}\n`,
     );
 
-    if (totals.discounted12 > 0) {
+    for (const line of vatBreakdown) {
       b.text(
-        `${'12%'.padEnd(8)}` +
-        `${fmt(totals.exclVat12).padStart(10)}` +
-        `${fmt(totals.vat12).padStart(9)}` +
-        `${fmt(totals.discounted12).padStart(10)}\n`,
+        `${`${line.rate}%`.padEnd(8)}` +
+        `${fmt(line.exclCents).padStart(10)}` +
+        `${fmt(line.vatCents).padStart(9)}` +
+        `${fmt(line.grossCents).padStart(10)}\n`,
       );
     }
-
-    b.text(
-      `${'21%'.padEnd(8)}` +
-      `${fmt(totals.exclVat21).padStart(10)}` +
-      `${fmt(totals.vat21).padStart(9)}` +
-      `${fmt(totals.discounted21).padStart(10)}\n`,
-    );
 
     b.separator('-', 42);
 
@@ -237,12 +235,6 @@ export class EscPosPrintAdapter implements PrintAdapter {
       }
     }
 
-    if (t.customerId) {
-      const customers = useCustomers.getState().customers;
-      const customer = customers.find((c) => c.id === t.customerId);
-      b.text(formatTotalLine('Klant', customer ? customer.name : t.customerId));
-    }
-
     // ── Footer ────────────────────────────────────────────────────────────
     b.alignCenter();
 
@@ -254,14 +246,19 @@ export class EscPosPrintAdapter implements PrintAdapter {
     b.text('BTW inbegrepen - bewaar uw ticket.\n');
 
     // Unique receipt fingerprint line (date-kassa-id)
-    const fingerprint = `${format(t.timestamp, 'yyyyMMdd-HHmmss')}-R${t.tableId}-${t.id ?? '--'}`;
+    const fingerprint = receiptFingerprint(t, format(t.timestamp, 'yyyyMMdd-HHmmss'));
     b.text(`${fingerprint}\n`);
 
-    if (isValidReceiptBarcode(t.receiptBarcode)) {
+    const receiptBarcode = normalizeReceiptBarcode(t.receiptBarcode);
+    if (isValidReceiptBarcode(receiptBarcode)) {
       b.separator('-', 42);
       b.alignCenter();
-      b.code128C(t.receiptBarcode!);
-      b.text(`\n${formatReceiptBarcode(t.receiptBarcode)}\n`);
+      // Raster is intentional: some ESC/POS USB bridges discard GS k native
+      // barcode commands. Every supported receipt printer accepts GS v 0.
+      const barcodeRaster = receiptBarcodeRaster(receiptBarcode);
+      b.rasterImage(barcodeRaster.widthBytes, barcodeRaster.height, barcodeRaster.data);
+      b.text(`\n${formatReceiptBarcode(receiptBarcode)}\n`);
+      b.text('Voor retour of omruiling in deze winkel.\n');
     }
 
     // ── Feed and cut ──────────────────────────────────────────────────────
@@ -347,7 +344,7 @@ export const THERMAL_PRINTER_CATALOG: ThermalPrinterBrand[] = [
         protocol: 'ESC/POS High-Speed',
         paperSizes: ['80mm'],
         speed: '500 mm/s',
-        description: 'Vlaggenschip bonprinter voor drukke retail winkels, supermarkten en horeca.',
+        description: 'Vlaggenschip bonprinter voor drukke winkels, supermarkten en servicebalies.',
       },
       {
         id: 'epson-t70ii',
@@ -410,7 +407,7 @@ export const THERMAL_PRINTER_CATALOG: ThermalPrinterBrand[] = [
         protocol: 'Star Line Mode',
         paperSizes: ['80mm'],
         speed: '300 mm/s',
-        description: 'Snel en veelzijdig werkpaard voor detailhandel en keukentickets.',
+        description: 'Snel en veelzijdig werkpaard voor detailhandel, afhaalbonnen en servicetickets.',
       },
       {
         id: 'star-mpop',

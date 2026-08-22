@@ -25,11 +25,20 @@ test("registration requires strong credentials and reload locks the session", as
   await appPage
     .getByRole("button", { name: "Verder" })
     .click();
+  await appPage.getByRole("button", { name: "Verder" }).click();
+  await expect(appPage.getByRole("alert")).toContainText(
+    "Kies eerst bewust welk type retailwinkel u heeft.",
+  );
   await appPage.getByLabel("Welke zaak heeft u?").selectOption("telecom-it");
   await appPage.getByRole("button", { name: "Verder" }).click();
+  // A sector now leads to an explicit retail-needs assessment before module
+  // selection. Telecom must surface serialised items, but the merchant—not a
+  // sector heuristic—decides whether that capability is required.
   await expect(
-    appPage.getByRole("checkbox", { name: /Hersteldienst/ }),
-  ).toBeChecked();
+    appPage.getByRole("group", { name: "Serienummers of unieke items" }),
+  ).toBeVisible();
+  await appPage.getByRole("button", { name: "Verder" }).click();
+  await expect(appPage.getByRole("checkbox", { name: /Hersteldienst/ })).toBeChecked();
   await appPage.getByRole("button", { name: "Verder" }).click();
   await appPage
     .getByLabel("Waar staan uw producten vandaag?")
@@ -46,9 +55,7 @@ test("registration requires strong credentials and reload locks the session", as
     .getByRole("button", { name: "Account aanmaken en starten" })
     .click();
   await expect(
-    appPage.getByRole("heading", {
-      name: "Stap over zonder uw winkel opnieuw op te bouwen.",
-    }),
+    appPage.getByRole("heading", { name: "Gegevens importeren" }),
   ).toBeVisible();
 
   await appPage.reload();

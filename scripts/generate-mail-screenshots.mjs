@@ -5,6 +5,8 @@ import path from 'path';
 const ARTIFACT_DIR = '/Users/kevin/.gemini/antigravity-ide/brain/27ea57c7-0438-494c-961e-d678ae2288b7';
 const PREVIOUS_BRAIN_DIR = '/Users/kevin/.gemini/antigravity-ide/brain/46ed5fb7-a649-4b9d-a37e-8bd2568efe23';
 const WORKSPACE_DIR = '/Users/kevin/PROJECTS/pwayment RETAIL';
+const LOCAL_DEMO_EMAIL = 'retail-demo@pwayment.test';
+const LOCAL_DEMO_PASSWORD = 'local-retail-demo-only';
 
 const saveFileEverywhere = (filename, buffer) => {
   const paths = [
@@ -282,13 +284,13 @@ const renderComposedWindow = async (composeBrowser, config) => {
 
   const page = await context.newPage();
 
-  // Helper to authenticate as kevin@webaanzee.be and setup rich retail store
+  // Helper to authenticate with an isolated local-only fixture and set up a rich retail store.
   const loginUser = async () => {
     await page.setViewportSize({ width: 1600, height: 1000 });
     await page.goto("http://localhost:3000/login");
     await page.waitForTimeout(1500);
 
-    await page.evaluate(async () => {
+    await page.evaluate(async ({ email, password }) => {
       const { db } = await import("./src/db/db.ts");
       const { hashCredential } = await import("./src/utils/credentials.ts");
       const { DEMO_ACCOUNT_ID } = await import("./src/auth/useAuth.ts");
@@ -300,7 +302,7 @@ const renderComposedWindow = async (composeBrowser, config) => {
       const { useEntitlements, FEATURE_KEYS } = await import("./src/billing/entitlements.ts");
       const { useCustomerDisplaySettings } = await import("./src/customer-display/settings.ts");
 
-      const hash = await hashCredential("Pinakaaz420420", "password");
+      const hash = await hashCredential(password, "password");
       const pinHash = await hashCredential("123456", "pin");
       await db.users.put({
         id: DEMO_ACCOUNT_ID,
@@ -308,7 +310,7 @@ const renderComposedWindow = async (composeBrowser, config) => {
         firstName: "Kevin",
         lastName: "Webaanzee",
         role: "owner",
-        email: "kevin@webaanzee.be",
+        email,
         passwordHash: hash,
         pinHash: pinHash,
         storeName: "PWAYMENT Skatestore",
@@ -471,15 +473,15 @@ const renderComposedWindow = async (composeBrowser, config) => {
         canSimulateBilling: true,
         version: 1
       });
-    });
+    }, { email: LOCAL_DEMO_EMAIL, password: LOCAL_DEMO_PASSWORD });
 
-    await page.fill("#login-email", "kevin@webaanzee.be");
-    await page.fill("#login-password", "Pinakaaz420420");
+    await page.fill("#login-email", LOCAL_DEMO_EMAIL);
+    await page.fill("#login-password", LOCAL_DEMO_PASSWORD);
     await page.click('button[type="submit"]');
     await page.waitForTimeout(3500);
   };
 
-  console.log("1️⃣ Logging in as kevin@webaanzee.be...");
+  console.log("1️⃣ Logging in with the isolated local retail fixture...");
   await loginUser();
 
   // ----------------------------------------------------
@@ -584,7 +586,7 @@ const renderComposedWindow = async (composeBrowser, config) => {
           { lineId: "trucks", name: "Independent Stage 11", variant: "144", modifierLabels: [], quantity: 1, unitPriceCents: 7495, lineTotalCents: 7495 },
           { lineId: "wheels", name: "Bones Reds Bearings", modifierLabels: [], quantity: 1, unitPriceCents: 2495, lineTotalCents: 2495 }
         ],
-        totals: { subtotalCents: 14455, discountCents: 0, giftCardCents: 0, totalCents: 17491, remainingCents: 17491, vat12Cents: 0, vat21Cents: 3036 },
+        totals: { subtotalCents: 16985, discountCents: 0, giftCardCents: 0, totalCents: 16985, remainingCents: 16985, vat12Cents: 0, vat21Cents: 2948 },
         acceptedPaymentMethods: ["cash", "card", "bancontact", "visa", "mastercard", "apple-pay"]
       }
     });
@@ -727,9 +729,9 @@ const renderComposedWindow = async (composeBrowser, config) => {
     await vornameInput.fill("Kevin");
     await wizardPage.locator('input[placeholder*="Familienaam"], input#reg-lastname, input[name="lastName"]').first().fill("Webaanzee");
     await wizardPage.locator('input[placeholder*="Winkel"], input#reg-storename, input[name="storeName"]').first().fill("Pwayment Skateshop");
-    await wizardPage.locator('input[type="email"]').first().fill("kevin@webaanzee.be");
-    await wizardPage.locator('input[type="password"]').first().fill("Pinakaaz420420");
-    await wizardPage.locator('input[type="password"]').last().fill("Pinakaaz420420");
+    await wizardPage.locator('input[type="email"]').first().fill(LOCAL_DEMO_EMAIL);
+    await wizardPage.locator('input[type="password"]').first().fill(LOCAL_DEMO_PASSWORD);
+    await wizardPage.locator('input[type="password"]').last().fill(LOCAL_DEMO_PASSWORD);
     const pinInput = wizardPage.locator('input[placeholder*="PIN"], input#reg-pin').first();
     if (await pinInput.isVisible()) await pinInput.fill("123456");
     const nextBtn = wizardPage.locator('button:has-text("Volgende"), button[type="submit"]').first();
@@ -800,8 +802,8 @@ const renderComposedWindow = async (composeBrowser, config) => {
 
   const adminEmailInput = adminPage.locator('input[type="email"]').first();
   if (await adminEmailInput.isVisible()) {
-    await adminEmailInput.fill("kevin@webaanzee.be");
-    await adminPage.locator('input[type="password"]').first().fill("Pinakaaz420420");
+    await adminEmailInput.fill(LOCAL_DEMO_EMAIL);
+    await adminPage.locator('input[type="password"]').first().fill(LOCAL_DEMO_PASSWORD);
     await adminPage.locator('button[type="submit"]').first().click();
     await adminPage.waitForTimeout(3000);
   }

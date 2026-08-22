@@ -2,7 +2,7 @@ import { Product } from '../types';
 
 export interface ProductScanMatch {
   product: Product;
-  matchedOn: 'barcode' | 'sku';
+  matchedOn: 'barcode' | 'sku' | 'identifier';
 }
 
 const normalizeExactCode = (value?: string): string => (value ?? '').trim().toLowerCase();
@@ -25,6 +25,7 @@ export const matchesCatalogQuery = (product: Product, rawQuery: string): boolean
     product.subCategory,
     product.category,
     product.variant,
+    ...(product.identifiers ?? []).map((identifier) => identifier.value),
   ].some((value) => normalizeExactCode(value).includes(term));
 };
 
@@ -52,6 +53,25 @@ export const findProductByScanCode = (
       product: barcodeMatch,
       matchedOn: 'barcode',
     };
+  }
+
+  const identifierMatch = activeProducts.find((product) =>
+    (product.identifiers ?? []).some((identifier) => {
+      if (!identifier.isScannable) return false;
+      const identifierCode = normalizeExactCode(identifier.value);
+      if (!identifierCode) return false;
+      if (identifierCode === exactCode) return true;
+      const identifierDigits = normalizeDigits(identifier.value);
+      return Boolean(
+        digitCode
+        && identifierDigits.length > 0
+        && ["ean", "upc", "gtin", "alternate"].includes(identifier.type)
+        && identifierDigits === digitCode,
+      );
+    }),
+  );
+  if (identifierMatch) {
+    return { product: identifierMatch, matchedOn: 'identifier' };
   }
 
   const skuMatch = activeProducts.find((product) => normalizeExactCode(product.sku) === exactCode);

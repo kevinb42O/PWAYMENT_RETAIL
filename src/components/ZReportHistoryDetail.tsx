@@ -26,6 +26,7 @@ import {
 } from "../services/dailyReportDetail";
 import { formatEUR } from "../utils/money";
 import { downloadZReportPdf } from "../utils/zReportPdf";
+import { vatBreakdownForReport } from "../utils/vatReport";
 
 const download = (name: string, body: string, mime: string) => {
   const blob = new Blob([body], { type: mime });
@@ -92,8 +93,13 @@ const ReportPrintout = ({ detail, merchant }: { detail: DailyReportDetail; merch
           <tr><td>Brutowinst</td><td className="text-right font-bold">{formatEUR(Number(totals.grossProfitCents ?? 0))}</td></tr>
           <tr><td>Kortingen</td><td className="text-right">{formatEUR(Number(totals.totalDiscountCents ?? 0))}</td></tr>
           {Number(totals.totalCashRoundingAdjustmentCents ?? 0) !== 0 && <tr><td>Cashafrondingen</td><td className="text-right">{formatEUR(Number(totals.totalCashRoundingAdjustmentCents ?? 0))}</td></tr>}
-          <tr><td>BTW 12%</td><td className="text-right">{formatEUR(Number(totals.totalVat12Cents ?? 0))}</td></tr>
-          <tr><td>BTW 21%</td><td className="text-right">{formatEUR(Number(totals.totalVat21Cents ?? 0))}</td></tr>
+          {vatBreakdownForReport({
+            totalVat12Cents: Number(totals.totalVat12Cents ?? 0),
+            totalVat21Cents: Number(totals.totalVat21Cents ?? 0),
+            totalExclVat12Cents: Number(totals.totalExclVat12Cents ?? 0),
+            totalExclVat21Cents: Number(totals.totalExclVat21Cents ?? 0),
+            totalVatBreakdown: totals.totalVatBreakdown,
+          }).map((line) => <tr key={line.rate}><td>BTW {line.rate}%</td><td className="text-right">{formatEUR(line.vatCents)}</td></tr>)}
         </tbody></table>
         <table className="w-full"><tbody>
           <tr><td>Cash</td><td className="text-right">{formatEUR(Number(totals.paymentTotalsCents?.Cash ?? 0))}</td></tr>

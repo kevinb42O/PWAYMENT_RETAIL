@@ -60,6 +60,7 @@ describe("migration activation and Mode 1 undo", () => {
     expect(execution.productCount).toBe(10);
     expect(execution.customerCount).toBe(5);
     expect(execution.categoryCount).toBe(1);
+    expect(execution.catalogFamilyCount).toBe(0);
     expect(execution.activation.status).toBe("active");
     expect(await db.products.count()).toBe(10);
     expect(await db.customers.count()).toBe(5);

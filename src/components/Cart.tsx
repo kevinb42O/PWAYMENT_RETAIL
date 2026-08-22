@@ -346,7 +346,7 @@ export const Cart: React.FC = () => {
 
         <div className="flex-1 overflow-y-auto p-4 flex justify-center items-start">
           <div data-receipt-root>
-            <ReceiptTicket transaction={receipt} ticketNumber={receipt.id} />
+            <ReceiptTicket transaction={receipt} />
           </div>
         </div>
 
@@ -361,7 +361,7 @@ export const Cart: React.FC = () => {
               }
               try {
                 const adapter = new EscPosPrintAdapter(sendRaw);
-                await adapter.printReceipt(receipt);
+                await adapter.printReceipt(receipt, { copy: "reprint" });
               } catch (e) {
                 console.error("Reprint failed:", e);
                 alert(
@@ -944,16 +944,12 @@ export const Cart: React.FC = () => {
               <span>In totaal verwerkt</span>
             </div>
           )}
-          <div className="flex justify-between text-zinc-500 text-xs">
-            <span>BTW 21%</span>
-            <span className="tabular-nums">{formatEUR(totals.vat21)}</span>
-          </div>
-          {totals.vat12 > 0 && (
-            <div className="flex justify-between text-zinc-500 text-xs">
-              <span>BTW 12%</span>
-              <span className="tabular-nums">{formatEUR(totals.vat12)}</span>
+          {totals.vatBreakdown.map((line) => (
+            <div key={line.rate} className="flex justify-between text-zinc-500 text-xs">
+              <span>BTW {line.rate}%</span>
+              <span className="tabular-nums">{formatEUR(line.vatCents)}</span>
             </div>
-          )}
+          ))}
           {cartGiftCards.map((gc) => (
             <div key={gc.id} className="flex justify-between text-[#667619]">
               <div className="flex items-center gap-1">

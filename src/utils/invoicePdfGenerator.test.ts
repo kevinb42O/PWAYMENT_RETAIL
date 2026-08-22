@@ -11,7 +11,7 @@ const merchant = {
   vatNumber: "BE0123456789",
 };
 
-const item = (id: string, priceCents: number, vatRate: 12 | 21): OrderItem => ({
+const item = (id: string, priceCents: number, vatRate: 0 | 6 | 12 | 21): OrderItem => ({
   lineId: id,
   quantity: 1,
   product: {
@@ -89,5 +89,37 @@ describe("convertTransactionToInvoiceData", () => {
 
     expect(invoice.items.reduce((sum, line) => sum + line.totalInclCents, 0)).toBe(1002);
     expect(invoice.cashRoundingAdjustmentCents).toBe(-2);
+  });
+
+  it("keeps zero and reduced-rate retail lines at their booked VAT rate", () => {
+    const items = [
+      item("zero-rated", 100, 0),
+      item("reduced", 106, 6),
+      item("intermediate", 112, 12),
+      item("standard", 121, 21),
+    ];
+    const totals = calculateTotals(items, 3);
+    const transaction: Transaction = {
+      id: 44,
+      tableId: 1,
+      items,
+      subtotalCents: totals.subtotal,
+      discountCents: totals.discount,
+      totalCents: totals.total,
+      vatBreakdown: totals.vatBreakdown,
+      vat12Cents: totals.vat12,
+      vat21Cents: totals.vat21,
+      paymentMethod: "PIN",
+      timestamp: Date.UTC(2026, 7, 15),
+      isFinalized: 1,
+      documentNumber: "POS-2026-00000044",
+    };
+
+    const invoice = convertTransactionToInvoiceData(transaction, merchant);
+
+    expect(invoice.items.map((line) => line.vatRate)).toEqual([0, 6, 12, 21]);
+    expect(invoice.items.reduce((sum, line) => sum + line.totalInclCents, 0))
+      .toBe(totals.total);
+    expect(invoice.items.find((line) => line.vatRate === 0)?.totalVatCents).toBe(0);
   });
 });

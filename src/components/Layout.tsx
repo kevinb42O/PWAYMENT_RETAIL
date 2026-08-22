@@ -318,7 +318,7 @@ export const Layout: React.FC = () => {
       setScanFeedback({
         tone: "success",
         title: `${result.product.name} toegevoegd`,
-        detail: `Direct toegevoegd via ${result.matchedOn === "sku" ? "SKU" : "barcode"} scan.`,
+        detail: `Direct toegevoegd via ${result.matchedOn === "sku" ? "SKU" : result.matchedOn === "identifier" ? "extra identificatie" : "barcode"} scan.`,
       });
       focusScanInput();
       return;
@@ -530,7 +530,7 @@ export const Layout: React.FC = () => {
         >
           <div className="pos-brand-lockup hidden sm:flex">
             <img
-              src="/branding/pwayment-logo.svg"
+              src="/branding/PWAYMENTLOGOFINAL.png"
               alt="Pwayment"
               className="h-6 w-auto object-contain"
             />
@@ -546,7 +546,7 @@ export const Layout: React.FC = () => {
             )}
           </div>
           <img
-            src="/branding/pwayment-mark.svg"
+            src="/branding/PWAYMENTLOGOFINAL.png"
             alt="Pwayment"
             className="block h-8 w-8 object-contain sm:hidden"
           />

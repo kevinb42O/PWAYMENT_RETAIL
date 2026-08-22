@@ -315,8 +315,19 @@ describe('finalizeCheckout', () => {
     expect(await db.gift_card_events.count()).toBe(0);
   });
 
-  it('refuses unsupported VAT rates instead of booking them at 21%', async () => {
-    for (const vatRate of [0, 6, 9]) {
+  it('books supported retail VAT and refuses rates outside the legal allowlist', async () => {
+    for (const vatRate of [0, 6, 12, 21]) {
+      const result = await finalizeCheckout(
+        baseInput({
+          clientRequestId: `vat-${vatRate}`,
+          items: [line(product({ id: `p-${vatRate}`, vatRate }))],
+        }),
+      );
+      expect(result.transaction.vatBreakdown).toEqual(expect.arrayContaining([
+        expect.objectContaining({ rate: vatRate }),
+      ]));
+    }
+    for (const vatRate of [9, 25]) {
       await expect(
         finalizeCheckout(
           baseInput({
@@ -326,7 +337,7 @@ describe('finalizeCheckout', () => {
         ),
       ).rejects.toMatchObject({ code: 'unsupported-vat' });
     }
-    expect(await counts()).toEqual({ transactions: 0, audit: 0, outbox: 0 });
+    expect(await counts()).toEqual({ transactions: 4, audit: 4, outbox: 4 });
   });
 
   it('refuses gift cards worth more than the basket', async () => {

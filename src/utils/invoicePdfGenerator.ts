@@ -3,6 +3,7 @@ import autoTable from "jspdf-autotable";
 import { formatEUR } from "./money";
 import { allocateCents } from "./money";
 import { format } from "date-fns";
+import { SUPPORTED_VAT_RATES, isSupportedVatRate } from "./vat";
 
 export interface InvoiceLineItem {
   id?: string;
@@ -587,7 +588,10 @@ export function convertTransactionToInvoiceData(
   const grossLines = t.items.map((item) => {
     const modSum = (item.modifiers ?? []).reduce((s, m) => s + m.deltaCents, 0);
     const unitIncl = item.product.priceCents + modSum;
-    const vatRate = item.product.vatRate || 21;
+    const vatRate = item.product.vatRate ?? 21;
+    if (!isSupportedVatRate(vatRate)) {
+      throw new Error(`Factuur kan BTW-tarief ${String(vatRate)}% niet boeken.`);
+    }
     const lineTotalIncl = unitIncl * item.quantity;
     return {
       item,
@@ -605,9 +609,10 @@ export function convertTransactionToInvoiceData(
   // Allocate the cart discount first per VAT rate, then per line. This mirrors
   // the booking engine and guarantees invoice totals reconcile to the sale.
   const discountByLine = new Array(grossLines.length).fill(0);
-  const rateGroups = [12, 21].map((rate) => ({
+  const rateGroups = SUPPORTED_VAT_RATES.map((rate) => ({
+    rate,
     indices: grossLines.flatMap((line, index) => line.vatRate === rate ? [index] : []),
-  }));
+  })).filter((group) => group.indices.length > 0);
   const rateDiscounts = allocateCents(
     Math.min(t.discountCents, t.subtotalCents),
     rateGroups.map((group) => group.indices.reduce((sum, index) => sum + grossLines[index].lineTotalIncl, 0)),
@@ -619,8 +624,8 @@ export function convertTransactionToInvoiceData(
 
   const netByLine = grossLines.map((line, index) => line.lineTotalIncl - discountByLine[index]);
   const exclByLine = new Array(grossLines.length).fill(0);
-  rateGroups.forEach((group, groupIndex) => {
-    const rate = groupIndex === 0 ? 12 : 21;
+  rateGroups.forEach((group) => {
+    const rate = group.rate;
     const groupNet = group.indices.reduce((sum, index) => sum + netByLine[index], 0);
     const groupExcl = Math.round(groupNet / (1 + rate / 100));
     const allocated = allocateCents(groupExcl, group.indices.map((index) => netByLine[index]));
