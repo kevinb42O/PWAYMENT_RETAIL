@@ -564,9 +564,8 @@ export const ServiceDesk: React.FC = () => {
           <div className="mx-auto flex max-w-[1600px] flex-col gap-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-[#0e7490]"><Wrench size={15} /> Service operations</div>
-                <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Hersteldienst</h1>
-                <p className="mt-1 text-sm text-slate-500">Van intake en prijsopbouw tot klantmelding, opvolging en afrekening.</p>
+                <h1 className="text-2xl font-bold tracking-[-0.02em] text-slate-950">Hersteldienst</h1>
+                <p className="mt-1 text-sm text-slate-500">Intake, opvolging en afrekening op één plek.</p>
               </div>
               <button type="button" onClick={() => { setDraft(EMPTY_DRAFT); setAttachments([]); setIntakeOpen(true); }} className="inline-flex items-center gap-2 rounded-xl border border-[#0e7490] bg-[#0e7490] px-4 py-2.5 text-sm font-extrabold text-white shadow-[0_1px_2px_rgba(15,23,42,0.08)] transition hover:border-[#0f6677] hover:bg-[#0f6677]"><Plus size={17} /> Nieuw dossier</button>
             </div>
@@ -606,7 +605,7 @@ export const ServiceDesk: React.FC = () => {
 
           <section className="min-h-0 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
             {!selected ? (
-              <div className="flex min-h-96 flex-col items-center justify-center p-10 text-center"><span className="rounded-3xl bg-slate-100 p-5 text-slate-400"><ClipboardCheck size={38} /></span><h2 className="mt-5 text-lg font-black text-slate-800">Nog geen hersteldossiers</h2><p className="mt-2 max-w-md text-sm leading-6 text-slate-500">Maak een dossier aan voor een toestel dat binnenkomt. Daarna volgen status, klantcontact, prijs en afhaling op één plek.</p><button type="button" onClick={() => setIntakeOpen(true)} className="mt-5 rounded-xl border border-[#0e7490] bg-[#0e7490] px-4 py-2.5 text-sm font-bold text-white shadow-[0_1px_2px_rgba(15,23,42,0.08)] transition hover:bg-[#0f6677]">Nieuw dossier</button></div>
+              <div className="flex min-h-96 flex-col items-center justify-center p-10 text-center"><span className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-slate-400"><ClipboardCheck size={32} /></span><h2 className="mt-4 text-lg font-bold text-slate-800">Nog geen dossiers</h2><p className="mt-1.5 max-w-sm text-sm leading-6 text-slate-500">Maak je eerste dossier aan met de actie rechtsboven.</p></div>
             ) : (
               <div className="p-5 sm:p-7">
                 <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 pb-5">

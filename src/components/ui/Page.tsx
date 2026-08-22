@@ -22,7 +22,7 @@ export const PageHeader = ({
   <header className="app-page-header border-b px-4 py-3 sm:px-6">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="min-w-0">
-        <h1 className="text-lg font-bold tracking-tight text-slate-950">{title}</h1>
+        <h1 className="text-xl font-bold tracking-[-0.02em] text-slate-950">{title}</h1>
         {description && <p className="mt-0.5 text-xs text-slate-500">{description}</p>}
         {children}
       </div>

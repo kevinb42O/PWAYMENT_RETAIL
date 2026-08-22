@@ -34,7 +34,7 @@ export const PLAN_CATALOG: Record<PublicPlanCode, PlanCatalogEntry> = {
     audience: 'Voor pop-ups, markten en een eerste winkel.',
     cta: 'Start met Basis',
     href: '/register?plan=basis',
-    features: ['1 locatie en 1 kassascherm', '250 actieve producten', 'Printer en barcodescanner', 'Basis voorraadbeheer', 'Z-rapport en 30 dagen historie', 'E-mailondersteuning'],
+    features: ['1 locatie en 1 kassascherm', '250 actieve producten', 'Koppel je eigen printer en barcodescanner', 'Basis voorraadbeheer', 'Z-rapport en 30 dagen historie', 'E-mailondersteuning'],
   },
   pro: {
     code: 'pro',
@@ -61,12 +61,12 @@ export const PLAN_CATALOG: Record<PublicPlanCode, PlanCatalogEntry> = {
 
 export const PLAN_COMPARISON_GROUPS: PlanComparisonGroup[] = [
   {
-    category: 'Kassa & hardware',
+    category: 'Kassasoftware & compatibiliteit',
     rows: [
-      { label: 'POS-terminals inbegrepen', basic: '1', pro: '1', enterprise: 'Volgens contract' },
-      { label: 'Thermische printer & barcodescanner', basic: 'Basis', pro: 'Inbegrepen', enterprise: 'Inbegrepen' },
-      { label: 'Betaalterminal, weegschaal en kassalade', basic: '—', pro: 'Volgens compatibiliteitsstatus', enterprise: 'Inbegrepen' },
-      { label: 'Dual-screen klantendisplay', basic: '—', pro: 'Inbegrepen', enterprise: 'Inbegrepen' },
+      { label: 'Kassaschermen in de software', basic: '1', pro: '1', enterprise: 'Volgens contract' },
+      { label: 'Printer en barcodescanner koppelen', basic: 'Basis', pro: 'Uitgebreid', enterprise: 'Uitgebreid' },
+      { label: 'Betaalterminal, weegschaal en kassalade koppelen', basic: '—', pro: 'Volgens compatibiliteitsstatus', enterprise: 'Volgens contract' },
+      { label: 'Klantendisplay koppelen', basic: '—', pro: '1 per kassascherm', enterprise: 'Volgens contract' },
     ],
   },
   {

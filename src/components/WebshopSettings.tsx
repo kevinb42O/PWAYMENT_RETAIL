@@ -250,7 +250,7 @@ export const WebshopSettings: React.FC<WebshopSettingsProps> = ({
 
           <button
             onClick={() => setIsPreviewOpen(true)}
-            className="order-first flex-1 md:flex-initial px-4 py-2.5 bg-slate-950 hover:bg-black text-white font-bold rounded-lg text-xs transition-colors flex items-center justify-center gap-2"
+            className="order-first flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50 md:flex-initial"
           >
             <Eye size={16} />
             <span>Webshop bekijken</span>

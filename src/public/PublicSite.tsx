@@ -588,65 +588,47 @@ const HomePage = () => (
       </a>
     </section>
 
-    <section className="pw-trust-line" id="home-story"><motion.div className="pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>{['Offline-first', 'Belgische retail', 'Multi-store', 'Peppol-ready', 'Open API'].map(item => <motion.span key={item} variants={fadeUp}>{item}</motion.span>)}</motion.div></section>
-
-    <motion.section className="pw-statement pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>
-      <motion.p variants={fadeUp}>Van eerste scan tot volgende beslissing.</motion.p>
-      <motion.h2 variants={fadeUp}>PWAYMENT verbindt alles wat in je winkel gebeurt—zodat jij niet tussen losse systemen hoeft te kiezen.</motion.h2>
-    </motion.section>
-
-    <section className="pw-story pw-shell">
-      <StoryRow eyebrow="01 / Verkoop" title="Een kassa die het tempo van je winkel volgt." body="Scan een barcode, vind een product, koppel een klant en rond af met cash, PIN of cadeaubon. De interface blijft rustig, ook wanneer de rij langer wordt." image={posImage} href="/pos" icon={ScanLine} />
-      <StoryRow eyebrow="02 / Begrijp" title="Zie niet alleen wat verkocht. Zie wat het betekent." body="Omzet is het begin. PWAYMENT toont marge, verkoopsnelheid, voorraadwaarde, seizoensritme en klantterugkeer—met een duidelijke volgende actie." image={insightsImage} visual={<InsightsCarousel />} href="/insights" icon={TrendingUp} reverse />
-      <StoryRow eyebrow="03 / Verbind" title="Fysiek, online en achter de schermen in sync." body="Publiceer je webshop, verbind boekhouding en leveranciers, beheer locaties en geef elke medewerker precies de juiste toegang." image={integrationsImage} href="/integrations" icon={RefreshCw} />
+    <section className="pw-home-proof" id="home-story" aria-label="PWAYMENT in het kort">
+      <div className="pw-shell">{[
+        ['Offline-first', 'Blijf verkopen als de verbinding wegvalt.'],
+        ['Belgische retail', 'Btw, retouren en dagafsluiting in één flow.'],
+        ['Eén live winkelbeeld', 'Kassa, voorraad, klanten en webshop samen.'],
+        ['Open wanneer nodig', 'Hardware, koppelingen en API met duidelijke status.'],
+      ].map(([title, body]) => <div key={title}><span>{title}</span><p>{body}</p></div>)}</div>
     </section>
 
-    <motion.section className="pw-loop-section" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>
-      <div className="pw-shell">
-        <motion.div className="pw-section-heading" variants={fadeUp}><div><span className="pw-eyebrow">De PWAYMENT retailflow</span><h2>Alles begint bij een verkoop.<br />Alles wordt beter door wat je leert.</h2></div><a href="/product" className="pw-text-link">Ontdek het platform <ArrowRight size={15} /></a></motion.div>
-        <div className="pw-loop">
-          {[
-            [ScanLine, 'Verkoop', 'Snel, foutarm en overal herkenbaar.'], [Database, 'Registreer', 'Voorraad, klant en betaling bewegen mee.'], [BarChart3, 'Begrijp', 'Zie marge, ritme en afwijkingen.'], [TrendingUp, 'Verbeter', 'Bestel, stuur bij en bouw loyaliteit.'],
-          ].map(([Icon, title, body], index) => <motion.div className="pw-loop-step" key={String(title)} variants={fadeUp} whileHover={{ y: -8, transition: { duration: .25 } }}><span>0{index + 1}</span><Icon size={24} /><h3>{String(title)}</h3><p>{String(body)}</p></motion.div>)}
-        </div>
-      </div>
+    <motion.section className="pw-home-intro pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>
+      <motion.div variants={fadeUp}><span className="pw-eyebrow">Eén systeem, één waarheid</span><h2>De hele winkel<br />onder controle.</h2></motion.div>
+      <motion.p variants={fadeUp}>PWAYMENT maakt van elke verkoop direct bruikbare winkelinformatie. Niet door er nog een dashboard naast te zetten, maar doordat verkoop, voorraad, klanten en online orders vanaf het begin hetzelfde verhaal vertellen.</motion.p>
     </motion.section>
 
-    <motion.section className="pw-capability-proof pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>
-      <motion.div className="pw-section-heading" variants={fadeUp}>
-        <div><span className="pw-eyebrow">Meer dan een snelle kassa</span><h2>De operationele diepte<br />zit al in het systeem.</h2></div>
-        <a href="/product" className="pw-text-link">Bekijk het volledige platform <ArrowRight size={15} /></a>
-      </motion.div>
-      <div className="pw-capability-grid">
+    <motion.section className="pw-home-product pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>
+      <motion.div className="pw-home-product-copy" variants={fadeUp}><span className="pw-eyebrow">De winkelvloer, opnieuw ontworpen</span><h2>Rust voor je team.<br />Grip voor jou.</h2><p>Een snelle kassaflow aan de voorkant. Een volledig, betrouwbaar winkelbeeld achter de schermen.</p><a href="/pos" className="pw-text-link">Ontdek de kassa <ArrowRight size={15} /></a></motion.div>
+      <motion.div className="pw-home-product-screen" variants={fadeUp}><div className="pw-window-bar"><i /><i /><i /><span>app.pwayment.be · Kassa</span><b>Live</b></div><img src={posImage} alt="PWAYMENT kassascherm met catalogus en winkelwagen" loading="lazy" /></motion.div>
+    </motion.section>
+
+    <motion.section className="pw-home-outcomes" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>
+      <div className="pw-shell"><motion.div className="pw-home-section-title" variants={fadeUp}><span className="pw-eyebrow">Wat verandert er in je dag?</span><h2>Van transactie naar<br />volgende stap.</h2></motion.div><div className="pw-home-outcome-grid">
         {[
-          [ReceiptText, 'Retouren & documenten', 'Boek een gedeeltelijke retour op de originele verkoop, herstel voorraad en open of download de factuur.','/history-returns-invoices'],
-          [FileText, 'Dagafsluiting & audit', 'Reconcilieer cash, betaalmix en btw en exporteer verkopen, Z-rapporten of auditregels als CSV en JSON.', '/daily-close-reporting'],
-          [Box, 'Inkoop & ontvangst', 'Zet 60-dagen prognoses om in leveranciersorders en verwerk ook gedeeltelijke ontvangsten.', '/purchasing-suppliers'],
-          [Gift, 'Klanten & cadeaubonnen', 'Filter op koopgedrag, volg klantwaarde en beheer elk cadeaubonsaldo met een volledige historiek.', '/customers'],
-          [BarChart3, 'Beslissingen, niet alleen grafieken', 'Analyseer korting, verkoopmomenten, medewerkers, seizoenen, voorraadtempo en datadekking.', '/insights'],
-          [ShoppingBag, 'Webshoporderflow', 'Reserveer voorraad bij checkout en geef die correct vrij of definitief uit bij annuleren, afhalen of verzenden.', '/webshop'],
-        ].map(([Icon, title, body, href]) => (
-          <motion.a className="pw-capability-card" href={String(href)} key={String(title)} variants={fadeUp} whileHover={{ y: -7 }}>
-            <Icon size={23} />
-            <span>{String(title)}</span>
-            <p>{String(body)}</p>
-            <ArrowRight className="pw-capability-arrow" size={16} />
-          </motion.a>
-        ))}
-      </div>
+          [ScanLine, 'Verkoop zonder vertraging', 'Scan, zoek, koppel een klant en rond af. De flow blijft kort wanneer het druk wordt.', '/pos'],
+          [Box, 'Voorraad die vooruitkijkt', 'Zie wat hard loopt, wat stilstaat en wat je op tijd moet bestellen.', '/inventory'],
+          [TrendingUp, 'Inzichten met een doel', 'Begrijp marge, ritme en klantgedrag en weet waar je vandaag op stuurt.', '/insights'],
+        ].map(([Icon, title, body, href], index) => <motion.a href={String(href)} key={String(title)} variants={fadeUp} whileHover={{ y: -6 }}><span>0{index + 1}</span><Icon size={25} /><h3>{String(title)}</h3><p>{String(body)}</p><ArrowRight size={17} /></motion.a>)}
+      </div></div>
     </motion.section>
 
-    <motion.section className="pw-integrations pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>
-      <motion.div className="pw-section-heading" variants={fadeUp}><div><span className="pw-eyebrow">Integraties zonder giswerk</span><h2>Zie wat actief is.<br />En wat nog in pilot zit.</h2></div><a href="/integrations" className="pw-text-link">Bekijk alle statussen <ArrowRight size={15} /></a></motion.div>
-      <div className="pw-status-preview">{integrationStatuses.slice(0, 6).map(item => <motion.a href="/integrations" key={item.name} className="pw-status-preview-item" variants={fadeUp} whileHover={{ y: -5 }}><span className={`pw-status-pill ${item.tone}`}>{item.status}</span><strong>{item.name}</strong><p>{item.detail}</p></motion.a>)}</div>
+    <motion.section className="pw-home-platform pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>
+      <motion.div className="pw-home-platform-heading" variants={fadeUp}><span className="pw-eyebrow">Gebouwd voor echte retail</span><h2>Alles wat moet kloppen,<br />werkt samen.</h2><p>Geen verzameling losse modules. Wel één retailoperatie die verder gaat dan de kassa.</p></motion.div>
+      <motion.div className="pw-home-platform-grid" variants={stagger}>{[
+        [Users, 'Klanten & loyaliteit', 'Herken waardevolle klanten, spaarpunten en cadeaubonnen op één plek.', '/customers'],
+        [ShoppingBag, 'Winkel + webshop', 'Eén assortiment en voorraadbeeld voor winkelvloer en online orders.', '/webshop'],
+        [ReceiptText, 'Retouren & rapportage', 'Van originele verkoop tot btw, betaalmix en controleerbare dagafsluiting.', '/daily-close-reporting'],
+        [Webhook, 'Hardware & koppelingen', 'Bekijk per scanner, printer, terminal of connector wat echt actief is.', '/integrations'],
+      ].map(([Icon, title, body, href]) => <motion.a href={String(href)} key={String(title)} variants={fadeUp} whileHover={{ y: -5 }}><Icon size={21} /><h3>{String(title)}</h3><p>{String(body)}</p><ArrowRight size={15} /></motion.a>)}</motion.div>
+      <motion.a href="/product" className="pw-button pw-button-light" variants={fadeUp}>Bekijk het volledige platform <ArrowRight size={16} /></motion.a>
     </motion.section>
 
-    <PricingTeaser />
-
-    <motion.section className="pw-faq pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>
-      <motion.div variants={fadeUp}><span className="pw-eyebrow">Veelgestelde vragen</span><h2>Eerst helderheid.<br />Dan vooruit.</h2><p>Alles wat je vooraf wilt weten over internet, hardware, migratie en abonnementen.</p></motion.div>
-      <motion.div className="pw-faq-list" variants={stagger}>{faqs.map(([question, answer]) => <motion.details key={question} variants={fadeUp}><summary>{question}<span>+</span></summary><p>{answer}</p></motion.details>)}</motion.div>
-    </motion.section>
+    <motion.section className="pw-home-assurance" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><div className="pw-shell"><motion.div variants={fadeUp}><span className="pw-eyebrow">Klaar om over te stappen?</span><h2>Begin waar je winkel nu staat.</h2><p>Start gratis, plan een persoonlijke demo of neem je bestaande data gecontroleerd mee.</p></motion.div><motion.div className="pw-home-assurance-actions" variants={fadeUp}><a href="/register?plan=professional" className="pw-button pw-button-dark">Start gratis <ArrowRight size={16} /></a><a href="/migrate" className="pw-text-link">Bekijk de migratieaanpak <ArrowRight size={15} /></a></motion.div></div></motion.section>
 
     <FinalCta />
   </>
@@ -928,14 +910,15 @@ const PricingPage = () => {
           </tbody>
         </table>
       </motion.div>
+      <motion.p className="pw-compatibility-note" variants={fadeUp}><strong>Hardware is niet inbegrepen.</strong> Je abonnement omvat PWAYMENT-software en de vermelde softwarekoppelingen. Schermen, printers, scanners, betaalterminals, weegschalen en kassalades koop je zelf aan; we controleren per toestel of de koppeling compatibel is.</motion.p>
     </motion.section>
     <motion.section className="pw-current-source pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><motion.div variants={fadeUp}><span className="pw-eyebrow">Ook duidelijk in PWAYMENT</span><h2>Dezelfde plannen. Dezelfde bedragen. Overal herkenbaar.</h2><p>De planvergelijking in PWAYMENT sluit aan op dezelfde publieke pakketten en prijsstructuur.</p></motion.div><motion.div className="pw-current-source-window" variants={fadeUp} whileHover={{ y: -5 }}><div className="pw-window-bar"><i /><i /><i /><span>Instellingen · Plan &amp; Upgrades</span><b>Actueel</b></div><img src={plansImage} alt="Actuele planvergelijking in de lokale PWAYMENT applicatie" loading="lazy" /></motion.div></motion.section>
-    <motion.section className="pw-addons pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><motion.div variants={fadeUp}><span className="pw-eyebrow">Gerichte uitbreidingen</span><h2>Alleen extra betalen wanneer je extra verbindt.</h2></motion.div><motion.div variants={stagger}>{[['Extra POS-terminal', '€ 29 / maand', 'Boven op de inbegrepen terminal; een klantendisplay telt niet mee.'], ['Extra Enterprise-filiaal', '€ 79 / maand', 'Voor centrale multi-storesturing en lokale voorraad.'], ['ServiceDesk SMS-bundel', '€ 15 / 200', 'Wordt pas actief na interne toekenning en een werkende provider.'], ['Hardware & installatie', 'Op offerte', 'Eenmalig, afhankelijk van printer, scanner, scherm en kassalade.']].map(([name, price, body]) => <motion.article key={name} variants={fadeUp}><h3>{name}</h3><strong>{price}</strong><p>{body}</p></motion.article>)}</motion.div></motion.section>
+    <motion.section className="pw-addons pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><motion.div variants={fadeUp}><span className="pw-eyebrow">Gerichte uitbreidingen</span><h2>Alleen extra betalen wanneer je extra verbindt.</h2></motion.div><motion.div variants={stagger}>{[['Extra kassascherm', '€ 29 / maand', 'Een extra PWAYMENT-kassascherm op je eigen toestel; een klantendisplay telt niet mee.'], ['Extra Enterprise-filiaal', '€ 79 / maand', 'Voor centrale multi-storesturing en lokale voorraad.'], ['ServiceDesk SMS-bundel', '€ 15 / 200', 'Wordt pas actief na interne toekenning en een werkende provider.'], ['Installatiebegeleiding', 'Op offerte', 'Optionele hulp om PWAYMENT op je eigen hardware in te richten en te testen.']].map(([name, price, body]) => <motion.article key={name} variants={fadeUp}><h3>{name}</h3><strong>{price}</strong><p>{body}</p></motion.article>)}</motion.div></motion.section>
     <motion.section className="pw-configurator pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>
       <motion.div variants={fadeUp}><span className="pw-eyebrow">Prijsconfigurator</span><h2>Stel je testopstelling samen.</h2><p>Dit is een prijsindicatie. Er wordt nog geen betaling uitgevoerd.</p></motion.div>
       <motion.div className="pw-configurator-panel" variants={fadeUp}>
         <label>Plan<select value={configPlan} onChange={event => setConfigPlan(event.target.value as 'pro' | 'enterprise')}><option value="pro">Retail Professional</option><option value="enterprise">Enterprise & Ketens</option></select></label>
-        <label>Extra POS-terminals<input type="number" min="0" max="50" value={extraTerminals} onChange={event => setExtraTerminals(Math.max(0, Number(event.target.value) || 0))} /></label>
+        <label>Extra kassaschermen<input type="number" min="0" max="50" value={extraTerminals} onChange={event => setExtraTerminals(Math.max(0, Number(event.target.value) || 0))} /></label>
         <label>Extra filialen<input type="number" min="0" max="50" disabled={configPlan !== 'enterprise'} value={configPlan === 'enterprise' ? extraLocations : 0} onChange={event => setExtraLocations(Math.max(0, Number(event.target.value) || 0))} /></label>
         <label>SMS-bundels van 200<input type="number" min="0" max="100" value={smsBundles} onChange={event => setSmsBundles(Math.max(0, Number(event.target.value) || 0))} /></label>
         <div className="pw-configurator-total"><span>Indicatie per maand, excl. btw</span><strong>{formatEuroCents(configuredMonthlyCents)}</strong><small>{cycle === 'yearly' ? 'met jaarlijkse softwareprijs' : 'maandelijks opzegbare softwareprijs'}</small></div>

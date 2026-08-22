@@ -45,6 +45,7 @@ import {
   DailyReportDaySummary,
   loadDailyReportDaySummaries,
 } from "../services/dailyReportDetail";
+import { Button } from "./ui/Button";
 
 const InvoicePreviewModal = React.lazy(() =>
   import("./InvoicePreviewModal").then((module) => ({
@@ -332,12 +333,6 @@ export const AuditLog: React.FC<AuditLogProps> = ({
       <main className="mx-auto w-full max-w-[1320px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
         <header className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.1em] text-cyan-800">
-              <span className="flex h-6 w-6 items-center justify-center rounded-md bg-cyan-50 text-cyan-700">
-                <BarChart3 size={14} />
-              </span>
-              Historiek
-            </div>
             <h1 className="text-[28px] font-bold tracking-tight text-slate-950">
               Verkoopgeschiedenis
             </h1>
@@ -349,13 +344,14 @@ export const AuditLog: React.FC<AuditLogProps> = ({
 
           <div className="flex flex-wrap gap-2">
             {auth.hasRole("owner", "manager") && (
-              <button
+              <Button
                 type="button"
                 onClick={() => setReturnScanOpen(true)}
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-amber-600 px-3.5 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-2"
+                variant="secondary"
+                className="min-h-10"
               >
                 <ScanLine size={16} /> Retour via ticket
-              </button>
+              </Button>
             )}
             <button
               type="button"
@@ -363,7 +359,7 @@ export const AuditLog: React.FC<AuditLogProps> = ({
               disabled={exportDisabled}
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-cyan-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45"
             >
-              <FileText size={16} /> Exporteer CSV
+              <FileText size={16} /> CSV
             </button>
             <button
               type="button"
@@ -371,7 +367,7 @@ export const AuditLog: React.FC<AuditLogProps> = ({
               disabled={exportDisabled}
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-cyan-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45"
             >
-              <FileJson size={16} /> Exporteer JSON
+              <FileJson size={16} /> JSON
             </button>
           </div>
         </header>

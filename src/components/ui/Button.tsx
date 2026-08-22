@@ -11,8 +11,8 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants: Record<ButtonVariant, string> = {
-  primary: "border-[#0e7490] bg-[#0e7490] text-white shadow-[0_1px_2px_rgba(15,23,42,0.08)] hover:border-[#0f6677] hover:bg-[#0f6677]",
-  secondary: "border-slate-200 bg-white text-slate-700 shadow-[0_1px_2px_rgba(15,23,42,0.04)] hover:border-[#8bdce8] hover:bg-[#f3fbfc] hover:text-[#0f6f7e]",
+  primary: "border-[#0e7490] bg-[#0e7490] !text-white shadow-[0_1px_2px_rgba(15,23,42,0.08)] hover:border-[#0f6677] hover:bg-[#0f6677]",
+  secondary: "border-slate-200 bg-white text-slate-700 shadow-[0_1px_2px_rgba(15,23,42,0.04)] hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950",
   quiet: "border-transparent bg-transparent text-slate-600 hover:bg-slate-50 hover:text-[#0e7490]",
   danger: "border-rose-200 bg-white text-rose-700 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800",
 };
@@ -37,7 +37,7 @@ export const Button = ({
     // Callers can always override this explicitly with `type`.
     type={type ?? (props.onClick ? "button" : "submit")}
     className={cn(
-      "inline-flex items-center justify-center font-bold transition-colors",
+      "inline-flex items-center justify-center border font-semibold transition-colors",
       "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#38bdf8] focus-visible:ring-offset-2",
       "disabled:cursor-not-allowed disabled:opacity-50",
       variants[variant],

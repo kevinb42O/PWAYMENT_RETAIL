@@ -30,6 +30,16 @@
 
 :root {
   color-scheme: light;
+  --app-page-bg: #f4f8fb;
+  --app-surface: #ffffff;
+  --app-border: #dbe3ea;
+  --app-text: #0f172a;
+  --app-muted: #64748b;
+  --app-primary: #0e7490;
+  --app-primary-hover: #0f6677;
+  --app-primary-soft: #f0f9ff;
+  --app-primary-border: #bae6fd;
+  --app-focus: #38bdf8;
 }
 
 .theme-light {
@@ -811,7 +821,9 @@ body {
   border-color: rgba(24, 24, 27, 0.12) !important;
 }
 
-.theme-light .text-white,
+.theme-light .bg-zinc-950.text-white,
+.theme-light .bg-zinc-900.text-white,
+.theme-light .bg-zinc-800.text-white,
 .theme-light .text-zinc-100,
 .theme-light .text-zinc-200,
 .theme-light .text-zinc-300 {
@@ -1040,7 +1052,7 @@ body {
 .pos-nav-item--active {
   border-color: #bae6fd;
   background: #f0f9ff;
-  color: #0e7490;
+  color: #0e7490 !important;
 }
 
 .pos-nav-icon {

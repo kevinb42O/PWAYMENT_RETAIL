@@ -293,11 +293,10 @@ export const IntegrationHub: React.FC = () => {
   return (
     <main className="integration-hub-page app-page-content flex-1 overflow-y-auto">
       <div className="mx-auto max-w-[1500px] space-y-6 p-4 sm:p-6 lg:p-8">
-        <header className="grid gap-6 border-b border-slate-200 pb-6 lg:grid-cols-[1.25fr_0.75fr] lg:items-end">
+        <header className="grid gap-5 border-b border-slate-200 pb-5 lg:grid-cols-[1.25fr_0.75fr] lg:items-end">
           <div>
-            <div className="mb-3 inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-cyan-700"><Sparkles size={14} /> Autonomous Retail Migration</div>
-            <h1 className="max-w-3xl text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Stap over zonder uw winkel opnieuw op te bouwen.</h1>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-500 sm:text-base">Upload de exports die u al heeft. Pwayment herkent de structuur, bewaart uw bronvelden en laat u pas activeren na een leesbare controle. Tot de eerste echte activiteit kunt u de hele migratie in één keer terugdraaien.</p>
+            <h1 className="max-w-3xl text-2xl font-bold tracking-[-0.02em] text-slate-950">Gegevens importeren</h1>
+            <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-500">Upload catalogus- of klantgegevens, controleer de vertaling en activeer pas wanneer alles klopt.</p>
           </div>
           <dl className="grid grid-cols-3 gap-3 self-end">
             <div className="border-l border-slate-200 pl-3"><dt className="text-[11px] font-semibold text-slate-500">producten</dt><dd className="mt-1 text-2xl font-black text-slate-950">{products.length}</dd></div>
@@ -319,7 +318,7 @@ export const IntegrationHub: React.FC = () => {
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_350px]">
           <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-            <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-700">Migratiewerkruimte</p><h2 className="mt-1 text-xl font-black text-slate-950">1. Voeg uw bronnen toe</h2><p className="mt-1 text-sm text-slate-500">Een catalogus, klantenbestand of beide. CSV, TSV, Excel en JSON werken lokaal in uw browser.</p></div><div className="flex flex-wrap items-center gap-2"><button type="button" onClick={loadRealisticTestBusiness} disabled={isWorking || Boolean(activeMigration)} className="rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-extrabold text-violet-800 hover:bg-violet-100 disabled:opacity-50">Laad volledige testzaak</button><span className="rounded-full bg-slate-100 px-3 py-1.5 text-[11px] font-bold text-slate-600">Geen vaste template</span></div></div>
+            <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-[11px] font-bold uppercase tracking-[0.12em] text-cyan-700">Bronnen</p><h2 className="mt-1 text-xl font-bold text-slate-950">1. Voeg bestanden toe</h2><p className="mt-1 text-sm text-slate-500">CSV, TSV, Excel en JSON worden lokaal verwerkt.</p></div><button type="button" onClick={loadRealisticTestBusiness} disabled={isWorking || Boolean(activeMigration)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50">Testgegevens laden</button></div>
 
             <div className="mt-5 grid gap-3 md:grid-cols-2">
               {(["catalog", "customers"] as const).map((kind) => {

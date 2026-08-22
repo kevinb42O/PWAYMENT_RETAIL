@@ -22,6 +22,12 @@ describe("billing plan catalog", () => {
     expect(rows.find((row) => row.label === "Volledige auditviewer en export")?.pro).toBe("—");
   });
 
+  it("describes hardware as a software connection, never as supplied equipment", () => {
+    const hardwareGroup = PLAN_COMPARISON_GROUPS.find((group) => group.category === "Kassasoftware & compatibiliteit");
+    expect(hardwareGroup?.rows.map((row) => row.label).join(" ")).not.toMatch(/inbegrepen|hardware/i);
+    expect(hardwareGroup?.rows.find((row) => row.label.startsWith("Kassaschermen"))?.basic).toBe("1");
+  });
+
   it("keeps monthly, yearly and savings amounts internally consistent", () => {
     expect(planPriceCents("pro", "monthly")).toBe(6900);
     expect(planPriceCents("pro", "yearly")).toBe(5500);

@@ -216,7 +216,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [pinForDiscounts, setPinForDiscounts] = useState(true);
   const [pinForDrawer, setPinForDrawer] = useState(true);
   // Accordion expansion states
-  const [billingExpanded, setBillingExpanded] = useState(true);
+  const [billingExpanded, setBillingExpanded] = useState(activeTab.startsWith('billing'));
   const [catalogExpanded, setCatalogExpanded] = useState(false);
   const [webshopExpanded, setWebshopExpanded] = useState(activeTab.startsWith('webshop'));
   const [hardwareExpanded, setHardwareExpanded] = useState(false);
@@ -225,8 +225,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     if (!initialTab || appliedInitialTabRequestRef.current === initialTabRequestKey) return;
     appliedInitialTabRequestRef.current = initialTabRequestKey;
     setActiveTab(initialTab);
-    if (initialTab.startsWith('billing')) setBillingExpanded(true);
-    if (initialTab.startsWith('webshop')) setWebshopExpanded(true);
+    setBillingExpanded(initialTab.startsWith('billing'));
+    setCatalogExpanded(initialTab.startsWith('catalog'));
+    setWebshopExpanded(initialTab.startsWith('webshop'));
+    setHardwareExpanded(initialTab.startsWith('hardware'));
   }, [initialTab, initialTabRequestKey]);
 
   useEffect(() => {
