@@ -131,7 +131,9 @@ export class EscPosPrintAdapter implements PrintAdapter {
 
       // Unit price + VAT rate on second line, indented
       const vatRate = item.product.vatRate ?? 21;
-      b.text(`    a ${fmt(unit)}  (${vatRate}%)\n`);
+      b.text(item.giftCardOperation
+        ? `    Cadeaubonwaarde (geen productomzet)\n`
+        : `    a ${fmt(unit)}  (${vatRate}%)\n`);
 
       // Modifiers
       for (const mod of item.modifiers ?? []) {

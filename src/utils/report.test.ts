@@ -66,6 +66,28 @@ describe("calculateReportData", () => {
     expect(r.transactionIds).toEqual([1, 2, 3]);
   });
 
+  it("counts a POS gift-card sale once: as tender intake and liability, never merchandise revenue", () => {
+    const giftCardSale: Transaction = {
+      ...tx(8, 5000, "PIN"),
+      items: [{
+        lineId: "gift", quantity: 1,
+        product: { id: "gift", name: "Cadeaubon – uitgifte", category: "Cadeaubonnen", priceCents: 5000, vatRate: 0, productType: "gift-card" },
+        giftCardOperation: { action: "issue", cardId: "gc", code: "PW-1" },
+      }],
+      vat21Cents: 0,
+      tenders: [{ method: "PIN", amountCents: 5000 }],
+    };
+    const report = calculateReportData([giftCardSale], [{
+      id: "event", giftCardId: "gc", giftCardCode: "PW-1", type: "issue", amountCents: 5000,
+      balanceBeforeCents: 0, balanceAfterCents: 5000, timestamp: Date.now(), transactionId: 8,
+      paymentTenders: [{ method: "PIN", amountCents: 5000 }],
+    }]);
+    expect(report.totalRevenueCents).toBe(0);
+    expect(report.giftCardLiabilityAddedCents).toBe(5000);
+    expect(report.paymentTotalsCents).toEqual({ Cash: 0, PIN: 5000, Cadeaubon: 0 });
+    expect(report.giftCardLiabilityPaymentTotalsCents).toEqual({ Cash: 0, PIN: 0, Cadeaubon: 0 });
+  });
+
   it("attributes each part of a cash and card split without double counting revenue", () => {
     const split = {
       ...tx(1, 1000, "Cash"),

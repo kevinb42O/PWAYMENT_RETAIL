@@ -101,8 +101,9 @@ export const ReceiptTicket: React.FC<Props> = ({ transaction: t, merchantOverrid
                 <span className="tabular-nums whitespace-nowrap">{formatEUR(lineTotal)}</span>
               </div>
               <div className="text-zinc-600 text-[10px] pl-7">
-                à {formatEUR(unit)}
-                {`  (${item.product.vatRate ?? 21}%)`}
+                {item.giftCardOperation
+                  ? `Nieuw saldo ${item.giftCardOperation.action === "issue" ? formatEUR(lineTotal) : "na oplading zichtbaar in historiek"}`
+                  : <>à {formatEUR(unit)}{`  (${item.product.vatRate ?? 21}%)`}</>}
               </div>
               {(item.modifiers ?? []).map((m) => (
                 <div key={m.id} className="pl-7 flex justify-between text-[10px]">

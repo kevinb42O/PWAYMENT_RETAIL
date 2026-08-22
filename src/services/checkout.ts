@@ -214,11 +214,17 @@ const runCheckout = async (
   const liabilityLine = input.items.find((item) =>
     isGiftCardProduct(item.product),
   );
-  if (liabilityLine) {
+  if (liabilityLine && !liabilityLine.giftCardOperation) {
     throw new CheckoutError(
       "gift-card-product",
-      `“${liabilityLine.product.name}” moet via Klanten → Cadeaubonnen worden uitgegeven; cadeaubonwaarde is geen productomzet.`,
+      `“${liabilityLine.product.name}” heeft geen geldige cadeaubonopdracht. Start uitgifte of oplading vanuit Klanten → Cadeaubonnen.`,
     );
+  }
+  if (input.items.some((item) => item.giftCardOperation && !isGiftCardProduct(item.product))) {
+    throw new CheckoutError("invalid-request", "Een cadeaubonopdracht moet een cadeaubonproduct zijn.");
+  }
+  if (liabilityLine && input.discountCents > 0) {
+    throw new CheckoutError("invalid-request", "Geef geen korting op een cadeaubon. Pas het op te laden bedrag aan.");
   }
 
   // tsconfig is not strict, so the TenderMethod type alone does not protect us.
@@ -306,6 +312,8 @@ const runCheckout = async (
       // against their live balance — never against a cached store copy.
       const debitedCards: GiftCard[] = [];
       const redemptionEvents: GiftCardEvent[] = [];
+      const creditedCards: GiftCard[] = [];
+      const creditEvents: GiftCardEvent[] = [];
       let giftCardTotal = 0;
       for (const alloc of allocations) {
         const card = await db.gift_cards.get(alloc.id);
@@ -360,6 +368,60 @@ const runCheckout = async (
           userName: input.userName,
           source: "live",
         });
+      }
+
+      // Gift-card value is sold through this same checkout, but remains a
+      // liability. The card mutation is intentionally staged inside the same
+      // Dexie transaction and only persisted after the sale has an ID.
+      const giftCardOperations = input.items
+        .map((item) => ({ item, operation: item.giftCardOperation }))
+        .filter((entry): entry is { item: OrderItem; operation: NonNullable<OrderItem["giftCardOperation"]> } => Boolean(entry.operation));
+      if (giftCardOperations.length > 0 && allocations.length > 0) {
+        throw new CheckoutError("invalid-request", "Een cadeaubon kan niet met cadeaubonwaarde worden opgeladen.");
+      }
+      for (const { item, operation } of giftCardOperations) {
+        const amountCents = item.product.priceCents * item.quantity;
+        if (!Number.isSafeInteger(amountCents) || amountCents <= 0 || item.quantity !== 1) {
+          throw new CheckoutError("gift-card-invalid-amount", "Een cadeaubon moet één positief oplaadbedrag hebben.");
+        }
+        if (operation.action === "issue") {
+          const duplicate = await db.gift_cards
+            .filter((card) => card.code.replace(/[\s-]/g, "").toUpperCase() === operation.code.replace(/[\s-]/g, "").toUpperCase())
+            .first();
+          if (duplicate) throw new CheckoutError("invalid-request", `Cadeauboncode ${operation.code} bestaat al.`);
+          const card: GiftCard = {
+            id: operation.cardId,
+            code: operation.code.trim().toUpperCase(),
+            customerId: operation.customerId,
+            initialCents: amountCents,
+            balanceCents: amountCents,
+            issuedAt: new Date(now).toISOString(),
+            expiresAt: operation.expiresAt,
+            isActive: true,
+          };
+          creditedCards.push(card);
+          creditEvents.push({
+            id: `gift-card-issue-${input.clientRequestId}-${card.id}`,
+            giftCardId: card.id, giftCardCode: card.code, type: "issue", amountCents,
+            balanceBeforeCents: 0, balanceAfterCents: amountCents, timestamp: now,
+            clientRequestId: input.clientRequestId, customerId: card.customerId,
+            userId: input.userId, userName: input.userName, source: "live",
+          });
+        } else {
+          const card = await db.gift_cards.get(operation.cardId);
+          if (!card) throw new CheckoutError("gift-card-not-found", `Cadeaubon ${operation.code} bestaat niet.`);
+          if (!card.isActive) throw new CheckoutError("gift-card-inactive", `Cadeaubon ${card.code} is geblokkeerd.`);
+          if (isGiftCardExpired(card, now)) throw new CheckoutError("gift-card-expired", `Cadeaubon ${card.code} is verlopen.`);
+          const next = { ...card, balanceCents: card.balanceCents + amountCents };
+          creditedCards.push(next);
+          creditEvents.push({
+            id: `gift-card-recharge-${input.clientRequestId}-${card.id}`,
+            giftCardId: card.id, giftCardCode: card.code, type: "recharge", amountCents,
+            balanceBeforeCents: card.balanceCents, balanceAfterCents: next.balanceCents, timestamp: now,
+            clientRequestId: input.clientRequestId, customerId: card.customerId,
+            userId: input.userId, userName: input.userName, source: "live",
+          });
+        }
       }
 
       if (giftCardTotal > totals.total) {
@@ -598,9 +660,34 @@ const runCheckout = async (
           redemptionEvents.map((event) => ({ ...event, transactionId: id })),
         );
       }
+      if (creditEvents.length > 0) {
+        // Preserve a reconciliable tender ledger per card even when the
+        // cashier sells several cards in one ticket.
+        const tenderPool = tenders
+          .filter((tender) => tender.method === "Cash" || tender.method === "PIN")
+          .map((tender) => ({ ...tender }));
+        const tendersForEvent = (amountCents: number): PaymentTender[] => {
+          let remaining = amountCents;
+          const rows: PaymentTender[] = [];
+          for (const tender of tenderPool) {
+            if (remaining <= 0) break;
+            const amount = Math.min(remaining, tender.amountCents);
+            if (amount > 0) {
+              rows.push({ method: tender.method, amountCents: amount });
+              tender.amountCents -= amount;
+              remaining -= amount;
+            }
+          }
+          if (remaining !== 0) throw new CheckoutError("invalid-tender", "Betaalmiddelen sluiten niet aan op de cadeaubonwaarde.");
+          return rows;
+        };
+        await db.gift_card_events.bulkAdd(
+          creditEvents.map((event) => ({ ...event, transactionId: id, paymentTenders: tendersForEvent(event.amountCents) })),
+        );
+      }
 
       const soldByProductId = new Map<string, number>();
-      for (const item of input.items) {
+      for (const item of input.items.filter((item) => !isGiftCardProduct(item.product))) {
         soldByProductId.set(
           item.product.id,
           (soldByProductId.get(item.product.id) ?? 0) + item.quantity,
@@ -639,9 +726,10 @@ const runCheckout = async (
       }
 
       if (debitedCards.length > 0) await db.gift_cards.bulkPut(debitedCards);
+      if (creditedCards.length > 0) await db.gift_cards.bulkPut(creditedCards);
 
       let updatedCustomer: Customer | undefined;
-      if (input.customerId) {
+      if (input.customerId && input.items.some((item) => !isGiftCardProduct(item.product))) {
         const customer = await db.customers.get(input.customerId);
         if (customer) {
           updatedCustomer = {
@@ -695,7 +783,7 @@ const runCheckout = async (
         transaction: persisted,
         duplicate: false,
         updatedProducts,
-        updatedGiftCards: debitedCards,
+        updatedGiftCards: [...debitedCards, ...creditedCards],
         updatedCustomer,
       };
     },

@@ -211,6 +211,10 @@ export const calculateReportData = (
 
   for (const event of giftCardEvents) {
     if (event.type !== "issue" && event.type !== "recharge") continue;
+    // New issue/recharge events are booked by their POS transaction.  Older
+    // direct events have no transactionId and remain supported until history
+    // is naturally closed out.  Counting both would overstate cash/PIN.
+    if (event.transactionId != null) continue;
     const tenders = event.paymentTenders ?? [];
     const tenderTotal = tenders.reduce(
       (sum, tender) => sum + tender.amountCents,
@@ -322,6 +326,7 @@ export const generateZReport = async (
         .filter(
           (event) =>
             event.dailyReportId == null &&
+            event.transactionId == null &&
             event.source !== "demo" &&
             (event.type === "issue" || event.type === "recharge"),
         )

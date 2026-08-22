@@ -39,7 +39,6 @@ import {
   Customer,
   GiftCard,
   GiftCardEvent,
-  TenderMethod,
   Transaction,
 } from "../types";
 import { formatEUR, parseDecimalToCents } from "../utils/money";
@@ -93,6 +92,7 @@ export const Customers: React.FC = () => {
     (state) => state.snapshot?.features[FEATURE_KEYS.giftCardsIssue] === true,
   );
   const setMainView = useStore((state) => state.setMainView);
+  const addGiftCardCheckoutItem = useStore((state) => state.addGiftCardCheckoutItem);
   const {
     customers,
     giftCards,
@@ -100,8 +100,6 @@ export const Customers: React.FC = () => {
     upsertCustomer,
     removeCustomer,
     restoreCustomer,
-    addGiftCard,
-    rechargeGiftCard,
     deactivateGiftCard,
     activateGiftCard,
   } = useCustomers();
@@ -126,10 +124,6 @@ export const Customers: React.FC = () => {
   >(null);
   const [rechargeGC, setRechargeGC] = useState<GiftCard | null>(null);
   const [rechargeAmountText, setRechargeAmountText] = useState("0,00");
-  const [giftCardPaymentMethod, setGiftCardPaymentMethod] =
-    useState<Exclude<TenderMethod, "Cadeaubon">>("PIN");
-  const [rechargePaymentMethod, setRechargePaymentMethod] =
-    useState<Exclude<TenderMethod, "Cadeaubon">>("PIN");
   const [formError, setFormError] = useState<string | null>(null);
   const [archiveCustomer, setArchiveCustomer] = useState<Customer | null>(null);
   const [giftStatusAction, setGiftStatusAction] = useState<{
@@ -466,9 +460,10 @@ export const Customers: React.FC = () => {
       isActive: true,
     };
     try {
-      await addGiftCard(card, [
-        { method: giftCardPaymentMethod, amountCents: initialCents },
-      ]);
+      addGiftCardCheckoutItem({
+        action: "issue", cardId: card.id, code: card.code, amountCents: initialCents,
+        customerId: card.customerId, expiresAt: card.expiresAt,
+      });
       setEditingGiftCard(null);
     } catch (error) {
       setFormError(error instanceof Error ? error.message : String(error));
@@ -488,9 +483,10 @@ export const Customers: React.FC = () => {
       return;
     }
     try {
-      await rechargeGiftCard(rechargeGC.id, cents, [
-        { method: rechargePaymentMethod, amountCents: cents },
-      ]);
+      addGiftCardCheckoutItem({
+        action: "recharge", cardId: rechargeGC.id, code: rechargeGC.code,
+        amountCents: cents, customerId: rechargeGC.customerId,
+      });
       setRechargeGC(null);
     } catch (error) {
       setFormError(error instanceof Error ? error.message : String(error));
@@ -526,7 +522,6 @@ export const Customers: React.FC = () => {
                     return;
                   }
                   setFormError(null);
-                  setGiftCardPaymentMethod("PIN");
                   setEditingGiftCard({
                     code: generateGiftCardCode(),
                     initialText: "0,00",
@@ -1203,7 +1198,6 @@ export const Customers: React.FC = () => {
                                 event.stopPropagation();
                                 if (!canIssueGiftCards) return;
                                 setFormError(null);
-                                setRechargePaymentMethod("PIN");
                                 setRechargeGC(gc);
                                 setRechargeAmountText("0,00");
                               }}
@@ -1395,7 +1389,7 @@ export const Customers: React.FC = () => {
                 onClick={() => void handleSaveGiftCard()}
                 className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold"
               >
-                Uitgeven
+                Naar kassa
               </button>
             </div>
           }
@@ -1439,18 +1433,7 @@ export const Customers: React.FC = () => {
                 className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 tabular-nums"
               />
             </Field>
-            <Field label="Ontvangen via">
-              <select
-                value={giftCardPaymentMethod}
-                onChange={(event) =>
-                  setGiftCardPaymentMethod(event.target.value as "Cash" | "PIN")
-                }
-                className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2"
-              >
-                <option value="PIN">Kaart</option>
-                <option value="Cash">Contant</option>
-              </select>
-            </Field>
+            <p className="rounded-lg border border-cyan-800 bg-cyan-950/40 px-3 py-2 text-xs leading-5 text-cyan-100">Deze cadeaubon gaat eerst naar de kassa. Het saldo wijzigt alleen na een geslaagde Cash-, PIN- of gesplitste betaling.</p>
             <Field label="Klant (Optioneel)">
               <select
                 value={editingGiftCard.customerId || ""}
@@ -1499,7 +1482,7 @@ export const Customers: React.FC = () => {
                 onClick={() => void handleRechargeGiftCard()}
                 className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold"
               >
-                Opwaarderen
+                Naar kassa
               </button>
             </div>
           }
@@ -1519,18 +1502,7 @@ export const Customers: React.FC = () => {
                 className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 tabular-nums"
               />
             </Field>
-            <Field label="Ontvangen via">
-              <select
-                value={rechargePaymentMethod}
-                onChange={(event) =>
-                  setRechargePaymentMethod(event.target.value as "Cash" | "PIN")
-                }
-                className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2"
-              >
-                <option value="PIN">Kaart</option>
-                <option value="Cash">Contant</option>
-              </select>
-            </Field>
+            <p className="rounded-lg border border-cyan-800 bg-cyan-950/40 px-3 py-2 text-xs leading-5 text-cyan-100">Deze oplading gaat eerst naar de kassa. Het saldo wijzigt alleen na een geslaagde Cash-, PIN- of gesplitste betaling.</p>
             {formError && (
               <p
                 role="alert"

@@ -86,16 +86,25 @@ const pushTransactionToSupabase = async (
       : undefined;
     const tenders = terminalTendersForServer(tx);
     const hasCashTender = tenders.some((tender) => tender.method === "Cash");
+    const items = tx.items.map((item) => ({
+      line_id: item.lineId,
+      product: { id: item.product.id, priceCents: item.product.priceCents },
+      quantity: item.quantity,
+      notes: item.notes,
+      modifiers: item.modifiers ?? [],
+      gift_card_operation: item.giftCardOperation ? {
+        action: item.giftCardOperation.action,
+        card_id: item.giftCardOperation.cardId,
+        code: item.giftCardOperation.code,
+        customer_id: item.giftCardOperation.customerId,
+        expires_at: item.giftCardOperation.expiresAt,
+      } : undefined,
+    }));
+    const isGiftCardCheckout = tx.items.length > 0 && tx.items.every((item) => Boolean(item.giftCardOperation));
     const payload = {
       client_request_id: tx.clientRequestId,
       cart_id: tx.tableId,
-      items: tx.items.map((item) => ({
-        line_id: item.lineId,
-        product: { id: item.product.id },
-        quantity: item.quantity,
-        notes: item.notes,
-        modifiers: item.modifiers ?? [],
-      })),
+      items,
       discount_cents: tx.discountCents,
       discount_reason: tx.discountReason,
       discount_approved_by_user_id: tx.discountApprovedByUserId,
@@ -127,7 +136,10 @@ const pushTransactionToSupabase = async (
       } : undefined,
     };
 
-    const { data, error } = await supabase.rpc("checkout_sale", {
+    // Generated database types are refreshed in the next schema-codegen run;
+    // the migration is already deployed and the payload is intentionally JSON.
+    const rpc = supabase.rpc as unknown as (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
+    const { data, error } = await rpc(isGiftCardCheckout ? "checkout_gift_card_sale" : "checkout_sale", {
       target_store_id: storeId,
       payload: payload as unknown as Json,
     });

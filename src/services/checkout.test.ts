@@ -89,6 +89,29 @@ beforeEach(async () => {
 });
 
 describe('finalizeCheckout', () => {
+  it('issues a gift card only through a committed POS transaction and keeps it out of merchandise revenue', async () => {
+    const giftCardLine = line(product({
+      id: 'pos-gift-card-liability', name: 'Cadeaubon – uitgifte', priceCents: 5000,
+      vatRate: 0, stockQty: undefined, productType: 'gift-card',
+    }));
+    giftCardLine.giftCardOperation = {
+      action: 'issue', cardId: 'new-gc-1', code: 'PW-NEW-0001', customerId: 'cust-1',
+    };
+    await db.customers.put(customer());
+
+    const result = await finalizeCheckout(baseInput({
+      clientRequestId: 'gift-card-issue', items: [giftCardLine], customerId: 'cust-1',
+    }));
+
+    expect(result.transaction.documentNumber).toMatch(/^POS-\d{4}-\d{8}$/);
+    expect(result.transaction.totalCents).toBe(5000);
+    expect((await db.gift_cards.get('new-gc-1'))).toMatchObject({ balanceCents: 5000, isActive: true });
+    expect(await db.gift_card_events.where('giftCardId').equals('new-gc-1').toArray()).toEqual([
+      expect.objectContaining({ type: 'issue', transactionId: result.transaction.id, paymentTenders: [{ method: 'PIN', amountCents: 5000 }] }),
+    ]);
+    expect((await db.customers.get('cust-1'))).toMatchObject({ visitCount: 0, totalSpentCents: 0 });
+  });
+
   it('books a plain sale once, decrements stock and records the customer visit', async () => {
     await db.customers.put(customer());
 

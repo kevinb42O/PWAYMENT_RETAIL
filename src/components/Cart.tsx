@@ -21,7 +21,7 @@ import { useStore } from "../store/useStore";
 import { useProducts } from "../store/useProducts";
 import { useAuth } from "../auth/useAuth";
 import { SUPPORTED_VAT_RATES } from "../utils/vat";
-import { formatEUR } from "../utils/money";
+import { formatEUR, parseDecimalToCents } from "../utils/money";
 import { FEATURES } from "../config/features";
 import {
   CheckoutError,
@@ -43,7 +43,7 @@ import {
 import { EscPosPrintAdapter } from "./ThermalPrinterPanel";
 import { CustomerLinkModal } from "./CustomerLinkModal";
 import { GiftCardPaymentModal } from "./GiftCardPaymentModal";
-import { useCustomers } from "../store/useCustomers";
+import { generateGiftCardCode, generateId, useCustomers } from "../store/useCustomers";
 import { isGiftCardExpired } from "../utils/giftCards";
 import { Modal } from "./Modal";
 import { projectCart } from "../customer-display/cartProjection";
@@ -133,6 +133,7 @@ export const Cart: React.FC = () => {
   const linkedCustomerId = useStore((s) => s.linkedCustomerId);
   const linkCustomer = useStore((s) => s.linkCustomer);
   const unlinkCustomer = useStore((s) => s.unlinkCustomer);
+  const addGiftCardCheckoutItem = useStore((s) => s.addGiftCardCheckoutItem);
 
   const {
     customers,
@@ -232,6 +233,12 @@ export const Cart: React.FC = () => {
   const [invoiceCustomerOpen, setInvoiceCustomerOpen] = useState(false);
   const [invoicePreviewOpen, setInvoicePreviewOpen] = useState(false);
   const [cartActionsOpen, setCartActionsOpen] = useState(false);
+  const [giftCardSaleOpen, setGiftCardSaleOpen] = useState(false);
+  const [giftCardSaleMode, setGiftCardSaleMode] = useState<"issue" | "recharge">("issue");
+  const [giftCardSaleCode, setGiftCardSaleCode] = useState("");
+  const [giftCardSaleAmount, setGiftCardSaleAmount] = useState("25,00");
+  const [giftCardSaleCustomerId, setGiftCardSaleCustomerId] = useState("");
+  const [giftCardSaleError, setGiftCardSaleError] = useState<string | null>(null);
   const [queueOpen, setQueueOpen] = useState(false);
   const [resumeCartId, setResumeCartId] = useState<string | null>(null);
   const [discardCartId, setDiscardCartId] = useState<string | null>(null);
@@ -307,6 +314,29 @@ export const Cart: React.FC = () => {
       : null,
     [receipt, merchantProfile, linkedCustomer],
   );
+
+  const openGiftCardSale = () => {
+    setCartActionsOpen(false);
+    setGiftCardSaleMode("issue");
+    setGiftCardSaleCode(generateGiftCardCode());
+    setGiftCardSaleAmount("25,00");
+    setGiftCardSaleCustomerId(linkedCustomerId ?? "");
+    setGiftCardSaleError(null);
+    setGiftCardSaleOpen(true);
+  };
+  const prepareGiftCardSale = () => {
+    const parsed = parseDecimalToCents(giftCardSaleAmount);
+    if (!parsed.ok || parsed.cents <= 0) return setGiftCardSaleError("Geef een geldig positief bedrag in.");
+    const code = giftCardSaleCode.trim().toUpperCase();
+    const existing = giftCards.find((card) => card.code.replace(/[\s-]/g, "").toUpperCase() === code.replace(/[\s-]/g, "").toUpperCase());
+    if (giftCardSaleMode === "recharge" && !existing) return setGiftCardSaleError("Geen bestaande cadeaubon gevonden voor deze code.");
+    if (giftCardSaleMode === "issue" && existing) return setGiftCardSaleError("Deze cadeauboncode bestaat al. Kies een andere code.");
+    addGiftCardCheckoutItem({
+      action: giftCardSaleMode, cardId: existing?.id ?? generateId(), code,
+      amountCents: parsed.cents, customerId: giftCardSaleMode === "recharge" ? existing?.customerId : giftCardSaleCustomerId || undefined,
+    });
+    setGiftCardSaleOpen(false);
+  };
 
   if (receipt) {
     return (
@@ -718,6 +748,16 @@ export const Cart: React.FC = () => {
               <button
                 type="button"
                 role="menuitem"
+                disabled={cart.orders.length > 0 || isProcessing}
+                onClick={openGiftCardSale}
+                title={cart.orders.length > 0 ? "Werk cadeaubonnen als een aparte kassatransactie af." : "Nieuwe cadeaubon uitgeven of bestaande opladen"}
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-violet-800 transition-colors hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Gift size={16} /> Cadeaubon uitgeven of opladen
+              </button>
+              <button
+                type="button"
+                role="menuitem"
                 onClick={() => {
                   setCartActionsOpen(false);
                   setInvoiceCustomerOpen(true);
@@ -1106,6 +1146,26 @@ export const Cart: React.FC = () => {
           }
         }}
       />
+      <Modal
+        open={giftCardSaleOpen}
+        onClose={() => setGiftCardSaleOpen(false)}
+        title="Cadeaubon via kassa"
+        subtitle="Het saldo wijzigt pas na de normale betaling."
+        icon={<Gift size={20} />}
+        footer={<div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" onClick={() => setGiftCardSaleOpen(false)} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700">Annuleren</button><button type="button" onClick={prepareGiftCardSale} className="rounded-xl bg-violet-700 px-4 py-2 text-sm font-bold text-white hover:bg-violet-800">Naar betaling</button></div>}
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1">
+            {(["issue", "recharge"] as const).map((mode) => <button key={mode} type="button" onClick={() => { setGiftCardSaleMode(mode); setGiftCardSaleError(null); }} className={`rounded-lg px-3 py-2 text-sm font-bold ${giftCardSaleMode === mode ? "bg-white text-violet-800 shadow-sm" : "text-slate-500"}`}>{mode === "issue" ? "Nieuwe bon" : "Opladen"}</button>)}
+          </div>
+          <label className="block text-sm font-bold text-slate-700">Cadeauboncode<input value={giftCardSaleCode} onChange={(event) => setGiftCardSaleCode(event.target.value.toUpperCase())} className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono text-sm" placeholder="Scan of voer code in" autoFocus /></label>
+          <div className="grid grid-cols-5 gap-2">{[10,25,50,75,100].map((amount) => <button key={amount} type="button" onClick={() => setGiftCardSaleAmount(`${amount},00`)} className={`rounded-lg border px-1 py-2 text-xs font-bold ${giftCardSaleAmount === `${amount},00` ? "border-violet-500 bg-violet-50 text-violet-800" : "border-slate-200 text-slate-600"}`}>€{amount}</button>)}</div>
+          <label className="block text-sm font-bold text-slate-700">Bedrag (€)<input inputMode="decimal" value={giftCardSaleAmount} onChange={(event) => setGiftCardSaleAmount(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-2 tabular-nums" /></label>
+          {giftCardSaleMode === "issue" && <label className="block text-sm font-bold text-slate-700">Klant koppelen <span className="font-normal text-slate-400">(optioneel)</span><select value={giftCardSaleCustomerId} onChange={(event) => setGiftCardSaleCustomerId(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-2"><option value="">Anonieme cadeaubon</option>{customers.filter((customer) => customer.isActive).map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}</select></label>}
+          {giftCardSaleMode === "recharge" && <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">Scan de bestaande kaart. Het actuele saldo wordt opnieuw gecontroleerd zodra de betaling wordt geboekt.</p>}
+          {giftCardSaleError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{giftCardSaleError}</p>}
+        </div>
+      </Modal>
       <SuspendedCartsModal
         open={queueOpen}
         carts={queuedCartItems}

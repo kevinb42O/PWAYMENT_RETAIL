@@ -103,6 +103,18 @@ export interface OrderItem {
   sentAt?: number;
   /** Marker reserved for external fulfilment status integrations. */
   bumpedAt?: number;
+  /**
+   * A gift-card issue/recharge is sold through the normal checkout, but its
+   * value is a liability rather than merchandise revenue.  The target is
+   * immutable on the receipt and resolved again inside the checkout write.
+   */
+  giftCardOperation?: {
+    action: "issue" | "recharge";
+    cardId: string;
+    code: string;
+    customerId?: string;
+    expiresAt?: string;
+  };
 }
 
 export type TableStatus = "free" | "ordered" | "waiting";
@@ -616,6 +628,7 @@ export type AuditAction =
   | "customer.delete"
   | "customer.restore"
   | "giftcard.create"
+  | "giftcard.checkout.prepared"
   | "giftcard.recharge"
   | "giftcard.deduct"
   | "giftcard.deactivate"

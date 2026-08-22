@@ -109,6 +109,15 @@ interface POSState {
   setMobileView: (view: 'menu' | 'cart') => void;
 
   addOrderItem: (product: Product) => void;
+  /** Put a prepared gift-card sale in the POS basket; payment always happens in Cart. */
+  addGiftCardCheckoutItem: (input: {
+    action: "issue" | "recharge";
+    cardId: string;
+    code: string;
+    amountCents: number;
+    customerId?: string;
+    expiresAt?: string;
+  }) => void;
   scanCodeToCart: (code: string) => CartScanResult;
   removeOrderItem: (lineId: string) => void;
   updateOrderItemQuantity: (lineId: string, quantity: number) => void;
@@ -325,6 +334,43 @@ export const useStore = create<POSState>()(
             : [...state.cart.orders, { ...candidate, lineId: lineId() }];
           return { cart: { ...state.cart, orders } };
         });
+      },
+
+      addGiftCardCheckoutItem: (input) => {
+        if (!Number.isSafeInteger(input.amountCents) || input.amountCents <= 0) return;
+        const product: Product = {
+          id: "pos-gift-card-liability",
+          name: input.action === "issue" ? "Cadeaubon – uitgifte" : "Cadeaubon – oplading",
+          category: "Cadeaubonnen",
+          subCategory: "Cadeaubonnen",
+          priceCents: input.amountCents,
+          vatRate: 0,
+          productType: "gift-card",
+          isActive: true,
+        };
+        const item: OrderItem = {
+          lineId: lineId(),
+          product,
+          quantity: 1,
+          giftCardOperation: {
+            action: input.action,
+            cardId: input.cardId,
+            code: input.code,
+            customerId: input.customerId,
+            expiresAt: input.expiresAt,
+          },
+        };
+        void audit("giftcard.checkout.prepared", {
+          cartId: RETAIL_CART_ID,
+          action: input.action,
+          cardId: input.cardId,
+          amountCents: input.amountCents,
+        });
+        set((state) => ({
+          cart: { ...state.cart, orders: [...state.cart.orders, item] },
+          mainView: "pos",
+          mobileView: "cart",
+        }));
       },
 
       scanCodeToCart: (rawCode) => {

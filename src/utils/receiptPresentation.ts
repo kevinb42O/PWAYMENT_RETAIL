@@ -17,8 +17,13 @@ export const receiptFingerprint = (transaction: Transaction, timestamp: string):
 export const receiptDiscountLabel = (): string => "Korting";
 
 /** Show the selling variant without relying on a live product catalogue lookup. */
-export const receiptItemDescription = (item: OrderItem): string =>
-  [item.product.name, item.product.variant].filter(Boolean).join(" — ");
+export const receiptItemDescription = (item: OrderItem): string => {
+  if (item.giftCardOperation) {
+    const action = item.giftCardOperation.action === "issue" ? "uitgifte" : "oplading";
+    return `Cadeaubon – ${action} (${item.giftCardOperation.code})`;
+  }
+  return [item.product.name, item.product.variant].filter(Boolean).join(" — ");
+};
 
 /**
  * Wraps receipt text without dropping characters. Long unbroken words are
