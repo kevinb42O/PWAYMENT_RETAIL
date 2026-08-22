@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import {
   ArrowDown,
@@ -112,11 +112,14 @@ interface AuditLogProps {
   canViewFullHistory: boolean;
   /** The raw audit trail remains an Enterprise control. */
   canViewAuditLog: boolean;
+  /** Opened from the POS return shortcut: take the cashier straight to manual lookup. */
+  initialReturnSearch?: boolean;
 }
 
 export const AuditLog: React.FC<AuditLogProps> = ({
   canViewFullHistory,
   canViewAuditLog,
+  initialReturnSearch = false,
 }) => {
   const merchantProfile = useMerchantProfile((state) => state.profile);
   const auth = useAuth();
@@ -435,6 +438,7 @@ export const AuditLog: React.FC<AuditLogProps> = ({
             onPreviewInvoice={setPreviewInvoice}
             canRefund={auth.hasRole("owner", "manager")}
             onRefund={setRefundTransaction}
+            autoFocusReturnSearch={initialReturnSearch}
           />
         ) : tab === "reports" ? (
           <ReportsTable
@@ -586,6 +590,7 @@ const SalesHistory = ({
   onPreviewInvoice,
   canRefund,
   onRefund,
+  autoFocusReturnSearch,
 }: {
   range: SalesRange;
   onRangeChange: (range: SalesRange) => void;
@@ -601,7 +606,10 @@ const SalesHistory = ({
   onPreviewInvoice: (inv: InvoiceData) => void;
   canRefund: boolean;
   onRefund: (transaction: Transaction) => void;
+  autoFocusReturnSearch: boolean;
 }) => {
+  const transactionPanelRef = useRef<HTMLDivElement | null>(null);
+  const transactionSearchRef = useRef<HTMLInputElement | null>(null);
   const [query, setQuery] = useState("");
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("all");
   const [visibleTransactionCount, setVisibleTransactionCount] = useState(12);
@@ -736,6 +744,20 @@ const SalesHistory = ({
     setPaymentFilter("all");
     setVisibleTransactionCount(12);
   };
+
+  useEffect(() => {
+    if (!autoFocusReturnSearch) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      transactionPanelRef.current?.scrollIntoView({
+        behavior: "auto",
+        block: "start",
+      });
+      transactionSearchRef.current?.focus({ preventScroll: true });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [autoFocusReturnSearch, transactions]);
   const changeHistorySort = (key: HistorySortKey) => {
     setHistorySort((current) => ({
       key,
@@ -955,7 +977,7 @@ const SalesHistory = ({
         </div>
       </div>
 
-      <div className="insights-panel overflow-hidden">
+      <div ref={transactionPanelRef} className="insights-panel overflow-hidden">
         <div className="border-b border-slate-100 px-5 py-5 sm:px-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -980,6 +1002,7 @@ const SalesHistory = ({
                   size={17}
                 />
                 <input
+                  ref={transactionSearchRef}
                   type="search"
                   value={query}
                   onChange={(event) => {

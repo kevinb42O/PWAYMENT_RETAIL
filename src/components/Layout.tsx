@@ -137,6 +137,8 @@ export const Layout: React.FC = () => {
   );
   const [isNavDropdownOpen, setIsNavDropdownOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [openAuditLogAtReturnSearch, setOpenAuditLogAtReturnSearch] =
+    useState(false);
   const [profileInitialTarget, setProfileInitialTarget] = useState<{
     tab: "billing" | "webshop-general" | "modules" | "workforce" | "leave-approvals";
     requestKey: number;
@@ -231,6 +233,7 @@ export const Layout: React.FC = () => {
   const ActiveNavigationIcon = activeNavigationItem.Icon;
 
   const openNavigationItem = (item: NavigationItem) => {
+    if (item.view === "audit-log") setOpenAuditLogAtReturnSearch(false);
     if (item.profileTab) openProfile(item.profileTab);
     else setMainView(item.view);
     setIsNavDropdownOpen(false);
@@ -442,6 +445,7 @@ export const Layout: React.FC = () => {
           setIsNavDropdownOpen(false);
         } else if (event.key === "3") {
           event.preventDefault();
+          setOpenAuditLogAtReturnSearch(false);
           setMainView("audit-log");
           setIsNavDropdownOpen(false);
         } else if (event.key === "4" && modulePreferences.customers && canOpenFeature(FEATURE_KEYS.customerCrm)) {
@@ -815,6 +819,7 @@ export const Layout: React.FC = () => {
             <AuditLog
               canViewFullHistory={canOpenFeature(FEATURE_KEYS.fullHistory)}
               canViewAuditLog={canOpenFeature(FEATURE_KEYS.auditViewer)}
+              initialReturnSearch={openAuditLogAtReturnSearch}
             />
           )}
           {mainView === "customers" && (
@@ -927,9 +932,12 @@ export const Layout: React.FC = () => {
                 {(currentRole === "owner" || currentRole === "manager") && (
                   <button
                     type="button"
-                    onClick={() => setMainView("audit-log")}
+                    onClick={() => {
+                      setOpenAuditLogAtReturnSearch(true);
+                      setMainView("audit-log");
+                    }}
                     className="ml-2 inline-flex shrink-0 items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm font-bold text-amber-900 hover:bg-amber-100"
-                    title="Open retour via ticketscan"
+                    title="Zoek een verkoop om manueel te retourneren"
                   >
                     <RotateCcw size={16} />
                     <span className="hidden lg:inline">Retour</span>

@@ -63,6 +63,21 @@ test("card sale is atomic, exact and visible in Historiek", async ({
   await expect(appPage.getByText("Kaart").first()).toBeVisible();
 });
 
+test("POS return shortcut opens the manual transaction lookup directly", async ({
+  appPage,
+}) => {
+  await openApp(appPage);
+
+  await appPage.getByRole("button", { name: "Retour", exact: true }).click();
+
+  await expect(
+    appPage.getByRole("heading", { name: "Transacties & facturen" }),
+  ).toBeVisible();
+  await expect(
+    appPage.getByRole("searchbox", { name: "Zoek transacties" }),
+  ).toBeFocused();
+});
+
 test("partial refund creates a linked negative correction and restores stock", async ({
   appPage,
 }) => {
