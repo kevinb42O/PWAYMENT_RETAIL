@@ -194,6 +194,32 @@ const featurePages: Record<string, FeaturePageData> = {
       { number: '03', title: 'Eén voorraad voor elk kanaal', body: 'Online en fysieke verkoop reserveren en verlagen dezelfde voorraad.', points: ['Atomaire voorraadreservering bij checkout', 'Annuleren geeft gereserveerde voorraad vrij', 'Verzenden of afhalen committeert de reservering', 'Multi-storefront in Enterprise', 'Shopify/WooCommerce add-on'] },
     ],
   },
+  '/service-desk': {
+    eyebrow: 'ServiceDesk & herstellingen',
+    title: 'Van intake tot ophaling, zonder losse briefjes.',
+    intro: 'Maak van elke herstelling een duidelijke klantflow. Toestel, probleem, prijsopbouw, status en opvolging blijven samen met je klant- en verkoopgegevens.',
+    image: customerImage,
+    imageAlt: 'PWAYMENT klant- en servicebeheer',
+    proof: 'Een herstelling blijft gekoppeld aan de klant, de afspraak en de volledige historiek.',
+    chapters: [
+      { number: '01', title: 'Neem correct in', body: 'Leg toestel, serienummer, accessoires, conditie en probleem vast terwijl de klant voor je staat.', points: ['Klant of losse contactgegevens', 'Toestel-, IMEI- en serienummergegevens', 'Probleem, conditie en accessoires', 'Diagnose, voorschot en prijsopbouw'] },
+      { number: '02', title: 'Houd iedereen op de hoogte', body: 'Werk met heldere status, interne notities en een overzichtelijke vervolgactie voor je team.', points: ['Status en substatus per dossier', 'Interne notities en leveranciersreferenties', 'Onderdelen, werkuren en overige kosten', 'Publieke statusopvolging voor de klant'] },
+      { number: '03', title: 'Sluit af met vertrouwen', body: 'Van intake tot aflevering blijft de volledige servicehistoriek verbonden met je klantbeeld.', points: ['Volledige dossierhistoriek', 'Klant- en verkoopcontext samen', 'Controle voor manager en eigenaar'] },
+    ],
+  },
+  '/workforce': {
+    eyebrow: 'Team & planning',
+    title: 'Een sterker team, zonder spreadsheetrooster.',
+    intro: 'Plan je winkelvloer, beheer verlof en geef iedereen de juiste toegang. Zo houd je bezetting, rollen en verantwoordelijkheid helder—ook als je groeit.',
+    image: insightsImage,
+    imageAlt: 'PWAYMENT team- en prestatieoverzicht',
+    proof: 'Planning, rechten en winkelactiviteit komen samen in dezelfde operatie.',
+    chapters: [
+      { number: '01', title: 'Plan de winkelvloer', body: 'Bouw een weekrooster rond je echte bezetting, beschikbare mensen en terugkerende patronen.', points: ['Weekrooster en shifts', 'Werkpatronen en week kopiëren', 'Bewerk, publiceer en heropen roosters'] },
+      { number: '02', title: 'Beheer verlof zorgvuldig', body: 'Aanvragen, goedkeuringen en saldi blijven duidelijk voor medewerker en verantwoordelijke.', points: ['Verlof aanvragen en intrekken', 'Goedkeuring met persoonlijke PIN', 'Verloftypes, saldi en coverage'] },
+      { number: '03', title: 'Geef de juiste toegang', body: 'Kassier, manager en eigenaar zien alleen wat bij hun verantwoordelijkheid hoort.', points: ['Rollen per medewerker', 'Managergoedkeuringen voor gevoelige acties', 'Contracturen en beschikbaarheid'] },
+    ],
+  },
   '/integrations': {
     eyebrow: 'Koppelingen & API',
     title: 'PWAYMENT past in je bedrijf. Niet andersom.',
@@ -248,11 +274,21 @@ const featurePages: Record<string, FeaturePageData> = {
   },
 };
 
-const solutionPages: Record<string, { title: string; intro: string; label: string; bullets: string[] }> = {
-  '/solutions/independent-retail': { label: 'Onafhankelijke retail', title: 'Professionele controle, zonder een IT-afdeling.', intro: 'Voor winkels die snel willen verkopen, voorraad willen beheersen en elke dag met een helder beeld willen afsluiten.', bullets: ['Eén locatie en een korte installatie', 'Productimport en hardwarebegeleiding', 'Kassa, voorraad, klanten en inzichten samen'] },
-  '/solutions/specialist-retail': { label: 'Speciaalzaken', title: 'Gebouwd voor assortimenten met diepte.', intro: 'Maten, kleuren, merken, leveranciers en adviesproducten vragen meer dan een eenvoudige artikelnaam.', bullets: ['Varianten, barcodes en labels', 'Marge en verkoopsnelheid per product', 'Loyaliteit voor terugkerende klanten'] },
-  '/solutions/multi-location': { label: 'Enterprise & ketens', title: 'Elke winkel lokaal sterk. De keten centraal bestuurbaar.', intro: 'Verbind onbeperkte locaties en registers zonder lokale snelheid of centrale controle in te leveren.', bullets: ['Transfers, prijslijsten en promoties', 'Consolidated intelligence en audit', 'SLA en ondersteuning volgens overeenkomst'] },
-  '/solutions/accountants': { label: 'Accountants & partners', title: 'Schone winkeldata. Minder herstelwerk.', intro: 'Laat dagelijkse ontvangsten, btw, betaalmethodes en facturen gestructureerd voorbereiden voor de boekhouding.', bullets: ['Peppol, Exact en Octopus volgens pilotstatus', 'Controleerbare Z- en transactie-export', 'Connectorvalidatie vóór live-status'] },
+interface SolutionPageData {
+  title: string;
+  intro: string;
+  label: string;
+  proofTitle: string;
+  proof: string;
+  bullets: string[];
+  workflows: Array<{ label: string; title: string; body: string; href: string }>;
+}
+
+const solutionPages: Record<string, SolutionPageData> = {
+  '/solutions/independent-retail': { label: 'Onafhankelijke retail', title: 'Professionele controle, zonder een IT-afdeling.', intro: 'Voor winkels die vlot willen verkopen, voorraad willen beheersen en elke dag met een helder beeld willen afsluiten.', proofTitle: 'Alles wat je nodig hebt. Niets dat je ophoudt.', proof: 'Eén korte retailflow vervangt losse tools, manuele lijstjes en het dagelijkse zoekwerk naar de juiste cijfers.', bullets: ['Een snelle kassa voor een drukke winkelvloer', 'Voorraad, klanten en rapportage in dezelfde bron', 'Een rustige migratie en begeleiding op je eigen hardware'], workflows: [{ label: 'Winkelvloer', title: 'Vlot verkopen, ook als het druk is.', body: 'Scan, zoek, koppel een klant en rond af zonder je weg te zoeken in een complex systeem.', href: '/pos' }, { label: 'Eigenaarschap', title: 'Sluit af met overzicht.', body: 'Zie omzet, cash, btw, voorraad en volgende acties zonder gegevens samen te voegen.', href: '/daily-close-reporting' }] },
+  '/solutions/specialist-retail': { label: 'Speciaalzaken', title: 'Gebouwd voor assortimenten met diepte.', intro: 'Maten, kleuren, merken, leveranciers en adviesproducten vragen meer dan een eenvoudige artikelnaam.', proofTitle: 'Geen plat productbestand, maar retailkennis.', proof: 'PWAYMENT houdt de eigenschappen, marge, beweging en klantcontext van elk artikel samen—zodat je niet moet kiezen tussen eenvoud en diepte.', bullets: ['Varianten, barcodes, labels en leveranciers per artikel', 'Marge, verkoopsnelheid en stilstand zichtbaar per product', 'Klanten, loyaliteit en cadeaubonnen voor terugkerende relaties'], workflows: [{ label: 'Assortiment', title: 'Ken elk artikel zoals je team dat kent.', body: 'Werk met de details die in een speciaalzaak tellen, van variant en merk tot kostprijs en barcode.', href: '/inventory' }, { label: 'Relatie', title: 'Maak goed advies herkenbaar.', body: 'Koppel aankopen, voorkeuren en voordelen aan een klantbeeld dat met je winkel meegroeit.', href: '/customers' }] },
+  '/solutions/multi-location': { label: 'Enterprise & ketens', title: 'Elke winkel lokaal sterk. De keten centraal bestuurbaar.', intro: 'Verbind locaties en registers zonder lokale snelheid of centrale controle in te leveren.', proofTitle: 'Lokale rust. Centrale scherpte.', proof: 'Iedere locatie werkt door in haar eigen tempo, terwijl eigenaars zicht houden op voorraad, prestaties, rollen en de volgende groeibeslissing.', bullets: ['Multi-store voorraad, transfers en centrale sturing', 'Inzichten per locatie én over de volledige organisatie', 'Rollen, audit en support volgens je operationele schaal'], workflows: [{ label: 'Operatie', title: 'Houd voorraad in beweging tussen locaties.', body: 'Stuur assortiment en voorraadgericht bij zonder het lokale team te vertragen.', href: '/inventory' }, { label: 'Besturing', title: 'Zie waar je organisatie aandacht nodig heeft.', body: 'Vergelijk ritme, marge, voorraad en prestaties vanuit één centrale bron.', href: '/insights' }] },
+  '/solutions/accountants': { label: 'Accountants & partners', title: 'Schone winkeldata. Minder herstelwerk.', intro: 'Laat dagelijkse ontvangsten, btw, betaalmethodes en facturen gestructureerd voorbereiden voor de boekhouding.', proofTitle: 'Controleerbare cijfers vóór ze je boekhouding bereiken.', proof: 'De dagafsluiting vertrekt vanuit de echte transacties: betaalmix, cash, btw, facturen en correcties blijven in samenhang leesbaar.', bullets: ['Controleerbare Z- en transactie-export', 'Btw, cash en betaalmethodes duidelijk uitgesplitst', 'Koppelingen alleen communiceren met een heldere, bewezen status'], workflows: [{ label: 'Afsluiting', title: 'Maak van een winkeldag een heldere boekingsbasis.', body: 'Controleer verschillen vóór ze in je historiek en rapportage terechtkomen.', href: '/daily-close-reporting' }, { label: 'Documenten', title: 'Vind elke factuur en correctie terug.', body: 'Verkoopdocumenten, retouren en exports blijven verbonden met de oorspronkelijke transactie.', href: '/history-returns-invoices' }] },
 };
 
 interface OperationalPageData {
@@ -507,12 +543,15 @@ export const SiteHeader = ({ mobileOpen, setMobileOpen }: { mobileOpen: boolean;
           <img src="/branding/pwayment-logo.svg" alt="PWAYMENT" />
         </a>
         <nav className="pw-nav" aria-label="Hoofdnavigatie">
-          <NavGroup label="Product" links={[
-            ['/product', 'Overzicht', 'Alles in één retailflow'], ['/pos', 'POS & betalingen', 'Snel en betrouwbaar verkopen'], ['/inventory', 'Producten & voorraad', 'Van barcode tot besteladvies'], ['/insights', 'Inzichten', 'Van data naar actie'], ['/customers', 'Klanten & loyaliteit', 'Bouw duurzame relaties'], ['/webshop', 'Webshop', 'Fysiek en online verbonden'], ['/integrations', 'Integraties & API', 'Koppel je retailstack'],
+          <NavGroup label="Product" columns={[
+            { title: 'Verkopen & bedienen', links: [['/pos', 'Kassa & betalingen', 'Scan-first, offline en gecontroleerd afrekenen'], ['/customers', 'Klanten & loyaliteit', 'Van klantbeeld tot cadeaubon'], ['/service-desk', 'ServiceDesk & herstellingen', 'Intake, status en aflevering samen'], ['/webshop', 'Webshop & orders', 'Eén voorraad voor winkel en online']] },
+            { title: 'Voorraad & beslissingen', links: [['/inventory', 'Producten & voorraad', 'Van barcode tot besteladvies'], ['/purchasing-suppliers', 'Inkoop & leveranciers', 'Forecast, order en ontvangst'], ['/insights', 'Retail intelligence', 'Van data naar concrete actie'], ['/daily-close-reporting', 'Dagafsluiting & rapportage', 'Btw, cash en controle per dag']] },
+            { title: 'Groei & controle', links: [['/workforce', 'Team & planning', 'Roosters, verlof en rechten'], ['/history-returns-invoices', 'Retouren & facturen', 'Elke correctie blijft controleerbaar'], ['/offline', 'Offline-first', 'Blijf verkopen als verbinding wegvalt'], ['/integrations', 'Hardware & koppelingen', 'Open waar nodig, helder per status']] },
           ]} active={activeMenu === 'Product'} onToggle={() => toggleMenu('Product')} onNavigate={closeNavigation} />
-          <NavGroup label="Oplossingen" links={[
-            ['/solutions/independent-retail', 'Onafhankelijke retail', 'Professioneel zonder complexiteit'], ['/solutions/specialist-retail', 'Speciaalzaken', 'Varianten, merken en advies'], ['/solutions/multi-location', 'Enterprise & ketens', 'Centraal sturen, lokaal verkopen'], ['/solutions/accountants', 'Accountants & partners', 'Schone data en minder handwerk'],
-          ]} active={activeMenu === 'Oplossingen'} onToggle={() => toggleMenu('Oplossingen')} onNavigate={closeNavigation} />
+          <NavGroup label="Voor jouw winkel" columns={[
+            { title: 'Type winkel', links: [['/solutions/independent-retail', 'Onafhankelijke retail', 'Professionele controle zonder complexiteit'], ['/solutions/specialist-retail', 'Speciaalzaken', 'Varianten, merken en advies'], ['/service-desk', 'Herstelgedreven retail', 'Service naast verkoop op één plek']] },
+            { title: 'Groeipad', links: [['/solutions/multi-location', 'Keten & multi-location', 'Centraal sturen, lokaal verkopen'], ['/solutions/accountants', 'Accountants & partners', 'Schone data, minder herstelwerk'], ['/migrate', 'Overstappen naar PWAYMENT', 'Gecontroleerd live zonder onrust']] },
+          ]} active={activeMenu === 'Voor jouw winkel'} onToggle={() => toggleMenu('Voor jouw winkel')} onNavigate={closeNavigation} />
           <a href="/pricing" onClick={closeNavigation}>Prijzen</a>
           <a href="/resources" onClick={closeNavigation}>Resources</a>
         </nav>
@@ -527,7 +566,9 @@ export const SiteHeader = ({ mobileOpen, setMobileOpen }: { mobileOpen: boolean;
       </motion.header>
       {mobileOpen && (
         <nav className="pw-mobile-nav" aria-label="Mobiele navigatie">
-          <a href="/product" onClick={closeNavigation}>Product</a><a href="/pos" onClick={closeNavigation}>POS & betalingen</a><a href="/inventory" onClick={closeNavigation}>Voorraad</a><a href="/insights" onClick={closeNavigation}>Inzichten</a><a href="/customers" onClick={closeNavigation}>Klanten</a><a href="/webshop" onClick={closeNavigation}>Webshop</a><a href="/integrations" onClick={closeNavigation}>Integraties</a><a href="/pricing" onClick={closeNavigation}>Prijzen</a><a href="/resources" onClick={closeNavigation}>Resources</a>
+          <div className="pw-mobile-nav-group"><strong>Product</strong><a href="/pos" onClick={closeNavigation}>Kassa & betalingen</a><a href="/inventory" onClick={closeNavigation}>Voorraad & inkoop</a><a href="/customers" onClick={closeNavigation}>Klanten & loyalty</a><a href="/service-desk" onClick={closeNavigation}>ServiceDesk & herstellingen</a><a href="/webshop" onClick={closeNavigation}>Webshop & orders</a><a href="/insights" onClick={closeNavigation}>Retail intelligence</a><a href="/workforce" onClick={closeNavigation}>Team & planning</a><a href="/offline" onClick={closeNavigation}>Offline-first</a></div>
+          <div className="pw-mobile-nav-group"><strong>Voor jouw winkel</strong><a href="/solutions/independent-retail" onClick={closeNavigation}>Onafhankelijke retail</a><a href="/solutions/specialist-retail" onClick={closeNavigation}>Speciaalzaken</a><a href="/solutions/multi-location" onClick={closeNavigation}>Keten & multi-location</a><a href="/migrate" onClick={closeNavigation}>Overstappen naar PWAYMENT</a></div>
+          <a href="/pricing" onClick={closeNavigation}>Prijzen</a><a href="/resources" onClick={closeNavigation}>Resources</a>
           <div className="pw-mobile-actions"><a href="/login" onClick={closeNavigation}>Log in</a><a href="/register" className="pw-button pw-button-dark" onClick={closeNavigation}>Start gratis</a></div>
         </nav>
       )}
@@ -535,11 +576,11 @@ export const SiteHeader = ({ mobileOpen, setMobileOpen }: { mobileOpen: boolean;
   );
 };
 
-const NavGroup = ({ label, links, active, onToggle, onNavigate }: { label: string; links: string[][]; active: boolean; onToggle: () => void; onNavigate: () => void }) => (
+const NavGroup = ({ label, columns, active, onToggle, onNavigate }: { label: string; columns: Array<{ title: string; links: string[][] }>; active: boolean; onToggle: () => void; onNavigate: () => void }) => (
   <div className="pw-nav-group">
-    <button type="button" aria-expanded={active} aria-controls={`pw-menu-${label.toLowerCase()}`} onClick={onToggle}>{label} <ChevronDown size={14} /></button>
-    <div id={`pw-menu-${label.toLowerCase()}`} className={`pw-mega${active ? ' is-open' : ''}`}>
-      {links.map(([href, title, description]) => <a href={href} key={href} onClick={onNavigate}><strong>{title}</strong><span>{description}</span></a>)}
+    <button type="button" aria-expanded={active} aria-controls={`pw-menu-${label.toLowerCase().replaceAll(' ', '-')}`} onClick={onToggle}>{label} <ChevronDown size={14} /></button>
+    <div id={`pw-menu-${label.toLowerCase().replaceAll(' ', '-')}`} className={`pw-mega pw-mega-${columns.length}${active ? ' is-open' : ''}`}>
+      {columns.map(column => <section key={column.title}><strong className="pw-mega-title">{column.title}</strong>{column.links.map(([href, title, description]) => <a href={href} key={href} onClick={onNavigate}><strong>{title}</strong><span>{description}</span></a>)}</section>)}
     </div>
   </div>
 );
@@ -576,12 +617,12 @@ const HomePage = () => (
       <motion.div className="pw-hero-copy" initial="hidden" animate="visible" variants={stagger}>
         <motion.div className="pw-kicker" variants={fadeUp}><span /> Retailplatform voor Belgische winkels</motion.div>
         <motion.h1 variants={fadeUp}>Minder losse systemen.<br /><em>Meer grip op je winkel.</em></motion.h1>
-        <motion.p variants={fadeUp}>PWAYMENT verbindt kassa, voorraad, klanten, webshop en rapportage in één rustige werkplek. Zo verkoop je vlotter en neem je betere beslissingen met dezelfde gegevens.</motion.p>
+        <motion.p variants={fadeUp}>PWAYMENT verbindt verkoop, voorraad, klanten, webshop en dagafsluiting in één rustige werkplek. Zo blijft je winkel vlot werken én weet je elke dag wat aandacht verdient.</motion.p>
         <motion.div className="pw-hero-actions" variants={fadeUp}>
           <a href="/register?plan=professional" className="pw-button pw-button-dark">Start gratis met PWAYMENT <ArrowRight size={17} /></a>
           <a href="/demo" className="pw-text-link">Plan een persoonlijke demo <ArrowRight size={15} /></a>
         </motion.div>
-        <motion.div className="pw-hero-proof" variants={fadeUp}><span>Basis blijft gratis</span><span>30 dagen Professional</span><span>Offline-first kassa</span></motion.div>
+        <motion.div className="pw-hero-proof" variants={fadeUp}><span>Blijf verkopen zonder internet</span><span>Belgische controle per dag</span><span>Eén voorraad, elk kanaal</span></motion.div>
       </motion.div>
       <a className="pw-scroll-badge" href="#home-story" aria-label="Scroll naar beneden">
         <ChevronDown size={20} strokeWidth={1.8} />
@@ -590,10 +631,10 @@ const HomePage = () => (
 
     <section className="pw-home-proof" id="home-story" aria-label="PWAYMENT in het kort">
       <div className="pw-shell">{[
-        ['Offline-first', 'Blijf verkopen als de verbinding wegvalt.'],
-        ['Belgische retail', 'Btw, retouren en dagafsluiting in één flow.'],
-        ['Eén live winkelbeeld', 'Kassa, voorraad, klanten en webshop samen.'],
-        ['Open wanneer nodig', 'Hardware, koppelingen en API met duidelijke status.'],
+        ['Verkoop zonder stilstand', 'De kritieke kassaflow blijft werken als je verbinding wegvalt.'],
+        ['Dagcontrole die klopt', 'Cash, btw, retouren en Z-rapport in één betrouwbare afsluiting.'],
+        ['Voorraad die vooruitdenkt', 'Zie verkooptempo, stilstand en besteladvies vanuit dezelfde bron.'],
+        ['Groei zonder herbeginnen', 'Van één kassa tot teams, webshop, service en meerdere locaties.'],
       ].map(([title, body]) => <div key={title}><span>{title}</span><p>{body}</p></div>)}</div>
     </section>
 
@@ -629,16 +670,7 @@ const HomePage = () => (
     </motion.section>
 
     <motion.section className="pw-home-assurance" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><div className="pw-shell"><motion.div variants={fadeUp}><span className="pw-eyebrow">Klaar om over te stappen?</span><h2>Begin waar je winkel nu staat.</h2><p>Start gratis, plan een persoonlijke demo of neem je bestaande data gecontroleerd mee.</p></motion.div><motion.div className="pw-home-assurance-actions" variants={fadeUp}><a href="/register?plan=professional" className="pw-button pw-button-dark">Start gratis <ArrowRight size={16} /></a><a href="/migrate" className="pw-text-link">Bekijk de migratieaanpak <ArrowRight size={15} /></a></motion.div></div></motion.section>
-
-    <FinalCta />
   </>
-);
-
-const StoryRow = ({ eyebrow, title, body, image, visual, href, icon: Icon, reverse = false }: { eyebrow: string; title: string; body: string; image: string; visual?: React.ReactNode; href: string; icon: LucideIcon; reverse?: boolean }) => (
-  <motion.article className={`pw-story-row ${reverse ? 'pw-story-row-reverse' : ''}`} initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>
-    <motion.div className="pw-story-copy" variants={{ hidden: { opacity: 0, x: reverse ? 36 : -36 }, visible: { opacity: 1, x: 0, transition: { duration: .75, ease: motionEase } } }}><span className="pw-eyebrow">{eyebrow}</span><Icon className="pw-story-icon" size={22} /><h2>{title}</h2><p>{body}</p><a href={href} className="pw-text-link">Meer ontdekken <ArrowRight size={15} /></a></motion.div>
-    <motion.div className="pw-story-visual" variants={{ hidden: { opacity: 0, y: 35, scale: .975 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: .85, ease: motionEase } } }} whileHover={{ y: -5, transition: { duration: .28 } }}>{visual ?? <motion.img src={image} alt="PWAYMENT productinterface" loading="lazy" whileHover={{ scale: 1.012 }} transition={{ duration: .45, ease: motionEase }} />}</motion.div>
-  </motion.article>
 );
 
 const insightSlides = [
@@ -749,19 +781,28 @@ const PricingTeaser = () => {
   );
 };
 
-const OperationalLinks = () => (
-  <motion.section className="pw-operational-links pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>
-    <motion.div className="pw-section-heading" variants={fadeUp}><div><span className="pw-eyebrow">Verdiep de retailflow</span><h2>Vier workflows die<br />achter de kassa tellen.</h2></div></motion.div>
-    <div>
-      {[
-        [ReceiptText, '/history-returns-invoices', 'Historiek, retouren & facturen', 'Van oorspronkelijke verkoop tot PDF en voorraadherstel.'],
-        [ClipboardCheck, '/daily-close-reporting', 'Dagafsluiting & rapportage', 'Cash, betaalmix, btw, shift en Z-controle.'],
-        [Box, '/purchasing-suppliers', 'Inkoop & leveranciers', 'Van forecast naar conceptorder en deelontvangst.'],
-        [UserCog, '/team-permissions', 'Team, rollen & goedkeuringen', 'De juiste toegang en controle per medewerker.'],
-      ].map(([Icon, href, title, body]) => <motion.a key={String(href)} href={String(href)} variants={fadeUp} whileHover={{ y: -7 }}><Icon size={22} /><span>{String(title)}</span><p>{String(body)}</p><ArrowRight size={15} /></motion.a>)}
-    </div>
-  </motion.section>
-);
+const featureRelated: Record<string, Array<[LucideIcon, string, string, string]>> = {
+  '/product': [[ScanLine, '/pos', 'Kassa & betalingen', 'Een korte, gecontroleerde flow op de winkelvloer.'], [Box, '/inventory', 'Voorraad & inkoop', 'Van productdetail tot bestelbeslissing.'], [TrendingUp, '/insights', 'Retail intelligence', 'Zie wat vandaag aandacht verdient.']],
+  '/pos': [[ReceiptText, '/history-returns-invoices', 'Retouren & facturen', 'Corrigeer vanuit de oorspronkelijke verkoop.'], [ClipboardCheck, '/daily-close-reporting', 'Dagafsluiting', 'Sluit cash, btw en betaalmix helder af.'], [CloudOff, '/offline', 'Offline-first', 'Blijf verkopen als je verbinding wegvalt.']],
+  '/inventory': [[Box, '/purchasing-suppliers', 'Inkoop & leveranciers', 'Vertaal voorraadtempo naar een bestelbeslissing.'], [TrendingUp, '/insights', 'Retail intelligence', 'Bekijk marge, stilstand en seizoensritme.'], [ShoppingBag, '/webshop', 'Webshop & orders', 'Gebruik hetzelfde voorraadbeeld in elk kanaal.']],
+  '/insights': [[Box, '/inventory', 'Voorraad & inkoop', 'Ga van inzicht naar een gerichte voorraadactie.'], [Users, '/customers', 'Klanten & loyalty', 'Begrijp herhaalaankoop en klantwaarde.'], [UserCog, '/workforce', 'Team & planning', 'Verbind bezetting en winkelactiviteit.']],
+  '/customers': [[Gift, '/service-desk', 'ServiceDesk', 'Houd klant en servicecontext samen.'], [ShoppingBag, '/webshop', 'Webshop & orders', 'Geef klanten dezelfde ervaring online en in de winkel.'], [ScanLine, '/pos', 'Kassa & betalingen', 'Koppel klantinformatie direct aan een verkoop.']],
+  '/webshop': [[Box, '/inventory', 'Voorraad & inkoop', 'Laat voorraad nooit twee verhalen vertellen.'], [Users, '/customers', 'Klanten & loyalty', 'Verbind online bestellingen met klantcontext.'], [Webhook, '/integrations', 'Hardware & koppelingen', 'Beheer je retailstack met duidelijke status.']],
+  '/service-desk': [[Users, '/customers', 'Klanten & loyalty', 'Maak van service een blijvende klantrelatie.'], [ReceiptText, '/history-returns-invoices', 'Historiek & facturen', 'Houd documenten en correcties terugvindbaar.'], [ScanLine, '/pos', 'Kassa & betalingen', 'Verbind voorschot, verkoop en aflevering.']],
+  '/workforce': [[UserCog, '/team-permissions', 'Rollen & goedkeuringen', 'Zet verantwoordelijkheid om in heldere toegang.'], [TrendingUp, '/insights', 'Teaminzichten', 'Zie activiteit in de context van je winkel.'], [ScanLine, '/pos', 'Kassa & betalingen', 'Houd de winkelvloer vlot voor elk teamlid.']],
+  '/integrations': [[ShoppingBag, '/webshop', 'Webshop & orders', 'Native commerce binnen dezelfde retailoperatie.'], [CloudOff, '/offline', 'Offline-first', 'Lokale continuïteit bij verbindingsverlies.'], [Store, '/migrate', 'Migreren', 'Neem bestaande data gecontroleerd mee.']],
+  '/hardware': [[ScanLine, '/pos', 'Kassa & betalingen', 'Zie hoe hardware de winkelvloer ondersteunt.'], [CloudOff, '/offline', 'Offline-first', 'Begrijp de lokale continuïteit van je kassa.'], [Store, '/migrate', 'Migreren', 'Richt je hardware rond je echte winkelproces in.']],
+  '/offline': [[ScanLine, '/pos', 'Kassa & betalingen', 'De kritieke flow blijft kort en lokaal bruikbaar.'], [ClipboardCheck, '/daily-close-reporting', 'Dagafsluiting', 'Behoud controle wanneer je weer synchroniseert.'], [ShieldCheck, '/security', 'Veiligheid', 'Koppel continuïteit aan gecontroleerde toegang.']],
+  '/security': [[UserCog, '/team-permissions', 'Rollen & goedkeuringen', 'Geef toegang die past bij verantwoordelijkheid.'], [ReceiptText, '/history-returns-invoices', 'Historiek & audit', 'Houd gevoelige handelingen traceerbaar.'], [CloudOff, '/offline', 'Offline-first', 'Blijf operationeel zonder controle te verliezen.']],
+};
+
+const FeatureRelated = ({ route }: { route: string }) => {
+  const items = featureRelated[route] ?? featureRelated['/product'];
+  return <motion.section className="pw-feature-related pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>
+    <motion.div variants={fadeUp}><span className="pw-eyebrow">Hierna relevant</span><h2>Ontdek de retailflow die hierbij hoort.</h2></motion.div>
+    <motion.div variants={stagger}>{items.map(([Icon, href, title, body]) => <motion.a href={href} key={href} variants={fadeUp} whileHover={{ y: -5 }}><Icon size={20} /><h3>{title}</h3><p>{body}</p><ArrowRight size={15} /></motion.a>)}</motion.div>
+  </motion.section>;
+};
 
 const PosPaymentVideoSection = () => {
   const reducedMotion = useReducedMotion();
@@ -866,18 +907,17 @@ const FeaturePage = ({ data, route }: { data: FeaturePageData; route: string }) 
     {route === '/pos' && <PosPaymentVideoSection />}
     {route === '/integrations' && <IntegrationStatusSection />}
     {route === '/hardware' && <HardwareCompatibilitySection />}
-    <OperationalLinks />
-    <motion.section className="pw-feature-cross pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><motion.p variants={fadeUp}>Ontworpen als één systeem</motion.p><div>{[[ScanLine, '/pos', 'POS'], [Box, '/inventory', 'Voorraad'], [BarChart3, '/insights', 'Inzichten'], [Users, '/customers', 'Klanten'], [ShoppingBag, '/webshop', 'Webshop'], [Webhook, '/integrations', 'Integraties']].map(([Icon, href, label]) => <motion.a key={String(href)} href={String(href)} variants={fadeUp} whileHover={{ y: -7 }}><Icon />{String(label)}</motion.a>)}</div></motion.section>
-    <FinalCta />
+    <FeatureRelated route={route} />
+    <FinalCta eyebrow="Klaar om dit in je winkel te zien?" title={<>Start rustig.<br />Groei wanneer je klaar bent.</>} />
   </>
 );
 
-const SolutionPage = ({ data }: { data: { title: string; intro: string; label: string; bullets: string[] } }) => (
+const SolutionPage = ({ data }: { data: SolutionPageData }) => (
   <>
     <AnimatedPageHero eyebrow={data.label} title={data.title} intro={data.intro} actions={<><a className="pw-button pw-button-dark" href="/register">Start gratis <ArrowRight size={16} /></a><a className="pw-text-link" href="/demo">Bespreek je winkel <ArrowRight size={15} /></a></>} />
-    <motion.section className="pw-solution-panel pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><motion.div variants={fadeUp}><span className="pw-eyebrow">Waarom PWAYMENT</span><h2>De eenvoud van één platform. De diepte van echte retailsoftware.</h2></motion.div><motion.ul variants={stagger}>{data.bullets.map(item => <motion.li key={item} variants={fadeUp}><CircleCheck />{item}</motion.li>)}</motion.ul></motion.section>
-    <section className="pw-story pw-shell"><StoryRow eyebrow="01 / Winkelvloer" title="Een korte flow voor je team." body="Nieuwe medewerkers vinden snel hun weg. Managers houden controle over kortingen, retouren en gevoelige acties." image={posImage} href="/pos" icon={ScanLine} /><StoryRow eyebrow="02 / Eigenaarschap" title="Overzicht zonder handmatig samenvoegen." body="Volg verkoop, marge, voorraad en klanten vanuit dezelfde bron—per locatie en over je hele bedrijf." image={insightsImage} href="/insights" icon={BarChart3} reverse /></section>
-    <FinalCta />
+    <motion.section className="pw-solution-panel pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><motion.div variants={fadeUp}><span className="pw-eyebrow">Waarom dit past</span><h2>{data.proofTitle}</h2><p>{data.proof}</p></motion.div><motion.ul variants={stagger}>{data.bullets.map(item => <motion.li key={item} variants={fadeUp}><CircleCheck />{item}</motion.li>)}</motion.ul></motion.section>
+    <motion.section className="pw-solution-focus pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><motion.div variants={fadeUp}><span className="pw-eyebrow">Waar je begint</span><h2>Twee workflows die voor deze winkel het verschil maken.</h2></motion.div><motion.div variants={stagger}>{data.workflows.map((workflow, index) => <motion.a href={workflow.href} key={workflow.href} variants={fadeUp} whileHover={{ y: -5 }}><span>0{index + 1} / {workflow.label}</span><h3>{workflow.title}</h3><p>{workflow.body}</p><ArrowRight size={16} /></motion.a>)}</motion.div></motion.section>
+    <FinalCta eyebrow={`Klaar voor ${data.label.toLowerCase()}?`} title={<>Ontdek wat rust<br />in je winkel oplevert.</>} />
   </>
 );
 
@@ -1040,7 +1080,7 @@ const LegalPage = ({ type }: { type: string }) => {
 
 const NotFoundPage = () => <motion.section className="pw-not-found pw-shell" initial="hidden" animate="visible" variants={stagger}><motion.span variants={fadeUp}>404</motion.span><motion.h1 variants={fadeUp}>Deze pagina staat niet in de winkel.</motion.h1><motion.p variants={fadeUp}>De link is mogelijk verplaatst. Vanaf het overzicht vind je snel de juiste richting.</motion.p><motion.a variants={fadeUp} href="/" className="pw-button pw-button-dark">Terug naar home <ArrowRight size={16} /></motion.a></motion.section>;
 
-const FinalCta = () => <motion.section className="pw-final" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><div className="pw-shell"><motion.span className="pw-eyebrow" variants={fadeUp}>Klaar voor een helderdere winkel?</motion.span><motion.h2 variants={fadeUp}>Begin gratis.<br />Probeer Professional 1 maand.</motion.h2><motion.p variants={fadeUp}>Basis blijft gratis. Na de proefperiode activeer je Professional of blijf je Basis gebruiken.</motion.p><motion.div variants={fadeUp}><a href="/register?plan=professional" className="pw-button pw-button-dark">Probeer Professional gratis <ArrowRight size={17} /></a><a href="/demo" className="pw-text-link">Plan liever een demo <ArrowRight size={15} /></a></motion.div></div></motion.section>;
+const FinalCta = ({ eyebrow = 'Klaar voor een helderdere winkel?', title = <>Begin gratis.<br />Probeer Professional 1 maand.</> }: { eyebrow?: string; title?: React.ReactNode }) => <motion.section className="pw-final" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><div className="pw-shell"><motion.span className="pw-eyebrow" variants={fadeUp}>{eyebrow}</motion.span><motion.h2 variants={fadeUp}>{title}</motion.h2><motion.p variants={fadeUp}>Basis blijft gratis. Na de proefperiode activeer je Professional of blijf je Basis gebruiken.</motion.p><motion.div variants={fadeUp}><a href="/register?plan=professional" className="pw-button pw-button-dark">Probeer Professional gratis <ArrowRight size={17} /></a><a href="/demo" className="pw-text-link">Plan liever een demo <ArrowRight size={15} /></a></motion.div></div></motion.section>;
 
 const SiteFooter = () => (
   <footer className="pw-footer"><div className="pw-shell"><div className="pw-footer-top"><div className="pw-footer-brand"><img src="/branding/pwayment-logo.svg" alt="PWAYMENT" /><p>Retail intelligence voor winkels die helder willen verkopen, beheren en groeien.</p></div><div className="pw-footer-links"><div><strong>Product</strong><a href="/pos">POS & betalingen</a><a href="/history-returns-invoices">Retouren & facturen</a><a href="/daily-close-reporting">Dagafsluiting</a><a href="/purchasing-suppliers">Inkoop</a><a href="/team-permissions">Team & rechten</a></div><div><strong>Platform</strong><a href="/inventory">Voorraad</a><a href="/insights">Inzichten</a><a href="/customers">Klanten</a><a href="/webshop">Webshop</a><a href="/integrations">Integraties & status</a><a href="/hardware">Hardwarematrix</a></div><div><strong>Bedrijf</strong><a href="/about">Over PWAYMENT</a><a href="/customer-stories">Klantverhalen</a><a href="/resources">Resources</a><a href="/migrate">Migreren</a><a href="/contact">Contact</a></div><div><strong>Account</strong><a href="/pricing">Prijzen</a><a href="/login">Log in</a><a href="/register">Start gratis</a><a href="/demo">Plan een demo</a><a href="/contact">Support</a></div></div></div><div className="pw-footer-bottom"><span>© 2026 PWAYMENT. Alle rechten voorbehouden.</span><div><a href="/legal/privacy">Privacy</a><a href="/legal/cookies">Cookies</a><a href="/legal/terms">Voorwaarden</a><a href="/legal/dpa">Verwerkersovereenkomst</a><a href="/legal/subprocessors">Subverwerkers</a></div><span>NL <ChevronDown size={13} /></span></div></div></footer>
