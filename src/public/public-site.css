@@ -50,8 +50,8 @@
   backdrop-filter: blur(18px) saturate(140%);
 }
 .pw-site-home .pw-navigation-layer { position: relative; z-index: 1000; height: 0; }
-.pw-site-home .pw-header { position: absolute; top: 0; left: 0; width: 100%; border-bottom-color: rgba(255,255,255,.14); background: linear-gradient(180deg, rgba(8,9,9,.48), rgba(8,9,9,.08)); color: white; backdrop-filter: none; }
-.pw-site-home .pw-logo img { filter: brightness(0) invert(1); }
+.pw-site-home .pw-header { position: absolute; top: 0; left: 0; width: 100%; border-bottom-color: transparent; background: transparent; color: white; backdrop-filter: none; }
+.pw-site-home .pw-logo img { content: url('/branding/pwayment-logo-hero.svg'); filter: none; }
 .pw-site-home .pw-nav > a, .pw-site-home .pw-nav-group > button, .pw-site-home .pw-login { color: rgba(255,255,255,.9) !important; }
 .pw-site-home .pw-nav > a:hover, .pw-site-home .pw-nav-group > button:hover, .pw-site-home .pw-nav-group > button[aria-expanded="true"] { background: rgba(255,255,255,.12); color: white; }
 .pw-site-home .pw-mega { color: var(--pw-ink); }
@@ -97,14 +97,14 @@
 .pw-hero-shade { position: absolute; z-index: -2; inset: 0; background: linear-gradient(90deg, rgba(8, 9, 9, .78) 0%, rgba(8, 9, 9, .65) 29%, rgba(8, 9, 9, .25) 55%, rgba(8, 9, 9, .08) 76%), linear-gradient(0deg, rgba(5, 6, 6, .36) 0%, transparent 38%); pointer-events: none; }
 .pw-hero-copy { max-width: 690px; }
 .pw-hero h1 { max-width: 670px; margin: 25px 0 27px; font-size: clamp(58px, 5.7vw, 88px); font-weight: 760; letter-spacing: -.068em; line-height: .92; text-wrap: balance; text-shadow: 0 2px 24px rgba(0,0,0,.18); }
-.pw-hero h1 em { color: rgba(255,255,255,.92); font-style: normal; font-weight: 570; }
-.pw-hero-copy > p { max-width: 610px; margin: 0; color: rgba(255,255,255,.76); font-size: clamp(16px, 1.35vw, 19px); line-height: 1.62; letter-spacing: -.022em; }
-.pw-hero .pw-kicker { color: rgba(255,255,255,.78); }
+.pw-hero h1 em { color: #83d0ff; font-style: normal; font-weight: 600; text-shadow: 0 2px 24px rgba(0,105,200,.18); }
+.pw-hero-copy > p { max-width: 610px; margin: 0; color: #d5e9f6; font-size: clamp(16px, 1.35vw, 19px); line-height: 1.62; letter-spacing: -.022em; }
+.pw-hero .pw-kicker { color: #b9e0f5; }
 .pw-hero-actions { display: flex; align-items: center; justify-content: flex-start; gap: 24px; margin-top: 34px; }
 .pw-hero .pw-button-dark { background: white; color: #101114 !important; box-shadow: 0 8px 28px rgba(0,0,0,.18); }
 .pw-hero .pw-button-dark:hover { background: #f3f3f1; }
 .pw-hero .pw-text-link { color: white; }
-.pw-hero-proof { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; margin-top: 22px; color: rgba(255,255,255,.62); font-size: 10px; font-weight: 680; }
+.pw-hero-proof { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; margin-top: 22px; color: #c8deeb; font-size: 10px; font-weight: 680; }
 .pw-hero-proof span { position: relative; }
 .pw-hero-proof span:not(:first-child)::before { position: absolute; top: 50%; left: -11px; width: 3px; height: 3px; border-radius: 50%; background: #9bc94a; content: ""; transform: translateY(-50%); }
 .pw-scroll-badge { position: absolute; z-index: 2; left: min(calc(50% + 72.3svh), calc(100% - 54px)); top: 83.5%; width: 92px; height: 92px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.22); border-radius: 50%; background: rgba(10,11,11,.93); color: white !important; transform: translate(-50%, -50%); box-shadow: 0 10px 30px rgba(0,0,0,.22); backdrop-filter: blur(10px); transition: background .2s, border-color .2s, transform .2s; }
