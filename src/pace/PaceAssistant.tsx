@@ -25,7 +25,7 @@ import {
   type PaceAction,
   type PaceContext,
 } from "./paceSignals";
-import { PaceMark } from "./PaceMark";
+import { PaceMark, type PacePerformance } from "./PaceMark";
 import { usePace, type PaceMotion, type PaceProactivity, type PaceTone } from "./usePace";
 import { askPaceAi } from "./paceAi";
 import {
@@ -96,6 +96,8 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   const [response, setResponse] = useState<ReturnType<typeof answerPaceQuery> | null>(null);
   const [responseSource, setResponseSource] = useState<"openai" | "local">("local");
   const [thinking, setThinking] = useState(false);
+  const [performance, setPerformance] = useState<PacePerformance | null>(null);
+  const [performanceKey, setPerformanceKey] = useState(0);
   const [externalDialogOpen, setExternalDialogOpen] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const context: PaceContext = useMemo(() => ({
@@ -148,6 +150,17 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   useEffect(() => {
     setResponse(null);
   }, [props.view]);
+
+  useEffect(() => {
+    if (!performance) return;
+    const timer = window.setTimeout(() => setPerformance(null), 3_050);
+    return () => window.clearTimeout(timer);
+  }, [performance, performanceKey]);
+
+  const playPerformance = (next: PacePerformance) => {
+    setPerformance(next);
+    setPerformanceKey((current) => current + 1);
+  };
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -221,7 +234,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
             >
               <header className="pace-panel-header">
                 <div className="pace-identity">
-                  <PaceMark size={52} active thinking={thinking} tone={primary.tone} motionMode={preferences.motion} />
+                  <PaceMark size={52} active thinking={thinking} performance={thinking ? "liquid" : null} tone={primary.tone} motionMode={preferences.motion} />
                   <div><span>PWAYMENT · LIVE CONTEXT</span><h2>Pace</h2></div>
                 </div>
                 <div className="pace-header-actions">
@@ -235,6 +248,22 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                   <motion.div className="pace-scroll" key="settings" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }} transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}>
                     <button className="pace-back-link" type="button" onClick={() => setSettingsOpen(false)}><ChevronLeft size={15} /> Terug naar live context</button>
                     <div className="pace-section-heading"><span>Persoonlijke werking</span><h3>{props.userName ? `${props.userName}, jij bepaalt het tempo.` : "Jij bepaalt zijn tempo."}</h3><p>Deze voorkeuren blijven op dit toestel. Winkelrechten en beveiliging zijn altijd leidend.</p></div>
+                    <section className="pace-motion-lab" aria-label="Pace Motion Lab">
+                      <div className="pace-motion-lab-stage">
+                        <PaceMark key={performanceKey} size={108} active emotion="attentive" performance={performance} motionMode={preferences.motion === "off" ? "off" : "full"} />
+                        <span><Sparkles size={13} /> MOTION LAB</span>
+                      </div>
+                      <div className="pace-motion-lab-copy"><strong>Morph Pace.</strong><small>Elke test keert veilig terug naar het originele merkteken.</small></div>
+                      <div className="pace-motion-lab-controls">
+                        {([
+                          ["stretch", "Uitrekken"],
+                          ["slither", "Slang"],
+                          ["liquid", "Vloeibaar"],
+                          ["portal", "Portal"],
+                        ] as Array<[PacePerformance, string]>).map(([mode, label]) => <button key={mode} type="button" className={performance === mode ? "is-playing" : ""} onClick={() => playPerformance(mode)} disabled={preferences.motion === "off"}>{label}</button>)}
+                      </div>
+                      {preferences.motion === "off" && <p>Beweging staat uit. Zet ze op Subtiel of Volledig om te testen.</p>}
+                    </section>
                     <div className="pace-settings-card">
                       <ToggleRow label="Pace actief" detail="Toon Pace op dit toestel" checked={preferences.enabled} onChange={(enabled) => updatePreferences({ enabled })} />
                       <SelectRow<PaceProactivity> label="Proactiviteit" value={preferences.proactivity} onChange={(proactivity) => updatePreferences({ proactivity })} options={[{ value: "quiet", label: "Stil" }, { value: "balanced", label: "Gebalanceerd" }, { value: "coach", label: "Coach" }]} />

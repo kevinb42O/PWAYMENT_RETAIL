@@ -34,7 +34,7 @@ export const FirstProductTour: React.FC<FirstProductTourProps> = ({
   return (
     <aside aria-label="Rondleiding voor je eerste product" aria-live="polite" className="fixed bottom-4 right-4 z-[70] w-[calc(100vw-2rem)] max-w-sm overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_60px_-24px_rgba(15,23,42,0.4)] sm:bottom-6 sm:right-6">
       <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/85 px-3 py-2.5">
-        <div className="flex items-center gap-2"><PaceMark size={34} active emotion={step === 0 ? "celebrating" : "guiding"} tone={step === 0 ? "success" : "flow"} motionMode="subtle" /><div><div className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan-700">Pace · begeleide flow</div><div className="text-xs font-black text-slate-900">Je eerste product</div></div></div>
+        <div className="flex items-center gap-2"><PaceMark size={34} active emotion={step === 0 ? "celebrating" : "guiding"} performance={step === 0 ? "stretch" : null} tone={step === 0 ? "success" : "flow"} motionMode={step === 0 ? "full" : "subtle"} /><div><div className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan-700">Pace · begeleide flow</div><div className="text-xs font-black text-slate-900">Je eerste product</div></div></div>
         <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-800" aria-label="Rondleiding sluiten"><X size={16} /></button>
       </div>
       <div className="p-4">

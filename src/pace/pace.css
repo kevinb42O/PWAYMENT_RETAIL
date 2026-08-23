@@ -21,6 +21,28 @@
   will-change: transform;
 }
 
+.pace-mark-morph {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: block;
+  transform-origin: 50% 56%;
+  will-change: transform, filter;
+}
+
+.pace-morph-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.pace-mark-morph.is-slither { transform-origin: 15% 60%; }
+.pace-mark-morph.is-stretch { transform-origin: 14% 58%; }
+.pace-mark-morph.is-liquid { transform-origin: 52% 58%; }
+.pace-mark-morph.is-portal { transform-origin: 50% 50%; }
+
 .pace-mark-plane {
   position: absolute;
   inset: 0;
@@ -379,6 +401,19 @@
 .pace-section-heading h3 { margin: 0.4rem 0 0; color: #0f172a; font-size: 1.15rem; font-weight: 900; letter-spacing: -0.025em; }
 .pace-section-heading p { margin: 0.35rem 0 0; color: #64748b; font-size: 0.7rem; font-weight: 600; line-height: 1.5; }
 .pace-settings-card { overflow: hidden; margin-top: 0.65rem; border: 1px solid #dbe7ed; border-radius: 1rem; background: rgba(255,255,255,0.82); }
+.pace-motion-lab { overflow: hidden; margin: 0.8rem 0 1rem; border: 1px solid rgba(34,211,238,0.38); border-radius: 1.15rem; background: radial-gradient(circle at 50% 26%, rgba(34,211,238,0.2), transparent 34%), linear-gradient(145deg, #062936, #041a24); padding: 0.85rem; color: white; box-shadow: 0 18px 42px rgba(8,51,68,0.18); }
+.pace-motion-lab-stage { position: relative; display: flex; min-height: 8.2rem; align-items: center; justify-content: center; overflow: hidden; border: 1px solid rgba(103,232,249,0.14); border-radius: 0.9rem; background: radial-gradient(circle, rgba(255,255,255,0.08), transparent 62%); }
+.pace-motion-lab-stage::before, .pace-motion-lab-stage::after { position: absolute; width: 9.5rem; height: 9.5rem; border: 1px solid rgba(103,232,249,0.12); border-radius: 50%; content: ""; }
+.pace-motion-lab-stage::after { width: 6.7rem; height: 6.7rem; border-style: dashed; }
+.pace-motion-lab-stage > span:last-child { position: absolute; top: 0.55rem; left: 0.65rem; display: inline-flex; align-items: center; gap: 0.3rem; color: #67e8f9; font-size: 0.52rem; font-weight: 900; letter-spacing: 0.13em; }
+.pace-motion-lab-copy { display: flex; flex-direction: column; margin-top: 0.72rem; }
+.pace-motion-lab-copy strong { font-size: 0.82rem; font-weight: 900; letter-spacing: -0.015em; }
+.pace-motion-lab-copy small { margin-top: 0.15rem; color: #9fb7c1; font-size: 0.6rem; font-weight: 600; }
+.pace-motion-lab-controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.35rem; margin-top: 0.7rem; }
+.pace-motion-lab-controls button { min-width: 0; border: 1px solid rgba(103,232,249,0.18); border-radius: 0.62rem; background: rgba(255,255,255,0.055); padding: 0.5rem 0.2rem; color: #c8f7ff; font-size: 0.58rem; font-weight: 800; transition: 160ms ease; }
+.pace-motion-lab-controls button:hover, .pace-motion-lab-controls button.is-playing { border-color: #22d3ee; background: rgba(34,211,238,0.16); color: white; transform: translateY(-1px); }
+.pace-motion-lab-controls button:disabled { cursor: not-allowed; opacity: 0.35; transform: none; }
+.pace-motion-lab > p { margin: 0.55rem 0 0; color: #fcd34d; font-size: 0.58rem; font-weight: 650; }
 .pace-setting-row, .pace-toggle-row { display: flex; min-height: 3.5rem; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 1px solid #e8eef2; padding: 0.7rem 0.8rem; color: #334155; font-size: 0.7rem; font-weight: 800; }
 .pace-setting-row:last-child, .pace-toggle-row:last-child { border-bottom: 0; }
 .pace-setting-row select { border: 1px solid #dbe7ed; border-radius: 0.55rem; background: #f8fafc; padding: 0.35rem 1.6rem 0.35rem 0.5rem; color: #0f172a; font-size: 0.66rem; font-weight: 750; }
@@ -406,6 +441,7 @@
   .pace-mark-sheen { animation: none; opacity: 0.22; }
   .pace-trigger, .pace-header-actions button { transition: none; }
   .pace-thinking-line { animation: none; }
+  .pace-motion-lab-controls button { transform: none !important; }
 }
 
 @media print {

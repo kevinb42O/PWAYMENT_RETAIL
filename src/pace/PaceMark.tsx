@@ -1,10 +1,11 @@
 import { motion, useReducedMotion } from "motion/react";
-import type { CSSProperties } from "react";
+import { useId, type CSSProperties } from "react";
 import type { PaceSignalTone } from "./paceSignals";
 import type { PaceMotion } from "./usePace";
 import "./pace.css";
 
 export type PaceEmotion = "idle" | "attentive" | "thinking" | "guiding" | "celebrating" | "sleeping";
+export type PacePerformance = "stretch" | "slither" | "liquid" | "portal";
 
 const DEPTH_LAYERS = [-7, -6, -5, -4, -3, -2, -1] as const;
 
@@ -29,6 +30,30 @@ const durationFor = (state: PaceEmotion) => {
   return 7.2;
 };
 
+const performanceMovement = (performance?: PacePerformance | null) => {
+  switch (performance) {
+    case "stretch": return { x: [0, 19, -9, 10, 0], scaleX: [1, 2.38, 0.56, 1.72, 1], scaleY: [1, 0.34, 1.34, 0.61, 1], skewX: [0, -13, 11, -6, 0], rotateZ: [0, -4, 5, -2, 0] };
+    case "slither": return { x: [0, -68, -31, 18, 72, 0], y: [0, 5, -6, 5, -4, 0], scaleX: [1, 1.55, 1.28, 1.62, 1.35, 1], scaleY: [1, 0.55, 0.82, 0.5, 0.74, 1], rotateZ: [0, 8, -10, 9, -6, 0], skewX: [0, 18, -15, 19, -12, 0] };
+    case "liquid": return { scaleX: [1, 1.4, 0.5, 1.66, 0.72, 1], scaleY: [1, 0.61, 1.58, 0.46, 1.34, 1], rotateZ: [0, 10, -17, 13, -6, 0], y: [0, 7, -8, 9, -4, 0] };
+    case "portal": return { scaleX: [1, 1.35, 1.75, 0.12, 0.12, 1.4, 1], scaleY: [1, 0.65, 0.08, 0.08, 1.55, 0.72, 1], rotateZ: [0, 12, 90, 270, 360, 374, 360], opacity: [1, 1, 0.85, 0.22, 0.9, 1, 1] };
+    default: return undefined;
+  }
+};
+
+const performanceTimes = (performance?: PacePerformance | null) => {
+  if (performance === "stretch") return [0, 0.2, 0.47, 0.73, 1];
+  if (performance === "slither" || performance === "liquid") return [0, 0.16, 0.36, 0.58, 0.8, 1];
+  if (performance === "portal") return [0, 0.13, 0.3, 0.45, 0.62, 0.82, 1];
+  return undefined;
+};
+
+const displacementFor = (performance?: PacePerformance | null) => {
+  if (performance === "slither") return [0, 27, -23, 25, -16, 0];
+  if (performance === "liquid") return [0, 38, -31, 44, -20, 0];
+  if (performance === "stretch") return [0, 9, -7, 5, 0];
+  return 0;
+};
+
 export const PaceMark = ({
   size = 42,
   active = false,
@@ -36,6 +61,7 @@ export const PaceMark = ({
   emotion,
   tone = "flow",
   motionMode = "full",
+  performance = null,
 }: {
   size?: number;
   active?: boolean;
@@ -43,13 +69,16 @@ export const PaceMark = ({
   emotion?: PaceEmotion;
   tone?: PaceSignalTone;
   motionMode?: PaceMotion;
+  performance?: PacePerformance | null;
 }) => {
+  const filterId = `pace-displace-${useId().replaceAll(":", "")}`;
   const reducedMotion = useReducedMotion();
   const canMove = !reducedMotion && motionMode !== "off";
   const fullMotion = canMove && motionMode === "full";
   const state: PaceEmotion = emotion ?? (thinking ? "thinking" : active ? "attentive" : "idle");
   const accent = tone === "attention" ? "#f59e0b" : tone === "success" ? "#10b981" : "#00d9ff";
   const pause = state === "celebrating" ? 1.8 : state === "thinking" ? 0 : 0.35;
+  const performanceActive = Boolean(performance && fullMotion);
 
   return (
     <motion.span
@@ -61,6 +90,27 @@ export const PaceMark = ({
       animate={canMove ? { y: state === "sleeping" ? [0, 1, 0] : [0, -1.5, 0], scale: state === "celebrating" ? [1, 1.08, 1] : 1 } : undefined}
       transition={canMove ? { duration: state === "celebrating" ? 1.35 : 3.8, repeat: Infinity, repeatDelay: pause, ease: "easeInOut" } : undefined}
     >
+      <svg className="pace-morph-defs" aria-hidden="true" width="0" height="0">
+        <filter id={filterId} x="-45%" y="-45%" width="190%" height="190%" colorInterpolationFilters="sRGB">
+          <motion.feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.012 0.055"
+            numOctaves="2"
+            seed="7"
+            animate={performanceActive ? { baseFrequency: performance === "slither" ? ["0.008 0.04", "0.025 0.095", "0.012 0.06"] : ["0.01 0.035", "0.035 0.085", "0.009 0.045"] } : undefined}
+            transition={{ duration: 2.8, ease: "easeInOut" }}
+            result="noise"
+          />
+          <motion.feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            xChannelSelector="R"
+            yChannelSelector="B"
+            animate={performanceActive ? { scale: displacementFor(performance) } : { scale: 0 }}
+            transition={{ duration: 2.8, ease: [0.22, 1, 0.36, 1] }}
+          />
+        </filter>
+      </svg>
       <motion.span
         className="pace-mark-orbit"
         aria-hidden="true"
@@ -68,15 +118,23 @@ export const PaceMark = ({
         transition={{ duration: state === "thinking" ? 3.2 : 4.4, repeat: Infinity, ease: state === "thinking" ? "linear" : "easeInOut" }}
       />
       <motion.span
-        className="pace-mark-rig"
+        className={`pace-mark-morph${performanceActive ? ` is-${performance}` : ""}`}
         aria-hidden="true"
+        style={{ filter: performanceActive && performance !== "portal" ? `url(#${filterId})` : undefined }}
         initial={false}
-        animate={movementFor(state, fullMotion)}
-        transition={{ duration: durationFor(state), repeat: canMove ? Infinity : 0, repeatDelay: pause, ease: state === "thinking" ? "linear" : [0.22, 1, 0.36, 1] }}
+        animate={performanceActive ? performanceMovement(performance) : undefined}
+        transition={{ duration: 2.8, times: performanceTimes(performance), ease: [0.22, 1, 0.36, 1] }}
       >
-        {DEPTH_LAYERS.map((depth) => <span key={depth} className="pace-mark-plane pace-mark-depth" style={{ transform: `translateZ(${depth}px)` }} />)}
-        <span className="pace-mark-plane pace-mark-back" />
-        <span className="pace-mark-plane pace-mark-front"><i className="pace-mark-sheen" /></span>
+        <motion.span
+          className="pace-mark-rig"
+          initial={false}
+          animate={movementFor(state, fullMotion && !performanceActive)}
+          transition={{ duration: durationFor(state), repeat: canMove && !performanceActive ? Infinity : 0, repeatDelay: pause, ease: state === "thinking" ? "linear" : [0.22, 1, 0.36, 1] }}
+        >
+          {DEPTH_LAYERS.map((depth) => <span key={depth} className="pace-mark-plane pace-mark-depth" style={{ transform: `translateZ(${depth}px)` }} />)}
+          <span className="pace-mark-plane pace-mark-back" />
+          <span className="pace-mark-plane pace-mark-front"><i className="pace-mark-sheen" /></span>
+        </motion.span>
       </motion.span>
       {state === "celebrating" && <motion.span className="pace-mark-burst" aria-hidden="true" animate={fullMotion ? { scale: [0.7, 1.25, 1], opacity: [0, 0.8, 0] } : { opacity: 0.35 }} transition={{ duration: 1.25, repeat: Infinity, repeatDelay: 1.9 }} />}
     </motion.span>
