@@ -79,6 +79,47 @@ const recoverQueuedTransaction = async (payload: unknown): Promise<Transaction> 
   return transaction as Transaction;
 };
 
+const resolveRemoteOriginalRequestId = async (
+  storeId: string,
+  refund: Transaction,
+): Promise<string> => {
+  const lineIds = [...new Set(refund.items.map((line) => line.lineId).filter(Boolean))];
+  if (lineIds.length === 0) {
+    throw new Error("refund:original-not-found:De oorspronkelijke verkoopregels ontbreken lokaal.");
+  }
+  const { data: matchingLines, error: lineError } = await supabase
+    .from("transaction_lines")
+    .select("transaction_id,line_external_id")
+    .eq("store_id", storeId)
+    .in("line_external_id", lineIds);
+  if (lineError) throw new Error(lineError.message);
+
+  const matchesByTransaction = new Map<string, Set<string>>();
+  for (const line of matchingLines ?? []) {
+    const matches = matchesByTransaction.get(line.transaction_id) ?? new Set<string>();
+    matches.add(line.line_external_id);
+    matchesByTransaction.set(line.transaction_id, matches);
+  }
+  const candidateIds = [...matchesByTransaction]
+    .filter(([, matches]) => lineIds.every((lineId) => matches.has(lineId)))
+    .map(([transactionId]) => transactionId);
+  if (candidateIds.length !== 1) {
+    throw new Error("refund:original-not-found:De oorspronkelijke verkoop kon niet eenduidig op de server worden teruggevonden.");
+  }
+
+  const { data: original, error: originalError } = await supabase
+    .from("transactions")
+    .select("client_request_id,kind")
+    .eq("store_id", storeId)
+    .eq("id", candidateIds[0])
+    .maybeSingle();
+  if (originalError) throw new Error(originalError.message);
+  if (!original || original.kind !== "sale" || !original.client_request_id) {
+    throw new Error("refund:original-not-found:De oorspronkelijke verkoop staat nog niet op de server.");
+  }
+  return original.client_request_id;
+};
+
 const pushTransactionToSupabase = async (
   storeId: string,
   tx: Transaction,
@@ -87,20 +128,19 @@ const pushTransactionToSupabase = async (
     const originalTx = tx.originalTransactionId 
       ? await db.transactions.get(tx.originalTransactionId)
       : null;
-      
-    if (!originalTx) {
-      throw new Error(`Original transaction ${tx.originalTransactionId} not found in local db`);
-    }
+    const originalRequestId = originalTx?.clientRequestId
+      ?? await resolveRemoteOriginalRequestId(storeId, tx);
 
     const payload = {
       client_request_id: tx.clientRequestId,
-      original_client_request_id: originalTx.clientRequestId,
+      original_client_request_id: originalRequestId,
       lines: tx.items.map((line) => ({
         line_id: line.lineId,
         quantity: line.quantity,
       })),
       method: tx.paymentMethod,
       reason: tx.correctionReason ?? "Retour",
+      disposition: tx.returnDisposition ?? "sellable",
       receipt_barcode: tx.receiptBarcode,
     };
 

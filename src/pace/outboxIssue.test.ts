@@ -48,6 +48,16 @@ describe("Pace outbox error language", () => {
     expect(issue.summary).not.toContain("invalid");
   });
 
+  it("explains a refund whose original sale is missing locally", () => {
+    expect(humanizeOutboxIssue(entry({
+      payload: { kind: "refund" },
+      lastError: "refund:original-not-found:De oorspronkelijke verkoop staat nog niet op de server.",
+    }))).toEqual({
+      summary: "De retour kon haar oorspronkelijke verkoop niet lokaal terugvinden.",
+      resolution: "PWAYMENT zoekt de oorspronkelijke verkoop ook op de server; probeer deze retour daarna opnieuw.",
+    });
+  });
+
   it("prioritizes a permanently rejected financial row", async () => {
     await db.outbox.bulkAdd([
       entry({ kind: "upsert_product", deliveryStatus: "retrying", lastError: "Failed to fetch" }),

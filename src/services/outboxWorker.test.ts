@@ -181,6 +181,64 @@ describe("synchronizeFinancialLedgerBeforeReport", () => {
     expect(payload).not.toHaveProperty("payment_provider_reference");
   });
 
+  it("recovers a refund's original server sale when the local parent row is gone", async () => {
+    const row: Transaction = {
+      ...transaction("orphaned-refund-contract"),
+      id: 92,
+      kind: "refund",
+      originalTransactionId: 999_999,
+      totalCents: -1210,
+      subtotalCents: -1210,
+      vat21Cents: -210,
+      tenders: [{ method: "PIN", amountCents: -1210 }],
+      correctionReason: "Testretour",
+      returnDisposition: "defective",
+    };
+    vi.spyOn(supabase, "from").mockImplementation(((table: string) => {
+      if (table === "transaction_lines") {
+        return {
+          select: () => ({
+            eq: () => ({
+              in: async () => ({
+                data: [{ transaction_id: "server-sale-id", line_external_id: "line-1" }],
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      return {
+        select: () => ({
+          eq: () => ({
+            eq: () => ({
+              maybeSingle: async () => ({
+                data: { client_request_id: "server-original-request", kind: "sale" },
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      };
+    }) as unknown as typeof supabase.from);
+    const rpc = vi.spyOn(supabase, "rpc").mockResolvedValue({
+      data: { duplicate: false },
+      error: null,
+    } as never);
+
+    await synchronizeFinancialLedgerBeforeReport(
+      "00000000-0000-0000-0000-000000000001",
+      [row],
+      [],
+    );
+
+    expect(rpc).toHaveBeenCalledWith("refund_sale", expect.objectContaining({
+      payload: expect.objectContaining({
+        original_client_request_id: "server-original-request",
+        disposition: "defective",
+      }),
+    }));
+  });
+
   it("recovers a stale queued transaction snapshot from the canonical local ledger", async () => {
     const row = {
       ...transaction("recovered-outbox-contract"),

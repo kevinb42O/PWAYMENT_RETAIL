@@ -88,7 +88,7 @@ export const OutboxRecoveryQueue: React.FC<OutboxRecoveryQueueProps> = ({ focusR
             <div key={entry.id} className="flex flex-col gap-2 rounded-xl border border-rose-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-black text-slate-900">
-                  <span>{entry.kind === "transaction" ? "Verkoop" : entry.kind === "gift_card_mutation" ? "Cadeaubonmutatie" : entry.kind === "webshop_email" ? "Webshopmail" : "Synchronisatie"}</span>
+                  <span>{entry.kind === "transaction" ? ((entry.payload as { kind?: string }).kind === "refund" ? "Retour" : "Verkoop") : entry.kind === "gift_card_mutation" ? "Cadeaubonmutatie" : entry.kind === "webshop_email" ? "Webshopmail" : "Synchronisatie"}</span>
                   <span className="text-[10px] font-medium text-slate-400">{formatDate(entry.timestamp)} · poging {entry.attempts}</span>
                 </div>
                 <p className="mt-1 text-[11px] font-bold leading-relaxed text-rose-800">{issue.summary}</p>

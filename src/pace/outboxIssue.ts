@@ -48,6 +48,12 @@ export const humanizeOutboxIssue = (entry: OutboxEntry): HumanizedOutboxIssue =>
       resolution: "Synchroniseer of herstel de klant eerst en probeer de wijziging daarna opnieuw.",
     };
   }
+  if (includes(message, /refund:original-not-found|original transaction .* not found|oorspronkelijke verkoop .*niet/i)) {
+    return {
+      summary: "De retour kon haar oorspronkelijke verkoop niet lokaal terugvinden.",
+      resolution: "PWAYMENT zoekt de oorspronkelijke verkoop ook op de server; probeer deze retour daarna opnieuw.",
+    };
+  }
   if (includes(message, /unieke synchronisatiereferentie/i)) {
     return {
       summary: "De lokale verkoop mist haar unieke synchronisatiesleutel.",
