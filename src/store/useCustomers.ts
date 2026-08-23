@@ -196,14 +196,35 @@ export const useCustomers = create<CustomersState>((set, get) => ({
   },
 
   syncPersisted: ({ customer, giftCards }) => {
-    set((s) => ({
-      customers: customer
-        ? s.customers.map((x) => (x.id === customer.id ? customer : x))
-        : s.customers,
-      giftCards: giftCards?.length
-        ? s.giftCards.map((x) => giftCards.find((g) => g.id === x.id) ?? x)
-        : s.giftCards,
-    }));
+    set((s) => {
+      const incomingCards = giftCards ?? [];
+      const incomingCardsById = new Map(
+        incomingCards.map((giftCard) => [giftCard.id, giftCard]),
+      );
+      const knownCardIds = new Set(s.giftCards.map((giftCard) => giftCard.id));
+
+      return {
+        customers: customer
+          ? s.customers.some((row) => row.id === customer.id)
+            ? s.customers.map((row) =>
+                row.id === customer.id ? customer : row,
+              )
+            : [...s.customers, customer]
+          : s.customers,
+        // A checkout can create a card that was not in this cache yet. Keep
+        // existing cards up to date and append those newly committed rows.
+        giftCards: incomingCards.length
+          ? [
+              ...s.giftCards.map(
+                (giftCard) => incomingCardsById.get(giftCard.id) ?? giftCard,
+              ),
+              ...incomingCards.filter(
+                (giftCard) => !knownCardIds.has(giftCard.id),
+              ),
+            ]
+          : s.giftCards,
+      };
+    });
   },
 
   findGiftCardByCode: (code) => {

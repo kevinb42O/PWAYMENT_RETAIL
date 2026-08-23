@@ -50,6 +50,19 @@ describe('customer repository state', () => {
       giftCards: [card],
     });
     expect(useCustomers.getState().customers[0].name).toBe('Ari Gewijzigd');
+    expect(useCustomers.getState().giftCards).toEqual([card]);
+
+    useCustomers.getState().syncPersisted({
+      giftCards: [{ ...card, balanceCents: 7500 }],
+    });
+    expect(useCustomers.getState().giftCards).toEqual([
+      { ...card, balanceCents: 7500 },
+    ]);
+  });
+
+  it('adds a newly persisted customer to a cold cache', () => {
+    useCustomers.getState().syncPersisted({ customer });
+    expect(useCustomers.getState().customers).toEqual([customer]);
   });
 
   it('validates gift-card tenders, normalizes codes, and ignores invalid lifecycle requests', async () => {
