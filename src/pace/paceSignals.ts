@@ -28,6 +28,10 @@ export interface PaceContext {
   firstRunCompleted: boolean;
   online: boolean;
   pendingSync: number;
+  retryingSync: number;
+  failedSync: number;
+  syncIssueSummary?: string;
+  syncIssueResolution?: string;
 }
 
 const viewSignals: Record<MainView, Omit<PaceSignal, "id" | "priority">> = {
@@ -129,16 +133,39 @@ export const buildPaceSignals = (
       tone: "attention",
       priority: 100,
     });
+  } else if (preferences.operationalSignals && context.failedSync > 0) {
+    signals.push({
+      id: "failed-sync",
+      source: "Lokale status",
+      title: `${context.failedSync} ${context.failedSync === 1 ? "synchronisatie vraagt" : "synchronisaties vragen"} herstel`,
+      compact: context.syncIssueSummary ?? "Dit toestel is online, maar deze levering is afgewezen.",
+      detail: context.syncIssueResolution ?? "Open de herstelwachtrij, corrigeer eerst de getoonde oorzaak en plan daarna alleen de juiste rij opnieuw in.",
+      actionLabel: "Open herstelwachtrij",
+      action: { kind: "navigate", view: "integration-hub" },
+      tone: "attention",
+      priority: 95,
+    });
+  } else if (preferences.operationalSignals && context.retryingSync > 0) {
+    signals.push({
+      id: "retrying-sync",
+      source: "Lokale status",
+      title: `${context.retryingSync} ${context.retryingSync === 1 ? "wijziging wordt" : "wijzigingen worden"} opnieuw geprobeerd`,
+      compact: context.syncIssueSummary ?? "De verbinding is actief. De afleverpoging mislukte en wordt automatisch hervat.",
+      detail: context.syncIssueResolution ?? "PWAYMENT gebruikt een korte oplopende wachttijd tussen pogingen. Voer de handeling niet opnieuw uit; de lokale kopie blijft veilig bewaard.",
+      action: { kind: "none" },
+      tone: "attention",
+      priority: 85,
+    });
   } else if (preferences.operationalSignals && context.pendingSync > 0) {
     signals.push({
       id: "pending-sync",
       source: "Lokale status",
-      title: `${context.pendingSync} ${context.pendingSync === 1 ? "wijziging wacht" : "wijzigingen wachten"}`,
-      compact: "De lokale wachtrij levert ze automatisch af. Je hoeft niets opnieuw uit te voeren.",
-      detail: "Dubbel uitvoeren kan foutieve gegevens veroorzaken. Pace toont de wachtrij als status en laat de bestaande synchronisatielaag het werk doen.",
+      title: `${context.pendingSync} ${context.pendingSync === 1 ? "wijziging wordt" : "wijzigingen worden"} afgeleverd`,
+      compact: "Je bent online. De serverbevestiging is onderweg; je hoeft niets opnieuw uit te voeren.",
+      detail: "Pace toont een normale online aflevering als voortgang. Zodra de server bevestigt, verdwijnt deze status direct.",
       action: { kind: "none" },
-      tone: "attention",
-      priority: 90,
+      tone: "flow",
+      priority: 60,
     });
   }
 
@@ -226,10 +253,21 @@ export const answerPaceQuery = (
       actionLabel: "Bekijk plan",
     };
   }
-  if (/sync|offline|verbinding|wachtrij/.test(normalized)) {
+  if (
+    /sync|offline|verbinding|wachtrij/.test(normalized) ||
+    ((context.failedSync > 0 || context.retryingSync > 0) && /fout|waarom|mislukt/.test(normalized))
+  ) {
+    const failed = context.failedSync;
+    const retrying = context.retryingSync;
     return {
-      title: context.online ? "Verbinding actief" : "Offline werking actief",
-      answer: context.pendingSync > 0
+      title: failed > 0
+        ? "Herstel nodig"
+        : context.online ? "Verbinding actief" : "Offline werking actief",
+      answer: failed > 0
+        ? `${failed} synchronisatie${failed === 1 ? "" : "s"} ${failed === 1 ? "is" : "zijn"} afgewezen. ${context.syncIssueSummary ?? "De server heeft de wijziging niet aanvaard."} ${context.syncIssueResolution ?? "Open Integraties → Herstelwachtrij om de exacte oorzaak te bekijken."}`
+        : retrying > 0
+          ? `${retrying} lokale wijziging${retrying === 1 ? "" : "en"} ${retrying === 1 ? "wordt" : "worden"} opnieuw aangeboden. ${context.syncIssueSummary ?? "De laatste poging is niet bevestigd."} ${context.syncIssueResolution ?? "Voer de oorspronkelijke handeling niet opnieuw uit."}`
+          : context.pendingSync > 0
         ? `${context.pendingSync} lokale wijziging${context.pendingSync === 1 ? "" : "en"} wacht${context.pendingSync === 1 ? "" : "en"} op bevestigde levering. Voer die niet opnieuw uit.`
         : context.online
           ? "Dit toestel is online en er staat momenteel niets in de lokale afleverwachtrij."

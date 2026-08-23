@@ -108,7 +108,11 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
     firstRunCompleted: props.firstRunCompleted,
     online: props.online,
     pendingSync: props.pendingSync,
-  }), [props.view, props.role, props.productCount, props.cartCount, props.firstRunCompleted, props.online, props.pendingSync]);
+    retryingSync: props.retryingSync,
+    failedSync: props.failedSync,
+    syncIssueSummary: props.syncIssueSummary,
+    syncIssueResolution: props.syncIssueResolution,
+  }), [props.view, props.role, props.productCount, props.cartCount, props.firstRunCompleted, props.online, props.pendingSync, props.retryingSync, props.failedSync, props.syncIssueSummary, props.syncIssueResolution]);
   const signals = useMemo(
     () => buildPaceSignals(context, preferences).filter((signal) => !dismissedSignals.includes(signal.id)),
     [context, preferences, dismissedSignals],
@@ -166,6 +170,17 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!query.trim() || thinking) return;
+    // A known local delivery failure has a deterministic, privacy-safe answer.
+    // Prefer it over a generic AI response so "waarom?" always names the real
+    // cause currently stored on this register.
+    if (
+      (context.failedSync > 0 || context.retryingSync > 0) &&
+      /sync|offline|verbinding|wachtrij|fout|waarom|mislukt/.test(query.toLocaleLowerCase("nl-BE"))
+    ) {
+      setResponse(answerPaceQuery(query, context));
+      setResponseSource("local");
+      return;
+    }
     setThinking(true);
     try {
       const ai = await askPaceAi(query, context);

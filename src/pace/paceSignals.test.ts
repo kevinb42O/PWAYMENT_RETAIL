@@ -10,6 +10,8 @@ const context = (patch: Partial<PaceContext> = {}): PaceContext => ({
   firstRunCompleted: true,
   online: true,
   pendingSync: 0,
+  retryingSync: 0,
+  failedSync: 0,
   ...patch,
 });
 describe("Pace signal engine", () => {
@@ -34,5 +36,50 @@ describe("Pace signal engine", () => {
   it("warns against repeating queued mutations", () => {
     const answer = answerPaceQuery("wat is mijn syncstatus?", context({ pendingSync: 2 }));
     expect(answer.answer).toContain("Voer die niet opnieuw uit");
+  });
+
+  it("shows normal online delivery as flow instead of an offline warning", () => {
+    const signals = buildPaceSignals(context({ pendingSync: 3 }), DEFAULT_PACE_PREFERENCES);
+    expect(signals[0]).toMatchObject({ id: "pending-sync", priority: 60, tone: "flow" });
+    expect(signals[0].compact).toContain("online");
+  });
+
+  it("does not promise automatic delivery for dead letters", () => {
+    const signals = buildPaceSignals(
+      context({
+        pendingSync: 3,
+        failedSync: 3,
+        syncIssueSummary: "Een product bestaat nog niet op de server.",
+        syncIssueResolution: "Synchroniseer het product eerst.",
+      }),
+      DEFAULT_PACE_PREFERENCES,
+    );
+    expect(signals[0]).toMatchObject({
+      id: "failed-sync",
+      action: { kind: "navigate", view: "integration-hub" },
+      tone: "attention",
+    });
+    expect(signals[0].compact).toBe("Een product bestaat nog niet op de server.");
+    expect(signals[0].detail).toBe("Synchroniseer het product eerst.");
+  });
+
+  it("identifies backoff retries separately from normal queue progress", () => {
+    const signals = buildPaceSignals(
+      context({ pendingSync: 2, retryingSync: 2 }),
+      DEFAULT_PACE_PREFERENCES,
+    );
+    expect(signals[0]).toMatchObject({ id: "retrying-sync", priority: 85 });
+  });
+
+  it("answers why a known sync failed in human language", () => {
+    const answer = answerPaceQuery("Waarom is dit mislukt?", context({
+      pendingSync: 1,
+      failedSync: 1,
+      syncIssueSummary: "De webshopmail heeft nog geen gekoppelde maildienst.",
+      syncIssueResolution: "Koppel eerst een mailprovider.",
+    }));
+    expect(answer.title).toBe("Herstel nodig");
+    expect(answer.answer).toContain("geen gekoppelde maildienst");
+    expect(answer.answer).toContain("Koppel eerst een mailprovider");
   });
 });

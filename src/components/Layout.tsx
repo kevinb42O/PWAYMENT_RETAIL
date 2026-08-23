@@ -15,9 +15,11 @@ import { StoreSetupGuide, type SetupGuideTarget } from "./StoreSetupGuide";
 import { FirstProductTour } from "./FirstProductTour";
 import { PaceAssistant } from "../pace/PaceAssistant";
 import { getOutboxHealthMetadata } from "../services/platformTelemetry";
+import { liveQuery } from "dexie";
 import { useMerchantProfile } from "../store/useMerchantProfile";
 import { useCategories } from "../store/useCategories";
 import { derivePaceSetupMilestones } from "../pace/setupMilestones";
+import { getPrimaryPaceOutboxIssue } from "../pace/outboxIssue";
 import {
   AlertCircle,
   CheckCircle2,
@@ -167,6 +169,10 @@ export const Layout: React.FC = () => {
   const [paceConnection, setPaceConnection] = useState(() => ({
     online: navigator.onLine !== false,
     pendingSync: 0,
+    retryingSync: 0,
+    failedSync: 0,
+    syncIssueSummary: undefined as string | undefined,
+    syncIssueResolution: undefined as string | undefined,
   }));
 
   const scanInputRef = useRef<HTMLInputElement | null>(null);
@@ -417,24 +423,51 @@ export const Layout: React.FC = () => {
   useEffect(() => {
     let active = true;
     const refreshPaceConnection = async () => {
-      const metadata = await getOutboxHealthMetadata().catch(() => ({
+      const [metadata, issue] = await Promise.all([
+        getOutboxHealthMetadata().catch(() => ({
         queue_depth: 0,
         online: navigator.onLine !== false,
-      }));
+        retrying_queue_depth: 0,
+        dead_letter_queue_depth: 0,
+        })),
+        getPrimaryPaceOutboxIssue().catch(() => undefined),
+      ]);
       if (!active) return;
       setPaceConnection({
         online: metadata.online !== false,
         pendingSync: metadata.queue_depth ?? 0,
+        retryingSync: metadata.retrying_queue_depth ?? 0,
+        failedSync: metadata.dead_letter_queue_depth ?? 0,
+        syncIssueSummary: issue?.summary,
+        syncIssueResolution: issue?.resolution,
       });
     };
     const onConnectionChange = () => void refreshPaceConnection();
-    void refreshPaceConnection();
+    // Dexie emits whenever the worker claims, retries, delivers or dead-letters
+    // a row. Pace should reflect that immediately instead of showing a stale
+    // red queue card for up to thirty seconds after delivery completed.
+    const subscription = liveQuery(async () => Promise.all([
+      getOutboxHealthMetadata(),
+      getPrimaryPaceOutboxIssue(),
+    ])).subscribe({
+      next: ([metadata, issue]) => {
+        if (!active) return;
+        setPaceConnection({
+          online: navigator.onLine !== false,
+          pendingSync: metadata.queue_depth ?? 0,
+          retryingSync: metadata.retrying_queue_depth ?? 0,
+          failedSync: metadata.dead_letter_queue_depth ?? 0,
+          syncIssueSummary: issue?.summary,
+          syncIssueResolution: issue?.resolution,
+        });
+      },
+      error: () => void refreshPaceConnection(),
+    });
     window.addEventListener("online", onConnectionChange);
     window.addEventListener("offline", onConnectionChange);
-    const interval = window.setInterval(refreshPaceConnection, 30_000);
     return () => {
       active = false;
-      window.clearInterval(interval);
+      subscription.unsubscribe();
       window.removeEventListener("online", onConnectionChange);
       window.removeEventListener("offline", onConnectionChange);
     };
@@ -609,6 +642,10 @@ export const Layout: React.FC = () => {
             firstRunCompleted={firstRunCompleted}
             online={paceConnection.online}
             pendingSync={paceConnection.pendingSync}
+            retryingSync={paceConnection.retryingSync}
+            failedSync={paceConnection.failedSync}
+            syncIssueSummary={paceConnection.syncIssueSummary}
+            syncIssueResolution={paceConnection.syncIssueResolution}
             setupMilestones={paceSetupMilestones}
             suppressed={storeSetupOpen || Boolean(firstProductTourName) || leaveApprovalGateOpen}
             onNavigate={(view) => setMainView(view)}
