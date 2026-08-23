@@ -12,6 +12,7 @@ import { useStoreConfiguration } from "../store/useStoreConfiguration";
 import { useWorkforce } from "../store/useWorkforce";
 import { Modal } from "./Modal";
 import { StoreSetupGuide } from "./StoreSetupGuide";
+import { FirstProductTour } from "./FirstProductTour";
 import {
   AlertCircle,
   CheckCircle2,
@@ -146,6 +147,7 @@ export const Layout: React.FC = () => {
     openNewProductRequestKey?: number;
   }>({ tab: "billing", requestKey: 0 });
   const [storeSetupOpen, setStoreSetupOpen] = useState(false);
+  const [firstProductTourName, setFirstProductTourName] = useState<string | null>(null);
   const [leaveApprovalGateOpen, setLeaveApprovalGateOpen] = useState(false);
   const [leaveApprovalPin, setLeaveApprovalPin] = useState("");
   const [leaveApprovalGateError, setLeaveApprovalGateError] = useState<string | null>(null);
@@ -375,6 +377,15 @@ export const Layout: React.FC = () => {
   useEffect(() => {
     void hydrateProducts();
   }, [hydrateProducts]);
+
+  useEffect(() => {
+    const showFirstProductTour = (event: Event) => {
+      const name = (event as CustomEvent<{ productName?: string }>).detail?.productName;
+      if (name) setFirstProductTourName(name);
+    };
+    window.addEventListener("pwayment:first-product-ready", showFirstProductTour);
+    return () => window.removeEventListener("pwayment:first-product-ready", showFirstProductTour);
+  }, []);
 
   useEffect(() => {
     const media = window.matchMedia("(min-width: 768px)");
@@ -1037,6 +1048,14 @@ export const Layout: React.FC = () => {
           onClose={() => setStoreSetupOpen(false)}
           onAddProduct={openProductSetup}
           onImportProducts={openImportSetup}
+        />
+      )}
+      {firstProductTourName && (
+        <FirstProductTour
+          productName={firstProductTourName}
+          onClose={() => setFirstProductTourName(null)}
+          onOpenPos={() => setMainView("pos")}
+          onOpenCatalog={() => openProfile("catalog-products")}
         />
       )}
       {leaveApprovalGateOpen && <Modal open onClose={() => setLeaveApprovalGateOpen(false)} title="Eigenaarstoegang bevestigen" subtitle="Verlofgoedkeuring is alleen voor de zaakvoerder." icon={<ShieldCheck size={18} />} size="sm" closeOnBackdrop><div className="space-y-4"><div className="rounded-xl border border-cyan-100 bg-cyan-50 p-3 text-xs leading-5 text-cyan-950"><p className="font-bold">Je opent de beveiligde verlofinbox.</p><p className="mt-1">Medewerkers en planners hebben hier geen toegang. Voer je persoonlijke goedkeurings-PIN in om verder te gaan.</p></div><label className="block text-xs font-bold text-slate-700"><span className="flex items-center gap-1.5"><KeyRound size={14} /> Persoonlijke PIN</span><input aria-label="Eigenaar PIN voor verlofgoedkeuring" type="password" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={leaveApprovalPin} onChange={(event) => { setLeaveApprovalPin(event.target.value.replace(/\D/g, "")); setLeaveApprovalGateError(null); }} placeholder="6 cijfers" className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100" /></label>{leaveApprovalGateError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-800">{leaveApprovalGateError}</p>}<div className="flex justify-end gap-2 border-t border-slate-100 pt-4"><button type="button" onClick={() => setLeaveApprovalGateOpen(false)} className="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 hover:bg-slate-50">Annuleren</button><button type="button" disabled={workforceMutating || leaveApprovalPin.length !== 6} onClick={async () => { if (!approvalStoreId) return; const verified = import.meta.env.VITE_E2E_BUILD === "true" ? await verifyCurrentOwnerPin(leaveApprovalPin) : await verifyApprovalPin(approvalStoreId, leaveApprovalPin); if (!verified) { setLeaveApprovalGateError("De ingevoerde PIN is onjuist, geblokkeerd of nog niet ingesteld."); return; } setLeaveApprovalGateOpen(false); openProfile("leave-approvals"); }} className="inline-flex h-9 items-center gap-2 rounded-lg border border-cyan-200 bg-cyan-50 px-3 text-xs font-bold text-cyan-800 hover:bg-cyan-100 disabled:opacity-50"><LockKeyhole size={14} /> Verlofinbox openen</button></div></div></Modal>}

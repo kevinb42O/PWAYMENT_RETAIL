@@ -360,7 +360,14 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
       minStockQty,
       isActive: editing.isActive ?? true,
     });
-    if (isNew && openNewProductRequestKey) setGuidedProductName(name);
+    if (isNew && openNewProductRequestKey) {
+      setGuidedProductName(name);
+      window.dispatchEvent(
+        new CustomEvent("pwayment:first-product-ready", {
+          detail: { productName: name },
+        }),
+      );
+    }
     close();
   };
 
@@ -836,7 +843,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                     {renderSortTh('stockQty', 'Voorraad', 'center')}
                     {renderSortTh('vatRate', 'Btw', 'center')}
                     {renderSortTh('isActive', 'Status', 'center')}
-                    <th className="py-3 px-4 text-right font-black">Acties</th>
+                    <th className="sticky right-0 z-10 border-l border-slate-200 bg-slate-50 py-3 pl-4 pr-5 text-right font-black shadow-[-8px_0_16px_-14px_rgba(15,23,42,0.45)]">Acties</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -850,14 +857,19 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                   {filtered.map((p) => {
                     const lowStock = p.stockQty != null && p.minStockQty != null && p.stockQty <= p.minStockQty;
                     return (
-                      <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
+                      <tr key={p.id} className="group hover:bg-slate-50/80 transition-colors">
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
                             <span className={`inline-block w-3.5 h-3.5 rounded-full shrink-0 ${p.color || 'bg-slate-700'}`} />
                             <div className="min-w-0">
-                              <div className="font-extrabold text-slate-900 truncate max-w-[200px]" title={p.name}>
+                              <button
+                                type="button"
+                                onClick={() => openEdit(p)}
+                                className="block max-w-[200px] truncate text-left font-extrabold text-slate-900 hover:text-sky-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+                                title={`Bewerk ${p.name}`}
+                              >
                                 {p.name}
-                              </div>
+                              </button>
                               <div className="text-[11px] text-slate-400 truncate max-w-[180px]">
                                 {[p.brand, p.variant].filter(Boolean).join(' • ') || p.id}
                               </div>
@@ -916,30 +928,33 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-4 text-right whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-1">
+                        <td className="sticky right-0 z-[1] border-l border-slate-100 bg-white py-3 pl-4 pr-5 text-right whitespace-nowrap shadow-[-8px_0_16px_-14px_rgba(15,23,42,0.45)] transition-colors group-hover:bg-slate-50">
+                          <div className="flex items-center justify-end gap-2">
                             <button
+                              type="button"
                               onClick={() => openEdit(p)}
-                              className="p-1.5 rounded-lg hover:bg-slate-200/80 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
-                              title="Product Bewerken"
+                              className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-extrabold text-slate-700 shadow-sm transition-colors hover:border-sky-300 hover:bg-sky-50 hover:text-sky-800"
+                              title={`Bewerk ${p.name}`}
                             >
-                              <Pencil size={15} />
+                              <Pencil size={13} /> Bewerk
                             </button>
                             {p.isActive === false ? (
                               <button
+                                type="button"
                                 onClick={() => void restore(p.id)}
-                                className="p-1.5 rounded-lg hover:bg-emerald-100 text-emerald-700 transition-colors cursor-pointer"
-                                title="Product Herstellen"
+                                className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 text-[11px] font-extrabold text-emerald-800 transition-colors hover:bg-emerald-100"
+                                title={`${p.name} herstellen`}
                               >
-                                <RotateCcw size={15} />
+                                <RotateCcw size={13} /> Herstel
                               </button>
                             ) : (
                               <button
+                                type="button"
                                 onClick={() => setConfirmDelete(p)}
-                                className="p-1.5 rounded-lg hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer"
-                                title="Product Archiveren"
+                                className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 text-[11px] font-extrabold text-rose-700 transition-colors hover:bg-rose-100"
+                                title={`${p.name} verwijderen uit de actieve lijst`}
                               >
-                                <Trash2 size={15} />
+                                <Trash2 size={13} /> Verwijder
                               </button>
                             )}
                           </div>
@@ -1423,7 +1438,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
         <Modal
           open
           onClose={() => setConfirmDelete(null)}
-          title="Product Archiveren"
+          title="Product verwijderen uit lijst"
           footer={
             <div className="flex gap-2 justify-end">
               <button
@@ -1440,13 +1455,13 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                 className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-2"
               >
                 <Trash2 size={15} />
-                <span>Archiveren</span>
+                <span>Verwijder uit lijst</span>
               </button>
             </div>
           }
         >
           <p className="text-xs text-slate-600 font-medium">
-            Weet u zeker dat u <strong>{confirmDelete.name}</strong> wilt archiveren? Het product wordt verborgen in het kassamenu maar blijft bewaard in de historiek.
+            Weet u zeker dat u <strong>{confirmDelete.name}</strong> wilt verwijderen uit de actieve lijst? Het verdwijnt meteen uit de kassa en dit overzicht, maar blijft veilig bewaard in de historiek. U kunt het later terugzetten via <strong>Gearchiveerd</strong>.
           </p>
         </Modal>
       )}
