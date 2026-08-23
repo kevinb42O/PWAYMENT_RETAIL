@@ -28,7 +28,6 @@ import {
 import { PaceMark } from "./PaceMark";
 import { usePace, type PaceMotion, type PaceProactivity, type PaceTone } from "./usePace";
 import { askPaceAi } from "./paceAi";
-import "./pace.css";
 import {
   paceSetupProgress,
   type PaceSetupMilestone,

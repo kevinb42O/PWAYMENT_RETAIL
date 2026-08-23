@@ -2,6 +2,114 @@
 /* Pace is an operational layer, not a floating chat bubble. Its glass-and-ink
    surface stays visually separate from checkout controls and never captures
    pointer events while closed. */
+.pace-mark-stage {
+  --pace-accent: #00d9ff;
+  position: relative;
+  display: inline-block;
+  flex: none;
+  overflow: visible;
+  transform-style: preserve-3d;
+  isolation: isolate;
+}
+
+.pace-mark-rig {
+  position: absolute;
+  inset: 4%;
+  z-index: 2;
+  display: block;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.pace-mark-plane {
+  position: absolute;
+  inset: 0;
+  display: block;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+.pace-mark-front {
+  overflow: hidden;
+  background-image: url("/branding/pwayment-mark-final.png");
+  filter: drop-shadow(0 0.08em 0.11em rgba(0, 74, 255, 0.28)) drop-shadow(0 0 0.16em rgba(0, 217, 255, 0.18));
+  transform: translateZ(1px);
+}
+
+.pace-mark-depth,
+.pace-mark-back,
+.pace-mark-sheen {
+  -webkit-mask: url("/branding/pwayment-mark-final.png") center / contain no-repeat;
+  mask: url("/branding/pwayment-mark-final.png") center / contain no-repeat;
+}
+
+.pace-mark-depth {
+  background: linear-gradient(135deg, #003cab, #001b70 62%, #001044);
+  filter: brightness(0.76) saturate(1.35);
+}
+
+.pace-mark-back {
+  background: linear-gradient(145deg, #003fbd, #001a75 68%, #020b2f);
+  transform: translateZ(-8px) rotateY(180deg);
+}
+
+.pace-mark-sheen {
+  position: absolute;
+  inset: 0;
+  display: block;
+  background: linear-gradient(112deg, transparent 24%, rgba(255,255,255,0.08) 38%, rgba(255,255,255,0.75) 49%, rgba(170,247,255,0.18) 58%, transparent 72%);
+  background-size: 260% 100%;
+  mix-blend-mode: screen;
+  animation: pace-mark-sheen 3.8s cubic-bezier(.22,1,.36,1) infinite;
+}
+
+.pace-mark-orbit {
+  position: absolute;
+  inset: -7%;
+  z-index: 0;
+  display: block;
+  border: max(1px, 0.018em) solid color-mix(in srgb, var(--pace-accent) 52%, transparent);
+  border-right-color: transparent;
+  border-left-color: transparent;
+  border-radius: 50%;
+  box-shadow: 0 0 0 0.08em color-mix(in srgb, var(--pace-accent) 8%, transparent), 0 0 0.34em color-mix(in srgb, var(--pace-accent) 18%, transparent);
+  pointer-events: none;
+}
+
+.pace-mark-orbit::before,
+.pace-mark-orbit::after {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--pace-accent);
+  box-shadow: 0 0 0.2em var(--pace-accent);
+  content: "";
+}
+.pace-mark-orbit::before { top: 8%; right: 14%; width: 0.075em; height: 0.075em; }
+.pace-mark-orbit::after { bottom: 12%; left: 8%; width: 0.045em; height: 0.045em; opacity: 0.7; }
+
+.pace-mark-burst {
+  position: absolute;
+  inset: -15%;
+  z-index: 0;
+  display: block;
+  border: 1px solid var(--pace-accent);
+  border-radius: 50%;
+  box-shadow: 0 0 1em color-mix(in srgb, var(--pace-accent) 36%, transparent);
+  pointer-events: none;
+}
+
+.pace-mark-stage.is-sleeping .pace-mark-orbit { opacity: 0.12 !important; }
+.pace-mark-stage.is-thinking .pace-mark-front { filter: drop-shadow(0 0.1em 0.12em rgba(0,60,255,.3)) drop-shadow(0 0 0.24em color-mix(in srgb, var(--pace-accent) 46%, transparent)); }
+
+@keyframes pace-mark-sheen {
+  0%, 22% { background-position: 130% 0; opacity: 0; }
+  40% { opacity: 0.92; }
+  62%, 100% { background-position: -120% 0; opacity: 0; }
+}
+
 .pace-trigger {
   position: fixed;
   right: 1rem;
@@ -305,6 +413,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .pace-mark-sheen { animation: none; opacity: 0.22; }
   .pace-trigger, .pace-header-actions button { transition: none; }
   .pace-thinking-line { animation: none; }
 }

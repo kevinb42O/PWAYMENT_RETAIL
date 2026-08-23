@@ -1,7 +1,6 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { CheckCircle2, ShieldCheck, Sparkles } from "lucide-react";
 import { PaceMark } from "./PaceMark";
-import "./pace.css";
 
 export type PaceOnboardingStep = "account" | "store" | "retail-needs" | "modules" | "data" | "review";
 
