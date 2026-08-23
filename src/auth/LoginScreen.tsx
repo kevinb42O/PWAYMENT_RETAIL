@@ -5,6 +5,7 @@ import { User, Role } from "../types";
 import { supabase } from "../lib/supabase";
 import { SiteHeader } from "../public/PublicSite";
 import { OnboardingWizard } from "../onboarding/OnboardingWizard";
+import { PaceMark } from "../pace/PaceMark";
 import {
   getLoadingProgress,
   reportLoadingProgress,
@@ -822,8 +823,8 @@ export const LoginScreen: React.FC = () => {
           aria-label={loadingProgress.detail}
         >
           <div className="w-full max-w-sm rounded-3xl border border-white/70 bg-white/95 p-7 text-center shadow-[0_32px_100px_-30px_rgba(15,23,42,0.55)]">
-            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-lg">
-              <LoaderCircle size={25} className="animate-spin" />
+            <div className="mx-auto mb-5 flex min-h-24 items-center justify-center">
+              <PaceMark key={loadingProgress.title} size={92} active thinking performance={loadingProgress.progress >= 75 ? "portal" : "liquid"} motionMode="full" forceMotion />
             </div>
             <p className="text-base font-extrabold tracking-tight text-slate-950">{loadingProgress.title}</p>
             <p className="mt-1.5 text-sm leading-6 text-slate-500">{loadingProgress.detail}</p>

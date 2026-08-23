@@ -59,7 +59,6 @@
 .pw-site-home .pw-mobile-toggle { color: white; }
 .pw-header-inner { width: min(1360px, calc(100% - 36px)); height: 68px; margin: auto; display: flex; align-items: center; gap: 34px; }
 .pw-logo { display: flex; align-items: center; flex: 0 0 auto; }
-.pw-logo .pace-mark-orbit { opacity: .5; }
 .pw-wordmark { color: var(--pw-ink); font-size: 19px; font-weight: 850; letter-spacing: -.055em; line-height: 1; }
 .pw-nav { display: flex; align-items: center; gap: 4px; flex: 1; height: 100%; }
 .pw-nav > a, .pw-nav-group > button, .pw-login { display: inline-flex; align-items: center; gap: 5px; height: 38px; border: 0; border-radius: 10px; padding: 0 12px; background: transparent; color: #3f4147; font-size: 13px; font-weight: 650; cursor: pointer; transition: color .2s ease, background-color .2s ease, box-shadow .2s ease, transform .2s cubic-bezier(.22, 1, .36, 1); }
@@ -678,10 +677,6 @@
 .pw-pace-hero h1 { max-width: 850px; margin: 22px 0 25px; font-size: clamp(60px, 7vw, 104px); line-height: .91; letter-spacing: -.065em; }
 .pw-pace-hero > div:first-child > p { max-width: 650px; color: var(--pw-muted); font-size: 17px; line-height: 1.72; }
 .pw-pace-hero-mark { position: relative; display: flex; min-height: 430px; align-items: center; justify-content: center; }
-.pw-pace-ring { position: absolute; inset: 11%; border: 1px solid rgba(8,145,178,.18); border-radius: 50%; animation: pw-pace-ring 11s linear infinite; }
-.pw-pace-ring::after { position: absolute; top: 8%; left: 17%; width: 8px; height: 8px; border-radius: 50%; background: #22d3ee; box-shadow: 0 0 0 7px rgba(34,211,238,.1); content: ""; }
-.pw-pace-ring.is-two { inset: -3%; border-style: dashed; animation-direction: reverse; animation-duration: 20s; }
-@keyframes pw-pace-ring { to { transform: rotate(360deg); } }
 .pw-pace-principles { display: grid; grid-template-columns: repeat(3, 1fr); padding-block: 75px 125px; }
 .pw-pace-principles article { min-height: 285px; border: 1px solid var(--pw-line); border-right: 0; padding: 30px; }
 .pw-pace-principles article:last-child { border-right: 1px solid var(--pw-line); }

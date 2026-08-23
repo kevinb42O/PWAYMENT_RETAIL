@@ -140,12 +140,6 @@ export const PaceMark = ({
         </filter>
       </svg>
       <motion.span
-        className="pace-mark-orbit"
-        aria-hidden="true"
-        animate={fullMotion ? { rotate: state === "thinking" ? 360 : [0, 14, -8, 0], opacity: active || state !== "idle" ? [0.28, 0.72, 0.28] : [0.16, 0.35, 0.16] } : { opacity: 0.26 }}
-        transition={{ duration: state === "thinking" ? 3.2 : 4.4, repeat: Infinity, ease: state === "thinking" ? "linear" : "easeInOut" }}
-      />
-      <motion.span
         className={`pace-mark-morph${performanceActive ? ` is-${performance}` : ""}`}
         aria-hidden="true"
         style={{ filter: performanceActive && performance !== "portal" ? `url(#${filterId})` : undefined }}
@@ -165,7 +159,6 @@ export const PaceMark = ({
         </motion.span>
       </motion.span>
       {performanceActive && performance && <PerformanceForm performance={performance} />}
-      {state === "celebrating" && <motion.span className="pace-mark-burst" aria-hidden="true" animate={fullMotion ? { scale: [0.7, 1.25, 1], opacity: [0, 0.8, 0] } : { opacity: 0.35 }} transition={{ duration: 1.25, repeat: Infinity, repeatDelay: 1.9 }} />}
     </motion.span>
   );
 };

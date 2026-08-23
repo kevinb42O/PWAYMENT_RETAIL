@@ -52,7 +52,6 @@ export const PaceOnboardingCompanion = ({
   const copy = STEP_COPY[step];
   return (
     <aside className={`pace-onboarding-companion${compact ? " is-compact" : ""}`} aria-live="polite">
-      <div className="pace-onboarding-orbit" aria-hidden="true" />
       <PaceMark
         size={compact ? 42 : 58}
         active

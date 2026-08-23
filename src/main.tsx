@@ -118,6 +118,14 @@ const configureServiceWorker = async () => {
 
 const root = createRoot(document.getElementById("root")!);
 
+const PaceBootMark = () => (
+  <img
+    src="/branding/pwayment-mark-final.png"
+    alt="Pace"
+    className="pace-boot-mark h-24 w-24 object-contain"
+  />
+);
+
 const StartupScreen = () => {
   const [loadingProgress, setLoadingProgress] = useState(getLoadingProgress);
 
@@ -129,17 +137,8 @@ const StartupScreen = () => {
   return (
   <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-[#f6f5f1] px-6 text-slate-950 animate-in fade-in duration-500">
     <div className="z-10 flex w-full max-w-sm flex-col items-center rounded-[2rem] border border-white/80 bg-white/70 px-8 py-10 text-center shadow-[0_32px_90px_-42px_rgba(15,23,42,0.45)] backdrop-blur-xl sm:px-10">
-      <div className="flex items-center justify-center sm:translate-x-3">
-        <img
-          src="/branding/PWAYMENTLOGOFINAL.png"
-          alt="Pwayment"
-          className="hidden sm:block h-12 w-auto object-contain"
-        />
-        <img
-          src="/branding/PWAYMENTLOGOFINAL.png"
-          alt="Pwayment"
-          className="block sm:hidden h-16 w-16 object-contain"
-        />
+      <div className="flex min-h-24 items-center justify-center">
+        <PaceBootMark />
       </div>
       
       <div className="mt-9 flex w-full flex-col items-center gap-4">
