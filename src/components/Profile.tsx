@@ -118,11 +118,13 @@ type WorkspaceTab =
 interface ProfileViewProps {
   initialTab?: WorkspaceTab;
   initialTabRequestKey?: number;
+  openNewProductRequestKey?: number;
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({
   initialTab,
   initialTabRequestKey,
+  openNewProductRequestKey,
 }) => {
   const currentStoreIsDemo = useAuth((s) => s.currentStoreIsDemo);
   const currentRole = useAuth((s) => s.currentRole);
@@ -767,7 +769,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         {/* TAB 2: PRODUCTEN & CATALOGUS (REAL WORKING COMPONENT) */}
         {(activeTab === 'catalog' || activeTab === 'catalog-products' || activeTab === 'catalog-categories') && (
           <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-2xs">
-            <ProductAdmin initialTab={activeTab === 'catalog-categories' ? 'categories' : 'products'} />
+            <ProductAdmin
+              initialTab={activeTab === 'catalog-categories' ? 'categories' : 'products'}
+              openNewProductRequestKey={openNewProductRequestKey}
+            />
           </div>
         )}
 

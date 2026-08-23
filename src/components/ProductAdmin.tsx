@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, Barcode, Boxes, Building2, Check, CheckCircle2, Download, Package, PackageSearch, Palette, Pencil, Plus, RotateCcw, Search, Tag, Tags, Trash2, TrendingUp, Upload, X } from 'lucide-react';
 import { useProducts } from '../store/useProducts';
+import { useStore } from '../store/useStore';
 import { InventoryAdjustmentReason, Product } from '../types';
 import { centsToDecimalString, formatEUR, parseDecimalToCents } from '../utils/money';
 import { parseProductsCsv, serializeProductsCsv, slugifyId } from '../utils/productCsv';
@@ -32,6 +33,8 @@ const COLOR_PRESETS: { label: string; cls: string }[] = [
   { label: 'Licht', cls: 'bg-zinc-200 text-black' },
 ];
 
+const handledGuidedProductRequests = new Set<number>();
+
 const parseCents = (txt: string): number => {
   const parsed = parseDecimalToCents(txt);
   return parsed.ok ? parsed.cents : 0;
@@ -54,9 +57,11 @@ const marginPercent = (priceCents: number, costPriceCents?: number): number => {
 
 interface ProductAdminProps {
   initialTab?: 'products' | 'categories';
+  /** Used by the empty-store guide to enter the existing product editor directly. */
+  openNewProductRequestKey?: number;
 }
 
-export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'products' }) => {
+export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'products', openNewProductRequestKey }) => {
   const list = useProducts((s) => s.list);
   const hydrateProducts = useProducts((s) => s.hydrate);
   const upsert = useProducts((s) => s.upsert);
@@ -64,6 +69,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
   const remove = useProducts((s) => s.remove);
   const restore = useProducts((s) => s.restore);
   const syncPersistedProducts = useProducts((s) => s.syncPersisted);
+  const setMainView = useStore((s) => s.setMainView);
   const csvImportEnabled = usePlatformFeatureFlag('csv_import', FEATURES.csvImport);
 
   const categories = useCategories((s) => s.list);
@@ -99,6 +105,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDir, setSortDir] = useState<SortDirection>('asc');
   const [headerContainer, setHeaderContainer] = useState<HTMLElement | null>(null);
+  const [guidedProductName, setGuidedProductName] = useState<string | null>(null);
 
   useEffect(() => {
     setViewTab(initialTab);
@@ -200,8 +207,20 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
       });
   }, [list, filter, categoryFilter, search, sortKey, sortDir, categoryNameById]);
 
-  const openNew = () => {
-    const category = categories[0] || { id: 'algemeen', vatRate: configuredDefaultVat };
+  const openNew = async () => {
+    // A real new tenant has no seeded categories. Create one safe starting
+    // category so the first-product route from the guided setup is usable
+    // immediately, while the merchant can still rename or add categories later.
+    let category = categories[0];
+    if (!category) {
+      try {
+        category = await addCategory('Algemeen', configuredDefaultVat) ?? undefined;
+      } catch (error) {
+        alert(error instanceof Error ? error.message : 'De startcategorie kon niet worden aangemaakt.');
+        return;
+      }
+    }
+    if (!category) return;
     setEditing({
       id: '',
       name: '',
@@ -230,6 +249,15 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
     setAdjustmentNote('');
     setAdjustmentFeedback(null);
   };
+
+  useEffect(() => {
+    if (
+      !openNewProductRequestKey ||
+      handledGuidedProductRequests.has(openNewProductRequestKey)
+    ) return;
+    handledGuidedProductRequests.add(openNewProductRequestKey);
+    void openNew();
+  }, [openNewProductRequestKey, categories, configuredDefaultVat]);
 
   const openEdit = (p: Product) => {
     setEditing({ ...p });
@@ -332,6 +360,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
       minStockQty,
       isActive: editing.isActive ?? true,
     });
+    if (isNew && openNewProductRequestKey) setGuidedProductName(name);
     close();
   };
 
@@ -470,6 +499,25 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
 
   return (
     <div className="product-admin space-y-6">
+      {guidedProductName && (
+        <section className="relative overflow-hidden rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 via-white to-sky-50 p-5 shadow-2xs">
+          <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-sky-200/45 blur-2xl" />
+          <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm"><CheckCircle2 size={19} /></span>
+              <div>
+                <p className="text-sm font-black text-slate-950"><span className="font-black">{guidedProductName}</span> staat klaar voor verkoop.</p>
+                <p className="mt-1 text-xs leading-5 text-slate-600">Dat was je eerste product. Kies je volgende stap — je hoeft nergens naar te zoeken.</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => setMainView('pos')} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-slate-950 px-3.5 text-xs font-extrabold text-white hover:bg-black"><Package size={15} /> Naar de kassa</button>
+              <button type="button" onClick={() => void openNew()} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-bold text-slate-700 hover:bg-slate-50"><Plus size={15} /> Nog een product</button>
+              <button type="button" onClick={() => setMainView('integration-hub')} className="inline-flex min-h-10 items-center gap-2 rounded-xl px-2.5 text-xs font-bold text-sky-800 hover:bg-sky-100"><Upload size={15} /> Importeren</button>
+            </div>
+          </div>
+        </section>
+      )}
       {/* Portal action buttons to main page header container (helemaal rechtsboven) */}
       {headerContainer
         ? createPortal(
@@ -504,7 +552,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                     <span className="hidden sm:inline">Import CSV</span>
                   </button>
                   <button
-                    onClick={openNew}
+                    onClick={() => void openNew()}
                     className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-black shadow-md hover:shadow-lg transition-all cursor-pointer"
                   >
                     <Plus size={16} />
@@ -546,7 +594,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                 <span>Import CSV</span>
               </button>
               <button
-                onClick={openNew}
+                    onClick={() => void openNew()}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-black shadow-md hover:shadow-lg transition-all cursor-pointer"
               >
                 <Plus size={16} />

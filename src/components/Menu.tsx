@@ -7,7 +7,7 @@ import {
   matchesCatalogQuery,
   normalizeCatalogQuery,
 } from "../utils/productLookup";
-import { Box, Grid2X2, Layers3 } from "lucide-react";
+import { Box, Grid2X2, Layers3, Sparkles, FileSpreadsheet, PackagePlus } from "lucide-react";
 import { isGiftCardProduct } from "../utils/financial";
 
 const stockLabel = (stockQty?: number): string => {
@@ -26,9 +26,18 @@ const categoryBadgeTone = (subCategory?: string): string => {
 interface MenuProps {
   query: string;
   onQueryChange: (value: string) => void;
+  onStartStoreSetup?: () => void;
+  onImportProducts?: () => void;
+  onAddProduct?: () => void;
 }
 
-export const Menu: React.FC<MenuProps> = ({ query, onQueryChange }) => {
+export const Menu: React.FC<MenuProps> = ({
+  query,
+  onQueryChange,
+  onStartStoreSetup,
+  onImportProducts,
+  onAddProduct,
+}) => {
   const addOrderItem = useStore((s) => s.addOrderItem);
   const findByScanCode = useProducts((s) => s.findByScanCode);
   const products = useProducts((s) => s.list);
@@ -459,11 +468,39 @@ export const Menu: React.FC<MenuProps> = ({ query, onQueryChange }) => {
               );
             })}
             {filteredProducts.length === 0 && (
-              <div className="col-span-full py-12 text-center text-slate-500 font-medium">
-                {term
-                  ? "Geen product gevonden. Controleer barcode, SKU, merk, subcategorie of maat."
-                  : "Geen producten in deze selectie."}
-              </div>
+              term ? (
+                <div className="col-span-full py-12 text-center text-slate-500 font-medium">
+                  Geen product gevonden. Controleer barcode, SKU, merk, subcategorie of maat.
+                </div>
+              ) : activeProducts.length === 0 && onStartStoreSetup ? (
+                <section className="col-span-full mx-auto my-3 w-full max-w-2xl overflow-hidden rounded-3xl border border-sky-100 bg-white shadow-[0_20px_60px_-30px_rgba(15,23,42,0.28)]">
+                  <div className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 px-6 py-7 text-white sm:px-8">
+                    <div className="absolute -right-10 -top-14 h-40 w-40 rounded-full bg-sky-400/25 blur-2xl" />
+                    <div className="relative flex items-start gap-4">
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/12 text-sky-200 ring-1 ring-white/15"><Sparkles size={20} /></span>
+                      <div>
+                        <p className="text-lg font-black tracking-tight">Je kassa is klaar. Nu je assortiment nog.</p>
+                        <p className="mt-1.5 max-w-xl text-sm leading-6 text-slate-300">We helpen je zaakgegevens afwerken en brengen je in een paar heldere stappen naar je eerste verkoop.</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid gap-3 p-5 sm:grid-cols-[1fr_auto] sm:items-center sm:p-6">
+                    <div>
+                      <p className="text-sm font-extrabold text-slate-900">Start zonder zoeken in instellingen.</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">Vul je bongegevens in en kies daarna: importeren of je eerste product toevoegen.</p>
+                    </div>
+                    <button type="button" onClick={onStartStoreSetup} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 text-sm font-extrabold text-white shadow-md transition hover:bg-black">
+                      Start je winkel <Sparkles size={16} />
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2 border-t border-slate-100 bg-slate-50/80 px-5 py-3 sm:px-6">
+                    <button type="button" onClick={onImportProducts} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-bold text-sky-800 hover:bg-sky-100"><FileSpreadsheet size={14} /> Productlijst importeren</button>
+                    <button type="button" onClick={onAddProduct} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-200"><PackagePlus size={14} /> Eerste product toevoegen</button>
+                  </div>
+                </section>
+              ) : (
+                <div className="col-span-full py-12 text-center text-slate-500 font-medium">Geen producten in deze selectie.</div>
+              )
             )}
             {filteredProducts.length > visibleProducts.length && (
               <button

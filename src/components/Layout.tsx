@@ -11,6 +11,7 @@ import { supabase } from "../lib/supabase";
 import { useStoreConfiguration } from "../store/useStoreConfiguration";
 import { useWorkforce } from "../store/useWorkforce";
 import { Modal } from "./Modal";
+import { StoreSetupGuide } from "./StoreSetupGuide";
 import {
   AlertCircle,
   CheckCircle2,
@@ -140,9 +141,11 @@ export const Layout: React.FC = () => {
   const [openAuditLogAtReturnSearch, setOpenAuditLogAtReturnSearch] =
     useState(false);
   const [profileInitialTarget, setProfileInitialTarget] = useState<{
-    tab: "billing" | "webshop-general" | "modules" | "workforce" | "leave-approvals";
+    tab: "billing" | "webshop-general" | "modules" | "workforce" | "leave-approvals" | "catalog-products";
     requestKey: number;
+    openNewProductRequestKey?: number;
   }>({ tab: "billing", requestKey: 0 });
+  const [storeSetupOpen, setStoreSetupOpen] = useState(false);
   const [leaveApprovalGateOpen, setLeaveApprovalGateOpen] = useState(false);
   const [leaveApprovalPin, setLeaveApprovalPin] = useState("");
   const [leaveApprovalGateError, setLeaveApprovalGateError] = useState<string | null>(null);
@@ -178,7 +181,7 @@ export const Layout: React.FC = () => {
     && isFeatureEnabledForSnapshot(entitlementSnapshot, FEATURE_KEYS.workforce);
 
   const openProfile = (
-    tab: "billing" | "webshop-general" | "modules" | "workforce" | "leave-approvals" = "billing",
+    tab: "billing" | "webshop-general" | "modules" | "workforce" | "leave-approvals" | "catalog-products" = "billing",
   ) => {
     setProfileInitialTarget((current) => ({
       tab,
@@ -186,6 +189,15 @@ export const Layout: React.FC = () => {
     }));
     setMainView("profile");
   };
+  const openProductSetup = () => {
+    setProfileInitialTarget((current) => ({
+      tab: "catalog-products",
+      requestKey: current.requestKey + 1,
+      openNewProductRequestKey: current.requestKey + 1,
+    }));
+    setMainView("profile");
+  };
+  const openImportSetup = () => setMainView("integration-hub");
   const approvalStoreId = currentStoreId ?? (import.meta.env.VITE_E2E_BUILD === "true" ? "fixture-store" : null);
   const openLeaveApprovalGate = () => {
     setIsUserMenuOpen(false);
@@ -880,6 +892,7 @@ export const Layout: React.FC = () => {
               <ProfileView
                 initialTab={profileInitialTarget.tab}
                 initialTabRequestKey={profileInitialTarget.requestKey}
+                openNewProductRequestKey={profileInitialTarget.openNewProductRequestKey}
               />
             ) : (
               <div className="flex-1 flex items-center justify-center text-slate-500 font-medium">
@@ -955,6 +968,9 @@ export const Layout: React.FC = () => {
                       <Menu
                         query={productQuery}
                         onQueryChange={setProductQuery}
+                        onStartStoreSetup={() => setStoreSetupOpen(true)}
+                        onAddProduct={openProductSetup}
+                        onImportProducts={openImportSetup}
                       />
                     )}
                     {mobileView === "cart" && <Cart />}
@@ -997,7 +1013,13 @@ export const Layout: React.FC = () => {
               ) : (
                 <div className="flex min-w-0 w-full h-full">
                   <div className="min-w-0 flex-1 h-full border-r border-slate-200">
-                    <Menu query={productQuery} onQueryChange={setProductQuery} />
+                    <Menu
+                      query={productQuery}
+                      onQueryChange={setProductQuery}
+                      onStartStoreSetup={() => setStoreSetupOpen(true)}
+                      onAddProduct={openProductSetup}
+                      onImportProducts={openImportSetup}
+                    />
                   </div>
                   <div className="w-[32%] lg:w-[28%] shrink-0 h-full">
                     <Cart />
@@ -1009,6 +1031,14 @@ export const Layout: React.FC = () => {
           </div>
         )}
       </main>
+      {(currentRole === "owner" || currentRole === "manager") && (
+        <StoreSetupGuide
+          open={storeSetupOpen}
+          onClose={() => setStoreSetupOpen(false)}
+          onAddProduct={openProductSetup}
+          onImportProducts={openImportSetup}
+        />
+      )}
       {leaveApprovalGateOpen && <Modal open onClose={() => setLeaveApprovalGateOpen(false)} title="Eigenaarstoegang bevestigen" subtitle="Verlofgoedkeuring is alleen voor de zaakvoerder." icon={<ShieldCheck size={18} />} size="sm" closeOnBackdrop><div className="space-y-4"><div className="rounded-xl border border-cyan-100 bg-cyan-50 p-3 text-xs leading-5 text-cyan-950"><p className="font-bold">Je opent de beveiligde verlofinbox.</p><p className="mt-1">Medewerkers en planners hebben hier geen toegang. Voer je persoonlijke goedkeurings-PIN in om verder te gaan.</p></div><label className="block text-xs font-bold text-slate-700"><span className="flex items-center gap-1.5"><KeyRound size={14} /> Persoonlijke PIN</span><input aria-label="Eigenaar PIN voor verlofgoedkeuring" type="password" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={leaveApprovalPin} onChange={(event) => { setLeaveApprovalPin(event.target.value.replace(/\D/g, "")); setLeaveApprovalGateError(null); }} placeholder="6 cijfers" className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100" /></label>{leaveApprovalGateError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-800">{leaveApprovalGateError}</p>}<div className="flex justify-end gap-2 border-t border-slate-100 pt-4"><button type="button" onClick={() => setLeaveApprovalGateOpen(false)} className="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 hover:bg-slate-50">Annuleren</button><button type="button" disabled={workforceMutating || leaveApprovalPin.length !== 6} onClick={async () => { if (!approvalStoreId) return; const verified = import.meta.env.VITE_E2E_BUILD === "true" ? await verifyCurrentOwnerPin(leaveApprovalPin) : await verifyApprovalPin(approvalStoreId, leaveApprovalPin); if (!verified) { setLeaveApprovalGateError("De ingevoerde PIN is onjuist, geblokkeerd of nog niet ingesteld."); return; } setLeaveApprovalGateOpen(false); openProfile("leave-approvals"); }} className="inline-flex h-9 items-center gap-2 rounded-lg border border-cyan-200 bg-cyan-50 px-3 text-xs font-bold text-cyan-800 hover:bg-cyan-100 disabled:opacity-50"><LockKeyhole size={14} /> Verlofinbox openen</button></div></div></Modal>}
     </div>
   );
