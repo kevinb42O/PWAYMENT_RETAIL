@@ -3,7 +3,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { AlertCircle, CheckCircle2, RefreshCw, Trash2 } from "lucide-react";
 import { getOutboxEntriesNeedingResolution } from "../db/outbox";
 import { humanizeOutboxIssue } from "../pace/outboxIssue";
-import { discardFailedSimulatorSale, isFailedSimulatorSale, retryOutboxEntryNow } from "../services/outboxWorker";
+import { discardUndeliveredLocalSale, isFailedLocalSale, isFailedSimulatorSale, retryOutboxEntryNow } from "../services/outboxWorker";
 
 interface OutboxRecoveryQueueProps {
   focusRequestKey?: number;
@@ -56,8 +56,8 @@ export const OutboxRecoveryQueue: React.FC<OutboxRecoveryQueueProps> = ({ focusR
   const discardSimulator = async (id: number) => {
     setRetryingId(id);
     try {
-      await discardFailedSimulatorSale(id);
-      setMessage({ text: "De niet-afgeleverde terminalsimulatie is veilig teruggedraaid en verwijderd.", success: true });
+      await discardUndeliveredLocalSale(id);
+      setMessage({ text: "De niet-bevestigde lokale testverkoop is veilig teruggedraaid en verwijderd.", success: true });
     } catch (error) {
       setMessage({
         text: error instanceof Error ? error.message : "De terminalsimulatie kon niet veilig worden verwijderd.",
@@ -100,6 +100,7 @@ export const OutboxRecoveryQueue: React.FC<OutboxRecoveryQueueProps> = ({ focusR
         {entries.map((entry) => {
           const issue = humanizeOutboxIssue(entry);
           const simulatorSale = isFailedSimulatorSale(entry);
+          const localSale = isFailedLocalSale(entry);
           return (
             <div key={entry.id} className="flex flex-col gap-2 rounded-xl border border-rose-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
@@ -120,6 +121,23 @@ export const OutboxRecoveryQueue: React.FC<OutboxRecoveryQueueProps> = ({ focusR
                   >
                     <Trash2 size={14} />
                     Simulatietest verwijderen
+                  </button>
+                )}
+                {!simulatorSale && localSale && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (entry.id == null) return;
+                      const confirmed = window.confirm(
+                        "Verwijder alleen als dit zeker een testverkoop is. PWAYMENT controleert eerst dat er geen serverboeking bestaat en draait daarna voorraad en klanttotalen terug. Doorgaan?",
+                      );
+                      if (confirmed) void discardSimulator(entry.id);
+                    }}
+                    disabled={entry.id == null || retryingId === entry.id}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-amber-400 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-900 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Trash2 size={14} />
+                    Lokale test verwijderen
                   </button>
                 )}
                 <button

@@ -568,19 +568,26 @@ export const isFailedSimulatorSale = (entry: OutboxEntry): boolean => {
     && isLocalMollieSimulatorReference(transaction?.paymentProviderReference);
 };
 
+export const isFailedLocalSale = (entry: OutboxEntry): boolean =>
+  entry.kind === "transaction"
+  && (entry.payload as Partial<Transaction>)?.kind !== "refund";
+
 /**
  * Remove a never-delivered local terminal simulation and reverse only the
  * local projections created by that checkout. Real/server-confirmed sales,
  * finalized rows and gift-card activity are deliberately refused.
  */
-export const discardFailedSimulatorSale = async (id: number): Promise<void> => {
+export const discardUndeliveredLocalSale = async (id: number): Promise<void> => {
   const storeId = useAuth.getState().currentStoreId;
   if (!storeId) throw new Error("Er is geen actieve winkel geselecteerd.");
   const entry = await db.outbox.get(id);
-  if (!entry || !isFailedSimulatorSale(entry)) {
-    throw new Error("Alleen een lokale betaalterminalsimulatie kan zo worden verwijderd.");
+  if (!entry || !isFailedLocalSale(entry)) {
+    throw new Error("Alleen een niet-bevestigde lokale verkoop kan zo worden verwijderd.");
   }
   const transaction = await recoverQueuedTransaction(entry.payload);
+  if ((transaction.kind ?? "sale") !== "sale") {
+    throw new Error("Een retour kan niet als lokale testverkoop worden verwijderd.");
+  }
   if (transaction.id == null || transaction.isFinalized === 1) {
     throw new Error("Deze testverkoop zit al in een dagafsluiting en kan niet automatisch worden verwijderd.");
   }
@@ -644,12 +651,16 @@ export const discardFailedSimulatorSale = async (id: number): Promise<void> => {
         detail: {
           transactionId: transaction.id,
           clientRequestId: transaction.clientRequestId,
-          reason: "Niet-afgeleverde lokale terminalsimulatie verwijderd",
+          reason: isLocalMollieSimulatorReference(transaction.paymentProviderReference)
+            ? "Niet-afgeleverde lokale terminalsimulatie verwijderd"
+            : "Niet-bevestigde lokale testverkoop na expliciete bevestiging verwijderd",
         },
       });
     },
   );
 };
+
+export const discardFailedSimulatorSale = discardUndeliveredLocalSale;
 
 /** Retry one operator-selected row now and wait for its real delivery result. */
 export const retryOutboxEntryNow = async (id: number): Promise<OutboxRetryResult> => {

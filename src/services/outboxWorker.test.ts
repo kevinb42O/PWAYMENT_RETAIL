@@ -4,7 +4,7 @@ import { db } from "../db/db";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../auth/useAuth";
 import type { Transaction } from "../types";
-import { discardFailedSimulatorSale, synchronizeFinancialLedgerBeforeReport } from "./outboxWorker";
+import { discardUndeliveredLocalSale, synchronizeFinancialLedgerBeforeReport } from "./outboxWorker";
 
 const transaction = (requestId = "close-race-1"): Transaction => ({
   id: 1,
@@ -268,12 +268,10 @@ describe("synchronizeFinancialLedgerBeforeReport", () => {
     expect(await db.outbox.count()).toBe(0);
   });
 
-  it("safely removes an undelivered simulator sale and restores its stock", async () => {
+  it("safely removes an explicitly confirmed undelivered local test sale and restores its stock", async () => {
     const row = {
       ...transaction("discard-simulator-contract"),
       id: 93,
-      paymentProvider: "mollie" as const,
-      paymentProviderReference: "sim_12345678123441238123123456789abc",
     };
     await db.transactions.put(row);
     await db.products.put({ ...row.items[0].product, stockQty: 4 });
@@ -307,7 +305,7 @@ describe("synchronizeFinancialLedgerBeforeReport", () => {
       }),
     } as never);
 
-    await discardFailedSimulatorSale(outboxId);
+    await discardUndeliveredLocalSale(outboxId);
 
     expect(await db.transactions.get(row.id)).toBeUndefined();
     expect(await db.outbox.get(outboxId)).toBeUndefined();
