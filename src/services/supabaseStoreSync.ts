@@ -116,13 +116,40 @@ const blankMerchant = (name: string): MerchantInfo => ({
  * appearing while a new tenant is loading on the same browser.
  */
 export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
+  // Select the tenant database before reading anything. On a browser refresh
+  // the module starts on the neutral database; reading first would snapshot
+  // the wrong tenant and make an incoming hydrate destructive by default.
+  activateTenantDatabase(storeId);
   const [previousProducts, previousCustomers] = await Promise.all([
     db.products.toArray(),
     db.customers.toArray(),
   ]);
   const previousProductById = new Map(previousProducts.map((product) => [product.id, product]));
   const previousCustomerById = new Map(previousCustomers.map((customer) => [customer.id, customer]));
-  activateTenantDatabase(storeId);
+  // A checkout is committed locally first so the POS remains usable offline.
+  // Never let a server snapshot erase a sale that is still in this tenant's
+  // outbox: it has not failed, it simply has not received its receipt yet.
+  const pendingTransactionRequestIds = new Set(
+    (await db.outbox.toArray())
+      .filter((entry) => entry.kind === "transaction")
+      .map((entry) => (entry.payload as Partial<Transaction>).clientRequestId)
+      .filter((requestId): requestId is string => Boolean(requestId)),
+  );
+  const pendingTransactions = pendingTransactionRequestIds.size === 0
+    ? []
+    : (await db.transactions.toArray()).filter((transaction) =>
+      pendingTransactionRequestIds.has(transaction.clientRequestId),
+    );
+  const pendingTransactionIds = new Set(
+    pendingTransactions
+      .map((transaction) => transaction.id)
+      .filter((id): id is number => Number.isInteger(id)),
+  );
+  const pendingStockMovements = pendingTransactionIds.size === 0
+    ? []
+    : (await db.stock_movements.toArray()).filter((movement) =>
+      movement.transactionId != null && pendingTransactionIds.has(movement.transactionId),
+    );
   reportLoadingProgress("store-data");
   const [
     categoryRows,
@@ -745,6 +772,78 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
     detail: row.detail ?? undefined,
   }));
 
+  const remoteRequestIds = new Set(transactions.map((transaction) => transaction.clientRequestId));
+  const unsyncedTransactions = pendingTransactions.filter(
+    (transaction) => !remoteRequestIds.has(transaction.clientRequestId),
+  );
+  const unsyncedTransactionIds = new Set(
+    unsyncedTransactions
+      .map((transaction) => transaction.id)
+      .filter((id): id is number => Number.isInteger(id)),
+  );
+  const unsyncedStockMovements = pendingStockMovements.filter(
+    (movement) => movement.transactionId != null && unsyncedTransactionIds.has(movement.transactionId),
+  );
+
+  // Project the locally committed stock movements on top of the remote
+  // snapshot until checkout_sale confirms them. This is intentionally based
+  // on the ledger, rather than recalculating from the cart, so sales, refunds
+  // and their exact quantities use one source of truth.
+  const pendingStockDelta = new Map<string, number>();
+  for (const movement of unsyncedStockMovements) {
+    pendingStockDelta.set(
+      movement.productId,
+      (pendingStockDelta.get(movement.productId) ?? 0) + movement.quantityDelta,
+    );
+  }
+  const hydratedProducts = products.map((product) => {
+    const delta = pendingStockDelta.get(product.id) ?? 0;
+    return product.stockQty == null || delta === 0
+      ? product
+      : { ...product, stockQty: Math.max(0, product.stockQty + delta) };
+  });
+  const hydratedProductIds = new Set(hydratedProducts.map((product) => product.id));
+  for (const productId of pendingStockDelta.keys()) {
+    if (!hydratedProductIds.has(productId)) {
+      const localProduct = previousProductById.get(productId);
+      if (localProduct) hydratedProducts.push(localProduct);
+    }
+  }
+
+  // Keep the actual local receipt visible until the server returns the same
+  // client request ID. Remote row IDs are re-numbered for Dexie, so allocate
+  // only when an unusual cache collision is encountered.
+  const hydratedTransactions = [...transactions];
+  const usedTransactionIds = new Set(
+    hydratedTransactions.map((transaction) => transaction.id).filter((id): id is number => Number.isInteger(id)),
+  );
+  let nextTransactionId = Math.max(0, ...usedTransactionIds) + 1;
+  for (const transaction of unsyncedTransactions) {
+    const id = transaction.id != null && !usedTransactionIds.has(transaction.id)
+      ? transaction.id
+      : nextTransactionId++;
+    usedTransactionIds.add(id);
+    hydratedTransactions.push({ ...transaction, id });
+  }
+  const hydratedStockMovements = [...stockMovements];
+  const usedStockMovementIds = new Set(
+    hydratedStockMovements.map((movement) => movement.id).filter((id): id is number => Number.isInteger(id)),
+  );
+  let nextStockMovementId = Math.max(0, ...usedStockMovementIds) + 1;
+  for (const movement of unsyncedStockMovements) {
+    const id = movement.id != null && !usedStockMovementIds.has(movement.id)
+      ? movement.id
+      : nextStockMovementId++;
+    usedStockMovementIds.add(id);
+    hydratedStockMovements.push({ ...movement, id });
+  }
+  const hydratedCustomers = customers.map((customer) => {
+    if (!unsyncedTransactions.some((transaction) => transaction.customerId === customer.id)) return customer;
+    // The local customer already contains the pending visit/value update and
+    // was itself built from the last successful server snapshot.
+    return previousCustomerById.get(customer.id) ?? customer;
+  });
+
   const transactionsByReport = new Map<string, string[]>();
   for (const link of dailyReportTransactionRows) {
     const list = transactionsByReport.get(link.daily_report_id) ?? [];
@@ -872,15 +971,16 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
     for (const table of authoritativeTables) await table.clear();
     if (users.length) await db.users.bulkPut(users);
     if (categories.length) await db.categories.bulkPut(categories);
-    if (products.length) await db.products.bulkPut(products);
-    if (customers.length) await db.customers.bulkPut(customers);
-    if (transactions.length) await db.transactions.bulkPut(transactions);
+    if (hydratedProducts.length) await db.products.bulkPut(hydratedProducts);
+    if (hydratedCustomers.length) await db.customers.bulkPut(hydratedCustomers);
+    if (hydratedTransactions.length)
+      await db.transactions.bulkPut(hydratedTransactions);
     if (giftCards.length) await db.gift_cards.bulkPut(giftCards);
     if (giftCardEvents.length)
       await db.gift_card_events.bulkPut(giftCardEvents);
     if (shifts.length) await db.shifts.bulkPut(shifts);
-    if (stockMovements.length)
-      await db.stock_movements.bulkPut(stockMovements);
+    if (hydratedStockMovements.length)
+      await db.stock_movements.bulkPut(hydratedStockMovements);
     if (purchaseOrders.length)
       await db.purchase_orders.bulkPut(purchaseOrders);
     if (voids.length) await db.voids.bulkPut(voids);

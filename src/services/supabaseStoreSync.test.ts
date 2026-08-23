@@ -21,16 +21,66 @@ describe("Supabase store bootstrap", () => {
   it("hydrates a tenant cache from related server rows without retaining stale local data", async () => {
     const loaded = await loadSync();
     const { database, supabase, syncStoreFromSupabase } = loaded;
-    const { db } = database;
-    if (!db.isOpen()) await db.open();
-    await db.products.put({
+    // Seed the same tenant cache that a real refresh reads. A checkout can
+    // exist locally for a few seconds before its idempotent server RPC is
+    // acknowledged; bootstrap must retain that financial fact.
+    const tenantDb = database.activateTenantDatabase(storeId);
+    if (!tenantDb.isOpen()) await tenantDb.open();
+    await tenantDb.products.put({
       id: "product-1",
       name: "Oude naam",
       category: "decks",
       priceCents: 100,
       vatRate: 21,
+      stockQty: 3,
       supplierCode: "OLD-SKU",
       priceTiers: { vip: 90 },
+    });
+    await tenantDb.transactions.put({
+      id: 50,
+      clientRequestId: "pending-sale",
+      tableId: 1,
+      items: [{
+        lineId: "pending-line",
+        product: {
+          id: "product-1",
+          name: "Nieuwe deck",
+          category: "decks",
+          priceCents: 6500,
+          vatRate: 21,
+          stockQty: 3,
+        },
+        quantity: 1,
+      }],
+      subtotalCents: 6500,
+      vat12Cents: 0,
+      vat21Cents: 1128,
+      totalCents: 6500,
+      discountCents: 0,
+      paymentMethod: "PIN",
+      timestamp: Date.parse(now) + 1,
+      isFinalized: 0,
+      source: "live",
+      kind: "sale",
+    });
+    await tenantDb.stock_movements.put({
+      id: 50,
+      productId: "product-1",
+      productName: "Nieuwe deck",
+      quantityDelta: -1,
+      reason: "pos-sale",
+      timestamp: Date.parse(now) + 1,
+      transactionId: 50,
+      clientRequestId: "pending-sale",
+    });
+    await tenantDb.outbox.add({
+      timestamp: Date.parse(now) + 1,
+      kind: "transaction",
+      payload: {
+        id: 50,
+        clientRequestId: "pending-sale",
+      },
+      attempts: 0,
     });
 
     const rows: Record<string, any[]> = {
@@ -97,6 +147,7 @@ describe("Supabase store bootstrap", () => {
       category: "decks",
       supplierCode: "OLD-SKU",
       priceTiers: { vip: 90 },
+      stockQty: 3,
       familyId: "family-db",
       variantOptions: { Maat: "8.25" },
       identifiers: [{ type: "ean", value: "5410000000011", isScannable: true, isPrimary: true }],
@@ -115,6 +166,14 @@ describe("Supabase store bootstrap", () => {
         { rate: 21, grossCents: 5440, exclCents: 4496, vatCents: 944 },
       ],
     });
+    expect(await activeDb.transactions.get(50)).toMatchObject({
+      clientRequestId: "pending-sale",
+    });
+    expect(
+      (await activeDb.stock_movements.toArray()).some(
+        (movement) => movement.clientRequestId === "pending-sale",
+      ),
+    ).toBe(true);
     expect(await activeDb.daily_reports.get(1)).toMatchObject({
       reportNumber: 1,
       transactionIds: [1],

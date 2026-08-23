@@ -23,6 +23,8 @@ import {
   recordMeaningfulActivity,
 } from "./migrationActivity";
 import { synchronizeMigrationNow } from "./migrationSync";
+import { synchronizeFinancialLedgerBeforeReport } from "./outboxWorker";
+import { isSupabaseConfigured } from "../lib/supabase";
 import { generateReceiptBarcode } from "../utils/receiptBarcode";
 import {
   cashRoundingAdjustmentCents,
@@ -152,8 +154,31 @@ export const finalizeCheckout = (
   const storeId = useAuth.getState().currentStoreId;
   const promise = runCheckout(input, storeId)
     .then(async (result) => {
-      // The sale already committed locally. A network failure must never
-      // reverse it, but an online migration seal is pushed immediately.
+      // The sale is already committed locally. When online, wait for its
+      // idempotent server acknowledgement too: a refresh must never make a
+      // completed checkout appear to vanish while the background outbox waits.
+      // A failed acknowledgement deliberately leaves the local sale and its
+      // outbox row intact for the retry worker.
+      if (
+        storeId &&
+        !result.duplicate &&
+        isSupabaseConfigured &&
+        globalThis.navigator?.onLine !== false
+      ) {
+        try {
+          await synchronizeFinancialLedgerBeforeReport(
+            storeId,
+            [result.transaction],
+            [],
+          );
+        } catch (error) {
+          console.warn(
+            "Checkout blijft lokaal bewaard; onmiddellijke serverbevestiging mislukt:",
+            error,
+          );
+        }
+      }
+      // Keep the migration seal in the background; it must not delay checkout.
       if (storeId) void synchronizeMigrationNow(storeId);
       return result;
     })

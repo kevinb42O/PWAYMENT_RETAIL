@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../db/db';
 import { useAuth } from '../auth/useAuth';
+import { supabase } from '../lib/supabase';
 import { CheckoutError, finalizeCheckout } from './checkout';
 import { Customer, GiftCard, MigrationActivation, OrderItem, Product } from '../types';
 
@@ -177,6 +178,10 @@ describe('finalizeCheckout', () => {
   it('seals an active migration atomically with the first live checkout', async () => {
     useAuth.setState({ currentStoreId: 'store-1' });
     await db.migration_activations.put(migrationActivation());
+    vi.spyOn(supabase, 'rpc').mockResolvedValue({
+      data: { duplicate: false },
+      error: null,
+    } as never);
 
     const result = await finalizeCheckout(baseInput({ clientRequestId: 'migration-lock-sale' }));
 
