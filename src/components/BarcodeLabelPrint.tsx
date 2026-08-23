@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Barcode, Printer, Wand2 } from 'lucide-react';
+import { Barcode, Printer } from 'lucide-react';
 import { useProducts } from '../store/useProducts';
 import { Product } from '../types';
 import { formatEUR } from '../utils/money';
@@ -80,7 +80,7 @@ export const BarcodeLabelPrint: React.FC = () => {
           </div>
           <div className="flex flex-wrap gap-2">
             <button onClick={() => void generateMissing()} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 font-semibold">
-              <Wand2 size={16} /> Genereer ontbrekende codes
+              Genereer ontbrekende codes
             </button>
             <button onClick={() => void printLabels()} disabled={labels.length === 0} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-800 disabled:text-zinc-500 font-semibold">
               <Printer size={16} /> Print {labels.length} labels

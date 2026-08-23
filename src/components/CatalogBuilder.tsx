@@ -426,7 +426,6 @@ export const CatalogBuilder: React.FC<CatalogBuilderProps> = ({
       <header className="flex flex-col gap-4 border-b border-slate-200 bg-white px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
         <div className="flex items-start gap-3">
           {view !== "start" && !editingFamilyId && <button type="button" onClick={() => setView("start")} className="mt-0.5 rounded-xl p-2 text-slate-500 hover:bg-slate-100" aria-label="Terug"><ArrowLeft size={18} /></button>}
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-800">{view === "variants" ? <Layers3 size={20} /> : <PackagePlus size={20} />}</span>
           <div><p className="text-[11px] font-black uppercase tracking-[0.14em] text-sky-800">Productbeheer</p>
             <h2 className="mt-0.5 text-xl font-black tracking-tight text-slate-950">{editingFamilyId ? `Familie bewerken · ${firstMember?.name ?? "Product"}` : view === "start" ? "Producten toevoegen" : view === "quick" ? "Snelle invoersessie" : "Variantenmatrix"}</h2>
             <p className="mt-1 max-w-3xl text-sm leading-5 text-slate-500">{view === "variants" ? "Gedeelde gegevens één keer; afwijkingen, openingsvoorraad en codes per variant." : "Werk product per product, plak waarden of open een importbestand. Je invoer wordt als concept bewaard."}</p>
