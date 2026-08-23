@@ -7,7 +7,7 @@ import {
   matchesCatalogQuery,
   normalizeCatalogQuery,
 } from "../utils/productLookup";
-import { Box, Grid2X2, Layers3, Sparkles, FileSpreadsheet, PackagePlus } from "lucide-react";
+import { Box, Grid2X2, Layers3, FileSpreadsheet, PackagePlus } from "lucide-react";
 import { isGiftCardProduct } from "../utils/financial";
 
 const stockLabel = (stockQty?: number): string => {
@@ -475,16 +475,13 @@ export const Menu: React.FC<MenuProps> = ({
               ) : activeProducts.length === 0 && onStartStoreSetup ? (
                 <section className="col-span-full mx-auto my-6 w-full max-w-3xl rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs sm:p-6">
                   <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex min-w-0 items-start gap-3.5">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-100 bg-cyan-50 text-[#0e7490]"><Sparkles size={19} /></span>
-                      <div className="min-w-0">
-                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Nieuwe winkel</p>
-                        <h2 className="mt-1 text-base font-black tracking-tight text-slate-900">Voeg je eerste producten toe</h2>
-                        <p className="mt-1 max-w-xl text-xs leading-5 text-slate-500">Werk eerst je bongegevens af, importeer je productlijst of voeg één product handmatig toe.</p>
-                      </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Nieuwe winkel</p>
+                      <h2 className="mt-1 text-base font-black tracking-tight text-slate-900">Voeg je eerste producten toe</h2>
+                      <p className="mt-1 max-w-xl text-xs leading-5 text-slate-500">Werk eerst je bongegevens af, importeer je productlijst of voeg één product handmatig toe.</p>
                     </div>
-                    <button type="button" onClick={onStartStoreSetup} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#0e7490] px-4 text-xs font-extrabold text-white shadow-sm transition hover:bg-[#155e75]">
-                      Je winkel starten <Sparkles size={15} />
+                    <button type="button" onClick={onStartStoreSetup} className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl bg-[#0e7490] px-4 text-xs font-extrabold text-white shadow-sm transition hover:bg-[#155e75]">
+                      Je winkel starten
                     </button>
                   </div>
                   <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 border-t border-slate-100 pt-4">
