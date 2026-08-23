@@ -2197,17 +2197,20 @@ body {
   -webkit-text-fill-color: #52525b !important;
 }
 @keyframes pace-boot-performance {
-  0% { opacity: .72; transform: translateY(4px) rotateY(0deg) scale(.86, 1.08); filter: saturate(.9) drop-shadow(0 8px 14px rgba(0, 89, 255, .16)); }
-  28% { opacity: 1; transform: translateY(-5px) rotateY(24deg) scale(1.12, .82); filter: saturate(1.18) drop-shadow(0 15px 22px rgba(0, 140, 255, .28)); }
-  58% { opacity: 1; transform: translateY(1px) rotateY(205deg) scale(.84, 1.14); filter: saturate(1.28) drop-shadow(0 10px 18px rgba(0, 217, 255, .3)); }
-  82% { opacity: 1; transform: translateY(-3px) rotateY(334deg) scale(1.04, .96); filter: saturate(1.12) drop-shadow(0 14px 20px rgba(0, 89, 255, .24)); }
-  100% { opacity: .72; transform: translateY(4px) rotateY(360deg) scale(.86, 1.08); filter: saturate(.9) drop-shadow(0 8px 14px rgba(0, 89, 255, .16)); }
+  0%, 100% { transform: translateY(1px) rotateY(-5deg) scale(.985); filter: saturate(1) drop-shadow(0 8px 14px rgba(0, 89, 255, .16)); background-position: 110% 50%; }
+  48% { transform: translateY(-2px) rotateY(6deg) scale(1.015); filter: saturate(1.08) drop-shadow(0 12px 18px rgba(0, 120, 255, .22)); background-position: 42% 50%; }
+  62% { transform: translateY(-2px) rotateY(4deg) scale(1.01); filter: saturate(1.06) drop-shadow(0 11px 17px rgba(0, 120, 255, .2)); background-position: -15% 50%; }
 }
 
 .pace-boot-mark {
-  animation: pace-boot-performance 2.9s cubic-bezier(.22, 1, .36, 1) infinite;
+  display: inline-block;
+  background: linear-gradient(112deg, #08cfff 12%, #1545ff 39%, #ecfeff 49%, #08cfff 58%, #1545ff 86%);
+  background-size: 260% 100%;
+  -webkit-mask: url("/branding/pwayment-mark-final.png") center / contain no-repeat;
+  mask: url("/branding/pwayment-mark-final.png") center / contain no-repeat;
+  animation: pace-boot-performance 2.8s ease-in-out infinite;
   transform-style: preserve-3d;
-  will-change: transform, filter, opacity;
+  will-change: transform, filter, background-position;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -18,7 +18,7 @@ const DEPTH_LAYERS = [-7, -6, -5, -4, -3, -2, -1] as const;
 const movementFor = (state: PaceEmotion, fullMotion: boolean) => {
   if (!fullMotion) return { rotateY: 0, rotateX: 0, rotateZ: 0, z: 0 };
   switch (state) {
-    case "thinking": return { rotateY: [0, 360], rotateX: [0, -7, 5, 0], rotateZ: [0, 2, -2, 0], z: [0, 5, 0] };
+    case "thinking": return { rotateY: [0, -11, 8, 0], rotateX: [0, 3, -2, 0], rotateZ: [0, -1.2, 0.8, 0], z: [0, 2, 1, 0] };
     case "guiding": return { rotateY: [0, -34, -8, 20, 0, 360], rotateX: [0, 7, -3, 0], rotateZ: [0, -4, 2, 0], z: [0, 7, 2, 0] };
     case "celebrating": return { rotateY: [0, 190, 360], rotateX: [0, -16, 0], rotateZ: [0, -8, 5, 0], z: [0, 13, 0] };
     case "attentive": return { rotateY: [0, -22, 14, 0, 0, 360], rotateX: [0, 5, -2, 0], rotateZ: [0, -2, 1, 0], z: [0, 4, 0] };
@@ -28,7 +28,7 @@ const movementFor = (state: PaceEmotion, fullMotion: boolean) => {
 };
 
 const durationFor = (state: PaceEmotion) => {
-  if (state === "thinking") return 4.8;
+  if (state === "thinking") return 3.4;
   if (state === "celebrating") return 1.35;
   if (state === "guiding") return 5.6;
   if (state === "attentive") return 6.4;

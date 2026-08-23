@@ -119,11 +119,7 @@ const configureServiceWorker = async () => {
 const root = createRoot(document.getElementById("root")!);
 
 const PaceBootMark = () => (
-  <img
-    src="/branding/pwayment-mark-final.png"
-    alt="Pace"
-    className="pace-boot-mark h-24 w-24 object-contain"
-  />
+  <span className="pace-boot-mark h-24 w-24" role="img" aria-label="Pace" />
 );
 
 const StartupScreen = () => {

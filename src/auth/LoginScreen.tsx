@@ -824,7 +824,7 @@ export const LoginScreen: React.FC = () => {
         >
           <div className="w-full max-w-sm rounded-3xl border border-white/70 bg-white/95 p-7 text-center shadow-[0_32px_100px_-30px_rgba(15,23,42,0.55)]">
             <div className="mx-auto mb-5 flex min-h-24 items-center justify-center">
-              <PaceMark key={loadingProgress.title} size={92} active thinking performance={loadingProgress.progress >= 75 ? "portal" : "liquid"} motionMode="full" forceMotion />
+              <PaceMark size={92} active thinking tone="flow" motionMode="full" />
             </div>
             <p className="text-base font-extrabold tracking-tight text-slate-950">{loadingProgress.title}</p>
             <p className="mt-1.5 text-sm leading-6 text-slate-500">{loadingProgress.detail}</p>
