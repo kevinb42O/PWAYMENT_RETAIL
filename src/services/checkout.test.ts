@@ -95,7 +95,7 @@ describe('finalizeCheckout', () => {
       vatRate: 0, stockQty: undefined, productType: 'gift-card',
     }));
     giftCardLine.giftCardOperation = {
-      action: 'issue', cardId: 'new-gc-1', code: 'PW-NEW-0001', customerId: 'cust-1',
+      action: 'issue', cardId: 'new-gc-1', code: 'PW-NEW-0001', customerId: 'cust-1', expiresAt: '2030-01-01T23:59:59.000Z',
     };
     await db.customers.put(customer());
 
@@ -110,6 +110,13 @@ describe('finalizeCheckout', () => {
       expect.objectContaining({ type: 'issue', transactionId: result.transaction.id, paymentTenders: [{ method: 'PIN', amountCents: 5000 }] }),
     ]);
     expect((await db.customers.get('cust-1'))).toMatchObject({ visitCount: 0, totalSpentCents: 0 });
+  });
+
+  it('refuses a new gift card without a future expiry date', async () => {
+    const item = line(product({ id: 'pos-gift-card-liability', priceCents: 5000, vatRate: 0, stockQty: undefined, productType: 'gift-card' }));
+    item.giftCardOperation = { action: 'issue', cardId: 'new-gc-expiry', code: 'PW-EXPIRY' };
+    await expect(finalizeCheckout(baseInput({ clientRequestId: 'gift-card-no-expiry', items: [item] }))).rejects.toMatchObject({ code: 'invalid-request' });
+    expect(await db.gift_cards.get('new-gc-expiry')).toBeUndefined();
   });
 
   it('books a plain sale once, decrements stock and records the customer visit', async () => {

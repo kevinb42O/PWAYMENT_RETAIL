@@ -243,6 +243,13 @@ export const Cart: React.FC = () => {
   const [giftCardSaleCustomerName, setGiftCardSaleCustomerName] = useState("");
   const [giftCardSaleCustomerEmail, setGiftCardSaleCustomerEmail] = useState("");
   const [giftCardSaleCustomerPhone, setGiftCardSaleCustomerPhone] = useState("");
+  const [giftCardSaleExpiresAt, setGiftCardSaleExpiresAt] = useState("");
+  const [giftCardSaleBusinessOpen, setGiftCardSaleBusinessOpen] = useState(false);
+  const [giftCardSaleCompany, setGiftCardSaleCompany] = useState("");
+  const [giftCardSaleVat, setGiftCardSaleVat] = useState("");
+  const [giftCardSaleAddress, setGiftCardSaleAddress] = useState("");
+  const [giftCardSalePostalCode, setGiftCardSalePostalCode] = useState("");
+  const [giftCardSaleCity, setGiftCardSaleCity] = useState("");
   const [giftCardSaleError, setGiftCardSaleError] = useState<string | null>(null);
   const [queueOpen, setQueueOpen] = useState(false);
   const [resumeCartId, setResumeCartId] = useState<string | null>(null);
@@ -330,6 +337,11 @@ export const Cart: React.FC = () => {
     setGiftCardSaleCustomerName("");
     setGiftCardSaleCustomerEmail("");
     setGiftCardSaleCustomerPhone("");
+    const expiry = new Date();
+    expiry.setFullYear(expiry.getFullYear() + 1);
+    setGiftCardSaleExpiresAt(expiry.toISOString().slice(0, 10));
+    setGiftCardSaleBusinessOpen(false);
+    setGiftCardSaleCompany(""); setGiftCardSaleVat(""); setGiftCardSaleAddress(""); setGiftCardSalePostalCode(""); setGiftCardSaleCity("");
     setGiftCardSaleError(null);
     setGiftCardSaleOpen(true);
   };
@@ -340,16 +352,19 @@ export const Cart: React.FC = () => {
     const existing = giftCards.find((card) => card.code.replace(/[\s-]/g, "").toUpperCase() === code.replace(/[\s-]/g, "").toUpperCase());
     if (giftCardSaleMode === "recharge" && !existing) return setGiftCardSaleError("Geen bestaande cadeaubon gevonden voor deze code.");
     if (giftCardSaleMode === "issue" && existing) return setGiftCardSaleError("Deze cadeauboncode bestaat al. Kies een andere code.");
+    if (giftCardSaleMode === "issue" && !giftCardSaleExpiresAt) return setGiftCardSaleError("Een vervaldatum is verplicht voor een nieuwe cadeaubon.");
     let customerId = giftCardSaleCustomerId || undefined;
     if (giftCardSaleMode === "issue" && giftCardSaleNewCustomer) {
       const name = giftCardSaleCustomerName.trim();
       if (!name) return setGiftCardSaleError("Vul minstens de naam van de nieuwe klant in.");
+      if (giftCardSaleBusinessOpen && (!giftCardSaleCompany.trim() || !giftCardSaleAddress.trim() || !giftCardSalePostalCode.trim() || !giftCardSaleCity.trim())) return setGiftCardSaleError("Vul bedrijfsnaam en volledig facturatieadres in.");
       customerId = generateId();
-      await upsertCustomer({ id: customerId, name, email: giftCardSaleCustomerEmail.trim() || undefined, phone: giftCardSaleCustomerPhone.trim() || undefined, totalSpentCents: 0, visitCount: 0, createdAt: new Date().toISOString(), isActive: true });
+      await upsertCustomer({ id: customerId, name, email: giftCardSaleCustomerEmail.trim() || undefined, phone: giftCardSaleCustomerPhone.trim() || undefined, totalSpentCents: 0, visitCount: 0, createdAt: new Date().toISOString(), isActive: true, billingProfile: giftCardSaleBusinessOpen ? { type: "business", companyName: giftCardSaleCompany.trim(), contactName: name, addressLine1: giftCardSaleAddress.trim(), postalCode: giftCardSalePostalCode.trim(), city: giftCardSaleCity.trim(), countryCode: "BE", vatNumber: giftCardSaleVat.trim().toUpperCase() || undefined, email: giftCardSaleCustomerEmail.trim() || undefined } : undefined });
     }
     addGiftCardCheckoutItem({
       action: giftCardSaleMode, cardId: existing?.id ?? generateId(), code,
       amountCents: parsed.cents, customerId: giftCardSaleMode === "recharge" ? existing?.customerId : customerId,
+      expiresAt: giftCardSaleMode === "issue" ? new Date(`${giftCardSaleExpiresAt}T23:59:59`).toISOString() : undefined,
     });
     setGiftCardSaleOpen(false);
   };
@@ -1177,7 +1192,8 @@ export const Cart: React.FC = () => {
           <label className="block text-sm font-bold text-slate-700">Cadeauboncode<input value={giftCardSaleCode} onChange={(event) => setGiftCardSaleCode(event.target.value.toUpperCase())} className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono text-sm" placeholder="Scan of voer code in" autoFocus /></label>
           <div className="grid grid-cols-5 gap-2">{[10,25,50,75,100].map((amount) => <button key={amount} type="button" onClick={() => setGiftCardSaleAmount(`${amount},00`)} className={`rounded-lg border px-1 py-2 text-xs font-bold ${giftCardSaleAmount === `${amount},00` ? "border-sky-500 bg-sky-50 text-sky-800" : "border-slate-200 text-slate-600"}`}>€{amount}</button>)}</div>
           <label className="block text-sm font-bold text-slate-700">Bedrag (€)<input inputMode="decimal" value={giftCardSaleAmount} onChange={(event) => setGiftCardSaleAmount(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-2 tabular-nums" /></label>
-          {giftCardSaleMode === "issue" && <div className="space-y-2"><div className="flex items-center justify-between"><span className="text-sm font-bold text-slate-700">Klant koppelen <span className="font-normal text-slate-400">(optioneel)</span></span><button type="button" onClick={() => setGiftCardSaleNewCustomer((open) => !open)} className="text-xs font-bold text-sky-700 hover:text-sky-900">{giftCardSaleNewCustomer ? "Bestaande klant kiezen" : "+ Nieuwe klant"}</button></div>{giftCardSaleNewCustomer ? <div className="grid gap-2 rounded-xl border border-sky-100 bg-sky-50 p-3"><input value={giftCardSaleCustomerName} onChange={(event) => setGiftCardSaleCustomerName(event.target.value)} placeholder="Naam *" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" autoFocus /><div className="grid grid-cols-2 gap-2"><input value={giftCardSaleCustomerEmail} onChange={(event) => setGiftCardSaleCustomerEmail(event.target.value)} placeholder="E-mail" className="min-w-0 rounded-lg border border-slate-300 px-3 py-2 text-sm" /><input value={giftCardSaleCustomerPhone} onChange={(event) => setGiftCardSaleCustomerPhone(event.target.value)} placeholder="Telefoon" className="min-w-0 rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div></div> : <select value={giftCardSaleCustomerId} onChange={(event) => setGiftCardSaleCustomerId(event.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2"><option value="">Anonieme cadeaubon</option>{customers.filter((customer) => customer.isActive).map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}</select>}</div>}
+          {giftCardSaleMode === "issue" && <label className="block text-sm font-bold text-slate-700">Geldig tot<input type="date" required value={giftCardSaleExpiresAt} min={new Date().toISOString().slice(0, 10)} onChange={(event) => setGiftCardSaleExpiresAt(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-2" /></label>}
+          {giftCardSaleMode === "issue" && <div className="space-y-2"><div className="flex items-center justify-between"><span className="text-sm font-bold text-slate-700">Houder van de cadeaubon <span className="font-normal text-slate-400">(optioneel)</span></span><button type="button" onClick={() => setGiftCardSaleNewCustomer((open) => !open)} className="text-xs font-bold text-sky-700 hover:text-sky-900">{giftCardSaleNewCustomer ? "Bestaande klant kiezen" : "+ Nieuwe klant"}</button></div>{giftCardSaleNewCustomer ? <div className="grid gap-2 rounded-xl border border-sky-100 bg-sky-50 p-3"><input value={giftCardSaleCustomerName} onChange={(event) => setGiftCardSaleCustomerName(event.target.value)} placeholder="Naam *" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" autoFocus /><div className="grid grid-cols-2 gap-2"><input value={giftCardSaleCustomerEmail} onChange={(event) => setGiftCardSaleCustomerEmail(event.target.value)} placeholder="E-mail" className="min-w-0 rounded-lg border border-slate-300 px-3 py-2 text-sm" /><input value={giftCardSaleCustomerPhone} onChange={(event) => setGiftCardSaleCustomerPhone(event.target.value)} placeholder="Telefoon" className="min-w-0 rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div><button type="button" onClick={() => setGiftCardSaleBusinessOpen((open) => !open)} className="w-fit text-xs font-bold text-sky-700">{giftCardSaleBusinessOpen ? "Zakelijke gegevens verbergen" : "+ Zakelijke/facturatiegegevens"}</button>{giftCardSaleBusinessOpen && <div className="grid gap-2 border-t border-sky-200 pt-2"><input value={giftCardSaleCompany} onChange={(event) => setGiftCardSaleCompany(event.target.value)} placeholder="Bedrijfsnaam *" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" /><input value={giftCardSaleVat} onChange={(event) => setGiftCardSaleVat(event.target.value)} placeholder="BTW-nummer" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" /><input value={giftCardSaleAddress} onChange={(event) => setGiftCardSaleAddress(event.target.value)} placeholder="Straat en nummer *" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" /><div className="grid grid-cols-2 gap-2"><input value={giftCardSalePostalCode} onChange={(event) => setGiftCardSalePostalCode(event.target.value)} placeholder="Postcode *" className="min-w-0 rounded-lg border border-slate-300 px-3 py-2 text-sm" /><input value={giftCardSaleCity} onChange={(event) => setGiftCardSaleCity(event.target.value)} placeholder="Gemeente *" className="min-w-0 rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div></div>}</div> : <select value={giftCardSaleCustomerId} onChange={(event) => setGiftCardSaleCustomerId(event.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2"><option value="">Anonieme cadeaubon</option>{customers.filter((customer) => customer.isActive).map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}</select>}<p className="text-xs leading-5 text-slate-500">De koper/factuurklant stel je apart in via Winkelwagenacties → Klant koppelen of Factuur opmaken.</p></div>}
           {giftCardSaleMode === "recharge" && <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">Scan de bestaande kaart. Het actuele saldo wordt opnieuw gecontroleerd zodra de betaling wordt geboekt.</p>}
           {giftCardSaleError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{giftCardSaleError}</p>}
         </div>

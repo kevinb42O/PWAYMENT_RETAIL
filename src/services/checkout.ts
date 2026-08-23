@@ -385,6 +385,10 @@ const runCheckout = async (
           throw new CheckoutError("gift-card-invalid-amount", "Een cadeaubon moet één positief oplaadbedrag hebben.");
         }
         if (operation.action === "issue") {
+          const expiresAt = operation.expiresAt ? Date.parse(operation.expiresAt) : NaN;
+          if (!Number.isFinite(expiresAt) || expiresAt <= now) {
+            throw new CheckoutError("invalid-request", "Een nieuwe cadeaubon heeft een geldige toekomstige vervaldatum nodig.");
+          }
           const duplicate = await db.gift_cards
             .filter((card) => card.code.replace(/[\s-]/g, "").toUpperCase() === operation.code.replace(/[\s-]/g, "").toUpperCase())
             .first();
