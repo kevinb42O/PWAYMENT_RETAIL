@@ -19,14 +19,10 @@ export const humanizeOutboxIssue = (entry: OutboxEntry): HumanizedOutboxIssue =>
     ? (entry.payload as { paymentProviderReference?: unknown }).paymentProviderReference
     : undefined;
 
-  if (
-    typeof simulatorReference === "string"
-    && /^sim_[a-f0-9]{32}$/i.test(simulatorReference)
-    && includes(message, /invalid payment provider reference/i)
-  ) {
+  if (typeof simulatorReference === "string" && /^sim_[a-f0-9]{32}$/i.test(simulatorReference)) {
     return {
-      summary: "Deze verkoop kwam uit de lokale betaalterminalsimulator, niet uit Mollie.",
-      resolution: "Probeer opnieuw; PWAYMENT boekt de verkoop zonder een niet-bestaande Mollie-referentie.",
+      summary: "Dit is een lokale betaalterminalsimulatie; er is geen echte Mollie-betaling uitgevoerd.",
+      resolution: "Verwijder de simulatietest als ze niet in je lokale verkoopadministratie hoort.",
     };
   }
 

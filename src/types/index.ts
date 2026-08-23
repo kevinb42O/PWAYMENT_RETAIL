@@ -650,6 +650,7 @@ export type AuditAction =
   | "cart.resume"
   | "cart.discard"
   | "checkout"
+  | "terminal-simulator.discard"
   | "refund.create"
   | "approve"
   | "discount.apply"

@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { AlertCircle, CheckCircle2, RefreshCw } from "lucide-react";
+import { AlertCircle, CheckCircle2, RefreshCw, Trash2 } from "lucide-react";
 import { getOutboxEntriesNeedingResolution } from "../db/outbox";
 import { humanizeOutboxIssue } from "../pace/outboxIssue";
-import { retryOutboxEntryNow } from "../services/outboxWorker";
+import { discardFailedSimulatorSale, isFailedSimulatorSale, retryOutboxEntryNow } from "../services/outboxWorker";
 
 interface OutboxRecoveryQueueProps {
   focusRequestKey?: number;
@@ -53,6 +53,21 @@ export const OutboxRecoveryQueue: React.FC<OutboxRecoveryQueueProps> = ({ focusR
     }
   };
 
+  const discardSimulator = async (id: number) => {
+    setRetryingId(id);
+    try {
+      await discardFailedSimulatorSale(id);
+      setMessage({ text: "De niet-afgeleverde terminalsimulatie is veilig teruggedraaid en verwijderd.", success: true });
+    } catch (error) {
+      setMessage({
+        text: error instanceof Error ? error.message : "De terminalsimulatie kon niet veilig worden verwijderd.",
+        success: false,
+      });
+    } finally {
+      setRetryingId(null);
+    }
+  };
+
   return (
     <section
       ref={sectionRef}
@@ -84,6 +99,7 @@ export const OutboxRecoveryQueue: React.FC<OutboxRecoveryQueueProps> = ({ focusR
       <div className="mt-3 space-y-2">
         {entries.map((entry) => {
           const issue = humanizeOutboxIssue(entry);
+          const simulatorSale = isFailedSimulatorSale(entry);
           return (
             <div key={entry.id} className="flex flex-col gap-2 rounded-xl border border-rose-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
@@ -94,15 +110,28 @@ export const OutboxRecoveryQueue: React.FC<OutboxRecoveryQueueProps> = ({ focusR
                 <p className="mt-1 text-[11px] font-bold leading-relaxed text-rose-800">{issue.summary}</p>
                 <p className="mt-0.5 text-[11px] font-medium leading-relaxed text-slate-600">{issue.resolution}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => entry.id != null && void retry(entry.id)}
-                disabled={entry.id == null || retryingId === entry.id}
-                className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-rose-300 bg-white px-3 py-2 text-[11px] font-bold text-rose-800 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <RefreshCw size={14} className={retryingId === entry.id ? "animate-spin" : ""} />
-                {retryingId === entry.id ? "Inplannen…" : "Opnieuw proberen"}
-              </button>
+              <div className="flex shrink-0 flex-wrap gap-2">
+                {simulatorSale && (
+                  <button
+                    type="button"
+                    onClick={() => entry.id != null && void discardSimulator(entry.id)}
+                    disabled={entry.id == null || retryingId === entry.id}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-rose-400 bg-rose-700 px-3 py-2 text-[11px] font-bold text-white hover:bg-rose-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Trash2 size={14} />
+                    Simulatietest verwijderen
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => entry.id != null && void retry(entry.id)}
+                  disabled={entry.id == null || retryingId === entry.id}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-rose-300 bg-white px-3 py-2 text-[11px] font-bold text-rose-800 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <RefreshCw size={14} className={retryingId === entry.id ? "animate-spin" : ""} />
+                  {retryingId === entry.id ? "Controleren…" : "Opnieuw proberen"}
+                </button>
+              </div>
             </div>
           );
         })}

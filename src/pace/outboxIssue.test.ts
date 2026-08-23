@@ -43,8 +43,8 @@ describe("Pace outbox error language", () => {
       payload: { paymentProviderReference: "sim_12345678123441238123123456789abc" },
       lastError: "invalid payment provider reference",
     }));
-    expect(issue.summary).toContain("betaalterminalsimulator");
-    expect(issue.resolution).toContain("zonder");
+    expect(issue.summary).toContain("betaalterminalsimulatie");
+    expect(issue.resolution).toContain("Verwijder");
     expect(issue.summary).not.toContain("invalid");
   });
 

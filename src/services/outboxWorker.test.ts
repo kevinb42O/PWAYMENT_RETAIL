@@ -4,7 +4,7 @@ import { db } from "../db/db";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../auth/useAuth";
 import type { Transaction } from "../types";
-import { synchronizeFinancialLedgerBeforeReport } from "./outboxWorker";
+import { discardFailedSimulatorSale, synchronizeFinancialLedgerBeforeReport } from "./outboxWorker";
 
 const transaction = (requestId = "close-race-1"): Transaction => ({
   id: 1,
@@ -266,6 +266,53 @@ describe("synchronizeFinancialLedgerBeforeReport", () => {
     expect(result.delivered).toBe(true);
     expect(rpc).toHaveBeenCalledTimes(1);
     expect(await db.outbox.count()).toBe(0);
+  });
+
+  it("safely removes an undelivered simulator sale and restores its stock", async () => {
+    const row = {
+      ...transaction("discard-simulator-contract"),
+      id: 93,
+      paymentProvider: "mollie" as const,
+      paymentProviderReference: "sim_12345678123441238123123456789abc",
+    };
+    await db.transactions.put(row);
+    await db.products.put({ ...row.items[0].product, stockQty: 4 });
+    await db.stock_movements.add({
+      productId: row.items[0].product.id,
+      productName: row.items[0].product.name,
+      quantityDelta: -1,
+      reason: "pos-sale",
+      timestamp: row.timestamp,
+      transactionId: row.id,
+    });
+    const outboxId = await db.outbox.add({
+      timestamp: row.timestamp,
+      kind: "transaction",
+      payload: row,
+      attempts: 5,
+      deliveryStatus: "dead_letter",
+    });
+    useAuth.setState({
+      currentStoreId: "00000000-0000-0000-0000-000000000001",
+      currentUserId: "user-1",
+      currentUserName: "Eigenaar",
+    });
+    vi.spyOn(supabase, "from").mockReturnValue({
+      select: () => ({
+        eq: () => ({
+          eq: () => ({
+            maybeSingle: async () => ({ data: null, error: null }),
+          }),
+        }),
+      }),
+    } as never);
+
+    await discardFailedSimulatorSale(outboxId);
+
+    expect(await db.transactions.get(row.id)).toBeUndefined();
+    expect(await db.outbox.get(outboxId)).toBeUndefined();
+    expect((await db.products.get(row.items[0].product.id))?.stockQty).toBe(5);
+    expect(await db.stock_movements.where("transactionId").equals(row.id).count()).toBe(0);
   });
 
   it("removes the matching outbox entry only after server confirmation", async () => {

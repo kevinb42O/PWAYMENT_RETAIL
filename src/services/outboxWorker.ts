@@ -560,6 +560,97 @@ export interface OutboxRetryResult {
   entry?: OutboxEntry;
 }
 
+export const isFailedSimulatorSale = (entry: OutboxEntry): boolean => {
+  const transaction = entry.kind === "transaction"
+    ? entry.payload as Partial<Transaction>
+    : undefined;
+  return transaction?.kind !== "refund"
+    && isLocalMollieSimulatorReference(transaction?.paymentProviderReference);
+};
+
+/**
+ * Remove a never-delivered local terminal simulation and reverse only the
+ * local projections created by that checkout. Real/server-confirmed sales,
+ * finalized rows and gift-card activity are deliberately refused.
+ */
+export const discardFailedSimulatorSale = async (id: number): Promise<void> => {
+  const storeId = useAuth.getState().currentStoreId;
+  if (!storeId) throw new Error("Er is geen actieve winkel geselecteerd.");
+  const entry = await db.outbox.get(id);
+  if (!entry || !isFailedSimulatorSale(entry)) {
+    throw new Error("Alleen een lokale betaalterminalsimulatie kan zo worden verwijderd.");
+  }
+  const transaction = await recoverQueuedTransaction(entry.payload);
+  if (transaction.id == null || transaction.isFinalized === 1) {
+    throw new Error("Deze testverkoop zit al in een dagafsluiting en kan niet automatisch worden verwijderd.");
+  }
+  if ((transaction.giftCardAllocations?.length ?? 0) > 0) {
+    throw new Error("Deze testverkoop bevat cadeaubonactiviteit en vereist handmatige controle.");
+  }
+
+  const { data: remote, error: remoteError } = await supabase
+    .from("transactions")
+    .select("id")
+    .eq("store_id", storeId)
+    .eq("client_request_id", transaction.clientRequestId)
+    .maybeSingle();
+  if (remoteError) throw new Error(remoteError.message);
+  if (remote) {
+    throw new Error("Deze verkoop bestaat al op de server en mag niet lokaal worden verwijderd.");
+  }
+
+  await db.transaction(
+    "rw",
+    [db.outbox, db.transactions, db.products, db.stock_movements, db.customers, db.audit],
+    async () => {
+      const movements = await db.stock_movements
+        .where("transactionId")
+        .equals(transaction.id!)
+        .toArray();
+      const movementByProduct = new Map(
+        movements.map((movement) => [movement.productId, movement]),
+      );
+      for (const item of transaction.items) {
+        const product = await db.products.get(item.product.id);
+        if (product?.stockQty != null && !movementByProduct.has(item.product.id)) {
+          throw new Error(`De voorraadcorrectie voor ${item.product.name} ontbreekt; automatisch verwijderen is niet veilig.`);
+        }
+      }
+      for (const movement of movements) {
+        const product = await db.products.get(movement.productId);
+        if (product?.stockQty != null) {
+          await db.products.update(product.id, {
+            stockQty: product.stockQty - movement.quantityDelta,
+          });
+        }
+      }
+      if (transaction.customerId) {
+        const customer = await db.customers.get(transaction.customerId);
+        if (customer) {
+          await db.customers.update(customer.id, {
+            totalSpentCents: Math.max(0, customer.totalSpentCents - transaction.totalCents),
+            visitCount: Math.max(0, customer.visitCount - 1),
+          });
+        }
+      }
+      if (movements.length > 0) await db.stock_movements.bulkDelete(movements.map((row) => row.id!).filter(Number.isInteger));
+      await db.transactions.delete(transaction.id!);
+      await db.outbox.delete(id);
+      await db.audit.add({
+        timestamp: Date.now(),
+        userId: useAuth.getState().currentUserId ?? null,
+        userName: useAuth.getState().currentUserName ?? null,
+        action: "terminal-simulator.discard",
+        detail: {
+          transactionId: transaction.id,
+          clientRequestId: transaction.clientRequestId,
+          reason: "Niet-afgeleverde lokale terminalsimulatie verwijderd",
+        },
+      });
+    },
+  );
+};
+
 /** Retry one operator-selected row now and wait for its real delivery result. */
 export const retryOutboxEntryNow = async (id: number): Promise<OutboxRetryResult> => {
   const storeId = useAuth.getState().currentStoreId;
