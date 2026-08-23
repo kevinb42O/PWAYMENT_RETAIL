@@ -142,7 +142,7 @@ export const Layout: React.FC = () => {
   const [openAuditLogAtReturnSearch, setOpenAuditLogAtReturnSearch] =
     useState(false);
   const [profileInitialTarget, setProfileInitialTarget] = useState<{
-    tab: "billing" | "webshop-general" | "modules" | "workforce" | "leave-approvals" | "catalog-products";
+    tab: "billing" | "webshop-general" | "modules" | "workforce" | "leave-approvals" | "catalog-products" | "catalog-categories";
     requestKey: number;
     openNewProductRequestKey?: number;
   }>({ tab: "billing", requestKey: 0 });
@@ -196,6 +196,13 @@ export const Layout: React.FC = () => {
       tab: "catalog-products",
       requestKey: current.requestKey + 1,
       openNewProductRequestKey: current.requestKey + 1,
+    }));
+    setMainView("profile");
+  };
+  const openCategorySetup = () => {
+    setProfileInitialTarget((current) => ({
+      tab: "catalog-categories",
+      requestKey: current.requestKey + 1,
     }));
     setMainView("profile");
   };
@@ -322,7 +329,7 @@ export const Layout: React.FC = () => {
       setScanFeedback({
         tone: "info",
         title: "Ticketcode gescand",
-        detail: "Dit is een kassaticket voor een retour. Gebruik de knop 'Retour' om de bon op te zoeken.",
+        detail: "Dit is een kassaticket voor een retour. Gebruik de knop 'Retour' om het kassaticket op te zoeken.",
       });
       focusScanInput();
       return;
@@ -980,7 +987,7 @@ export const Layout: React.FC = () => {
                         query={productQuery}
                         onQueryChange={setProductQuery}
                         onStartStoreSetup={() => setStoreSetupOpen(true)}
-                        onAddProduct={openProductSetup}
+                        onAddCategory={openCategorySetup}
                         onImportProducts={openImportSetup}
                       />
                     )}
@@ -1028,7 +1035,7 @@ export const Layout: React.FC = () => {
                       query={productQuery}
                       onQueryChange={setProductQuery}
                       onStartStoreSetup={() => setStoreSetupOpen(true)}
-                      onAddProduct={openProductSetup}
+                      onAddCategory={openCategorySetup}
                       onImportProducts={openImportSetup}
                     />
                   </div>
@@ -1046,6 +1053,7 @@ export const Layout: React.FC = () => {
         <StoreSetupGuide
           open={storeSetupOpen}
           onClose={() => setStoreSetupOpen(false)}
+          onAddCategories={openCategorySetup}
           onAddProduct={openProductSetup}
           onImportProducts={openImportSetup}
         />

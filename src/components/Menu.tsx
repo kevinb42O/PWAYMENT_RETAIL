@@ -7,7 +7,7 @@ import {
   matchesCatalogQuery,
   normalizeCatalogQuery,
 } from "../utils/productLookup";
-import { Box, Grid2X2, Layers3, FileSpreadsheet, PackagePlus } from "lucide-react";
+import { Box, Grid2X2, Layers3, FileSpreadsheet } from "lucide-react";
 import { isGiftCardProduct } from "../utils/financial";
 
 const stockLabel = (stockQty?: number): string => {
@@ -28,7 +28,7 @@ interface MenuProps {
   onQueryChange: (value: string) => void;
   onStartStoreSetup?: () => void;
   onImportProducts?: () => void;
-  onAddProduct?: () => void;
+  onAddCategory?: () => void;
 }
 
 export const Menu: React.FC<MenuProps> = ({
@@ -36,7 +36,7 @@ export const Menu: React.FC<MenuProps> = ({
   onQueryChange,
   onStartStoreSetup,
   onImportProducts,
-  onAddProduct,
+  onAddCategory,
 }) => {
   const addOrderItem = useStore((s) => s.addOrderItem);
   const findByScanCode = useProducts((s) => s.findByScanCode);
@@ -478,7 +478,7 @@ export const Menu: React.FC<MenuProps> = ({
                     <div className="min-w-0">
                       <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Nieuwe winkel</p>
                       <h2 className="mt-1 text-base font-black tracking-tight text-slate-900">Voeg je eerste producten toe</h2>
-                      <p className="mt-1 max-w-xl text-xs leading-5 text-slate-500">Werk eerst je bongegevens af, importeer je productlijst of voeg één product handmatig toe.</p>
+                      <p className="mt-1 max-w-xl text-xs leading-5 text-slate-500">Werk eerst je kassaticketgegevens af, orden je categorieën en voeg daarna je eerste product toe.</p>
                     </div>
                     <button type="button" onClick={onStartStoreSetup} className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl bg-[#0e7490] px-4 text-xs font-extrabold text-white shadow-sm transition hover:bg-[#155e75]">
                       Je winkel starten
@@ -486,7 +486,7 @@ export const Menu: React.FC<MenuProps> = ({
                   </div>
                   <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 border-t border-slate-100 pt-4">
                     <button type="button" onClick={onImportProducts} className="inline-flex items-center gap-1.5 text-xs font-extrabold text-[#0e7490] hover:text-[#155e75] hover:underline"><FileSpreadsheet size={14} /> Productlijst importeren</button>
-                    <button type="button" onClick={onAddProduct} className="inline-flex items-center gap-1.5 text-xs font-extrabold text-slate-600 hover:text-slate-900 hover:underline"><PackagePlus size={14} /> Eerste product toevoegen</button>
+                    {onAddCategory && <button type="button" onClick={onAddCategory} className="inline-flex items-center gap-1.5 text-xs font-extrabold text-slate-600 hover:text-slate-900 hover:underline"><Layers3 size={14} /> Eerste categorieën toevoegen</button>}
                   </div>
                 </section>
               ) : (

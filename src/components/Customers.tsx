@@ -353,7 +353,7 @@ export const Customers: React.FC = () => {
       label:
         giftCardFilters.owner === "linked"
           ? "Gekoppeld aan klant"
-          : "Anonieme bon",
+          : "Anoniem kassaticket",
       clear: () =>
         setGiftCardFilters((current) => ({ ...current, owner: "all" })),
     });
@@ -812,7 +812,7 @@ export const Customers: React.FC = () => {
           <>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <Kpi
-                label="Bonnen in selectie"
+                label="Kassatickets in selectie"
                 value={`${gcStats.count} / ${giftCards.length}`}
               />
               <Kpi
@@ -983,7 +983,7 @@ export const Customers: React.FC = () => {
                       }
                       className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm"
                     >
-                      <option value="all">Alle bonnen</option>
+                      <option value="all">Alle kassatickets</option>
                       <option value="linked">Gekoppeld aan klant</option>
                       <option value="anonymous">Anoniem</option>
                     </select>
@@ -1786,7 +1786,7 @@ export const Customers: React.FC = () => {
                 value={String(viewingCustomer.visitCount)}
               />
               <CustomerMetric
-                label="Gemiddelde bon"
+                label="Gemiddeld kassaticket"
                 value={formatEUR(
                   viewingCustomer.visitCount > 0
                     ? Math.round(

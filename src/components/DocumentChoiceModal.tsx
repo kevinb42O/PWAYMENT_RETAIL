@@ -136,7 +136,7 @@ export const DocumentChoiceModal: React.FC<Props> = ({
 
         <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Documenttype">
           {([
-            ["receipt", "Ticket", "Thermische bon of herdruk na betaling", ReceiptText],
+            ["receipt", "Kassaticket", "Thermisch kassaticket of herdruk na betaling", ReceiptText],
             ["invoice-b2c", "Particulier", "A4-PDF met facturatieadres", UserRound],
             ["invoice-b2b", "Onderneming", "Btw-nummer en B2B-documentgegevens", Building2],
           ] as const).map(([choice, title, detail, Icon]) => (

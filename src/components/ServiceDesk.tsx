@@ -610,7 +610,7 @@ export const ServiceDesk: React.FC = () => {
               <div className="p-5 sm:p-7">
                 <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 pb-5">
                   <div><div className="flex items-center gap-2"><StatusBadge order={selected} /><span className="text-xs font-black text-slate-400">{selected.number}</span></div><h2 className="mt-3 text-2xl font-black text-slate-950">{selected.assetType}</h2><p className="mt-1 text-sm text-slate-500">{[selected.brand, selected.model, selected.identifierValue].filter(Boolean).join(" · ")}</p></div>
-                  <div className="flex flex-wrap gap-2"><button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"><Printer size={15} /> Bon</button><button type="button" onClick={() => void copyTrackingLink()} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"><Copy size={15} /> Link</button></div>
+                  <div className="flex flex-wrap gap-2"><button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"><Printer size={15} /> Kassaticket</button><button type="button" onClick={() => void copyTrackingLink()} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"><Copy size={15} /> Link</button></div>
                 </div>
 
                 <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">

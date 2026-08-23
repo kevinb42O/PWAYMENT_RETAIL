@@ -221,7 +221,7 @@ export const MODULE_DETAILS: Array<{
   {
     key: "service",
     title: "Hersteldienst",
-    description: "Intake, prijs, status, communicatie, bon en klanttracking.",
+    description: "Intake, prijs, status, communicatie, kassaticket en klanttracking.",
   },
   {
     key: "workforce",

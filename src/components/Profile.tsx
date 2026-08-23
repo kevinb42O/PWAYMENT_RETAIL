@@ -511,7 +511,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           >
             <div className="flex items-center gap-2.5">
               <Receipt size={16} className={activeTab === 'merchant' ? 'text-sky-600' : 'text-slate-500'} />
-              <span>Bonteksten & Branding</span>
+              <span>Kassaticket & Branding</span>
             </div>
           </button>
 
@@ -695,7 +695,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               {activeTab === 'catalog-categories' && 'Categoriebeheer'}
               {activeTab.startsWith('webshop') && 'Webshopbeheer'}
               {activeTab === 'general' && 'Winkel- & Bedrijfsprofiel'}
-              {activeTab === 'merchant' && 'Bonteksten & Ticket Branding'}
+              {activeTab === 'merchant' && 'Kassaticket & Branding'}
               {activeTab === 'labels' && 'Barcode Etiketten Printen'}
               {activeTab === 'integrations' && 'Koppelingen & API Integraties'}
               {activeTab === 'tax' && 'Btw-Tarieven & Fiscale Regels'}
@@ -1022,14 +1022,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                   <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2">
-                    <label className="block text-xs font-bold text-slate-900">Bon Papierbreedte</label>
+                    <label className="block text-xs font-bold text-slate-900">Papierbreedte kassaticket</label>
                     <select
                       value={paperWidth}
                       onChange={(e) => setPaperWidth(e.target.value as '80mm' | '58mm')}
                       className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     >
-                      <option value="80mm">80mm Standaard Retail Bon (42 tekens/regel)</option>
-                      <option value="58mm">58mm Compacte Bon (32 tekens/regel)</option>
+                      <option value="80mm">80mm standaard retail-kassaticket (42 tekens/regel)</option>
+                      <option value="58mm">58mm compact kassaticket (32 tekens/regel)</option>
                     </select>
                     <p className="text-[11px] text-slate-500">Bepaalt de tekstformattering op het afgedrukte ticket.</p>
                   </div>
@@ -1042,7 +1042,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       className="mt-0.5 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer shrink-0"
                     />
                     <label htmlFor="auto-paper-cut-chk" className="cursor-pointer">
-                      <div className="text-xs font-bold text-slate-900">Automatisch Bon Snijden (Paper Cut)</div>
+                      <div className="text-xs font-bold text-slate-900">Kassaticket automatisch snijden</div>
                       <div className="text-[11px] text-slate-500 mt-0.5">Stuur automatisch een snijcommando na het printen</div>
                     </label>
                   </div>

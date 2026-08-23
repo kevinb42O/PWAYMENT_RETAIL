@@ -898,7 +898,7 @@ export const ZReportView: React.FC = () => {
           />
           <Metric
             icon={ShoppingBag}
-            label="Gemiddelde bon"
+            label="Gemiddeld kassaticket"
             value={formatEUR(analytics.averageBasketCents)}
             detail="Per afgerekende transactie"
           />

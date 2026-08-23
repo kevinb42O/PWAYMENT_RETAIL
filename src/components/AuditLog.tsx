@@ -531,7 +531,7 @@ const ReturnTicketScanDialog = ({
     }
     const transaction = transactions.find((row) => row.receiptBarcode === barcode);
     if (!transaction) {
-      setError("Dit ticket staat niet in de lokale winkeldata. Vernieuw de synchronisatie of zoek de bon handmatig op.");
+      setError("Dit kassaticket staat niet in de lokale winkeldata. Vernieuw de synchronisatie of zoek het kassaticket handmatig op.");
       return;
     }
     if ((transaction.kind ?? "sale") !== "sale") {

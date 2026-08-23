@@ -379,7 +379,7 @@ export const THERMAL_PRINTER_CATALOG: ThermalPrinterBrand[] = [
         protocol: 'ESC/POS Label Mode',
         paperSizes: ['80mm'],
         speed: '150 mm/s',
-        description: 'Kassaprinter geschikt voor zowel bonnen als plakkende barcode-etiketten.',
+        description: 'Kassaprinter geschikt voor zowel kassatickets als plakkende barcode-etiketten.',
       },
     ],
   },

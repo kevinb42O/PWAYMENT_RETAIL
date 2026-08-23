@@ -320,7 +320,7 @@ export const BillingSettings: React.FC<BillingSettingsProps> = ({
                       <li>1 Kassa-terminal inbegrepen; extra terminals als add-on</li>
                       <li>Dual-screen klantendisplay inbegrepen</li>
                       <li>Geïntegreerde pinautomaten (Worldline, CCV, SumUp, Viva, Verifone)</li>
-                      <li>Weegschaal & Automatisch bon snijden</li>
+                      <li>Weegschaal & automatisch kassaticket snijden</li>
                     </ul>
                   </div>
 
