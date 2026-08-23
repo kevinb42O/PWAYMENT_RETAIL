@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { AlertCircle, CheckCircle2, RefreshCw } from "lucide-react";
-import { getOutboxEntriesNeedingResolution, retryOutboxEntry } from "../db/outbox";
+import { getOutboxEntriesNeedingResolution } from "../db/outbox";
 import { humanizeOutboxIssue } from "../pace/outboxIssue";
+import { retryOutboxEntryNow } from "../services/outboxWorker";
 
 interface OutboxRecoveryQueueProps {
   focusRequestKey?: number;
@@ -31,12 +32,17 @@ export const OutboxRecoveryQueue: React.FC<OutboxRecoveryQueueProps> = ({ focusR
   const retry = async (id: number) => {
     setRetryingId(id);
     try {
-      if (!await retryOutboxEntry(id)) {
+      const result = await retryOutboxEntryNow(id);
+      if (!result.delivered && !result.entry) {
         setMessage({ text: "Deze herstelactie bestaat niet meer.", success: false });
         return;
       }
-      window.dispatchEvent(new Event("online"));
-      setMessage({ text: "De wijziging wordt opnieuw aangeboden.", success: true });
+      if (!result.delivered && result.entry) {
+        const issue = humanizeOutboxIssue(result.entry);
+        setMessage({ text: `${issue.summary} ${issue.resolution}`, success: false });
+        return;
+      }
+      setMessage({ text: "De verkoop is door de server bevestigd en uit de wachtrij verwijderd.", success: true });
     } catch (error) {
       setMessage({
         text: error instanceof Error ? error.message : "Opnieuw proberen is mislukt.",

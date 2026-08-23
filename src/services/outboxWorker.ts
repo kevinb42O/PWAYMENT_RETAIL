@@ -1,4 +1,4 @@
-import { drainOutbox } from "../db/outbox";
+import { drainOutbox, retryOutboxEntry } from "../db/outbox";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { useAuth } from "../auth/useAuth";
 import type { Json } from "../types/database.generated";
@@ -52,6 +52,32 @@ const terminalTendersForServer = (tx: Transaction) => {
 // be booked normally without weakening validation for genuine Mollie ids.
 const isLocalMollieSimulatorReference = (reference?: string): boolean =>
   /^sim_[a-f0-9]{32}$/i.test(reference ?? "");
+
+/**
+ * Outbox rows are durable snapshots, but older app versions can leave a
+ * partial/stale snapshot behind. The transaction table is the local financial
+ * ledger and therefore the canonical recovery source for a queued sale.
+ */
+const recoverQueuedTransaction = async (payload: unknown): Promise<Transaction> => {
+  const queued = payload as Partial<Transaction> | null;
+  let recovered: Transaction | undefined;
+  if (Number.isInteger(queued?.id)) {
+    recovered = await db.transactions.get(queued!.id!);
+  }
+  if (!recovered && typeof queued?.clientRequestId === "string") {
+    recovered = await db.transactions
+      .filter((row) => row.clientRequestId === queued.clientRequestId)
+      .first();
+  }
+  const transaction = recovered ?? queued;
+  if (!transaction || typeof transaction.clientRequestId !== "string") {
+    throw new Error("De lokale verkoop mist haar unieke synchronisatiereferentie.");
+  }
+  if (!Array.isArray(transaction.items) || transaction.items.length === 0) {
+    throw new Error("De lokale verkoop bevat geen herstelbare verkoopregels.");
+  }
+  return transaction as Transaction;
+};
 
 const pushTransactionToSupabase = async (
   storeId: string,
@@ -418,7 +444,7 @@ export const synchronizeFinancialLedgerBeforeReport = async (
 
 const sendOutboxEntry = async (storeId: string, entry: OutboxEntry) => {
   if (entry.kind === "transaction") {
-    await pushTransactionToSupabase(storeId, entry.payload as Transaction);
+    await pushTransactionToSupabase(storeId, await recoverQueuedTransaction(entry.payload));
   } else if (entry.kind === "daily_report") {
     await pushLegacyDailyReportToSupabase(storeId, entry.payload);
   } else if (entry.kind === "webshop_order") {
@@ -487,6 +513,37 @@ const withOutboxLeader = async (
     if (!lock) return;
     await task();
   });
+};
+
+export interface OutboxRetryResult {
+  delivered: boolean;
+  entry?: OutboxEntry;
+}
+
+/** Retry one operator-selected row now and wait for its real delivery result. */
+export const retryOutboxEntryNow = async (id: number): Promise<OutboxRetryResult> => {
+  const storeId = useAuth.getState().currentStoreId;
+  if (!storeId) throw new Error("Er is geen actieve winkel geselecteerd.");
+  if (!isSupabaseConfigured) throw new Error("De beveiligde serververbinding is niet geconfigureerd.");
+  if (globalThis.navigator?.onLine === false) throw new Error("Er is momenteel geen internetverbinding.");
+  if (!await retryOutboxEntry(id)) return { delivered: false };
+
+  let outcome: OutboxRetryResult = { delivered: false };
+  await withOutboxLeader(storeId, async () => {
+    const result = await drainOutbox(
+      (entry) => sendOutboxEntry(storeId, entry),
+      { maxEntries: 1, shouldProcess: (entry) => entry.id === id },
+    );
+    if (result.delivered === 1) {
+      outcome = { delivered: true };
+      return;
+    }
+    outcome = {
+      delivered: false,
+      entry: result.failed ?? await db.outbox.get(id),
+    };
+  });
+  return outcome;
 };
 
 export const startOutboxWorker = () => {

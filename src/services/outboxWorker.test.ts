@@ -2,6 +2,7 @@ import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "../db/db";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../auth/useAuth";
 import type { Transaction } from "../types";
 import { synchronizeFinancialLedgerBeforeReport } from "./outboxWorker";
 
@@ -178,6 +179,35 @@ describe("synchronizeFinancialLedgerBeforeReport", () => {
     const payload = (rpc.mock.calls[0][1] as { payload: Record<string, unknown> }).payload;
     expect(payload).not.toHaveProperty("payment_provider");
     expect(payload).not.toHaveProperty("payment_provider_reference");
+  });
+
+  it("recovers a stale queued transaction snapshot from the canonical local ledger", async () => {
+    const row = {
+      ...transaction("recovered-outbox-contract"),
+      id: 91,
+      paymentProvider: "mollie" as const,
+      paymentProviderReference: "sim_12345678123441238123123456789abc",
+    };
+    await db.transactions.put(row);
+    const outboxId = await db.outbox.add({
+      timestamp: row.timestamp,
+      kind: "transaction",
+      payload: { id: 91, clientRequestId: row.clientRequestId },
+      attempts: 5,
+      deliveryStatus: "dead_letter",
+    });
+    const rpc = vi.spyOn(supabase, "rpc").mockResolvedValue({
+      data: { duplicate: false },
+      error: null,
+    } as never);
+    useAuth.setState({ currentStoreId: "00000000-0000-0000-0000-000000000001" });
+
+    const { retryOutboxEntryNow } = await import("./outboxWorker");
+    const result = await retryOutboxEntryNow(outboxId);
+
+    expect(result.delivered).toBe(true);
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(await db.outbox.count()).toBe(0);
   });
 
   it("removes the matching outbox entry only after server confirmation", async () => {

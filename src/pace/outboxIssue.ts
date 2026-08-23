@@ -48,6 +48,18 @@ export const humanizeOutboxIssue = (entry: OutboxEntry): HumanizedOutboxIssue =>
       resolution: "Synchroniseer of herstel de klant eerst en probeer de wijziging daarna opnieuw.",
     };
   }
+  if (includes(message, /unieke synchronisatiereferentie/i)) {
+    return {
+      summary: "De lokale verkoop mist haar unieke synchronisatiesleutel.",
+      resolution: "Deze verkoop kan niet veilig automatisch worden samengevoegd; laat de lokale boeking controleren.",
+    };
+  }
+  if (includes(message, /geen herstelbare verkoopregels/i)) {
+    return {
+      summary: "De lokale wachtrijkopie was onvolledig en de oorspronkelijke verkoopregels ontbreken ook.",
+      resolution: "Probeer deze verkoop niet opnieuw aan te maken; laat de lokale boeking controleren.",
+    };
+  }
   if (includes(message, /insufficient-stock|onvoldoende voorraad|negative stock/i)) {
     return {
       summary: "De server weigert de wijziging omdat de beschikbare voorraad niet volstaat.",
