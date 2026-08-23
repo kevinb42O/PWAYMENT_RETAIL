@@ -157,7 +157,7 @@ export const Layout: React.FC = () => {
     useState(false);
   const [returnReceiptBarcode, setReturnReceiptBarcode] = useState<string | null>(null);
   const [profileInitialTarget, setProfileInitialTarget] = useState<{
-    tab: "billing" | "webshop-general" | "modules" | "workforce" | "leave-approvals" | "catalog-products" | "catalog-categories" | "labels";
+    tab: "billing" | "webshop-general" | "modules" | "workforce" | "leave-approvals" | "catalog-products" | "catalog-categories" | "labels" | "integrations";
     requestKey: number;
     openNewProductRequestKey?: number;
   }>({ tab: "billing", requestKey: 0 });
@@ -201,7 +201,7 @@ export const Layout: React.FC = () => {
     && isFeatureEnabledForSnapshot(entitlementSnapshot, FEATURE_KEYS.workforce);
 
   const openProfile = (
-    tab: "billing" | "webshop-general" | "modules" | "workforce" | "leave-approvals" | "catalog-products" | "catalog-categories" | "labels" = "billing",
+    tab: "billing" | "webshop-general" | "modules" | "workforce" | "leave-approvals" | "catalog-products" | "catalog-categories" | "labels" | "integrations" = "billing",
   ) => {
     setProfileInitialTarget((current) => ({
       tab,

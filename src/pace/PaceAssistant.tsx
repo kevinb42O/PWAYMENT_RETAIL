@@ -39,7 +39,7 @@ interface PaceAssistantProps extends PaceContext {
   suppressed?: boolean;
   onNavigate: (view: MainView) => void;
   onOpenSetup: () => void;
-  onOpenProfile: (tab: "billing" | "modules" | "catalog-products" | "webshop-general") => void;
+  onOpenProfile: (tab: "billing" | "modules" | "catalog-products" | "webshop-general" | "integrations") => void;
   onOpenMilestone: (milestone: PaceSetupMilestone) => void;
 }
 

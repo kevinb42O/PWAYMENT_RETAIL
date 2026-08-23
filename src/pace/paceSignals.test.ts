@@ -56,7 +56,7 @@ describe("Pace signal engine", () => {
     );
     expect(signals[0]).toMatchObject({
       id: "failed-sync",
-      action: { kind: "navigate", view: "integration-hub" },
+      action: { kind: "profile", tab: "integrations" },
       tone: "attention",
     });
     expect(signals[0].compact).toBe("Een product bestaat nog niet op de server.");

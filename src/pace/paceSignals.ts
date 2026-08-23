@@ -5,7 +5,7 @@ export type PaceSignalTone = "flow" | "attention" | "success";
 export type PaceAction =
   | { kind: "navigate"; view: MainView }
   | { kind: "setup" }
-  | { kind: "profile"; tab: "billing" | "modules" | "catalog-products" | "webshop-general" }
+  | { kind: "profile"; tab: "billing" | "modules" | "catalog-products" | "webshop-general" | "integrations" }
   | { kind: "none" };
 
 export interface PaceSignal {
@@ -140,8 +140,10 @@ export const buildPaceSignals = (
       title: `${context.failedSync} ${context.failedSync === 1 ? "synchronisatie vraagt" : "synchronisaties vragen"} herstel`,
       compact: context.syncIssueSummary ?? "Dit toestel is online, maar deze levering is afgewezen.",
       detail: context.syncIssueResolution ?? "Open de herstelwachtrij, corrigeer eerst de getoonde oorzaak en plan daarna alleen de juiste rij opnieuw in.",
-      actionLabel: "Open herstelwachtrij",
-      action: { kind: "navigate", view: "integration-hub" },
+      actionLabel: context.role === "owner" || context.role === "manager" ? "Open herstelwachtrij" : undefined,
+      action: context.role === "owner" || context.role === "manager"
+        ? { kind: "profile", tab: "integrations" }
+        : { kind: "none" },
       tone: "attention",
       priority: 95,
     });

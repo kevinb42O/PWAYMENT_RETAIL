@@ -8,6 +8,7 @@ import { MerchantSettings } from './MerchantSettings';
 import { BarcodeLabelPrint } from './BarcodeLabelPrint';
 import { ThermalPrinterPanel } from './ThermalPrinterPanel';
 import { IntegrationsSettings } from './IntegrationsSettings';
+import { OutboxRecoveryQueue } from './OutboxRecoveryQueue';
 import { LoyaltySettings } from './LoyaltySettings';
 import { BillingSettings, BillingSubTab } from './BillingSettings';
 import { WebshopSettings } from './WebshopSettings';
@@ -939,13 +940,16 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
         {/* TAB 6: KOPPELINGEN & API (PRO FEATURE) */}
         {activeTab === 'integrations' && (
-          <FeatureGate
-            feature={FEATURE_KEYS.integrations}
-            title="Koppelingen, API en webhooks vereisen Retail Professional"
-            onUpgrade={() => setActiveTab('billing-plan')}
-          >
-            <IntegrationsSettings />
-          </FeatureGate>
+          <div className="space-y-5">
+            <OutboxRecoveryQueue focusRequestKey={initialTabRequestKey} />
+            <FeatureGate
+              feature={FEATURE_KEYS.integrations}
+              title="Koppelingen, API en webhooks vereisen Retail Professional"
+              onUpgrade={() => setActiveTab('billing-plan')}
+            >
+              <IntegrationsSettings />
+            </FeatureGate>
+          </div>
         )}
 
         {/* TAB 7: BTW & FISCALE REGELS */}
