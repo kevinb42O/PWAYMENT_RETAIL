@@ -12,10 +12,9 @@ import {
 } from "lucide-react";
 import { useAuth } from "../auth/useAuth";
 import { Modal } from "./Modal";
-import { ReceiptTicket } from "./ReceiptTicket";
+import { MerchantTicketPreview } from "./MerchantTicketPreview";
 import { useMerchantProfile } from "../store/useMerchantProfile";
 import { useStoreConfiguration } from "../store/useStoreConfiguration";
-import type { Transaction } from "../types";
 
 type GuideStep = "welcome" | "identity" | "categories" | "catalog";
 
@@ -28,26 +27,6 @@ interface StoreSetupGuideProps {
 }
 
 const STEPS: GuideStep[] = ["welcome", "identity", "categories", "catalog"];
-
-const previewTransaction: Transaction = {
-  id: 0,
-  documentNumber: "VOORBEELD-0001",
-  tableId: 1,
-  items: [{
-    lineId: "preview-item",
-    product: { id: "preview-product", name: "Voorbeeldartikel", category: "preview", priceCents: 2495, vatRate: 21 },
-    quantity: 1,
-  }],
-  subtotalCents: 2495,
-  vat12Cents: 0,
-  vat21Cents: 433,
-  totalCents: 2495,
-  discountCents: 0,
-  paymentMethod: "PIN",
-  timestamp: Date.now(),
-  isFinalized: 1,
-  userName: "Kassa 1",
-};
 
 const sourceLabel = (source: string): string => {
   const labels: Record<string, string> = {
@@ -166,8 +145,11 @@ export const StoreSetupGuide: React.FC<StoreSetupGuideProps> = ({
           >
             {stepIndex === 0 ? <><X size={15} /> Later</> : <><ArrowLeft size={15} /> Vorige</>}
           </button>
-          <div className="hidden items-center gap-1.5 sm:flex" aria-label={`Stap ${stepIndex + 1} van ${STEPS.length}`}>
-            {STEPS.map((item, index) => <span key={item} className={`h-1.5 rounded-full transition-all ${index === stepIndex ? "w-7 bg-sky-600" : index < stepIndex ? "w-1.5 bg-emerald-500" : "w-1.5 bg-slate-200"}`} />)}
+          <div className="flex items-center gap-3">
+            {step === "identity" && <button type="button" onClick={saveIdentity} disabled={!canSaveIdentity} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#0e7490] px-4 text-xs font-extrabold text-white shadow-sm shadow-cyan-900/15 transition hover:bg-[#155e75] disabled:cursor-not-allowed disabled:opacity-40"><Check size={15} /> Gegevens bewaren</button>}
+            <div className="hidden items-center gap-1.5 sm:flex" aria-label={`Stap ${stepIndex + 1} van ${STEPS.length}`}>
+              {STEPS.map((item, index) => <span key={item} className={`h-1.5 rounded-full transition-all ${index === stepIndex ? "w-7 bg-sky-600" : index < stepIndex ? "w-1.5 bg-emerald-500" : "w-1.5 bg-slate-200"}`} />)}
+            </div>
           </div>
         </div>
       }
@@ -203,7 +185,7 @@ export const StoreSetupGuide: React.FC<StoreSetupGuideProps> = ({
                 <Receipt size={18} className="mt-0.5 shrink-0 text-amber-700" />
                 <p><strong>Zo verschijnt je zaak op je kassaticket.</strong> Deze gegevens worden rechtstreeks bewaard bij je bestaande kassaticket- en factuurinstellingen.</p>
               </div>
-              <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
+              <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Winkelnaam" required><input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} className="guide-input" autoComplete="organization" /></Field>
                   <Field label="Officiële bedrijfsnaam"><input value={form.legalName} onChange={(event) => setForm((current) => ({ ...current, legalName: event.target.value }))} className="guide-input" /></Field>
@@ -216,15 +198,10 @@ export const StoreSetupGuide: React.FC<StoreSetupGuideProps> = ({
                 </div>
                 <aside className="rounded-2xl border border-cyan-100 bg-cyan-50/50 p-3 shadow-sm">
                   <div className="mb-3 flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#0e7490]">Live preview</p><p className="mt-0.5 text-xs font-bold text-slate-700">Je kassaticket</p></div><Receipt size={17} className="text-[#0e7490]" /></div>
-                  <div className="max-h-[360px] overflow-auto rounded-xl bg-slate-900 p-2"><ReceiptTicket transaction={previewTransaction} merchantOverride={previewMerchant} /></div>
+                  <div className="max-h-[480px] overflow-y-auto overflow-x-hidden rounded-xl bg-slate-900 p-2"><MerchantTicketPreview merchant={previewMerchant} /></div>
                 </aside>
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
-                <p className="text-xs text-slate-500">Velden met <span className="font-bold text-rose-600">*</span> zijn nodig voor een correct kassaticket.</p>
-                <button type="button" onClick={saveIdentity} disabled={!canSaveIdentity} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#0e7490] px-4 text-sm font-extrabold text-white shadow-md shadow-cyan-900/15 transition hover:bg-[#155e75] disabled:cursor-not-allowed disabled:opacity-40">
-                  <Check size={17} /> Gegevens bewaren
-                </button>
-              </div>
+              <p className="border-t border-slate-100 pt-4 text-xs text-slate-500">Velden met <span className="font-bold text-rose-600">*</span> zijn nodig voor een correct kassaticket. Je bewaart de gegevens via de vaste balk onderaan.</p>
             </div>
           )}
 
