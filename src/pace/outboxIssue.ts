@@ -62,6 +62,12 @@ export const humanizeOutboxIssue = (entry: OutboxEntry): HumanizedOutboxIssue =>
       resolution: "Probeer deze verkoop niet opnieuw aan te maken; laat de lokale boeking controleren.",
     };
   }
+  if (includes(message, /cannot read properties of undefined.*reading ['"]rest['"]/i)) {
+    return {
+      summary: "De lokale verkooproute kon de beveiligde serververbinding niet starten.",
+      resolution: "Dit is een interne synchronisatiefout, geen internet- of betaalfout. Herlaad PWAYMENT na de software-update; de bewaarde verkoop wordt daarna automatisch afgeleverd.",
+    };
+  }
   if (includes(message, /insufficient-stock|onvoldoende voorraad|negative stock/i)) {
     return {
       summary: "De server weigert de wijziging omdat de beschikbare voorraad niet volstaat.",

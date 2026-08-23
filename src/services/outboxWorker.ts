@@ -216,7 +216,15 @@ const pushTransactionToSupabase = async (
 
     // Generated database types are refreshed in the next schema-codegen run;
     // the migration is already deployed and the payload is intentionally JSON.
-    const rpc = supabase.rpc as unknown as (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
+    // SupabaseClient.rpc reads `this.rest`. Extracting the method and calling
+    // it as a plain function drops that receiver and makes every sale fail
+    // locally with "Cannot read properties of undefined (reading 'rest')"
+    // before a request can reach Supabase. Keep an explicitly bound function
+    // because this helper is reused for both checkout and PSP reconciliation.
+    const rpc = supabase.rpc.bind(supabase) as unknown as (
+      name: string,
+      args: Record<string, unknown>,
+    ) => Promise<{ data: unknown; error: { message: string } | null }>;
     const { data, error } = await rpc(isGiftCardCheckout ? "checkout_gift_card_sale" : "checkout_sale", {
       target_store_id: storeId,
       payload: payload as unknown as Json,

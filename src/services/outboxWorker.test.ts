@@ -62,6 +62,9 @@ describe("synchronizeFinancialLedgerBeforeReport", () => {
         payload: expect.objectContaining({ client_request_id: "close-race-1" }),
       }),
     );
+    // Regression: SupabaseClient.rpc depends on its object receiver (`this`).
+    // A detached call never reaches HTTP and used to dead-letter every sale.
+    expect(rpc.mock.contexts[0]).toBe(supabase);
   });
 
   it("sends split Cash/PIN tenders without folding gift-card value into a fake terminal payment", async () => {

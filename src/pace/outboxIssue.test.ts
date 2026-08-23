@@ -58,6 +58,16 @@ describe("Pace outbox error language", () => {
     });
   });
 
+  it("identifies the detached Supabase RPC failure as a local software error", () => {
+    expect(humanizeOutboxIssue(entry({
+      deliveryStatus: "retrying",
+      lastError: "Cannot read properties of undefined (reading 'rest')",
+    }))).toEqual({
+      summary: "De lokale verkooproute kon de beveiligde serververbinding niet starten.",
+      resolution: "Dit is een interne synchronisatiefout, geen internet- of betaalfout. Herlaad PWAYMENT na de software-update; de bewaarde verkoop wordt daarna automatisch afgeleverd.",
+    });
+  });
+
   it("prioritizes a permanently rejected financial row", async () => {
     await db.outbox.bulkAdd([
       entry({ kind: "upsert_product", deliveryStatus: "retrying", lastError: "Failed to fetch" }),
