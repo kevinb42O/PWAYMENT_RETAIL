@@ -2150,3 +2150,101 @@ body {
   border-color: #0ea5e9;
   box-shadow: 0 0 0 4px #e0f2fe;
 }
+
+/* The setup guide stays visually connected to the real settings control. The
+   cue is deliberately part of the target itself, so it remains correct when
+   the sidebar scrolls or changes between desktop and tablet layouts. */
+@keyframes setup-target-breathe {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(14, 116, 144, 0.2), 0 8px 22px rgba(14, 116, 144, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(14, 116, 144, 0), 0 12px 28px rgba(14, 116, 144, 0.16);
+  }
+}
+
+@keyframes setup-target-point {
+  0%, 100% { transform: translateX(0) rotate(-7deg); }
+  50% { transform: translateX(-4px) rotate(-7deg); }
+}
+
+@keyframes setup-companion-enter {
+  from { opacity: 0; transform: translateY(14px) scale(0.975); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.setup-target-highlight {
+  isolation: isolate;
+  border-color: #67e8f9 !important;
+  background: linear-gradient(105deg, #ecfeff 0%, #f0f9ff 100%) !important;
+  color: #0e7490 !important;
+  animation: setup-target-breathe 1.9s ease-in-out infinite;
+}
+
+.setup-target-highlight::before {
+  position: absolute;
+  inset: 2px;
+  z-index: -1;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: inherit;
+  content: "";
+}
+
+.setup-target-cue {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid rgba(14, 116, 144, 0.16);
+  border-radius: 999px;
+  background: #ffffff;
+  padding: 0.2rem 0.42rem;
+  color: #0e7490;
+  font-size: 0.55rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(14, 116, 144, 0.12);
+  animation: setup-target-point 1.15s ease-in-out infinite;
+}
+
+.setup-companion {
+  animation: setup-companion-enter 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.setup-companion-pointer {
+  display: inline-flex;
+  transition: transform 180ms ease;
+}
+
+.setup-companion button:hover .setup-companion-pointer {
+  transform: translateX(3px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .setup-target-highlight,
+  .setup-target-cue,
+  .setup-companion {
+    animation: none;
+  }
+}
+
+/* A thermal kassaticket is a physical black-on-white document. It must never
+   inherit the surrounding app theme or a dark preview panel's text color. */
+.receipt-ticket-preview {
+  color-scheme: light;
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+.receipt-ticket-preview * {
+  color: inherit !important;
+  -webkit-text-fill-color: inherit !important;
+}
+
+.receipt-ticket-preview .text-zinc-600 {
+  color: #52525b !important;
+  -webkit-text-fill-color: #52525b !important;
+}

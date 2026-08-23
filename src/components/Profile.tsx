@@ -73,6 +73,7 @@ import {
   CalendarClock,
   Clock,
   Edit2,
+  MousePointer2,
   Trash2,
   UserPlus,
   KeyRound,
@@ -119,12 +120,21 @@ interface ProfileViewProps {
   initialTab?: WorkspaceTab;
   initialTabRequestKey?: number;
   openNewProductRequestKey?: number;
+  setupHighlightTarget?: 'catalog-categories' | 'catalog-products' | 'labels' | null;
 }
+
+const SetupTargetCue = () => (
+  <span className="setup-target-cue ml-auto" aria-hidden="true">
+    <MousePointer2 size={12} strokeWidth={2.5} />
+    <span>Hier verder</span>
+  </span>
+);
 
 export const ProfileView: React.FC<ProfileViewProps> = ({
   initialTab,
   initialTabRequestKey,
   openNewProductRequestKey,
+  setupHighlightTarget,
 }) => {
   const currentStoreIsDemo = useAuth((s) => s.currentStoreIsDemo);
   const currentRole = useAuth((s) => s.currentRole);
@@ -232,6 +242,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     setWebshopExpanded(initialTab.startsWith('webshop'));
     setHardwareExpanded(initialTab.startsWith('hardware'));
   }, [initialTab, initialTabRequestKey]);
+
+  useEffect(() => {
+    if (setupHighlightTarget?.startsWith('catalog-')) {
+      setCatalogExpanded(true);
+    }
+  }, [setupHighlightTarget]);
 
   useEffect(() => {
     if (!currentStoreId || (activeTab !== 'team' && activeTab !== 'workforce' && activeTab !== 'leave-approvals')) return;
@@ -415,7 +431,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     <button
                       key={sub.id}
                       onClick={() => setActiveTab(sub.id as WorkspaceTab)}
-                      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                      data-setup-target={sub.id}
+                      className={`relative w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${setupHighlightTarget === sub.id ? 'setup-target-highlight' : ''} ${
                         isSubActive
                           ? 'bg-sky-100 text-sky-900 font-extrabold'
                           : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 font-semibold'
@@ -423,6 +440,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     >
                       {sub.icon}
                       <span className="truncate whitespace-nowrap">{sub.label}</span>
+                      {setupHighlightTarget === sub.id && <SetupTargetCue />}
                     </button>
                   );
                 })}
@@ -518,7 +536,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           {/* 5. BARCODE ETIKETTEN */}
           <button
             onClick={() => setActiveTab('labels')}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+            data-setup-target="labels"
+            className={`relative w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${setupHighlightTarget === 'labels' ? 'setup-target-highlight' : ''} ${
               activeTab === 'labels'
                 ? 'border border-sky-200 bg-sky-50 text-sky-800 shadow-xs'
                 : 'border border-transparent text-slate-600 hover:border-sky-100 hover:bg-sky-50 hover:text-sky-800 font-semibold'
@@ -528,6 +547,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <Barcode size={16} className={activeTab === 'labels' ? 'text-sky-600' : 'text-slate-500'} />
               <span>Barcode Etiketten</span>
             </div>
+            {setupHighlightTarget === 'labels' && <SetupTargetCue />}
           </button>
 
           {/* 6. KOPPELINGEN & API */}

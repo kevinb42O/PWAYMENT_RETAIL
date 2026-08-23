@@ -60,8 +60,9 @@ export const ReceiptTicket: React.FC<Props> = ({ transaction: t, merchantOverrid
 
   return (
     <div
-      className="bg-white text-black mx-auto font-mono text-[11px] leading-snug print:shadow-none shadow-2xl print:border-none border border-zinc-300 print:p-0 p-4"
-      style={{ width: '320px', minHeight: '420px' }}
+      className="receipt-ticket-preview bg-white text-black mx-auto font-mono text-[11px] leading-snug print:shadow-none shadow-2xl print:border-none border border-zinc-300 print:p-0 p-4"
+      style={{ width: '320px', minHeight: '420px', colorScheme: 'light' }}
+      data-testid="receipt-ticket-preview"
     >
       {/* Header */}
       <div className="text-center mb-2">

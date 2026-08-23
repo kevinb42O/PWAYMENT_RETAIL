@@ -11,7 +11,7 @@ import { supabase } from "../lib/supabase";
 import { useStoreConfiguration } from "../store/useStoreConfiguration";
 import { useWorkforce } from "../store/useWorkforce";
 import { Modal } from "./Modal";
-import { StoreSetupGuide } from "./StoreSetupGuide";
+import { StoreSetupGuide, type SetupGuideTarget } from "./StoreSetupGuide";
 import { FirstProductTour } from "./FirstProductTour";
 import {
   AlertCircle,
@@ -142,11 +142,12 @@ export const Layout: React.FC = () => {
   const [openAuditLogAtReturnSearch, setOpenAuditLogAtReturnSearch] =
     useState(false);
   const [profileInitialTarget, setProfileInitialTarget] = useState<{
-    tab: "billing" | "webshop-general" | "modules" | "workforce" | "leave-approvals" | "catalog-products" | "catalog-categories";
+    tab: "billing" | "webshop-general" | "modules" | "workforce" | "leave-approvals" | "catalog-products" | "catalog-categories" | "labels";
     requestKey: number;
     openNewProductRequestKey?: number;
   }>({ tab: "billing", requestKey: 0 });
   const [storeSetupOpen, setStoreSetupOpen] = useState(false);
+  const [storeSetupTarget, setStoreSetupTarget] = useState<SetupGuideTarget | null>(null);
   const [firstProductTourName, setFirstProductTourName] = useState<string | null>(null);
   const [leaveApprovalGateOpen, setLeaveApprovalGateOpen] = useState(false);
   const [leaveApprovalPin, setLeaveApprovalPin] = useState("");
@@ -183,7 +184,7 @@ export const Layout: React.FC = () => {
     && isFeatureEnabledForSnapshot(entitlementSnapshot, FEATURE_KEYS.workforce);
 
   const openProfile = (
-    tab: "billing" | "webshop-general" | "modules" | "workforce" | "leave-approvals" | "catalog-products" = "billing",
+    tab: "billing" | "webshop-general" | "modules" | "workforce" | "leave-approvals" | "catalog-products" | "catalog-categories" | "labels" = "billing",
   ) => {
     setProfileInitialTarget((current) => ({
       tab,
@@ -206,6 +207,7 @@ export const Layout: React.FC = () => {
     }));
     setMainView("profile");
   };
+  const openBarcodeLabelSetup = () => openProfile("labels");
   const openImportSetup = () => setMainView("integration-hub");
   const approvalStoreId = currentStoreId ?? (import.meta.env.VITE_E2E_BUILD === "true" ? "fixture-store" : null);
   const openLeaveApprovalGate = () => {
@@ -911,6 +913,7 @@ export const Layout: React.FC = () => {
                 initialTab={profileInitialTarget.tab}
                 initialTabRequestKey={profileInitialTarget.requestKey}
                 openNewProductRequestKey={profileInitialTarget.openNewProductRequestKey}
+                setupHighlightTarget={storeSetupTarget}
               />
             ) : (
               <div className="flex-1 flex items-center justify-center text-slate-500 font-medium">
@@ -1056,6 +1059,8 @@ export const Layout: React.FC = () => {
           onAddCategories={openCategorySetup}
           onAddProduct={openProductSetup}
           onImportProducts={openImportSetup}
+          onOpenBarcodeLabels={openBarcodeLabelSetup}
+          onTargetChange={setStoreSetupTarget}
         />
       )}
       {firstProductTourName && (

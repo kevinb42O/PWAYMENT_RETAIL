@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
+  Barcode,
   Check,
+  CheckCircle2,
   FileSpreadsheet,
   PackagePlus,
   Receipt,
@@ -15,8 +17,11 @@ import { Modal } from "./Modal";
 import { MerchantTicketPreview } from "./MerchantTicketPreview";
 import { useMerchantProfile } from "../store/useMerchantProfile";
 import { useStoreConfiguration } from "../store/useStoreConfiguration";
+import { useCategories } from "../store/useCategories";
+import { useProducts } from "../store/useProducts";
 
-type GuideStep = "welcome" | "identity" | "categories" | "catalog";
+type GuideStep = "welcome" | "identity" | "categories" | "catalog" | "labels";
+export type SetupGuideTarget = "catalog-categories" | "catalog-products" | "labels";
 
 interface StoreSetupGuideProps {
   open: boolean;
@@ -24,9 +29,19 @@ interface StoreSetupGuideProps {
   onAddCategories: () => void;
   onAddProduct: () => void;
   onImportProducts: () => void;
+  onOpenBarcodeLabels: () => void;
+  onTargetChange?: (target: SetupGuideTarget | null) => void;
 }
 
-const STEPS: GuideStep[] = ["welcome", "identity", "categories", "catalog"];
+const STEPS: GuideStep[] = ["welcome", "identity", "categories", "catalog", "labels"];
+
+const STEP_LABELS: Record<GuideStep, string> = {
+  welcome: "Welkom",
+  identity: "Kassaticket",
+  categories: "Categorieën",
+  catalog: "Producten",
+  labels: "Barcode-etiketten",
+};
 
 const sourceLabel = (source: string): string => {
   const labels: Record<string, string> = {
@@ -45,12 +60,17 @@ export const StoreSetupGuide: React.FC<StoreSetupGuideProps> = ({
   onAddCategories,
   onAddProduct,
   onImportProducts,
+  onOpenBarcodeLabels,
+  onTargetChange,
 }) => {
   const currentStoreName = useAuth((state) => state.currentStoreName);
   const configuration = useStoreConfiguration((state) => state.configuration);
   const profile = useMerchantProfile((state) => state.profile);
   const updateProfile = useMerchantProfile((state) => state.updateProfile);
+  const categories = useCategories((state) => state.list);
+  const products = useProducts((state) => state.list);
   const [step, setStep] = useState<GuideStep>("welcome");
+  const [compact, setCompact] = useState(false);
   const [savedIdentity, setSavedIdentity] = useState(false);
   const [form, setForm] = useState(() => ({
     name: profile.name === "PWAYMENT" && currentStoreName ? currentStoreName : profile.name,
@@ -86,6 +106,7 @@ export const StoreSetupGuide: React.FC<StoreSetupGuideProps> = ({
 
   const close = () => {
     setStep("welcome");
+    setCompact(false);
     setSavedIdentity(false);
     onClose();
   };
@@ -107,14 +128,25 @@ export const StoreSetupGuide: React.FC<StoreSetupGuideProps> = ({
   };
 
   const launch = (action: "product" | "import") => {
-    close();
+    setCompact(true);
     if (action === "product") onAddProduct();
     else onImportProducts();
   };
 
   const launchCategories = () => {
-    close();
+    setCompact(true);
     onAddCategories();
+  };
+
+  const continueToCatalog = () => {
+    setStep("catalog");
+    setCompact(false);
+  };
+
+  const continueToLabels = () => {
+    setStep("labels");
+    setCompact(true);
+    onOpenBarcodeLabels();
   };
 
   const previewMerchant = {
@@ -125,6 +157,38 @@ export const StoreSetupGuide: React.FC<StoreSetupGuideProps> = ({
     email: form.email || undefined,
     website: form.website || undefined,
   };
+
+  useEffect(() => {
+    if (!open || !compact) {
+      onTargetChange?.(null);
+      return;
+    }
+
+    const target: SetupGuideTarget = step === "categories"
+      ? "catalog-categories"
+      : step === "catalog"
+        ? "catalog-products"
+        : "labels";
+    onTargetChange?.(target);
+
+    return () => onTargetChange?.(null);
+  }, [compact, onTargetChange, open, step]);
+
+  if (open && compact) {
+    return (
+      <SetupCompanion
+        step={step}
+        categoryCount={categories.length}
+        productCount={products.filter((product) => product.isActive !== false).length}
+        onClose={close}
+        onContinueCatalog={continueToCatalog}
+        onContinueLabels={continueToLabels}
+        onOpenCategories={onAddCategories}
+        onOpenProducts={onAddProduct}
+        onOpenLabels={onOpenBarcodeLabels}
+      />
+    );
+  }
 
   return (
     <Modal
@@ -147,9 +211,7 @@ export const StoreSetupGuide: React.FC<StoreSetupGuideProps> = ({
           </button>
           <div className="flex items-center gap-3">
             {step === "identity" && <button type="button" onClick={saveIdentity} disabled={!canSaveIdentity} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#0e7490] px-4 text-xs font-extrabold text-white shadow-sm shadow-cyan-900/15 transition hover:bg-[#155e75] disabled:cursor-not-allowed disabled:opacity-40"><Check size={15} /> Gegevens bewaren</button>}
-            <div className="hidden items-center gap-1.5 sm:flex" aria-label={`Stap ${stepIndex + 1} van ${STEPS.length}`}>
-              {STEPS.map((item, index) => <span key={item} className={`h-1.5 rounded-full transition-all ${index === stepIndex ? "w-7 bg-sky-600" : index < stepIndex ? "w-1.5 bg-emerald-500" : "w-1.5 bg-slate-200"}`} />)}
-            </div>
+            <SetupProgress step={step} />
           </div>
         </div>
       }
@@ -239,9 +301,82 @@ export const StoreSetupGuide: React.FC<StoreSetupGuideProps> = ({
             </div>
           )}
 
+          {step === "labels" && (
+            <div className="space-y-5 py-2">
+              <div className="rounded-2xl border border-cyan-100 bg-gradient-to-br from-cyan-50 to-white p-5 sm:p-6">
+                <div className="flex items-start gap-4"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#0e7490] text-white shadow-lg shadow-cyan-900/15"><Barcode size={20} /></span><div><p className="text-sm font-black text-slate-950">Maak je producten klaar voor de winkelvloer.</p><p className="mt-1.5 max-w-xl text-sm leading-6 text-slate-600">Controleer je barcodes en druk meteen je eerste etiketten af. Daarna is de basisopzet van je winkel compleet.</p></div></div>
+              </div>
+              <button type="button" onClick={() => { setCompact(true); onOpenBarcodeLabels(); }} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#0e7490] px-4 text-sm font-extrabold text-white shadow-md shadow-cyan-900/15 transition hover:bg-[#155e75]"><Barcode size={17} /> Barcode-etiketten openen</button>
+            </div>
+          )}
+
         </div>
       </div>
     </Modal>
+  );
+};
+
+const SetupProgress = ({ step, compact = false }: { step: GuideStep; compact?: boolean }) => {
+  const activeIndex = STEPS.indexOf(step);
+  return (
+    <div className="flex items-center gap-2" aria-label={`Stap ${activeIndex + 1} van ${STEPS.length}: ${STEP_LABELS[step]}`}>
+      {!compact && <span className="hidden text-[10px] font-black uppercase tracking-[0.12em] text-slate-400 md:inline">{STEP_LABELS[step]}</span>}
+      <div className="flex items-center gap-1.5">
+        {STEPS.map((item, index) => <span key={item} title={STEP_LABELS[item]} className={`h-1.5 rounded-full transition-all ${index === activeIndex ? "w-7 bg-[#0e7490]" : index < activeIndex ? "w-1.5 bg-emerald-500" : "w-1.5 bg-slate-200"}`} />)}
+      </div>
+    </div>
+  );
+};
+
+const SetupCompanion = ({
+  step,
+  categoryCount,
+  productCount,
+  onClose,
+  onContinueCatalog,
+  onContinueLabels,
+  onOpenCategories,
+  onOpenProducts,
+  onOpenLabels,
+}: {
+  step: GuideStep;
+  categoryCount: number;
+  productCount: number;
+  onClose: () => void;
+  onContinueCatalog: () => void;
+  onContinueLabels: () => void;
+  onOpenCategories: () => void;
+  onOpenProducts: () => void;
+  onOpenLabels: () => void;
+}) => {
+  const isCategories = step === "categories";
+  const isCatalog = step === "catalog";
+  const isLabels = step === "labels";
+  const Icon = isCategories ? Tags : isCatalog ? PackagePlus : Barcode;
+  const title = isCategories ? "Categorieën opbouwen" : isCatalog ? "Producten toevoegen" : "Barcode-etiketten";
+  const detail = isCategories
+    ? categoryCount === 0 ? "Voeg minstens één categorie toe om verder te gaan." : `${categoryCount} ${categoryCount === 1 ? "categorie" : "categorieën"} klaar. Je kunt verder naar je producten.`
+    : isCatalog
+      ? productCount === 0 ? "Voeg je eerste product toe of importeer je assortiment." : `${productCount} ${productCount === 1 ? "product" : "producten"} klaar. Tijd voor je etiketten.`
+      : "Controleer barcodes, kies je etiketformaat en druk een testetiket af.";
+  const primaryDisabled = isCategories ? categoryCount === 0 : isCatalog ? productCount === 0 : false;
+  const primaryLabel = isCategories ? "Verder naar producten" : isCatalog ? "Verder naar barcode-etiketten" : "Winkelsetup afronden";
+  const primaryAction = isCategories ? onContinueCatalog : isCatalog ? onContinueLabels : onClose;
+  const reopenAction = isCategories ? onOpenCategories : isCatalog ? onOpenProducts : onOpenLabels;
+  const reopenLabel = isCategories ? "Categoriebeheer openen" : isCatalog ? "Productbeheer openen" : "Barcode-tab openen";
+
+  return (
+    <aside className="setup-companion fixed bottom-5 right-5 z-40 w-[calc(100vw-2.5rem)] max-w-sm overflow-hidden rounded-2xl border border-cyan-200 bg-white shadow-[0_22px_55px_rgba(15,23,42,0.22)]" aria-label="Winkelsetup begeleiden">
+      <div className="flex items-start gap-3 border-b border-slate-100 bg-gradient-to-br from-cyan-50 to-white p-4">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0e7490] text-white"><Icon size={18} /></span>
+        <div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#0e7490]">Je winkel starten</p><button type="button" onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Setup-assistent sluiten"><X size={15} /></button></div><h2 className="mt-0.5 text-sm font-black text-slate-950">{title}</h2><p className="mt-1 text-xs leading-5 text-slate-600">{detail}</p></div>
+      </div>
+      <div className="space-y-3 p-4">
+        <div className="flex items-center justify-between gap-3"><span className="text-[10px] font-bold text-slate-400">Stap {STEPS.indexOf(step) + 1} van {STEPS.length}</span><SetupProgress step={step} compact /></div>
+        <button type="button" onClick={primaryAction} disabled={primaryDisabled} className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#0e7490] px-4 text-xs font-extrabold text-white shadow-sm transition hover:bg-[#155e75] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none">{isLabels && <CheckCircle2 size={15} />}{primaryLabel}{!isLabels && <ArrowRight size={15} />}</button>
+        <button type="button" onClick={reopenAction} className="group inline-flex w-full items-center justify-center gap-1.5 text-center text-[11px] font-bold text-slate-500 transition hover:text-[#0e7490]"><span className="setup-companion-pointer" aria-hidden="true"><ArrowRight size={13} /></span>{reopenLabel}</button>
+      </div>
+    </aside>
   );
 };
 
