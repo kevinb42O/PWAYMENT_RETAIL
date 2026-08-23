@@ -126,11 +126,12 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
   ]);
   const previousProductById = new Map(previousProducts.map((product) => [product.id, product]));
   const previousCustomerById = new Map(previousCustomers.map((customer) => [customer.id, customer]));
+  const pendingOutbox = await db.outbox.toArray();
   // A checkout is committed locally first so the POS remains usable offline.
   // Never let a server snapshot erase a sale that is still in this tenant's
   // outbox: it has not failed, it simply has not received its receipt yet.
   const pendingTransactionRequestIds = new Set(
-    (await db.outbox.toArray())
+    pendingOutbox
       .filter((entry) => entry.kind === "transaction")
       .map((entry) => (entry.payload as Partial<Transaction>).clientRequestId)
       .filter((requestId): requestId is string => Boolean(requestId)),
@@ -150,6 +151,16 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
     : (await db.stock_movements.toArray()).filter((movement) =>
       movement.transactionId != null && pendingTransactionIds.has(movement.transactionId),
     );
+  const pendingProductIds = new Set<string>();
+  for (const entry of pendingOutbox) {
+    if (entry.kind === "upsert_product") {
+      for (const product of entry.payload as Product[]) pendingProductIds.add(product.id);
+    }
+    if (entry.kind === "upsert_catalog_batch") {
+      const payload = entry.payload as { products?: Product[] };
+      for (const product of payload.products ?? []) pendingProductIds.add(product.id);
+    }
+  }
   reportLoadingProgress("store-data");
   const [
     categoryRows,
@@ -796,7 +807,7 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
       (pendingStockDelta.get(movement.productId) ?? 0) + movement.quantityDelta,
     );
   }
-  const hydratedProducts = products.map((product) => {
+  let hydratedProducts = products.map((product) => {
     const delta = pendingStockDelta.get(product.id) ?? 0;
     return product.stockQty == null || delta === 0
       ? product
@@ -808,6 +819,17 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
       const localProduct = previousProductById.get(productId);
       if (localProduct) hydratedProducts.push(localProduct);
     }
+  }
+  // Product creation/editing is offline-first too. While its outbox command is
+  // unacknowledged, the local row is newer than the server snapshot (including
+  // familyId/variantOptions that a default server family cannot represent yet).
+  if (pendingProductIds.size > 0) {
+    const serverRowsById = new Map(hydratedProducts.map((product) => [product.id, product]));
+    for (const productId of pendingProductIds) {
+      const localProduct = previousProductById.get(productId);
+      if (localProduct) serverRowsById.set(productId, localProduct);
+    }
+    hydratedProducts = [...serverRowsById.values()];
   }
 
   // Keep the actual local receipt visible until the server returns the same

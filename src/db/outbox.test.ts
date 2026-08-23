@@ -75,6 +75,26 @@ describe("offline outbox", () => {
     });
   });
 
+  it("does not endlessly retry a rejected atomic catalog command", async () => {
+    await enqueueOutbox("upsert_catalog_batch", { requestId: "catalog-1" });
+
+    const result = await drainOutbox(
+      async () => {
+        throw new Error("retail-catalog:create-conflict:Dit product werd ondertussen aangemaakt.");
+      },
+      { now: Date.now(), workerId: "catalog-worker" },
+    );
+
+    expect(result.retried).toHaveLength(0);
+    expect(result.deadLettered).toHaveLength(1);
+    expect(result.deadLettered[0]).toMatchObject({
+      kind: "upsert_catalog_batch",
+      attempts: 1,
+      deliveryStatus: "dead_letter",
+      requiresManualResolution: true,
+    });
+  });
+
   it("can flush a foreground subset without bypassing leases for other work", async () => {
     await enqueueOutbox("migration_activate", { activation: { id: "migration-1" } });
     await enqueueOutbox("upsert_product", [{ id: "p-1" }]);

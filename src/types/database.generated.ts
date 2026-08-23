@@ -4134,6 +4134,10 @@ export type Database = {
         Args: { relations_payload: Json; target_store_id: string }
         Returns: Json
       }
+      upsert_manual_catalog_batch: {
+        Args: { batch_payload: Json; target_store_id: string }
+        Returns: Json
+      }
       apply_workforce_patterns: {
         Args: { payload: Json; target_store_id: string }
         Returns: Json

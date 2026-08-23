@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, Barcode, Boxes, Building2, Check, CheckCircle2, Download, Package, PackageSearch, Palette, Pencil, Plus, RotateCcw, Search, Tag, Tags, Trash2, TrendingUp, Upload, X } from 'lucide-react';
 import { useProducts } from '../store/useProducts';
 import { useStore } from '../store/useStore';
-import { InventoryAdjustmentReason, Product } from '../types';
+import { InventoryAdjustmentReason, ManualCatalogFamilyPayload, Product } from '../types';
 import { centsToDecimalString, formatEUR, parseDecimalToCents } from '../utils/money';
 import { parseProductsCsv, serializeProductsCsv, slugifyId } from '../utils/productCsv';
 import { isSupportedVatRate, SUPPORTED_VAT_RATES } from '../utils/vat';
@@ -19,6 +19,8 @@ import {
 } from '../services/inventoryAdjustments';
 import { useStoreConfiguration } from '../store/useStoreConfiguration';
 import { configuredVatFallback } from '../onboarding/storeConfiguration';
+import { CatalogBuilder } from './CatalogBuilder';
+import { useAuth } from '../auth/useAuth';
 
 const COLOR_PRESETS: { label: string; cls: string }[] = [
   { label: 'Deck blauw', cls: 'bg-sky-700' },
@@ -64,8 +66,8 @@ interface ProductAdminProps {
 export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'products', openNewProductRequestKey }) => {
   const list = useProducts((s) => s.list);
   const hydrateProducts = useProducts((s) => s.hydrate);
-  const upsert = useProducts((s) => s.upsert);
   const bulkUpsert = useProducts((s) => s.bulkUpsert);
+  const createCatalogBatch = useProducts((s) => s.createCatalogBatch);
   const remove = useProducts((s) => s.remove);
   const restore = useProducts((s) => s.restore);
   const syncPersistedProducts = useProducts((s) => s.syncPersisted);
@@ -78,7 +80,9 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
   const removeCategory = useCategories((s) => s.removeCategory);
   const renameCategory = useCategories((s) => s.renameCategory);
   const setCategoryVatRate = useCategories((s) => s.setCategoryVatRate);
-  const configuredDefaultVat = useStoreConfiguration((s) => configuredVatFallback(s.configuration));
+  const storeConfiguration = useStoreConfiguration((s) => s.configuration);
+  const configuredDefaultVat = configuredVatFallback(storeConfiguration);
+  const currentStoreId = useAuth((state) => state.currentStoreId);
 
   type SortKey = 'name' | 'category' | 'subCategory' | 'sku' | 'costPriceCents' | 'priceCents' | 'margin' | 'stockQty' | 'vatRate' | 'isActive';
   type SortDirection = 'asc' | 'desc';
@@ -106,6 +110,8 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
   const [sortDir, setSortDir] = useState<SortDirection>('asc');
   const [headerContainer, setHeaderContainer] = useState<HTMLElement | null>(null);
   const [guidedProductName, setGuidedProductName] = useState<string | null>(null);
+  const [catalogBuilderOpen, setCatalogBuilderOpen] = useState(false);
+  const [editingFamilyId, setEditingFamilyId] = useState<string | undefined>();
 
   useEffect(() => {
     setViewTab(initialTab);
@@ -154,6 +160,17 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
     }
     return map;
   }, [list]);
+  const familySizeById = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const product of list) if (product.familyId) {
+      map.set(product.familyId, (map.get(product.familyId) ?? 0) + 1);
+    }
+    return map;
+  }, [list]);
+  const editingBelongsToFamily = Boolean(
+    editing?.familyId
+      && ((familySizeById.get(editing.familyId) ?? 0) > 1 || editing.variantOptions),
+  );
 
   const activeProducts = list.filter((p) => p.isActive !== false);
   const inventoryStats = useMemo(() => {
@@ -207,7 +224,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
       });
   }, [list, filter, categoryFilter, search, sortKey, sortDir, categoryNameById]);
 
-  const openNew = async () => {
+  const ensureStartingCategory = async () => {
     // A real new tenant has no seeded categories. Create one safe starting
     // category so the first-product route from the guided setup is usable
     // immediately, while the merchant can still rename or add categories later.
@@ -220,8 +237,13 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
         return;
       }
     }
+    return category;
+  };
+
+  const openNew = async (seed?: Product) => {
+    const category = await ensureStartingCategory();
     if (!category) return;
-    setEditing({
+    const emptyProduct: Product = {
       id: '',
       name: '',
       category: category.id,
@@ -240,14 +262,42 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
       minStockQty: 0,
       color: 'bg-sky-700',
       isActive: true,
-    });
+    };
+    const next = seed ? { ...emptyProduct, ...seed, id: '' } : emptyProduct;
+    setEditing(next);
     setIsNew(true);
-    setPriceText('0,00');
-    setCostText('0,00');
+    setPriceText(centsToInput(next.priceCents));
+    setCostText(centsToInput(next.costPriceCents));
     setCountedStockText('');
     setAdjustmentReason('opening-balance');
     setAdjustmentNote('');
     setAdjustmentFeedback(null);
+  };
+
+  const openCatalogBuilder = async () => {
+    const category = await ensureStartingCategory();
+    if (!category) return;
+    setEditingFamilyId(undefined);
+    setCatalogBuilderOpen(true);
+  };
+
+  const openFamilyBuilder = (familyId: string) => {
+    setEditing(null);
+    setEditingFamilyId(familyId);
+    setCatalogBuilderOpen(true);
+  };
+
+  const saveCatalogBuilderProducts = async (
+    products: Product[],
+    family?: ManualCatalogFamilyPayload,
+  ) => {
+    await createCatalogBatch(products, family);
+    if (openNewProductRequestKey && products[0]) {
+      setGuidedProductName(products[0].name);
+      window.dispatchEvent(new CustomEvent('pwayment:first-product-ready', {
+        detail: { productName: products[0].name },
+      }));
+    }
   };
 
   useEffect(() => {
@@ -256,7 +306,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
       handledGuidedProductRequests.has(openNewProductRequestKey)
     ) return;
     handledGuidedProductRequests.add(openNewProductRequestKey);
-    void openNew();
+    void openCatalogBuilder();
   }, [openNewProductRequestKey, categories, configuredDefaultVat]);
 
   const openEdit = (p: Product) => {
@@ -342,7 +392,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
       id = candidate;
     }
 
-    await upsert({
+    const productToSave: Product = {
       ...editing,
       id,
       name,
@@ -359,7 +409,8 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
       stockQty,
       minStockQty,
       isActive: editing.isActive ?? true,
-    });
+    };
+    await createCatalogBatch([productToSave]);
     if (isNew && openNewProductRequestKey) {
       setGuidedProductName(name);
       window.dispatchEvent(
@@ -504,6 +555,29 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
     );
   };
 
+  if (catalogBuilderOpen) {
+    return (
+      <CatalogBuilder
+        categories={categories}
+        products={list}
+        defaultVat={configuredDefaultVat}
+        categoryVatById={categoryVatById}
+        draftKey={`pwayment:catalog-draft:${currentStoreId ?? 'local'}`}
+        editingFamilyId={editingFamilyId}
+        onClose={() => { setCatalogBuilderOpen(false); setEditingFamilyId(undefined); }}
+        onOpenImport={() => {
+          setCatalogBuilderOpen(false);
+          setMainView('integration-hub');
+        }}
+        onOpenFullEditor={(seed) => {
+          setCatalogBuilderOpen(false);
+          void openNew(seed);
+        }}
+        onSaveProducts={saveCatalogBuilderProducts}
+      />
+    );
+  }
+
   return (
     <div className="product-admin space-y-6">
       {guidedProductName && (
@@ -518,8 +592,8 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => setMainView('pos')} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-slate-950 px-3.5 text-xs font-extrabold text-white hover:bg-black"><Package size={15} /> Naar de kassa</button>
-              <button type="button" onClick={() => void openNew()} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-bold text-slate-700 hover:bg-slate-50"><Plus size={15} /> Nog een product</button>
+              <button type="button" onClick={() => setMainView('pos')} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-[#0e7490] bg-[#0e7490] px-3.5 text-xs font-extrabold text-white shadow-sm transition hover:border-[#0f6677] hover:bg-[#0f6677]"><Package size={15} /> Naar de kassa</button>
+              <button type="button" onClick={() => void openCatalogBuilder()} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-bold text-slate-700 hover:bg-slate-50"><Plus size={15} /> Nog een product</button>
               <button type="button" onClick={() => setMainView('integration-hub')} className="inline-flex min-h-10 items-center gap-2 rounded-xl px-2.5 text-xs font-bold text-sky-800 hover:bg-sky-100"><Upload size={15} /> Importeren</button>
             </div>
           </div>
@@ -559,11 +633,11 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                     <span className="hidden sm:inline">Import CSV</span>
                   </button>
                   <button
-                    onClick={() => void openNew()}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-black shadow-md hover:shadow-lg transition-all cursor-pointer"
+                    onClick={() => void openCatalogBuilder()}
+                    className="flex items-center gap-2 rounded-xl border border-[#0e7490] bg-[#0e7490] px-4 py-2 text-xs font-black text-white shadow-sm transition hover:border-[#0f6677] hover:bg-[#0f6677] cursor-pointer"
                   >
                     <Plus size={16} />
-                    <span>Nieuw Product</span>
+                    <span>Product toevoegen</span>
                   </button>
                 </>
               )}
@@ -601,11 +675,11 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                 <span>Import CSV</span>
               </button>
               <button
-                    onClick={() => void openNew()}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-black shadow-md hover:shadow-lg transition-all cursor-pointer"
+                    onClick={() => void openCatalogBuilder()}
+                className="flex items-center gap-2 rounded-xl border border-[#0e7490] bg-[#0e7490] px-4 py-2 text-xs font-black text-white shadow-sm transition hover:border-[#0f6677] hover:bg-[#0f6677] cursor-pointer"
               >
                 <Plus size={16} />
-                <span>Nieuw Product</span>
+                <span>Product toevoegen</span>
               </button>
             </div>
           )
@@ -639,7 +713,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
               </select>
               <button
                 onClick={() => void createCategory()}
-                className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-black shadow-xs transition-all shrink-0 cursor-pointer"
+                className="flex shrink-0 items-center justify-center gap-2 rounded-xl border border-[#0e7490] bg-[#0e7490] px-5 py-2.5 text-xs font-black text-white shadow-sm transition hover:border-[#0f6677] hover:bg-[#0f6677] cursor-pointer"
               >
                 <Plus size={16} />
                 <span>Categorie Toevoegen</span>
@@ -690,7 +764,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                               await renameCategory(c.id, editingCatName);
                               setEditingCatId(null);
                             }}
-                            className="p-2 rounded-xl bg-slate-900 text-white hover:bg-black transition-colors cursor-pointer"
+                            className="rounded-xl border border-[#0e7490] bg-[#0e7490] p-2 text-white transition-colors hover:border-[#0f6677] hover:bg-[#0f6677] cursor-pointer"
                             title="Opslaan"
                           >
                             <Check size={15} />
@@ -930,6 +1004,16 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                         </td>
                         <td className="sticky right-0 z-[1] border-l border-slate-100 bg-white py-3 pl-4 pr-5 text-right whitespace-nowrap shadow-[-8px_0_16px_-14px_rgba(15,23,42,0.45)] transition-colors group-hover:bg-slate-50">
                           <div className="flex items-center justify-end gap-2">
+                            {p.familyId && ((familySizeById.get(p.familyId) ?? 0) > 1 || p.variantOptions) && (
+                              <button
+                                type="button"
+                                onClick={() => openFamilyBuilder(p.familyId!)}
+                                className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-2.5 text-[11px] font-extrabold text-sky-800 transition-colors hover:bg-sky-100"
+                                title={`Beheer alle varianten van ${p.name}`}
+                              >
+                                <Boxes size={13} /> Familie
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() => openEdit(p)}
@@ -999,7 +1083,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                 <button
                   type="button"
                   onClick={() => void save()}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-black shadow-md hover:shadow-lg transition-all cursor-pointer"
+                  className="flex items-center gap-2 rounded-xl border border-[#0e7490] bg-[#0e7490] px-6 py-2.5 text-xs font-black text-white shadow-sm transition hover:border-[#0f6677] hover:bg-[#0f6677] cursor-pointer"
                 >
                   <CheckCircle2 size={16} />
                   <span>{isNew ? 'Product Aanmaken' : 'Product Opslaan'}</span>
@@ -1011,6 +1095,18 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 text-slate-900">
             {/* LEFT COLUMN: Main Details, Categorization, Pricing (8 Cols) */}
             <div className="lg:col-span-8 space-y-6">
+              {editingBelongsToFamily && editing.familyId && (
+                <div className="flex flex-col gap-3 rounded-2xl border border-sky-200 bg-sky-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-sky-800 shadow-2xs"><Boxes size={17} /></span>
+                    <div>
+                      <p className="text-xs font-black text-slate-900">Dit artikel is onderdeel van een productfamilie</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-600">Naam, merk, categorie en variantopties wijzig je centraal, zodat alle varianten onderling consistent blijven. Prijzen, codes en minimumvoorraad kun je hier per artikel aanpassen.</p>
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => openFamilyBuilder(editing.familyId!)} className="shrink-0 rounded-xl border border-[#0e7490] bg-[#0e7490] px-4 py-2.5 text-xs font-black text-white shadow-sm transition hover:border-[#0f6677] hover:bg-[#0f6677]">Familie beheren</button>
+                </div>
+              )}
               {/* CARD 1: Product Identiteit & Categorisatie */}
               <div className="product-admin-section rounded-2xl p-5 space-y-4">
                 <div className="product-admin-section-title flex items-center gap-2 text-xs font-black uppercase tracking-wider pb-2.5">
@@ -1022,8 +1118,9 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                   <input
                     value={editing.name}
                     onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+                    disabled={editingBelongsToFamily}
                     placeholder="bv. Flat Shoe Laces Black"
-                    className="w-full bg-white border border-slate-300 focus:border-slate-900 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-900 shadow-2xs focus:outline-none focus:ring-2 focus:ring-slate-900/10 placeholder:font-normal"
+                    className="w-full bg-white border border-slate-300 focus:border-slate-900 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-900 shadow-2xs focus:outline-none focus:ring-2 focus:ring-slate-900/10 placeholder:font-normal disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
                   />
                 </Field>
 
@@ -1032,8 +1129,9 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                     <input
                       value={editing.brand ?? ''}
                       onChange={(e) => setEditing({ ...editing, brand: e.target.value })}
+                      disabled={editingBelongsToFamily}
                       placeholder="bv. Sidewalk Supply"
-                      className="w-full bg-white border border-slate-300 focus:border-slate-900 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                      className="w-full bg-white border border-slate-300 focus:border-slate-900 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
                     />
                   </Field>
                   <Field label="Leverancier">
@@ -1056,8 +1154,9 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                     <input
                       value={editing.variant ?? ''}
                       onChange={(e) => setEditing({ ...editing, variant: e.target.value })}
+                      disabled={editingBelongsToFamily}
                       placeholder="bv. 120 cm / XL"
-                      className="w-full bg-white border border-slate-300 focus:border-slate-900 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                      className="w-full bg-white border border-slate-300 focus:border-slate-900 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
                     />
                   </Field>
                 </div>
@@ -1067,7 +1166,8 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                     <select
                       value={editing.category}
                       onChange={(e) => setEditing({ ...editing, category: e.target.value })}
-                      className="w-full bg-white border border-slate-300 focus:border-slate-900 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 cursor-pointer"
+                      disabled={editingBelongsToFamily}
+                      className="w-full bg-white border border-slate-300 focus:border-slate-900 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 cursor-pointer disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
                     >
                       {categories.map((c) => (
                         <option key={c.id} value={c.id}>
@@ -1080,8 +1180,9 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                     <input
                       value={editing.subCategory ?? ''}
                       onChange={(e) => setEditing({ ...editing, subCategory: e.target.value })}
+                      disabled={editingBelongsToFamily}
                       placeholder="bv. Veters / Accessoires"
-                      className="w-full bg-white border border-slate-300 focus:border-slate-900 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                      className="w-full bg-white border border-slate-300 focus:border-slate-900 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
                     />
                   </Field>
                 </div>
@@ -1120,7 +1221,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                             barcode: generateInternalEAN13(editing.id || editing.name || 'item'),
                           })
                         }
-                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-bold transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer"
+                        className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border border-[#0e7490] bg-[#0e7490] px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:border-[#0f6677] hover:bg-[#0f6677] cursor-pointer"
                         title="Genereer een unieke interne EAN-13 barcode"
                       >
                         <Barcode size={13} />
@@ -1340,7 +1441,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                       type="button"
                       onClick={() => void saveInventoryCount()}
                       disabled={savingAdjustment}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-3.5 py-2.5 text-xs font-black text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#0e7490] bg-[#0e7490] px-3.5 py-2.5 text-xs font-black text-white shadow-sm transition hover:border-[#0f6677] hover:bg-[#0f6677] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <Boxes size={15} />
                       {savingAdjustment ? 'Telling vastleggen…' : 'Leg telling vast'}

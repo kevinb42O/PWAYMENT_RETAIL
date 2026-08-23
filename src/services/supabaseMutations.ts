@@ -1,5 +1,5 @@
 import { supabase } from "../lib/supabase";
-import type { Customer, Product, ProductCategory } from "../types";
+import type { Customer, ManualCatalogBatchPayload, Product, ProductCategory } from "../types";
 import type { Database } from "../types/database.generated";
 
 type ProductInsert = Database["public"]["Tables"]["products"]["Insert"];
@@ -119,6 +119,19 @@ export const upsertSupabaseProducts = async (
     .from("products")
     .upsert(legacyRows, { onConflict: "store_id,external_id" });
   throwIfError(legacyError);
+};
+
+/** One idempotent server transaction for products, codes, family relations and opening stock. */
+export const upsertSupabaseCatalogBatch = async (
+  storeId: string | null,
+  payload: ManualCatalogBatchPayload,
+): Promise<void> => {
+  if (!storeId || payload.products.length === 0) return;
+  const { error } = await supabase.rpc("upsert_manual_catalog_batch", {
+    target_store_id: storeId,
+    batch_payload: payload as unknown as Database["public"]["Functions"]["upsert_manual_catalog_batch"]["Args"]["batch_payload"],
+  });
+  throwIfError(error);
 };
 
 export const upsertSupabaseCustomers = async (

@@ -2,9 +2,9 @@ import { drainOutbox } from "../db/outbox";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { useAuth } from "../auth/useAuth";
 import type { Json } from "../types/database.generated";
-import type { DailyReport, GiftCardEvent, OutboxEntry, Transaction, WebshopOrder } from "../types";
+import type { DailyReport, GiftCardEvent, ManualCatalogBatchPayload, OutboxEntry, Transaction, WebshopOrder } from "../types";
 import { db } from "../db/db";
-import { upsertSupabaseProducts, upsertSupabaseCustomers, upsertSupabaseCategories, deleteSupabaseCategory } from "./supabaseMutations";
+import { upsertSupabaseProducts, upsertSupabaseCustomers, upsertSupabaseCategories, deleteSupabaseCategory, upsertSupabaseCatalogBatch } from "./supabaseMutations";
 import { pushMigrationOutboxEntry, type MigrationActivationOutboxPayload } from "./migrationSync";
 import { recordIntegrationRun } from "./integrationOperations";
 import {
@@ -411,6 +411,8 @@ const sendOutboxEntry = async (storeId: string, entry: OutboxEntry) => {
     throw new Error("Webshop e-mail delivery is not configured");
   } else if (entry.kind === "upsert_product") {
     await upsertSupabaseProducts(storeId, entry.payload as Product[]);
+  } else if (entry.kind === "upsert_catalog_batch") {
+    await upsertSupabaseCatalogBatch(storeId, entry.payload as ManualCatalogBatchPayload);
   } else if (entry.kind === "upsert_customer") {
     await upsertSupabaseCustomers(storeId, entry.payload as Customer[]);
   } else if (entry.kind === "upsert_category") {

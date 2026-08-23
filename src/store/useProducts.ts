@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Product } from '../types';
+import { ManualCatalogBatchPayload, ManualCatalogFamilyPayload, Product, StockMovement } from '../types';
 import { db } from '../db/db';
 import { products as seedProducts } from '../data/products';
 import { audit, useAuth } from '../auth/useAuth';
@@ -18,13 +18,15 @@ interface ProductsState {
   findByScanCode: (code: string) => ProductScanMatch | null;
   upsert: (p: Product) => Promise<void>;
   bulkUpsert: (products: Product[]) => Promise<void>;
+  /** Atomically persist products and their one durable server catalogue command. */
+  createCatalogBatch: (products: Product[], family?: ManualCatalogFamilyPayload) => Promise<void>;
   remove: (id: string) => Promise<void>;
   restore: (id: string) => Promise<void>;
   /** Mirror rows already committed to Dexie (e.g. by the checkout service). */
   syncPersisted: (products: Product[]) => void;
 }
 
-const normalizeProduct = (p: Product): Product => {
+const normalizeProduct = (p: Product, previous?: Product): Product => {
   const sku = p.sku?.trim();
   const barcode = p.barcode?.trim();
   const brand = p.brand?.trim();
@@ -44,12 +46,44 @@ const normalizeProduct = (p: Product): Product => {
       : Number.isFinite(p.minStockQty)
         ? Math.max(0, Math.floor(p.minStockQty))
         : undefined;
-  const identifiers = (p.identifiers ?? [])
+  const suppliedIdentifiers = (p.identifiers ?? [])
     .map((identifier) => ({
       ...identifier,
       value: identifier.value.trim(),
     }))
     .filter((identifier) => Boolean(identifier.value));
+  const barcodeIdentifierType: 'upc' | 'ean' | 'alternate' = /^\d{12}$/.test(barcode?.replace(/\s/g, '') ?? '')
+    ? 'upc'
+    : /^\d{8}$|^\d{13}$|^\d{14}$/.test(barcode?.replace(/\s/g, '') ?? '')
+      ? 'ean'
+      : 'alternate';
+  const canonicalIdentifiers = [
+    ...(sku ? [{ type: 'internal-sku' as const, value: sku, isScannable: true, isPrimary: !barcode }] : []),
+    ...(barcode ? [{
+      type: barcodeIdentifierType,
+      value: barcode,
+      isScannable: true,
+      isPrimary: true,
+    }] : []),
+    ...(supplierCode ? [{ type: 'supplier-code' as const, value: supplierCode, isScannable: false, isPrimary: false }] : []),
+  ];
+  const codeKey = (value: string) => value.replace(/\s/g, '').toLocaleLowerCase('nl-BE');
+  const replacedIdentifierValues = new Set(
+    [previous?.sku, previous?.barcode, previous?.supplierCode]
+      .filter((value): value is string => Boolean(value))
+      .map(codeKey),
+  );
+  const canonicalValues = new Set(canonicalIdentifiers.map((identifier) => codeKey(identifier.value)));
+  const retainedIdentifiers = suppliedIdentifiers
+    .filter((identifier) => {
+      const key = codeKey(identifier.value);
+      return !replacedIdentifierValues.has(key) && !canonicalValues.has(key);
+    })
+    .map((identifier) => ({
+      ...identifier,
+      isPrimary: canonicalIdentifiers.length > 0 ? false : identifier.isPrimary,
+    }));
+  const inferredIdentifiers = [...canonicalIdentifiers, ...retainedIdentifiers];
 
   return {
     ...p,
@@ -64,7 +98,7 @@ const normalizeProduct = (p: Product): Product => {
     vatRate: p.vatRate,
     stockQty,
     minStockQty,
-    identifiers: identifiers.length > 0 ? identifiers : undefined,
+    identifiers: inferredIdentifiers.length > 0 ? inferredIdentifiers : undefined,
   };
 };
 
@@ -79,6 +113,35 @@ const isOldRetailBootstrapCatalog = (list: Product[]): boolean => {
   if (list.length === 0 || list.length > 30) return false;
   const ids = new Set(list.map((p) => p.id));
   return ids.has('deck-popsicle-825-maple') && ids.has('hoodie-logo-black') && ids.has('service-board-assembly');
+};
+
+const requestId = (): string =>
+  globalThis.crypto?.randomUUID?.()
+  ?? `catalog-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+
+const assertUniqueCatalogCodes = (incoming: Product[], existing: Product[]) => {
+  const incomingIds = new Set(incoming.map((product) => product.id));
+  if (incomingIds.size !== incoming.length) {
+    throw new Error('De catalogusopdracht bevat hetzelfde product meer dan één keer.');
+  }
+  const scanCodeOwner = new Map<string, { id: string; label: string }>();
+  for (const product of [...existing, ...incoming]) {
+    const codes = [
+      product.sku?.trim() ? { value: product.sku, label: 'SKU' } : null,
+      product.barcode?.trim() ? { value: product.barcode, label: 'barcode' } : null,
+    ].filter((code): code is { value: string; label: string } => Boolean(code));
+    for (const code of codes) {
+      const normalizedCode = code.value.replace(/\s/g, '').toLocaleLowerCase('nl-BE');
+      const owner = scanCodeOwner.get(normalizedCode);
+      if (owner) {
+        if (owner.id === product.id) {
+          throw new Error('SKU en barcode mogen niet dezelfde scancode gebruiken.');
+        }
+        throw new Error(`${code.label === 'SKU' ? 'SKU' : 'Barcode'} ${code.value} wordt al door een ander product gebruikt.`);
+      }
+      scanCodeOwner.set(normalizedCode, { id: product.id, label: code.label });
+    }
+  }
 };
 
 /**
@@ -112,7 +175,7 @@ export const useProducts = create<ProductsState>((set, get) => ({
     if (existing.length === 0) {
       const isDemoStore = useAuth.getState().currentStoreIsDemo;
       if (isDemoStore && FEATURES.seedDemoProducts && seedProducts.length > 0) {
-        const seeded: Product[] = seedProducts.map((p) => normalizeProduct({ ...p, isActive: true }));
+        const seeded: Product[] = seedProducts.map((p) => normalizeProduct({ ...p, isActive: true }, p));
         await db.products.bulkPut(seeded);
         set({ list: seeded, hydrated: true });
       } else {
@@ -121,18 +184,18 @@ export const useProducts = create<ProductsState>((set, get) => ({
       return;
     }
 
-    set({ list: existing.map((p) => normalizeProduct(p)), hydrated: true });
+    set({ list: existing.map((p) => normalizeProduct(p, p)), hydrated: true });
   },
 
   refresh: async () => {
     const current = await db.products.toArray();
-    set({ list: current.map((product) => normalizeProduct(product)), hydrated: true });
+    set({ list: current.map((product) => normalizeProduct(product, product)), hydrated: true });
   },
 
   upsert: async (p) => {
     if (!isSupportedVatRate(p.vatRate)) throw new UnsupportedVatRateError(p.vatRate, p.name);
     const existing = await db.products.get(p.id);
-    const next: Product = normalizeProduct({ ...p, isActive: p.isActive ?? true });
+    const next: Product = normalizeProduct({ ...p, isActive: p.isActive ?? true }, existing);
     const productLimit = featureLimit(FEATURE_KEYS.activeProducts);
     const activatesNewSlot = next.isActive !== false && existing?.isActive !== true;
     if (
@@ -164,10 +227,13 @@ export const useProducts = create<ProductsState>((set, get) => ({
     for (const p of products) {
       if (!isSupportedVatRate(p.vatRate)) throw new UnsupportedVatRateError(p.vatRate, p.name);
     }
-    const next = products.map((p) => normalizeProduct({ ...p, isActive: p.isActive ?? true }));
+    const existingById = new Map(get().list.map((product) => [product.id, product]));
+    const next = products.map((p) => normalizeProduct(
+      { ...p, isActive: p.isActive ?? true },
+      existingById.get(p.id),
+    ));
     const productLimit = featureLimit(FEATURE_KEYS.activeProducts);
     if (productLimit != null) {
-      const existingById = new Map(get().list.map((product) => [product.id, product]));
       const currentlyActive = get().list.filter((product) => product.isActive !== false).length;
       const newActiveSlots = next.filter(
         (product) =>
@@ -191,6 +257,121 @@ export const useProducts = create<ProductsState>((set, get) => ({
       return { list: merged };
     });
     void audit('product.update', { bulk: true, count: next.length });
+  },
+
+  createCatalogBatch: async (products, family) => {
+    if (products.length === 0) throw new Error('Voeg minstens één product toe.');
+    if (products.length > 200) throw new Error('Bewaar maximaal 100 actieve en 100 gearchiveerde varianten per productfamilie.');
+    for (const product of products) {
+      if (!isSupportedVatRate(product.vatRate)) {
+        throw new UnsupportedVatRateError(product.vatRate, product.name);
+      }
+    }
+    const existingById = new Map(get().list.map((product) => [product.id, product]));
+    const next = products.map((product) => normalizeProduct({
+      ...product,
+      isActive: product.isActive ?? true,
+    }, existingById.get(product.id)));
+    assertUniqueCatalogCodes(next, get().list.filter(
+      (product) => !next.some((candidate) => candidate.id === product.id),
+    ));
+
+    if (family) {
+      const variantIds = new Set(family.variants.map((variant) => variant.productExternalId));
+      if (variantIds.size !== family.variants.length) {
+        throw new Error('Dezelfde variant staat meer dan één keer in de productfamilie.');
+      }
+      const productIds = new Set(next.map((product) => product.id));
+      if (family.variants.some((variant) => !productIds.has(variant.productExternalId))) {
+        throw new Error('Een variant verwijst naar een product dat niet in deze catalogusopdracht zit.');
+      }
+    }
+
+    const productLimit = featureLimit(FEATURE_KEYS.activeProducts);
+    if (productLimit != null) {
+      const activeOutsideBatch = get().list.filter(
+        (product) => product.isActive !== false && !next.some((candidate) => candidate.id === product.id),
+      ).length;
+      const activeInsideBatch = next.filter((product) => product.isActive !== false).length;
+      if (activeOutsideBatch + activeInsideBatch > productLimit) {
+        const newlyActivated = next.filter((product) =>
+          product.isActive !== false && existingById.get(product.id)?.isActive !== true,
+        ).length;
+        throw new Error(
+          `Deze actie activeert ${newlyActivated} product${newlyActivated === 1 ? '' : 'en'} en overschrijdt de limiet van ${productLimit}.`,
+        );
+      }
+    }
+
+    const catalogRequestId = requestId();
+    const now = Date.now();
+    const auth = useAuth.getState();
+    await db.transaction(
+      'rw',
+      [db.products, db.stock_movements, db.audit, db.outbox],
+      async () => {
+        const existingRows = new Map(
+          (await db.products.bulkGet(next.map((product) => product.id)))
+            .filter((product): product is Product => Boolean(product))
+            .map((product) => [product.id, product]),
+        );
+        const payload: ManualCatalogBatchPayload = {
+          requestId: catalogRequestId,
+          products: next,
+          family,
+          existingProductExternalIds: [...existingRows.keys()],
+        };
+        await db.outbox.add({
+          timestamp: now,
+          kind: 'upsert_catalog_batch',
+          payload,
+          attempts: 0,
+          deliveryStatus: 'pending',
+          nextAttemptAt: now,
+        });
+        await db.products.bulkPut(next);
+
+        const openingMovements: StockMovement[] = next
+          .filter((product) => !existingRows.has(product.id) && product.stockQty != null && product.stockQty > 0)
+          .map((product) => ({
+            productId: product.id,
+            productName: product.name,
+            quantityDelta: product.stockQty!,
+            reason: 'manual-adjustment' as const,
+            timestamp: now,
+            userId: auth.currentUserId ?? undefined,
+            userName: auth.currentUserName ?? undefined,
+            quantityBefore: 0,
+            quantityAfter: product.stockQty!,
+            adjustmentReason: 'opening-balance' as const,
+            note: 'Openingsvoorraad bij catalogusaanmaak',
+            clientRequestId: `${catalogRequestId}:${product.id}:opening`,
+          }));
+        if (openingMovements.length > 0) {
+          await db.stock_movements.bulkAdd(openingMovements);
+        }
+        await db.audit.add({
+          timestamp: now,
+          userId: auth.currentUserId,
+          userName: auth.currentUserName,
+          action: existingRows.size > 0 ? 'product.update' : 'product.create',
+          detail: {
+            requestId: catalogRequestId,
+            productIds: next.map((product) => product.id),
+            familyId: family?.familyId,
+            openingBalanceCount: openingMovements.length,
+          },
+        });
+      },
+    );
+
+    set((state) => {
+      const byId = new Map(next.map((product) => [product.id, product]));
+      const merged = state.list.map((product) => byId.get(product.id) ?? product);
+      const known = new Set(state.list.map((product) => product.id));
+      for (const product of next) if (!known.has(product.id)) merged.push(product);
+      return { list: merged };
+    });
   },
 
   remove: async (id) => {

@@ -79,6 +79,38 @@ export interface Product {
   productType?: "merchandise" | "service" | "gift-card";
 }
 
+/** One variant relation inside a durable manual catalogue mutation. */
+export interface ManualCatalogVariantPayload {
+  productExternalId: string;
+  displayName: string;
+  options: Array<{ name: string; value: string }>;
+}
+
+/** Shared relational data for a manually managed product family. */
+export interface ManualCatalogFamilyPayload {
+  /** Stable UUID. Reusing it edits/retries the same family. */
+  familyId: string;
+  name: string;
+  brand?: string;
+  categoryExternalId: string;
+  variants: ManualCatalogVariantPayload[];
+  /** Existing family members deliberately removed from the active matrix. */
+  archiveProductExternalIds?: string[];
+}
+
+/**
+ * Complete local/server command for catalogue creation or family maintenance.
+ * The request id is the idempotency boundary; opening stock is derived from
+ * each product's `stockQty` and never replayed on a retry.
+ */
+export interface ManualCatalogBatchPayload {
+  requestId: string;
+  products: Product[];
+  family?: ManualCatalogFamilyPayload;
+  /** Server-side create/update precondition captured from the local tenant DB. */
+  existingProductExternalIds: string[];
+}
+
 /**
  * Modifier on a single line item, e.g. assembly service or gift wrapping.
  * Free modifiers use deltaCents = 0.
@@ -672,6 +704,8 @@ export interface OutboxEntry {
     | "webshop_order"
     | "webshop_email"
     | "upsert_product"
+    /** Atomic products + family + identifier + opening-stock command. */
+    | "upsert_catalog_batch"
     | "upsert_customer"
     | "upsert_category"
     | "delete_category"

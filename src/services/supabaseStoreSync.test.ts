@@ -82,6 +82,26 @@ describe("Supabase store bootstrap", () => {
       },
       attempts: 0,
     });
+    await tenantDb.products.put({
+      id: "pending-product",
+      name: "Lokale hoodie",
+      category: "decks",
+      priceCents: 4500,
+      vatRate: 21,
+      stockQty: 7,
+      familyId: "00000000-0000-4000-8000-000000000099",
+      variantOptions: { Maat: "M" },
+    });
+    await tenantDb.outbox.add({
+      timestamp: Date.parse(now) + 2,
+      kind: "upsert_catalog_batch",
+      payload: {
+        requestId: "pending-catalog",
+        products: [{ id: "pending-product" }],
+        existingProductExternalIds: [],
+      },
+      attempts: 0,
+    });
 
     const rows: Record<string, any[]> = {
       categories: [
@@ -151,6 +171,12 @@ describe("Supabase store bootstrap", () => {
       familyId: "family-db",
       variantOptions: { Maat: "8.25" },
       identifiers: [{ type: "ean", value: "5410000000011", isScannable: true, isPrimary: true }],
+    });
+    expect(await activeDb.products.get("pending-product")).toMatchObject({
+      name: "Lokale hoodie",
+      stockQty: 7,
+      familyId: "00000000-0000-4000-8000-000000000099",
+      variantOptions: { Maat: "M" },
     });
     expect(await activeDb.categories.get("decks")).toMatchObject({
       parentId: "hardware",
