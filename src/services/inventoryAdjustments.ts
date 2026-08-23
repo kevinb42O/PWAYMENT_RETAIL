@@ -1,6 +1,7 @@
 import { useAuth } from "../auth/useAuth";
 import { db } from "../db/db";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
+import { upsertSupabaseProducts } from "./supabaseMutations";
 import type { Json } from "../types/database.generated";
 import type {
   InventoryAdjustmentReason,
@@ -189,6 +190,9 @@ const remoteErrorMessage = (message: string) => {
   return match?.[1]?.trim() || "De voorraadcorrectie kon niet centraal worden vastgelegd.";
 };
 
+const isProductNotYetSyncedError = (message: string): boolean =>
+  /inventory-count:product-not-found|product.*(?:not found|bestaat niet)/i.test(message);
+
 /**
  * Register a physical count as an absolute observed quantity. On a tenant the
  * server locks the product and rejects a stale expected quantity, so a count
@@ -214,17 +218,31 @@ export const recordInventoryCount = async (
     );
   }
 
-  const { data, error } = await supabase.rpc("record_inventory_adjustment", {
-    target_store_id: auth.currentStoreId,
-    payload: {
-      client_request_id: enriched.clientRequestId,
-      product_id: enriched.productId,
-      expected_stock_qty: enriched.expectedStockQty,
-      counted_stock_qty: enriched.countedStockQty,
-      reason: enriched.reason,
-      note: normalizedNote(enriched.note),
-    } as unknown as Json,
+  const payload = {
+    client_request_id: enriched.clientRequestId,
+    product_id: enriched.productId,
+    expected_stock_qty: enriched.expectedStockQty,
+    counted_stock_qty: enriched.countedStockQty,
+    reason: enriched.reason,
+    note: normalizedNote(enriched.note),
+  } as unknown as Json;
+  const countOnServer = () => supabase.rpc("record_inventory_adjustment", {
+    target_store_id: auth.currentStoreId!,
+    payload,
   });
+  let { data, error } = await countOnServer();
+
+  // A just-created product is queued for normal offline-first sync. A count
+  // submitted in the next second must not race that queue and look deleted to
+  // the inventory RPC: publish the known local product once, then retry the
+  // idempotent count with its original request id.
+  if (error && isProductNotYetSyncedError(error.message)) {
+    const product = await db.products.get(enriched.productId);
+    if (product) {
+      await upsertSupabaseProducts(auth.currentStoreId, [product]);
+      ({ data, error } = await countOnServer());
+    }
+  }
   if (error) throw new InventoryAdjustmentError(remoteErrorMessage(error.message));
 
   const result = (data ?? {}) as {
