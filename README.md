@@ -100,9 +100,9 @@ overeen met de gekoppelde remote database.
 - Dagafsluiting met kasreconciliatie, betaalmix, omzet, brutomarge,
   kortingen, BTW-uitsplitsing, controleerbare rapportdetails en hashketen.
 
-Een fysieke betaalterminal of PSP-lifecycle is een aparte hardware/provider-
-integratie. De POS ondersteunt vandaag wel de volledige operationele registratie
-van cash, kaart en gesplitste betalingen.
+Mollie In-person Payments is de primaire kaartterminalintegratie. De POS maakt
+de betaling server-side aan, volgt de providerstatus en boekt de verkoop pas na
+`paid`. Cash, cadeaubonnen en gesplitste betalingen blijven ondersteund.
 
 ### Catalogus, voorraad en aankoop
 
@@ -234,6 +234,8 @@ OPENAI_API_KEY="sk-project-secret"
 OPENAI_PACE_MODEL="gpt-5-nano"
 SUPABASE_URL="https://your-project-ref.supabase.co"
 SUPABASE_PUBLISHABLE_KEY="sb_publishable_your_key"
+MOLLIE_API_KEY="test_your_mollie_api_key"
+MOLLIE_TERMINAL_ID="term_your_test_terminal_id"
 
 VITE_SEED_DEMO_PRODUCTS=false
 VITE_AUTO_RESET_LEGACY_CATALOG=true
@@ -258,6 +260,8 @@ VITE_ENABLE_PACE_AI=false
 | `OPENAI_PACE_MODEL` | `gpt-5-nano` | Goedkoopste standaardmodel voor vrije Pace-vragen; server-side vervangbaar zonder frontendbuild |
 | `SUPABASE_URL` | — | Server-side Supabase-URL voor sessievalidatie van Pace-verzoeken |
 | `SUPABASE_PUBLISHABLE_KEY` | — | Publishable key waarmee de Pace-endpoint een gebruikerssessie bij Supabase valideert |
+| `MOLLIE_API_KEY` | — | Geheime server-side Mollie test- of livesleutel; nooit met `VITE_` prefix |
+| `MOLLIE_TERMINAL_ID` | automatische detectie | Optionele vaste terminal-ID die bij het API-profiel hoort |
 
 ## Data, synchronisatie en veiligheid
 
@@ -328,6 +332,17 @@ alleen actief in een echte productiebuild; development-, presentatie- en
 E2E-builds ruimen bestaande workers en caches op om stale bundles te vermijden.
 
 ## Hardware
+
+### Mollie betaalterminal
+
+De knop **Kaart** gebruikt Mollie Point of Sale (`method=pointofsale`). Activeer
+Point of Sale in het Mollie-profiel en configureer `MOLLIE_API_KEY` server-side.
+`MOLLIE_TERMINAL_ID` is alleen nodig om een specifieke terminal vast te zetten;
+anders wordt de eerste beschikbare profielterminal automatisch gebruikt. Met een `test_`-sleutel en de virtuele
+testterminal toont de betaalmodal een link om `paid`, `canceled` of `failed` te
+simuleren. De kassa bewaart de Mollie-betalingsreferentie bij de lokale én
+centrale transactie en kan een reeds betaalde maar nog niet geboekte verkoop veilig
+opnieuw boeken met dezelfde checkout-idempotentiesleutel.
 
 ### Scanner en printer
 

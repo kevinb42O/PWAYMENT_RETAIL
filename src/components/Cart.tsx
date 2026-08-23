@@ -13,6 +13,8 @@ import {
   User,
   Gift,
   FileText,
+  ExternalLink,
+  LoaderCircle,
   MoreHorizontal,
   Clock3,
   Monitor,
@@ -73,6 +75,55 @@ import {
   SuspendedCartsModal,
   type SuspendedCartListItem,
 } from "./SuspendedCartsModal";
+import {
+  cancelMollieTerminalPayment,
+  createMollieTerminalPayment,
+  getMollieTerminalPayment,
+  type MollieTerminalPayment,
+} from "../services/mollieTerminal";
+
+type CardCheckoutExtras = {
+  tenderedCents?: number;
+  giftCards?: GiftCardAllocation[];
+  tenders?: CheckoutTenderInput[];
+};
+
+type MollieFlow = {
+  phase: "creating" | "waiting" | "booking" | "booking-error" | "status-error" | "declined";
+  payment?: MollieTerminalPayment;
+  clientRequestId: string;
+  amountCents: number;
+  mollieIdempotencyKey: string;
+  method: TenderMethod;
+  extras: CardCheckoutExtras;
+  error?: string;
+  storeId: string | null;
+};
+
+const mollieFlowStorageKey = (storeId: string | null) =>
+  `pwayment:mollie-terminal-flow:v1:${storeId ?? "unscoped"}`;
+
+const restoredMollieFlow = (storeId: string | null): MollieFlow | null => {
+  try {
+    const raw = globalThis.localStorage?.getItem(mollieFlowStorageKey(storeId));
+    if (!raw) return null;
+    const value = JSON.parse(raw) as Partial<MollieFlow>;
+    if (
+      !value.clientRequestId || !value.mollieIdempotencyKey ||
+      !Number.isSafeInteger(value.amountCents) || Number(value.amountCents) <= 0 ||
+      !value.method || !value.extras || value.storeId !== storeId
+    ) return null;
+    return {
+      ...value,
+      phase: value.payment?.status === "paid" ? "booking-error" : "status-error",
+      error: value.payment?.status === "paid"
+        ? "De kaartbetaling is gelukt. Rond de verkoopboeking opnieuw af."
+        : "Een onderbroken terminalbetaling is teruggevonden. Controleer de status vóór u opnieuw afrekent.",
+    } as MollieFlow;
+  } catch {
+    return null;
+  }
+};
 
 const lineUnitCents = (o: OrderItem): number =>
   o.product.priceCents +
@@ -223,6 +274,8 @@ export const Cart: React.FC = () => {
   }, [linkedCustomerGiftCards]);
 
   const [isProcessing, setIsProcessing] = useState(false);
+  const [mollieFlow, setMollieFlow] = useState<MollieFlow | null>(() => restoredMollieFlow(auth.currentStoreId));
+  const ignoredMolliePayments = useRef(new Set<string>());
   const [receipt, setReceipt] = useState<Transaction | null>(null);
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
   const [discountOpen, setDiscountOpen] = useState(false);
@@ -256,6 +309,18 @@ export const Cart: React.FC = () => {
   const [resumeCartId, setResumeCartId] = useState<string | null>(null);
   const [discardCartId, setDiscardCartId] = useState<string | null>(null);
   const cartActionsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    try {
+      if (mollieFlow) {
+        globalThis.localStorage?.setItem(mollieFlowStorageKey(auth.currentStoreId), JSON.stringify(mollieFlow));
+      } else {
+        globalThis.localStorage?.removeItem(mollieFlowStorageKey(auth.currentStoreId));
+      }
+    } catch {
+      // The active in-memory flow remains safe when storage is unavailable.
+    }
+  }, [auth.currentStoreId, mollieFlow]);
 
   useEffect(() => {
     if (!cartActionsOpen) return;
@@ -320,7 +385,7 @@ export const Cart: React.FC = () => {
     cashModalCommercialCents,
   );
   const checkoutBlocked =
-    !hasItemsToCheckout || isProcessing || vatBlockers.length > 0;
+    !hasItemsToCheckout || isProcessing || mollieFlow !== null || vatBlockers.length > 0;
   const completedInvoice = useMemo(
     () => receipt && receipt.documentRequest?.type !== "receipt"
       ? convertTransactionToInvoiceData(receipt, receipt.merchantSnapshot ?? merchantProfile, linkedCustomer)
@@ -477,33 +542,32 @@ export const Cart: React.FC = () => {
 
   const runCheckout = async (
     method: TenderMethod,
-    extras: {
-      tenderedCents?: number;
-      giftCards?: GiftCardAllocation[];
-      tenders?: CheckoutTenderInput[];
+    extras: CardCheckoutExtras & {
+      clientRequestId?: string;
+      paymentProviderReference?: string;
     } = {},
   ) => {
-    if (checkoutBlocked) return;
+    if (!hasItemsToCheckout || isProcessing || vatBlockers.length > 0) return false;
     if (cartDiscount?.requiresReapproval && !auth.hasRole("owner", "manager")) {
       setDiscountOpen(true);
       alert(
         "Deze korting stond in wacht. Vraag vóór betaling opnieuw managergoedkeuring.",
       );
-      return;
+      return false;
     }
     if (documentRequest.type !== "receipt" && (
       !linkedCustomer || documentRequest.recipient?.customerId !== linkedCustomer.id
     )) {
       setInvoiceCustomerOpen(true);
       alert("Een factuur vereist een gekoppelde klant met volledige facturatiegegevens.");
-      return;
+      return false;
     }
     setIsProcessing(true);
     const displayMethod = extras.tenders?.some((tender) => tender.method === "PIN")
       ? "PIN"
       : method;
     useCustomerDisplayRuntime.getState().beginPayment(displayMethod);
-    const clientRequestId = cartCheckoutRequestId ?? crypto.randomUUID();
+    const clientRequestId = extras.clientRequestId ?? cartCheckoutRequestId ?? crypto.randomUUID();
     if (!cartCheckoutRequestId) setCartCheckoutRequestId(clientRequestId);
 
     try {
@@ -517,6 +581,8 @@ export const Cart: React.FC = () => {
         discountApprovalId: cartDiscount?.approvalId,
         giftCards: extras.giftCards ?? cartGiftCards,
         method,
+        paymentProvider: extras.paymentProviderReference ? "mollie" : undefined,
+        paymentProviderReference: extras.paymentProviderReference,
         tenders: extras.tenders,
         tenderedCents: extras.tenderedCents,
         customerId: linkedCustomerId ?? undefined,
@@ -548,6 +614,7 @@ export const Cart: React.FC = () => {
           console.error("Thermal print failed (transaction saved):", printErr);
         }
       }
+      return true;
     } catch (error) {
       useCustomerDisplayRuntime.getState().failPayment(displayMethod);
       console.error("Checkout failed:", error);
@@ -556,8 +623,187 @@ export const Cart: React.FC = () => {
           ? error.message
           : "Er ging iets mis bij het afrekenen. Er is niets geboekt — probeer opnieuw.",
       );
+      return false;
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const checkoutPreflight = () => {
+    if (!hasItemsToCheckout || isProcessing || vatBlockers.length > 0) return false;
+    if (cartDiscount?.requiresReapproval && !auth.hasRole("owner", "manager")) {
+      setDiscountOpen(true);
+      alert("Deze korting stond in wacht. Vraag vóór betaling opnieuw managergoedkeuring.");
+      return false;
+    }
+    if (documentRequest.type !== "receipt" && (
+      !linkedCustomer || documentRequest.recipient?.customerId !== linkedCustomer.id
+    )) {
+      setInvoiceCustomerOpen(true);
+      alert("Een factuur vereist een gekoppelde klant met volledige facturatiegegevens.");
+      return false;
+    }
+    return true;
+  };
+
+  const bookConfirmedMolliePayment = async (flow: MollieFlow, payment: MollieTerminalPayment) => {
+    setMollieFlow({ ...flow, phase: "booking", payment, error: undefined });
+    const booked = await runCheckout(flow.method, {
+      ...flow.extras,
+      clientRequestId: flow.clientRequestId,
+      paymentProviderReference: payment.id,
+    });
+    if (booked) {
+      setMollieFlow(null);
+    } else {
+      setMollieFlow({
+        ...flow,
+        phase: "booking-error",
+        payment,
+        error: "De kaartbetaling is gelukt, maar de verkoopboeking moet opnieuw worden geprobeerd.",
+      });
+    }
+  };
+
+  const followMolliePayment = async (flow: MollieFlow, initial: MollieTerminalPayment) => {
+    let payment = initial;
+    if (payment.amountCents !== flow.amountCents) {
+      setMollieFlow({
+        ...flow,
+        phase: "status-error",
+        payment,
+        error: "Het bedrag bij Mollie komt niet overeen met de winkelwagen. De verkoop is niet geboekt.",
+      });
+      return;
+    }
+    setMollieFlow({ ...flow, phase: "waiting", payment, error: undefined });
+    for (let attempt = 0; attempt < 150; attempt += 1) {
+      if (ignoredMolliePayments.current.has(payment.id)) return;
+      if (payment.status === "paid") {
+        await bookConfirmedMolliePayment(flow, payment);
+        return;
+      }
+      if (["failed", "canceled", "expired"].includes(payment.status)) {
+        setMollieFlow({
+          ...flow,
+          phase: "declined",
+          payment,
+          error: payment.status === "canceled"
+            ? "De betaling is geannuleerd."
+            : payment.status === "expired"
+              ? "De betaling is verlopen."
+              : "De kaartbetaling is geweigerd of mislukt.",
+        });
+        return;
+      }
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 2_000));
+      try {
+        payment = await getMollieTerminalPayment(payment.id);
+        if (payment.amountCents !== flow.amountCents) {
+          setMollieFlow({
+            ...flow,
+            phase: "status-error",
+            payment,
+            error: "Het bedrag bij Mollie komt niet overeen met de winkelwagen. De verkoop is niet geboekt.",
+          });
+          return;
+        }
+        setMollieFlow({ ...flow, phase: "waiting", payment });
+      } catch (error) {
+        setMollieFlow({
+          ...flow,
+          phase: "status-error",
+          payment,
+          error: error instanceof Error ? error.message : "De betaalstatus kon niet worden opgehaald.",
+        });
+        return;
+      }
+    }
+    setMollieFlow({
+      ...flow,
+      phase: "status-error",
+      payment,
+      error: "De terminal reageert niet binnen vijf minuten. Controleer de betaalstatus opnieuw.",
+    });
+  };
+
+  const startMollieCheckout = async (method: TenderMethod, extras: CardCheckoutExtras = {}) => {
+    if (!checkoutPreflight()) return;
+    const giftCardCents = (extras.giftCards ?? cartGiftCards)
+      .reduce((sum, allocation) => sum + allocation.amountCents, 0);
+    const amountCents = (extras.tenders ?? [{
+      method: "PIN" as const,
+      amountCents: Math.max(0, grandTotal - giftCardCents),
+    }])
+      .filter((tender) => tender.method === "PIN")
+      .reduce((sum, tender) => sum + tender.amountCents, 0);
+    if (amountCents <= 0) return;
+    const clientRequestId = cartCheckoutRequestId ?? crypto.randomUUID();
+    if (!cartCheckoutRequestId) setCartCheckoutRequestId(clientRequestId);
+    const flow: MollieFlow = {
+      phase: "creating",
+      clientRequestId,
+      amountCents,
+      mollieIdempotencyKey: `${clientRequestId}:mollie:${crypto.randomUUID()}`,
+      storeId: auth.currentStoreId,
+      method,
+      extras,
+    };
+    setMollieFlow(flow);
+    try {
+      const payment = await createMollieTerminalPayment({
+        amountCents,
+        description: `PWAYMENT kassaverkoop ${clientRequestId.slice(0, 12)}`,
+        idempotencyKey: flow.mollieIdempotencyKey,
+      });
+      await followMolliePayment(flow, payment);
+    } catch (error) {
+      setMollieFlow({
+        ...flow,
+        phase: "status-error",
+        error: error instanceof Error ? error.message : "De terminalbetaling kon niet worden gestart.",
+      });
+    }
+  };
+
+  const cancelActiveMolliePayment = async () => {
+    const flow = mollieFlow;
+    if (!flow?.payment) return;
+    ignoredMolliePayments.current.add(flow.payment.id);
+    try {
+      const payment = await cancelMollieTerminalPayment(flow.payment.id);
+      setMollieFlow({ ...flow, phase: "declined", payment, error: "De betaling is geannuleerd." });
+    } catch (error) {
+      ignoredMolliePayments.current.delete(flow.payment.id);
+      setMollieFlow({
+        ...flow,
+        phase: "status-error",
+        error: error instanceof Error ? error.message : "Annuleren is niet gelukt. Controleer eerst de betaalstatus.",
+      });
+    }
+  };
+
+  const retryMollieFlow = async () => {
+    const flow = mollieFlow;
+    if (!flow) return;
+    if (flow.phase === "booking-error" && flow.payment) {
+      await bookConfirmedMolliePayment(flow, flow.payment);
+      return;
+    }
+    try {
+      ignoredMolliePayments.current.delete(flow.payment?.id ?? "");
+      const payment = flow.payment ?? await createMollieTerminalPayment({
+        amountCents: flow.amountCents,
+        description: `PWAYMENT kassaverkoop ${flow.clientRequestId.slice(0, 12)}`,
+        idempotencyKey: flow.mollieIdempotencyKey,
+      });
+      await followMolliePayment(flow, payment);
+    } catch (error) {
+      setMollieFlow({
+        ...flow,
+        phase: "status-error",
+        error: error instanceof Error ? error.message : "De betaalstatus kon niet worden gecontroleerd.",
+      });
     }
   };
 
@@ -567,7 +813,7 @@ export const Cart: React.FC = () => {
       setCashOpen(true);
       return;
     }
-    void runCheckout(method);
+    void startMollieCheckout(method);
   };
 
   const openCustomerDisplay = () => {
@@ -1107,12 +1353,12 @@ export const Cart: React.FC = () => {
           setCashOpen(false);
           const splitTenders = pendingSplitTenders;
           setPendingSplitTenders(null);
-          void runCheckout(
-            splitTenders?.some((tender) => tender.method === "PIN")
-              ? "PIN"
-              : "Cash",
-            { tenderedCents: t, tenders: splitTenders ?? undefined },
-          );
+          const method = splitTenders?.some((tender) => tender.method === "PIN")
+            ? "PIN"
+            : "Cash";
+          const extras = { tenderedCents: t, tenders: splitTenders ?? undefined };
+          if (method === "PIN") void startMollieCheckout(method, extras);
+          else void runCheckout(method, extras);
         }}
       />
       <SplitPaymentModal
@@ -1131,7 +1377,7 @@ export const Cart: React.FC = () => {
             setCashOpen(true);
             return;
           }
-          void runCheckout("PIN", { tenders });
+          void startMollieCheckout("PIN", { tenders });
         }}
       />
       <CustomerLinkModal
@@ -1175,7 +1421,7 @@ export const Cart: React.FC = () => {
             if (splitMethod === "Cash") {
               setCashOpen(true);
             } else {
-              void runCheckout("PIN", { giftCards: nextCartGiftCards });
+              void startMollieCheckout("PIN", { giftCards: nextCartGiftCards });
             }
           } else if (grandTotal - allocated <= 0) {
             void runCheckout("Cadeaubon", { giftCards: nextCartGiftCards });
@@ -1202,6 +1448,90 @@ export const Cart: React.FC = () => {
           {giftCardSaleMode === "issue" && <div className="space-y-2"><div className="flex items-center justify-between"><span className="text-sm font-bold text-slate-700">Houder van de cadeaubon <span className="font-normal text-slate-400">(optioneel)</span></span><button type="button" onClick={() => setGiftCardSaleNewCustomer((open) => !open)} className="text-xs font-bold text-sky-700 hover:text-sky-900">{giftCardSaleNewCustomer ? "Bestaande klant kiezen" : "+ Nieuwe klant"}</button></div>{giftCardSaleNewCustomer ? <div className="grid gap-2 rounded-xl border border-sky-100 bg-sky-50 p-3"><input value={giftCardSaleCustomerName} onChange={(event) => setGiftCardSaleCustomerName(event.target.value)} placeholder="Naam *" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" autoFocus /><div className="grid grid-cols-2 gap-2"><input value={giftCardSaleCustomerEmail} onChange={(event) => setGiftCardSaleCustomerEmail(event.target.value)} placeholder="E-mail" className="min-w-0 rounded-lg border border-slate-300 px-3 py-2 text-sm" /><input value={giftCardSaleCustomerPhone} onChange={(event) => setGiftCardSaleCustomerPhone(event.target.value)} placeholder="Telefoon" className="min-w-0 rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div><label className="flex items-center gap-2 text-xs font-semibold text-slate-700"><input type="checkbox" checked={giftCardSaleCustomerIsBuyer} onChange={(event) => setGiftCardSaleCustomerIsBuyer(event.target.checked)} /> Deze klant is ook de koper/factuurklant</label><button type="button" onClick={() => setGiftCardSaleBusinessOpen((open) => !open)} className="w-fit text-xs font-bold text-sky-700">{giftCardSaleBusinessOpen ? "Zakelijke gegevens verbergen" : "+ Zakelijke/facturatiegegevens"}</button>{giftCardSaleBusinessOpen && <div className="grid gap-2 border-t border-sky-200 pt-2"><input value={giftCardSaleCompany} onChange={(event) => setGiftCardSaleCompany(event.target.value)} placeholder="Bedrijfsnaam *" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" /><input value={giftCardSaleVat} onChange={(event) => setGiftCardSaleVat(event.target.value)} placeholder="BTW-nummer" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" /><input value={giftCardSaleAddress} onChange={(event) => setGiftCardSaleAddress(event.target.value)} placeholder="Straat en nummer *" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" /><div className="grid grid-cols-2 gap-2"><input value={giftCardSalePostalCode} onChange={(event) => setGiftCardSalePostalCode(event.target.value)} placeholder="Postcode *" className="min-w-0 rounded-lg border border-slate-300 px-3 py-2 text-sm" /><input value={giftCardSaleCity} onChange={(event) => setGiftCardSaleCity(event.target.value)} placeholder="Gemeente *" className="min-w-0 rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div></div>}</div> : <select value={giftCardSaleCustomerId} onChange={(event) => setGiftCardSaleCustomerId(event.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2"><option value="">Anonieme cadeaubon</option>{customers.filter((customer) => customer.isActive).map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}</select>}<p className="text-xs leading-5 text-slate-500">Koper/factuurklant kan verschillen van de houder. Kies hem via Winkelwagenacties → Klant koppelen of Factuur opmaken.</p></div>}
           {giftCardSaleMode === "recharge" && <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">Scan de bestaande kaart. Het actuele saldo wordt opnieuw gecontroleerd zodra de betaling wordt geboekt.</p>}
         </div>
+      </Modal>
+      <Modal
+        open={mollieFlow !== null}
+        onClose={() => {
+          if (mollieFlow?.phase === "declined") setMollieFlow(null);
+        }}
+        title="Betalen met Mollie"
+        subtitle={mollieFlow?.payment ? `Referentie ${mollieFlow.payment.id}` : "Beveiligde terminalbetaling"}
+        icon={mollieFlow?.phase === "declined" ? <AlertTriangle size={20} /> : <CreditCard size={20} />}
+        closeOnBackdrop={false}
+        footer={mollieFlow && (
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            {mollieFlow.phase === "waiting" && mollieFlow.payment && (
+              <button
+                type="button"
+                onClick={() => void cancelActiveMolliePayment()}
+                className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
+              >
+                Betaling annuleren
+              </button>
+            )}
+            {(mollieFlow.phase === "status-error" || mollieFlow.phase === "booking-error") && (
+              <button
+                type="button"
+                onClick={() => void retryMollieFlow()}
+                className="rounded-xl bg-sky-700 px-4 py-2 text-sm font-bold text-white hover:bg-sky-800"
+              >
+                {mollieFlow.phase === "booking-error" ? "Verkoop opnieuw boeken" : "Status opnieuw controleren"}
+              </button>
+            )}
+            {mollieFlow.phase === "declined" && (
+              <button
+                type="button"
+                onClick={() => setMollieFlow(null)}
+                className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-800"
+              >
+                Sluiten
+              </button>
+            )}
+          </div>
+        )}
+      >
+        {mollieFlow && (
+          <div className="space-y-4 text-center">
+            {(mollieFlow.phase === "creating" || mollieFlow.phase === "waiting" || mollieFlow.phase === "booking") && (
+              <LoaderCircle className="mx-auto animate-spin text-sky-700" size={42} aria-hidden="true" />
+            )}
+            <div>
+              <p className="text-lg font-black text-slate-900">
+                {mollieFlow.phase === "creating" && "Terminal wordt gestart…"}
+                {mollieFlow.phase === "waiting" && "Volg de instructies op de terminal"}
+                {mollieFlow.phase === "booking" && "Betaling gelukt — verkoop wordt geboekt…"}
+                {mollieFlow.phase === "booking-error" && "Kaartbetaling gelukt"}
+                {mollieFlow.phase === "status-error" && "Statuscontrole onderbroken"}
+                {mollieFlow.phase === "declined" && "Betaling niet voltooid"}
+              </p>
+              <p className="mt-1 text-sm text-slate-500">
+                Te betalen via kaart: {formatEUR(mollieFlow.amountCents)}
+              </p>
+            </div>
+            {mollieFlow.error && (
+              <p role="alert" className={`rounded-xl border px-3 py-2 text-left text-sm ${
+                mollieFlow.phase === "booking-error"
+                  ? "border-amber-200 bg-amber-50 text-amber-800"
+                  : "border-red-200 bg-red-50 text-red-700"
+              }`}>
+                {mollieFlow.error}
+              </p>
+            )}
+            {mollieFlow.payment?.testMode && mollieFlow.payment.changePaymentStateUrl && mollieFlow.phase === "waiting" && (
+              <a
+                href={mollieFlow.payment.changePaymentStateUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-bold text-blue-800 hover:bg-blue-100"
+              >
+                Teststatus kiezen <ExternalLink size={15} />
+              </a>
+            )}
+            {mollieFlow.payment?.testMode && (
+              <p className="text-xs leading-5 text-slate-400">Mollie testmodus — er wordt geen echt geld afgeschreven.</p>
+            )}
+          </div>
+        )}
       </Modal>
       <SuspendedCartsModal
         open={queueOpen}

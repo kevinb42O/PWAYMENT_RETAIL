@@ -127,6 +127,35 @@ describe("synchronizeFinancialLedgerBeforeReport", () => {
     });
   });
 
+  it("records the Mollie reconciliation reference after the server sale exists", async () => {
+    const row = {
+      ...transaction("mollie-reference-contract"),
+      paymentProvider: "mollie" as const,
+      paymentProviderReference: "tr_terminal123",
+    };
+    const rpc = vi.spyOn(supabase, "rpc").mockResolvedValue({
+      data: { duplicate: false },
+      error: null,
+    } as never);
+
+    await synchronizeFinancialLedgerBeforeReport(
+      "00000000-0000-0000-0000-000000000001",
+      [row],
+      [],
+    );
+
+    expect(rpc.mock.calls.map(([name]) => name)).toEqual([
+      "checkout_sale",
+      "record_payment_provider_reference",
+    ]);
+    expect(rpc).toHaveBeenLastCalledWith("record_payment_provider_reference", {
+      target_store_id: "00000000-0000-0000-0000-000000000001",
+      request_id: "mollie-reference-contract",
+      provider_name: "mollie",
+      provider_reference: "tr_terminal123",
+    });
+  });
+
   it("removes the matching outbox entry only after server confirmation", async () => {
     const row = transaction("close-race-2");
     await db.outbox.add({

@@ -288,6 +288,9 @@ export interface Transaction {
   /** Cash tendered, used to compute change for receipts. */
   tenderedCents?: number;
   paymentMethod: PaymentMethod;
+  /** PSP proof for an electronic tender; no API credentials are stored here. */
+  paymentProvider?: "mollie";
+  paymentProviderReference?: string;
   /** Canonical tender ledger. New rows always contain at least one tender. */
   tenders?: PaymentTender[];
   /** @deprecated Legacy alias retained for database migration/read compatibility. */

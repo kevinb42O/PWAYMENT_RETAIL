@@ -96,6 +96,9 @@ export interface CheckoutInput {
   giftCards: GiftCardAllocation[];
   /** Tender used for whatever is left after the gift cards. */
   method: TenderMethod;
+  /** Confirmed PSP proof supplied only after the electronic tender succeeded. */
+  paymentProvider?: "mollie";
+  paymentProviderReference?: string;
   /**
    * Explicit cash/card allocation for a combined payment. When omitted, the
    * legacy `method` covers the remaining amount exactly as before.
@@ -638,6 +641,8 @@ const runCheckout = async (
         discountApprovalId: input.discountApprovalId,
         tenderedCents: normalizedTenderedCents,
         paymentMethod,
+        paymentProvider: input.paymentProvider,
+        paymentProviderReference: input.paymentProviderReference,
         tenders,
         splitTenders: paymentMethod === "Split" ? tenders : undefined,
         giftCardAllocations: redemptionEvents.map((event) => ({
@@ -789,6 +794,8 @@ const runCheckout = async (
           cashDueCents: cashPaymentRequested ? cashDueCents : undefined,
           discountCents: totals.discount,
           method: paymentMethod,
+          paymentProvider: input.paymentProvider,
+          paymentProviderReference: input.paymentProviderReference,
           giftCardCents: giftCardTotal,
           giftCards: allocations.map((allocation) => ({
             giftCardId: allocation.id,

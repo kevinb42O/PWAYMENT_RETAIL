@@ -133,6 +133,23 @@ describe('finalizeCheckout', () => {
     expect(await counts()).toEqual({ transactions: 1, audit: 1, outbox: 1 });
   });
 
+  it('retains the confirmed Mollie reference with the idempotent sale', async () => {
+    const result = await finalizeCheckout(baseInput({
+      clientRequestId: 'mollie-terminal-sale',
+      paymentProvider: 'mollie',
+      paymentProviderReference: 'tr_terminal123',
+    }));
+
+    expect(result.transaction).toMatchObject({
+      paymentMethod: 'PIN',
+      paymentProvider: 'mollie',
+      paymentProviderReference: 'tr_terminal123',
+    });
+    expect(await db.transactions.get(result.transaction.id!)).toMatchObject({
+      paymentProviderReference: 'tr_terminal123',
+    });
+  });
+
   it('issues an invoice number and freezes B2B billing data with the sale', async () => {
     const result = await finalizeCheckout(baseInput({
       clientRequestId: 'b2b-invoice',

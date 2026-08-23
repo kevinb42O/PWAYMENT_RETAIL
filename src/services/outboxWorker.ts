@@ -115,6 +115,8 @@ const pushTransactionToSupabase = async (
         amount_cents: card.amountCents,
       })),
       method: tx.paymentMethod,
+      payment_provider: tx.paymentProvider,
+      payment_provider_reference: tx.paymentProviderReference,
       tenders,
       ...(hasCashTender
         ? { tendered_cents: tx.tenderedCents ?? tenders.find((tender) => tender.method === "Cash")?.amount_cents }
@@ -146,6 +148,15 @@ const pushTransactionToSupabase = async (
 
     if (error && !error.message.includes('duplicate')) {
       throw new Error(error.message);
+    }
+    if (tx.paymentProvider && tx.paymentProviderReference && tx.clientRequestId) {
+      const providerResult = await rpc("record_payment_provider_reference", {
+        target_store_id: storeId,
+        request_id: tx.clientRequestId,
+        provider_name: tx.paymentProvider,
+        provider_reference: tx.paymentProviderReference,
+      });
+      if (providerResult.error) throw new Error(providerResult.error.message);
     }
     // The server owns legal document numbering. Reconcile the optimistic local
     // number as soon as the queued command reaches Supabase.
