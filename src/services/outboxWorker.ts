@@ -53,6 +53,24 @@ const terminalTendersForServer = (tx: Transaction) => {
 const isLocalMollieSimulatorReference = (reference?: string): boolean =>
   /^sim_[a-f0-9]{32}$/i.test(reference ?? "");
 
+const isDetachedSupabaseRpcFailure = (entry: OutboxEntry): boolean =>
+  entry.kind === "transaction"
+  && entry.deliveryStatus === "dead_letter"
+  && /cannot read properties of undefined.*reading ['"]rest['"]/i.test(entry.lastError ?? "");
+
+/**
+ * Releases only rows stopped by the known detached-rpc client defect. The
+ * server command is idempotent, so a row can safely resume after upgrading;
+ * unrelated business rejections remain in manual recovery.
+ */
+export const recoverKnownOutboxClientDefects = async (): Promise<number> => {
+  const entries = (await db.outbox.toArray()).filter(isDetachedSupabaseRpcFailure);
+  for (const entry of entries) {
+    if (entry.id != null) await retryOutboxEntry(entry.id);
+  }
+  return entries.length;
+};
+
 /**
  * Outbox rows are durable snapshots, but older app versions can leave a
  * partial/stale snapshot behind. The transaction table is the local financial
@@ -708,6 +726,7 @@ export const startOutboxWorker = () => {
       if (!storeId || !isSupabaseConfigured || !navigator.onLine) return;
 
       await withOutboxLeader(storeId, async () => {
+        await recoverKnownOutboxClientDefects();
         const result = await drainOutbox(async (entry) => {
           await sendOutboxEntry(storeId, entry);
           if (entry.kind === "migration_activate") {

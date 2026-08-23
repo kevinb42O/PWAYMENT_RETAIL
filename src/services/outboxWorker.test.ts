@@ -4,7 +4,7 @@ import { db } from "../db/db";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../auth/useAuth";
 import type { Transaction } from "../types";
-import { discardUndeliveredLocalSale, synchronizeFinancialLedgerBeforeReport } from "./outboxWorker";
+import { discardUndeliveredLocalSale, recoverKnownOutboxClientDefects, synchronizeFinancialLedgerBeforeReport } from "./outboxWorker";
 
 const transaction = (requestId = "close-race-1"): Transaction => ({
   id: 1,
@@ -44,6 +44,37 @@ beforeEach(async () => {
 });
 
 describe("synchronizeFinancialLedgerBeforeReport", () => {
+  it("automatically releases sales stopped by the historic detached-rpc defect", async () => {
+    const affectedId = await db.outbox.add({
+      timestamp: Date.now(),
+      kind: "transaction",
+      payload: transaction("detached-rpc-recovery"),
+      attempts: 5,
+      deliveryStatus: "dead_letter",
+      requiresManualResolution: true,
+      lastError: "Cannot read properties of undefined (reading 'rest')",
+    });
+    const unrelatedId = await db.outbox.add({
+      timestamp: Date.now(),
+      kind: "transaction",
+      payload: transaction("business-rejection"),
+      attempts: 5,
+      deliveryStatus: "dead_letter",
+      requiresManualResolution: true,
+      lastError: "checkout:insufficient-stock",
+    });
+
+    await expect(recoverKnownOutboxClientDefects()).resolves.toBe(1);
+    await expect(db.outbox.get(affectedId)).resolves.toMatchObject({
+      deliveryStatus: "pending",
+      requiresManualResolution: false,
+    });
+    await expect(db.outbox.get(unrelatedId)).resolves.toMatchObject({
+      deliveryStatus: "dead_letter",
+      requiresManualResolution: true,
+    });
+  });
+
   it("pushes the local sale immediately instead of waiting for the outbox timer", async () => {
     const rpc = vi
       .spyOn(supabase, "rpc")
