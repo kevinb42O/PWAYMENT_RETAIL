@@ -3,7 +3,7 @@ import { useStore, type MainView } from "../store/useStore";
 import { useAuth } from "../auth/useAuth";
 import { useProducts } from "../store/useProducts";
 import { matchesCatalogQuery } from "../utils/productLookup";
-import { isValidReceiptBarcode } from "../utils/receiptBarcode";
+import { isValidReceiptBarcode, normalizeReceiptBarcode } from "../utils/receiptBarcode";
 import { FeatureGate } from "../billing/FeatureGate";
 import { TrialStatus } from "../billing/TrialStatus";
 import { FEATURE_KEYS, isFeatureEnabledForSnapshot, useEntitlements, type FeatureKey } from "../billing/entitlements";
@@ -155,6 +155,7 @@ export const Layout: React.FC = () => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [openAuditLogAtReturnSearch, setOpenAuditLogAtReturnSearch] =
     useState(false);
+  const [returnReceiptBarcode, setReturnReceiptBarcode] = useState<string | null>(null);
   const [profileInitialTarget, setProfileInitialTarget] = useState<{
     tab: "billing" | "webshop-general" | "modules" | "workforce" | "leave-approvals" | "catalog-products" | "catalog-categories" | "labels";
     requestKey: number;
@@ -272,7 +273,10 @@ export const Layout: React.FC = () => {
   const ActiveNavigationIcon = activeNavigationItem.Icon;
 
   const openNavigationItem = (item: NavigationItem) => {
-    if (item.view === "audit-log") setOpenAuditLogAtReturnSearch(false);
+    if (item.view === "audit-log") {
+      setOpenAuditLogAtReturnSearch(false);
+      setReturnReceiptBarcode(null);
+    }
     if (item.profileTab) openProfile(item.profileTab);
     else setMainView(item.view);
     setIsNavDropdownOpen(false);
@@ -344,12 +348,23 @@ export const Layout: React.FC = () => {
 
     if (isValidReceiptBarcode(value)) {
       setProductQuery("");
+      if (currentRole !== "owner" && currentRole !== "manager") {
+        setScanFeedback({
+          tone: "warning",
+          title: "Manager vereist voor retour",
+          detail: "Het kassaticket is herkend. Laat een eigenaar of manager aanmelden om de retour te openen.",
+        });
+        focusScanInput();
+        return;
+      }
+      setReturnReceiptBarcode(normalizeReceiptBarcode(value));
+      setOpenAuditLogAtReturnSearch(false);
       setScanFeedback({
         tone: "info",
-        title: "Ticketcode gescand",
-        detail: "Dit is een kassaticket voor een retour. Gebruik de knop 'Retour' om het kassaticket op te zoeken.",
+        title: "Kassaticket herkend",
+        detail: "De oorspronkelijke verkoop en de beschikbare retourregels worden geopend.",
       });
-      focusScanInput();
+      setMainView("audit-log");
       return;
     }
 
@@ -547,6 +562,7 @@ export const Layout: React.FC = () => {
         } else if (event.key === "3") {
           event.preventDefault();
           setOpenAuditLogAtReturnSearch(false);
+          setReturnReceiptBarcode(null);
           setMainView("audit-log");
           setIsNavDropdownOpen(false);
         } else if (event.key === "4" && modulePreferences.customers && canOpenFeature(FEATURE_KEYS.customerCrm)) {
@@ -924,6 +940,7 @@ export const Layout: React.FC = () => {
               canViewFullHistory={canOpenFeature(FEATURE_KEYS.fullHistory)}
               canViewAuditLog={canOpenFeature(FEATURE_KEYS.auditViewer)}
               initialReturnSearch={openAuditLogAtReturnSearch}
+              initialReturnBarcode={returnReceiptBarcode ?? undefined}
             />
           )}
           {mainView === "customers" && (
@@ -1039,6 +1056,7 @@ export const Layout: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => {
+                      setReturnReceiptBarcode(null);
                       setOpenAuditLogAtReturnSearch(true);
                       setMainView("audit-log");
                     }}

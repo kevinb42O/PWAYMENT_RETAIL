@@ -40,7 +40,7 @@ import { transactionTenders } from "../utils/financial";
 import { Modal } from "./Modal";
 import { createRefund } from "../services/refunds";
 import { useAuth } from "../auth/useAuth";
-import { isValidReceiptBarcode, normalizeReceiptBarcode } from "../utils/receiptBarcode";
+import { remainingReturnQuantities, resolveReceiptReturn } from "../utils/receiptReturn";
 import {
   DailyReportDaySummary,
   loadDailyReportDaySummaries,
@@ -114,12 +114,15 @@ interface AuditLogProps {
   canViewAuditLog: boolean;
   /** Opened from the POS return shortcut: take the cashier straight to manual lookup. */
   initialReturnSearch?: boolean;
+  /** A receipt scanned in the POS opens its original sale and return lines directly. */
+  initialReturnBarcode?: string;
 }
 
 export const AuditLog: React.FC<AuditLogProps> = ({
   canViewFullHistory,
   canViewAuditLog,
   initialReturnSearch = false,
+  initialReturnBarcode,
 }) => {
   const merchantProfile = useMerchantProfile((state) => state.profile);
   const auth = useAuth();
@@ -136,7 +139,12 @@ export const AuditLog: React.FC<AuditLogProps> = ({
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [refundTransaction, setRefundTransaction] =
     useState<Transaction | null>(null);
-  const [returnScanOpen, setReturnScanOpen] = useState(false);
+  const [returnScanRequest, setReturnScanRequest] = useState<{
+    value?: string;
+    error?: string;
+  } | null>(null);
+  const [transactionsLoaded, setTransactionsLoaded] = useState(false);
+  const handledInitialReturnBarcode = useRef<string | null>(null);
 
   const availableTabs = useMemo(
     () => tabs.filter((item) => item.id !== "audit" || canViewAuditLog),
@@ -162,7 +170,23 @@ export const AuditLog: React.FC<AuditLogProps> = ({
     setReports(nextReports);
     setAuditRows(nextAuditRows);
     setTransactions(nextTransactions);
+    setTransactionsLoaded(true);
   };
+
+  useEffect(() => {
+    if (
+      !transactionsLoaded ||
+      !initialReturnBarcode ||
+      handledInitialReturnBarcode.current === initialReturnBarcode
+    ) return;
+    handledInitialReturnBarcode.current = initialReturnBarcode;
+    const result = resolveReceiptReturn(transactions, initialReturnBarcode);
+    if (result.status === "found") {
+      setRefundTransaction(result.transaction);
+      return;
+    }
+    setReturnScanRequest({ value: result.barcode, error: result.message });
+  }, [initialReturnBarcode, transactions, transactionsLoaded]);
 
   const visibleTransactions = useMemo(() => {
     if (effectiveSalesRange === "all") return transactions;
@@ -362,7 +386,7 @@ export const AuditLog: React.FC<AuditLogProps> = ({
             {auth.hasRole("owner", "manager") && (
               <Button
                 type="button"
-                onClick={() => setReturnScanOpen(true)}
+                onClick={() => setReturnScanRequest({})}
                 variant="secondary"
                 className="min-h-10"
               >
@@ -458,6 +482,7 @@ export const AuditLog: React.FC<AuditLogProps> = ({
       {refundTransaction && (
         <RefundDialog
           transaction={refundTransaction}
+          transactions={transactions}
           onClose={() => setRefundTransaction(null)}
           onDone={async () => {
             setRefundTransaction(null);
@@ -466,11 +491,13 @@ export const AuditLog: React.FC<AuditLogProps> = ({
         />
       )}
       <ReturnTicketScanDialog
-        open={returnScanOpen}
+        open={returnScanRequest !== null}
         transactions={transactions}
-        onClose={() => setReturnScanOpen(false)}
+        initialValue={returnScanRequest?.value}
+        initialError={returnScanRequest?.error}
+        onClose={() => setReturnScanRequest(null)}
         onFound={(transaction) => {
-          setReturnScanOpen(false);
+          setReturnScanRequest(null);
           setRefundTransaction(transaction);
         }}
       />
@@ -503,11 +530,15 @@ export const AuditLog: React.FC<AuditLogProps> = ({
 const ReturnTicketScanDialog = ({
   open,
   transactions,
+  initialValue,
+  initialError,
   onClose,
   onFound,
 }: {
   open: boolean;
   transactions: Transaction[];
+  initialValue?: string;
+  initialError?: string;
   onClose: () => void;
   onFound: (transaction: Transaction) => void;
 }) => {
@@ -517,32 +548,19 @@ const ReturnTicketScanDialog = ({
 
   useEffect(() => {
     if (!open) return;
-    setValue("");
-    setError(null);
+    setValue(initialValue ?? "");
+    setError(initialError ?? null);
     const frame = window.requestAnimationFrame(() => inputRef.current?.focus());
     return () => window.cancelAnimationFrame(frame);
-  }, [open]);
+  }, [initialError, initialValue, open]);
 
   const submit = () => {
-    const barcode = normalizeReceiptBarcode(value);
-    if (!isValidReceiptBarcode(barcode)) {
-      setError("Scan een geldige PWAYMENT-ticketbarcode of voer de 20 cijfers in.");
+    const result = resolveReceiptReturn(transactions, value);
+    if (result.status !== "found") {
+      setError(result.message);
       return;
     }
-    const transaction = transactions.find((row) => row.receiptBarcode === barcode);
-    if (!transaction) {
-      setError("Dit kassaticket staat niet in de lokale winkeldata. Vernieuw de synchronisatie of zoek het kassaticket handmatig op.");
-      return;
-    }
-    if ((transaction.kind ?? "sale") !== "sale") {
-      setError("Dit is een creditnota. Alleen een oorspronkelijke verkoop kan worden geretourneerd.");
-      return;
-    }
-    if ((transaction.source ?? "live") === "demo") {
-      setError("Demo-omzet kan niet als echte retour worden geboekt.");
-      return;
-    }
-    onFound(transaction);
+    onFound(result.transaction);
   };
 
   return (
@@ -1357,19 +1375,24 @@ const InvoiceActions = ({
 
 const RefundDialog = ({
   transaction,
+  transactions,
   onClose,
   onDone,
 }: {
   transaction: Transaction;
+  transactions: Transaction[];
   onClose: () => void;
   onDone: () => Promise<void>;
 }) => {
   const auth = useAuth();
-  const [quantities, setQuantities] = useState<Record<string, number>>(
-    Object.fromEntries(
-      transaction.items.map((item) => [item.lineId, item.quantity]),
-    ),
+  const availableQuantities = useMemo(
+    () => remainingReturnQuantities(transaction, transactions),
+    [transaction, transactions],
   );
+  const [quantities, setQuantities] = useState<Record<string, number>>(
+    availableQuantities,
+  );
+  const hasAvailableItems = Object.values(availableQuantities).some((quantity) => quantity > 0);
   const [method, setMethod] = useState<"Cash" | "PIN" | "Cadeaubon">(() => {
     const tenders = transactionTenders(transaction);
     return tenders.length === 1 ? tenders[0].method : "PIN";
@@ -1442,41 +1465,51 @@ const RefundDialog = ({
           <legend className="text-xs font-bold uppercase tracking-wide text-slate-500">
             Retourregels
           </legend>
+          {!hasAvailableItems && (
+            <p role="status" className="mt-2 rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700">
+              Alle artikelen op dit ticket zijn al volledig geretourneerd.
+            </p>
+          )}
           <div className="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-200">
-            {transaction.items.map((item) => (
-              <label
-                key={item.lineId}
-                className="flex items-center justify-between gap-4 p-3 text-sm"
-              >
-                <span>
-                  <strong className="block">{item.product.name}</strong>
-                  <span className="text-xs text-slate-500">
-                    Oorspronkelijk {item.quantity} stuks
+            {transaction.items.map((item) => {
+              const available = availableQuantities[item.lineId] ?? 0;
+              const returned = item.quantity - available;
+              return (
+                <label
+                  key={item.lineId}
+                  className="flex items-center justify-between gap-4 p-3 text-sm"
+                >
+                  <span>
+                    <strong className="block">{item.product.name}</strong>
+                    <span className="text-xs text-slate-500">
+                      Nog {available} van {item.quantity} retourneerbaar{returned > 0 ? ` · ${returned} al retour` : ""}
+                    </span>
                   </span>
-                </span>
-                <input
-                  type="number"
-                  min={0}
-                  max={item.quantity}
-                  step={1}
-                  value={quantities[item.lineId] ?? 0}
-                  onChange={(event) =>
-                    setQuantities((current) => ({
-                      ...current,
-                      [item.lineId]: Math.max(
-                        0,
-                        Math.min(
-                          item.quantity,
-                          Number(event.target.value) || 0,
+                  <input
+                    type="number"
+                    min={0}
+                    max={available}
+                    step={1}
+                    value={quantities[item.lineId] ?? 0}
+                    onChange={(event) =>
+                      setQuantities((current) => ({
+                        ...current,
+                        [item.lineId]: Math.max(
+                          0,
+                          Math.min(
+                            available,
+                            Number(event.target.value) || 0,
+                          ),
                         ),
-                      ),
-                    }))
-                  }
-                  className="w-20 rounded-lg border border-slate-300 px-3 py-2 text-right font-bold"
-                  aria-label={`Retouraantal ${item.product.name}`}
-                />
-              </label>
-            ))}
+                      }))
+                    }
+                    className="w-20 rounded-lg border border-slate-300 px-3 py-2 text-right font-bold"
+                    aria-label={`Retouraantal ${item.product.name}`}
+                    disabled={available === 0}
+                  />
+                </label>
+              );
+            })}
           </div>
         </fieldset>
         <label className="block text-xs font-bold text-slate-600">
