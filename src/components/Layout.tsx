@@ -6,7 +6,7 @@ import { matchesCatalogQuery } from "../utils/productLookup";
 import { isValidReceiptBarcode } from "../utils/receiptBarcode";
 import { FeatureGate } from "../billing/FeatureGate";
 import { TrialStatus } from "../billing/TrialStatus";
-import { FEATURE_KEYS, isFeatureEnabledForSnapshot, planLabel, useEntitlements, type FeatureKey } from "../billing/entitlements";
+import { FEATURE_KEYS, isFeatureEnabledForSnapshot, useEntitlements, type FeatureKey } from "../billing/entitlements";
 import { supabase } from "../lib/supabase";
 import { useStoreConfiguration } from "../store/useStoreConfiguration";
 import { useWorkforce } from "../store/useWorkforce";
@@ -185,20 +185,6 @@ export const Layout: React.FC = () => {
   useEffect(() => {
     void hydrateCategories();
   }, [hydrateCategories]);
-  const activePlanBadge = entitlementSnapshot
-    ? entitlementSnapshot.status === "trialing"
-      ? "Pro trial"
-      : {
-          basic: "Basis",
-          pro: "Pro",
-          enterprise: "Enterprise",
-        }[entitlementSnapshot.effectivePlan]
-    : null;
-  const activePlanTitle = entitlementSnapshot
-    ? `Actief plan: ${planLabel(entitlementSnapshot.effectivePlan)}${
-        entitlementSnapshot.status === "trialing" ? " trial" : ""
-      }`
-    : undefined;
   // Saved module preferences are only a merchant preference. Entitlements are
   // authoritative: never advertise a module that this tenant cannot use.
   const canOpenFeature = (feature: FeatureKey) =>
@@ -609,32 +595,31 @@ export const Layout: React.FC = () => {
   return (
     <div className="flex flex-col h-screen w-full bg-slate-100 overflow-hidden font-sans text-slate-900 selection:bg-sky-500/20">
       <header className="pos-topbar relative flex h-16 items-center justify-between px-3 sm:px-7 print:hidden shrink-0 gap-2 sm:gap-4 z-50">
-        {/* Zone A: Official Crisp Brand Logo */}
+        {/* Zone A: Pace is the living PWAYMENT mark and the assistant entry point. */}
         <div
           className="flex items-center select-none shrink-0"
           aria-label="Pwayment retail"
         >
-          <div className="pos-brand-lockup hidden sm:flex">
-            <img
-              src="/branding/PWAYMENTLOGOFINAL.png"
-              alt="Pwayment"
-              className="h-6 w-auto object-contain"
-            />
-            {activePlanBadge && (
-              <button
-                type="button"
-                className="pos-brand-plan"
-                title={`${activePlanTitle}. Bekijk plan en facturatie.`}
-                onClick={() => openProfile("billing")}
-              >
-                {activePlanBadge}
-              </button>
-            )}
-          </div>
-          <img
-            src="/branding/PWAYMENTLOGOFINAL.png"
-            alt="Pwayment"
-            className="block h-8 w-8 object-contain sm:hidden"
+          <PaceAssistant
+            view={mainView}
+            role={currentRole}
+            userName={currentUserName}
+            productCount={products.length}
+            cartCount={cartCount}
+            firstRunCompleted={firstRunCompleted}
+            online={paceConnection.online}
+            pendingSync={paceConnection.pendingSync}
+            setupMilestones={paceSetupMilestones}
+            suppressed={storeSetupOpen || Boolean(firstProductTourName) || leaveApprovalGateOpen}
+            onNavigate={(view) => setMainView(view)}
+            onOpenSetup={() => setStoreSetupOpen(true)}
+            onOpenProfile={(tab) => openProfile(tab)}
+            onOpenMilestone={(milestone) => {
+              if (milestone.action === "setup") setStoreSetupOpen(true);
+              if (milestone.action === "categories") openCategorySetup();
+              if (milestone.action === "products") openProductSetup();
+              if (milestone.action === "labels") openBarcodeLabelSetup();
+            }}
           />
         </div>
 
@@ -699,27 +684,6 @@ export const Layout: React.FC = () => {
           ref={userMenuRef}
         >
           <TrialStatus onOpenBilling={() => openProfile("billing")} />
-          <PaceAssistant
-            view={mainView}
-            role={currentRole}
-            userName={currentUserName}
-            productCount={products.length}
-            cartCount={cartCount}
-            firstRunCompleted={firstRunCompleted}
-            online={paceConnection.online}
-            pendingSync={paceConnection.pendingSync}
-            setupMilestones={paceSetupMilestones}
-            suppressed={storeSetupOpen || Boolean(firstProductTourName) || leaveApprovalGateOpen}
-            onNavigate={(view) => setMainView(view)}
-            onOpenSetup={() => setStoreSetupOpen(true)}
-            onOpenProfile={(tab) => openProfile(tab)}
-            onOpenMilestone={(milestone) => {
-              if (milestone.action === "setup") setStoreSetupOpen(true);
-              if (milestone.action === "categories") openCategorySetup();
-              if (milestone.action === "products") openProductSetup();
-              if (milestone.action === "labels") openBarcodeLabelSetup();
-            }}
-          />
           <div className="pos-user-badge hidden min-w-0 sm:flex flex-col items-start leading-tight px-2 py-1 select-none">
             <span className="flex max-w-48 items-center justify-start text-xs font-bold text-slate-800">
               <span className="min-w-0 truncate">{currentUserName}</span>

@@ -176,9 +176,10 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
 
   return (
     <>
-      {!unavailable && <button
+      <button
         type="button"
-        className={`pace-trigger ${open ? "is-open" : ""} ${!preferences.enabled ? "is-disabled" : ""}`}
+        className={`pace-trigger ${open ? "is-open" : ""} ${!preferences.enabled ? "is-disabled" : ""} ${unavailable ? "is-unavailable" : ""}`}
+        disabled={unavailable}
         onClick={() => {
           if (!preferences.enabled) {
             updatePreferences({ enabled: true });
@@ -193,10 +194,9 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
         aria-expanded={open}
         aria-controls="pace-assistant-panel"
       >
-        <PaceMark size={38} active={open || shouldBadge} tone={primary.tone} motionMode={preferences.motion} />
-        <span className="pace-trigger-label">Pace</span>
+        <PaceMark size={46} active={open || shouldBadge} emotion={open ? "thinking" : undefined} tone={primary.tone} motionMode={preferences.motion} />
         {shouldBadge && !open && <span className={`pace-signal-dot is-${primary.tone}`} aria-label="Pace heeft een relevant signaal" />}
-      </button>}
+      </button>
 
       {createPortal(<AnimatePresence>
         {open && !unavailable && (
