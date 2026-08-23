@@ -161,6 +161,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
     setPerformance(next);
     setPerformanceKey((current) => current + 1);
   };
+  const performanceLabel = performance === "stretch" ? "Uitrekken" : performance === "slither" ? "Slang" : performance === "liquid" ? "Vloeibaar" : performance === "portal" ? "Portal" : null;
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -250,7 +251,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                     <div className="pace-section-heading"><span>Persoonlijke werking</span><h3>{props.userName ? `${props.userName}, jij bepaalt het tempo.` : "Jij bepaalt zijn tempo."}</h3><p>Deze voorkeuren blijven op dit toestel. Winkelrechten en beveiliging zijn altijd leidend.</p></div>
                     <section className="pace-motion-lab" aria-label="Pace Motion Lab">
                       <div className="pace-motion-lab-stage">
-                        <PaceMark key={performanceKey} size={108} active emotion="attentive" performance={performance} motionMode={preferences.motion === "off" ? "off" : "full"} />
+                        <PaceMark key={performanceKey} size={108} active emotion="attentive" performance={performance} motionMode="full" forceMotion />
                         <span><Sparkles size={13} /> MOTION LAB</span>
                       </div>
                       <div className="pace-motion-lab-copy"><strong>Morph Pace.</strong><small>Elke test keert veilig terug naar het originele merkteken.</small></div>
@@ -260,9 +261,10 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                           ["slither", "Slang"],
                           ["liquid", "Vloeibaar"],
                           ["portal", "Portal"],
-                        ] as Array<[PacePerformance, string]>).map(([mode, label]) => <button key={mode} type="button" className={performance === mode ? "is-playing" : ""} onClick={() => playPerformance(mode)} disabled={preferences.motion === "off"}>{label}</button>)}
+                        ] as Array<[PacePerformance, string]>).map(([mode, label]) => <button key={mode} type="button" className={performance === mode ? "is-playing" : ""} onClick={() => playPerformance(mode)} aria-pressed={performance === mode}>{label}</button>)}
                       </div>
-                      {preferences.motion === "off" && <p>Beweging staat uit. Zet ze op Subtiel of Volledig om te testen.</p>}
+                      <div className={`pace-motion-status${performance ? " is-playing" : ""}`} aria-live="polite"><i /> {performanceLabel ? `${performanceLabel} speelt nu` : "Kies een performance om hem direct af te spelen"}</div>
+                      {(preferences.motion === "off" || prefersReducedMotion) && <p>Automatische beweging blijft uit; een bewust aangeklikte labpreview speelt één keer af.</p>}
                     </section>
                     <div className="pace-settings-card">
                       <ToggleRow label="Pace actief" detail="Toon Pace op dit toestel" checked={preferences.enabled} onChange={(enabled) => updatePreferences({ enabled })} />

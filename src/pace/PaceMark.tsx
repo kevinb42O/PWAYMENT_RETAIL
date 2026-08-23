@@ -7,6 +7,11 @@ import "./pace.css";
 export type PaceEmotion = "idle" | "attentive" | "thinking" | "guiding" | "celebrating" | "sleeping";
 export type PacePerformance = "stretch" | "slither" | "liquid" | "portal";
 
+export const resolvePaceMotion = ({ reducedMotion, motionMode, forceMotion = false }: { reducedMotion: boolean; motionMode: PaceMotion; forceMotion?: boolean }) => ({
+  canMove: forceMotion || (!reducedMotion && motionMode !== "off"),
+  fullMotion: forceMotion || (!reducedMotion && motionMode === "full"),
+});
+
 const DEPTH_LAYERS = [-7, -6, -5, -4, -3, -2, -1] as const;
 
 const movementFor = (state: PaceEmotion, fullMotion: boolean) => {
@@ -62,6 +67,7 @@ export const PaceMark = ({
   tone = "flow",
   motionMode = "full",
   performance = null,
+  forceMotion = false,
 }: {
   size?: number;
   active?: boolean;
@@ -70,11 +76,12 @@ export const PaceMark = ({
   tone?: PaceSignalTone;
   motionMode?: PaceMotion;
   performance?: PacePerformance | null;
+  /** Only for an explicit, user-triggered one-shot preview such as Motion Lab. */
+  forceMotion?: boolean;
 }) => {
   const filterId = `pace-displace-${useId().replaceAll(":", "")}`;
   const reducedMotion = useReducedMotion();
-  const canMove = !reducedMotion && motionMode !== "off";
-  const fullMotion = canMove && motionMode === "full";
+  const { canMove, fullMotion } = resolvePaceMotion({ reducedMotion: Boolean(reducedMotion), motionMode, forceMotion });
   const state: PaceEmotion = emotion ?? (thinking ? "thinking" : active ? "attentive" : "idle");
   const accent = tone === "attention" ? "#f59e0b" : tone === "success" ? "#10b981" : "#00d9ff";
   const pause = state === "celebrating" ? 1.8 : state === "thinking" ? 0 : 0.35;
