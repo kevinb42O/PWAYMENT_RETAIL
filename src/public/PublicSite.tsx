@@ -641,9 +641,8 @@ const HomePage = () => (
       <HeroProductVideo />
       <div className="pw-hero-shade" aria-hidden="true" />
       <motion.div className="pw-hero-copy" initial="hidden" animate="visible" variants={stagger}>
-        <motion.div className="pw-kicker" variants={fadeUp}><span /> Retailplatform voor Belgische winkels</motion.div>
-        <motion.h1 variants={fadeUp}>Minder losse systemen.<br /><em>Meer grip op je winkel.</em></motion.h1>
-        <motion.p variants={fadeUp}>PWAYMENT verbindt verkoop, voorraad, klanten, webshop en dagafsluiting in één rustige werkplek. Zo blijft je winkel vlot werken én weet je elke dag wat aandacht verdient.</motion.p>
+        <motion.h1 variants={fadeUp}>Weet wat er speelt.<br /><em>Stuur je winkel beter.</em></motion.h1>
+        <motion.p variants={fadeUp}>Alles voor je winkel in één systeem. Minder werk, meer overzicht.</motion.p>
         <motion.div className="pw-hero-actions" variants={fadeUp}>
           <a href="/register?plan=professional" className="pw-button pw-button-dark">Start gratis met PWAYMENT <ArrowRight size={17} /></a>
           <a href="/demo" className="pw-text-link">Plan een persoonlijke demo <ArrowRight size={15} /></a>
