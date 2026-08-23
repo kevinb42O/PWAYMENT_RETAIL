@@ -807,6 +807,15 @@ export const Cart: React.FC = () => {
     }
   };
 
+  const closeMollieFlow = () => {
+    if (!mollieFlow) return;
+    const safeToDismiss = mollieFlow.phase === "declined"
+      || (mollieFlow.phase === "status-error" && !mollieFlow.payment);
+    if (!safeToDismiss) return;
+    if (!mollieFlow.payment) setCartCheckoutRequestId(null);
+    setMollieFlow(null);
+  };
+
   const handleCheckout = (method: TenderMethod) => {
     if (method === "Cash") {
       setPendingSplitTenders(null);
@@ -1451,15 +1460,22 @@ export const Cart: React.FC = () => {
       </Modal>
       <Modal
         open={mollieFlow !== null}
-        onClose={() => {
-          if (mollieFlow?.phase === "declined") setMollieFlow(null);
-        }}
+        onClose={closeMollieFlow}
         title="Betalen met Mollie"
         subtitle={mollieFlow?.payment ? `Referentie ${mollieFlow.payment.id}` : "Beveiligde terminalbetaling"}
         icon={mollieFlow?.phase === "declined" ? <AlertTriangle size={20} /> : <CreditCard size={20} />}
         closeOnBackdrop={false}
         footer={mollieFlow && (
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            {mollieFlow.phase === "status-error" && !mollieFlow.payment && (
+              <button
+                type="button"
+                onClick={closeMollieFlow}
+                className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
+              >
+                Sluiten
+              </button>
+            )}
             {mollieFlow.phase === "waiting" && mollieFlow.payment && (
               <button
                 type="button"
@@ -1481,7 +1497,7 @@ export const Cart: React.FC = () => {
             {mollieFlow.phase === "declined" && (
               <button
                 type="button"
-                onClick={() => setMollieFlow(null)}
+                onClick={closeMollieFlow}
                 className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-800"
               >
                 Sluiten
