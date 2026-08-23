@@ -5,4 +5,4 @@ Disallow: /login
 Disallow: /register
 Disallow: /shop/checkout
 
-Sitemap: https://pwayment.be/sitemap.xml
+Sitemap: https://www.pwayment.be/sitemap.xml

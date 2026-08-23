@@ -21,13 +21,13 @@ const paths = routes.map((route) => route.path);
 if (new Set(paths).size !== paths.length) errors.push('De publieke routeregistry bevat dubbele paden.');
 for (const route of routes) {
   if (!route.title || !route.description || route.description.length < 50) errors.push(`${route.path}: metadata is onvolledig.`);
-  const expectedUrl = `https://pwayment.be${route.path === '/' ? '' : route.path}`;
+  const expectedUrl = `https://www.pwayment.be${route.path === '/' ? '' : route.path}`;
   if (route.index !== false && !sitemap.includes(`<loc>${expectedUrl}</loc>`)) errors.push(`${route.path}: ontbreekt in sitemap.xml.`);
   if (route.index === false && sitemap.includes(`<loc>${expectedUrl}</loc>`)) errors.push(`${route.path}: noindex-route staat toch in sitemap.xml.`);
   if (route.path !== '/' && !publicSite.includes(`'${route.path}'`) && !publicSite.includes(`"${route.path}"`)) errors.push(`${route.path}: route komt niet voor in PublicSite.tsx.`);
 }
 
-if (!robots.includes('Sitemap: https://pwayment.be/sitemap.xml')) errors.push('robots.txt verwijst niet naar de canonieke sitemap.');
+if (!robots.includes('Sitemap: https://www.pwayment.be/sitemap.xml')) errors.push('robots.txt verwijst niet naar de canonieke sitemap.');
 if (!publicSite.includes("from '../billing/planCatalog'")) errors.push('De publieke prijzen gebruiken de centrale planCatalog niet.');
 for (const amount of ['€ 55', '€ 69', '€ 119', '€ 149']) {
   if (publicSite.includes(amount)) errors.push(`PublicSite.tsx bevat opnieuw een los planbedrag: ${amount}.`);

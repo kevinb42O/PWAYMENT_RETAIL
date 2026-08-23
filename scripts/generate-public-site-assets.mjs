@@ -5,7 +5,7 @@ import path from 'node:path';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const registryPath = path.join(root, 'src/public/public-site-registry.json');
 const routes = JSON.parse(await readFile(registryPath, 'utf8'));
-const origin = 'https://pwayment.be';
+const origin = 'https://www.pwayment.be';
 const today = new Date().toISOString().slice(0, 10);
 
 const escapeXml = (value) => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');

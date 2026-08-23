@@ -10,7 +10,7 @@ export interface PublicRouteMetadata {
 }
 
 export const PUBLIC_ROUTE_REGISTRY = registry as PublicRouteMetadata[];
-const PRIMARY_SITE_ORIGIN = 'https://pwayment.be';
+const PRIMARY_SITE_ORIGIN = 'https://www.pwayment.be';
 
 const aliases: Record<string, string> = {
   '/compare': '/pricing',
