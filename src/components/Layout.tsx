@@ -13,6 +13,11 @@ import { useWorkforce } from "../store/useWorkforce";
 import { Modal } from "./Modal";
 import { StoreSetupGuide, type SetupGuideTarget } from "./StoreSetupGuide";
 import { FirstProductTour } from "./FirstProductTour";
+import { PaceAssistant } from "../pace/PaceAssistant";
+import { getOutboxHealthMetadata } from "../services/platformTelemetry";
+import { useMerchantProfile } from "../store/useMerchantProfile";
+import { useCategories } from "../store/useCategories";
+import { derivePaceSetupMilestones } from "../pace/setupMilestones";
 import {
   AlertCircle,
   CheckCircle2,
@@ -130,6 +135,13 @@ export const Layout: React.FC = () => {
   const modulePreferences = useStoreConfiguration(
     (state) => state.configuration.modules,
   );
+  const firstRunCompleted = useStoreConfiguration(
+    (state) => state.configuration.firstRunCompleted,
+  );
+  const storeConfiguration = useStoreConfiguration((state) => state.configuration);
+  const merchantProfile = useMerchantProfile((state) => state.profile);
+  const categories = useCategories((state) => state.list);
+  const hydrateCategories = useCategories((state) => state.hydrate);
 
   const [productQuery, setProductQuery] = useState("");
   const [scanFeedback, setScanFeedback] = useState<ScanFeedback | null>(null);
@@ -152,6 +164,10 @@ export const Layout: React.FC = () => {
   const [leaveApprovalGateOpen, setLeaveApprovalGateOpen] = useState(false);
   const [leaveApprovalPin, setLeaveApprovalPin] = useState("");
   const [leaveApprovalGateError, setLeaveApprovalGateError] = useState<string | null>(null);
+  const [paceConnection, setPaceConnection] = useState(() => ({
+    online: navigator.onLine !== false,
+    pendingSync: 0,
+  }));
 
   const scanInputRef = useRef<HTMLInputElement | null>(null);
   const scanBufferRef = useRef("");
@@ -161,6 +177,14 @@ export const Layout: React.FC = () => {
   const userMenuButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const cartCount = cart.orders.reduce((acc, o) => acc + o.quantity, 0);
+  const paceSetupMilestones = React.useMemo(
+    () => derivePaceSetupMilestones({ configuration: storeConfiguration, profile: merchantProfile, categories, products }),
+    [categories, merchantProfile, products, storeConfiguration],
+  );
+
+  useEffect(() => {
+    void hydrateCategories();
+  }, [hydrateCategories]);
   const activePlanBadge = entitlementSnapshot
     ? entitlementSnapshot.status === "trialing"
       ? "Pro trial"
@@ -402,6 +426,32 @@ export const Layout: React.FC = () => {
     update();
     media.addEventListener("change", update);
     return () => media.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const refreshPaceConnection = async () => {
+      const metadata = await getOutboxHealthMetadata().catch(() => ({
+        queue_depth: 0,
+        online: navigator.onLine !== false,
+      }));
+      if (!active) return;
+      setPaceConnection({
+        online: metadata.online !== false,
+        pendingSync: metadata.queue_depth ?? 0,
+      });
+    };
+    const onConnectionChange = () => void refreshPaceConnection();
+    void refreshPaceConnection();
+    window.addEventListener("online", onConnectionChange);
+    window.addEventListener("offline", onConnectionChange);
+    const interval = window.setInterval(refreshPaceConnection, 30_000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener("online", onConnectionChange);
+      window.removeEventListener("offline", onConnectionChange);
+    };
   }, []);
 
   // Presentation links can open a specific live screen directly, without
@@ -649,6 +699,27 @@ export const Layout: React.FC = () => {
           ref={userMenuRef}
         >
           <TrialStatus onOpenBilling={() => openProfile("billing")} />
+          <PaceAssistant
+            view={mainView}
+            role={currentRole}
+            userName={currentUserName}
+            productCount={products.length}
+            cartCount={cartCount}
+            firstRunCompleted={firstRunCompleted}
+            online={paceConnection.online}
+            pendingSync={paceConnection.pendingSync}
+            setupMilestones={paceSetupMilestones}
+            suppressed={storeSetupOpen || Boolean(firstProductTourName) || leaveApprovalGateOpen}
+            onNavigate={(view) => setMainView(view)}
+            onOpenSetup={() => setStoreSetupOpen(true)}
+            onOpenProfile={(tab) => openProfile(tab)}
+            onOpenMilestone={(milestone) => {
+              if (milestone.action === "setup") setStoreSetupOpen(true);
+              if (milestone.action === "categories") openCategorySetup();
+              if (milestone.action === "products") openProductSetup();
+              if (milestone.action === "labels") openBarcodeLabelSetup();
+            }}
+          />
           <div className="pos-user-badge hidden min-w-0 sm:flex flex-col items-start leading-tight px-2 py-1 select-none">
             <span className="flex max-w-48 items-center justify-start text-xs font-bold text-slate-800">
               <span className="min-w-0 truncate">{currentUserName}</span>

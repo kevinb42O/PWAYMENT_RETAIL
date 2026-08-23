@@ -1,6 +1,7 @@
 [
   { "path": "/", "title": "PWAYMENT — Je winkel. Eén helder systeem.", "description": "Verkoop sneller, hou je voorraad onder controle en stuur je Belgische winkel vanuit één helder retailplatform.", "changefreq": "weekly", "priority": 1.0 },
   { "path": "/product", "title": "Retailplatform — PWAYMENT", "description": "Ontdek hoe PWAYMENT verkoop, voorraad, klanten, webshop, rapportage en retail intelligence verbindt.", "changefreq": "monthly", "priority": 0.9 },
+  { "path": "/pace", "title": "Pace — contextuele winkelbegeleiding in PWAYMENT", "description": "Ontdek Pace: rustige, contextuele hulp voor setup en winkeloperatie, zonder bestaande flows over te nemen.", "changefreq": "monthly", "priority": 0.9 },
   { "path": "/pos", "title": "POS & betalingen — PWAYMENT", "description": "Scanner-first verkopen met cash, PIN, cadeaubonnen, retouren, facturen en een controleerbare dagafsluiting.", "changefreq": "monthly", "priority": 0.9 },
   { "path": "/inventory", "title": "Producten & voorraad — PWAYMENT", "description": "Beheer varianten, barcodes, voorraad, prognoses, leveranciers en inkooporders vanuit één catalogus.", "changefreq": "monthly", "priority": 0.9 },
   { "path": "/insights", "title": "Retail intelligence — PWAYMENT", "description": "Analyseer omzet, marge, korting, voorraadtempo, seizoenen, klanten, medewerkers en datadekking.", "changefreq": "monthly", "priority": 0.9 },

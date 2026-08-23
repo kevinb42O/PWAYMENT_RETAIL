@@ -42,6 +42,7 @@ import {
   type RetailIndustry,
   type StoreConfiguration,
 } from "./storeConfiguration";
+import { PaceOnboardingCompanion } from "../pace/PaceOnboardingCompanion";
 
 type WizardMode = "registration" | "settings";
 type WizardStep = "account" | "store" | "retail-needs" | "modules" | "data" | "review";
@@ -436,6 +437,13 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                 );
               })}
             </ol>
+            <div className="mt-7">
+              <PaceOnboardingCompanion
+                step={currentStep}
+                progress={progress}
+                hasError={Boolean(error)}
+              />
+            </div>
             <div className="mt-8 rounded-2xl border border-slate-200 bg-white/70 p-4">
               <p className="text-xs font-extrabold text-slate-800">Geen definitieve keuzes</p>
               <p className="mt-1 text-xs leading-5 text-slate-500">
@@ -455,6 +463,14 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
               <div
                 className="h-full rounded-full bg-slate-950 transition-[width] duration-300"
                 style={{ width: `${progress}%` }}
+              />
+            </div>
+            <div className="mt-3">
+              <PaceOnboardingCompanion
+                step={currentStep}
+                progress={progress}
+                compact
+                hasError={Boolean(error)}
               />
             </div>
           </div>

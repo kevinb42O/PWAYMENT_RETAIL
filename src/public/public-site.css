@@ -648,3 +648,75 @@
 .pw-configurator-total strong { grid-row: span 2; font-size: 32px; }
 .pw-configurator-panel .pw-button { grid-column: 1 / -1; justify-self: start; }
 @media (max-width: 800px) { .pw-configurator { grid-template-columns: 1fr; gap: 35px; } .pw-configurator-panel { grid-template-columns: 1fr; } }
+
+/* Pace is presented as a product behaviour, never as a marketing-site chat bubble. */
+.pw-pace-home-wrap { padding-block: 105px 25px; }
+.pw-pace-story { display: grid; grid-template-columns: .82fr 1.18fr; align-items: center; gap: clamp(45px, 7vw, 110px); padding-block: 115px; }
+.pw-pace-story.is-compact { overflow: hidden; border-radius: 28px; background: #071c25; padding: clamp(30px, 5vw, 68px); color: #fff; }
+.pw-pace-story-copy h2 { margin: 18px 0 20px; color: var(--pw-ink); font-size: clamp(40px, 4.4vw, 67px); line-height: .98; letter-spacing: -.055em; }
+.pw-pace-story-copy > p { max-width: 35rem; color: var(--pw-muted); font-size: 15px; line-height: 1.75; }
+.pw-pace-story.is-compact .pw-pace-story-copy h2 { color: #fff; font-size: clamp(36px, 4vw, 56px); }
+.pw-pace-story.is-compact .pw-pace-story-copy > p { color: #a9bec7; }
+.pw-pace-story.is-compact .pw-text-link { display: inline-flex; margin-top: 23px; color: #67e8f9; }
+.pw-pace-demo { min-width: 0; }
+.pw-pace-tabs { display: inline-flex; gap: 5px; margin: 0 0 12px 18px; border: 1px solid #dce8ec; border-radius: 999px; background: rgba(255,255,255,.78); padding: 4px; }
+.pw-pace-tabs button { border: 0; border-radius: 999px; background: transparent; padding: 8px 13px; color: #61727c; font-size: 11px; font-weight: 800; cursor: pointer; }
+.pw-pace-tabs button[aria-selected="true"] { background: #083344; color: #fff; box-shadow: 0 5px 15px rgba(8,51,68,.18); }
+.pw-pace-console { overflow: hidden; border: 1px solid rgba(165,243,252,.58); border-radius: 24px; background: radial-gradient(circle at 90% 0, rgba(34,211,238,.18), transparent 31%), linear-gradient(145deg, #f3fcff, #fff); box-shadow: 0 30px 80px rgba(8,51,68,.18); }
+.pw-pace-story.is-compact .pw-pace-console { border-color: rgba(103,232,249,.24); box-shadow: 0 32px 80px rgba(0,0,0,.28); }
+.pw-pace-console-top { display: flex; height: 55px; align-items: center; justify-content: space-between; border-bottom: 1px solid #d9e8ed; padding: 0 19px; color: #71838c; font-size: 9px; font-weight: 900; letter-spacing: .13em; }
+.pw-pace-console-top b { display: flex; align-items: center; gap: 7px; color: #164e63; }
+.pw-pace-console-top i { width: 7px; height: 7px; border-radius: 50%; background: #22d3ee; box-shadow: 0 0 0 5px rgba(34,211,238,.12); }
+.pw-pace-console-body { display: grid; min-height: 275px; grid-template-columns: 112px 1fr; align-items: center; gap: 12px; padding: 30px; }
+.pw-pace-character { display: flex; align-items: center; justify-content: center; }
+.pw-pace-message { border: 1px solid rgba(186,230,253,.9); border-radius: 18px; background: rgba(255,255,255,.82); padding: 21px; box-shadow: 0 15px 40px rgba(14,116,144,.07); }
+.pw-pace-message > span { display: flex; align-items: center; gap: 6px; color: #0891b2; font-size: 9px; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; }
+.pw-pace-message h3 { margin: 12px 0 8px; color: #0f172a; font-size: 21px; line-height: 1.1; letter-spacing: -.035em; }
+.pw-pace-message p { margin: 0; color: #5d6e78; font-size: 12px; line-height: 1.62; }
+.pw-pace-message > div { display: flex; align-items: center; gap: 6px; margin-top: 17px; border-top: 1px solid #e5eef1; padding-top: 13px; color: #0e7490; font-size: 10px; font-weight: 850; }
+
+.pw-pace-hero { display: grid; min-height: 730px; grid-template-columns: 1fr .72fr; align-items: center; gap: 70px; padding-block: 135px 85px; }
+.pw-pace-hero h1 { max-width: 850px; margin: 22px 0 25px; font-size: clamp(60px, 7vw, 104px); line-height: .91; letter-spacing: -.065em; }
+.pw-pace-hero > div:first-child > p { max-width: 650px; color: var(--pw-muted); font-size: 17px; line-height: 1.72; }
+.pw-pace-hero-mark { position: relative; display: flex; min-height: 430px; align-items: center; justify-content: center; border: 1px solid #c7ebf2; border-radius: 50%; background: radial-gradient(circle, #fff 0 42%, #e8fbff 43% 52%, rgba(236,254,255,.15) 53%); }
+.pw-pace-ring { position: absolute; inset: 11%; border: 1px solid rgba(8,145,178,.18); border-radius: 50%; animation: pw-pace-ring 11s linear infinite; }
+.pw-pace-ring::after { position: absolute; top: 8%; left: 17%; width: 8px; height: 8px; border-radius: 50%; background: #22d3ee; box-shadow: 0 0 0 7px rgba(34,211,238,.1); content: ""; }
+.pw-pace-ring.is-two { inset: -3%; border-style: dashed; animation-direction: reverse; animation-duration: 20s; }
+@keyframes pw-pace-ring { to { transform: rotate(360deg); } }
+.pw-pace-principles { display: grid; grid-template-columns: repeat(3, 1fr); padding-block: 75px 125px; }
+.pw-pace-principles article { min-height: 285px; border: 1px solid var(--pw-line); border-right: 0; padding: 30px; }
+.pw-pace-principles article:last-child { border-right: 1px solid var(--pw-line); }
+.pw-pace-principles svg { color: #0891b2; }
+.pw-pace-principles h2 { margin: 65px 0 13px; font-size: 23px; line-height: 1.15; letter-spacing: -.035em; }
+.pw-pace-principles p { color: var(--pw-muted); font-size: 13px; line-height: 1.65; }
+.pw-pace-boundary { background: #071c25; color: white; padding-block: 125px; }
+.pw-pace-boundary .pw-shell { display: grid; grid-template-columns: 1fr 1fr; gap: 28px 80px; }
+.pw-pace-boundary .pw-eyebrow { grid-column: 1 / -1; color: #67e8f9; }
+.pw-pace-boundary h2 { margin: 0; font-size: clamp(48px, 6vw, 82px); line-height: .96; letter-spacing: -.055em; }
+.pw-pace-boundary p { max-width: 550px; margin: 0; color: #adc1c9; font-size: 15px; line-height: 1.8; }
+.pw-pace-boundary .pw-button { grid-column: 2; justify-self: start; }
+
+@media (max-width: 950px) {
+  .pw-pace-story, .pw-pace-hero { grid-template-columns: 1fr; }
+  .pw-pace-hero { gap: 30px; padding-top: 105px; }
+  .pw-pace-hero-mark { min-height: 380px; }
+  .pw-pace-principles { grid-template-columns: 1fr; }
+  .pw-pace-principles article { min-height: 220px; border-right: 1px solid var(--pw-line); border-bottom: 0; }
+  .pw-pace-principles article:last-child { border-bottom: 1px solid var(--pw-line); }
+  .pw-pace-principles h2 { margin-top: 38px; }
+}
+@media (max-width: 600px) {
+  .pw-pace-home-wrap { width: 100%; padding-block: 70px 0; }
+  .pw-pace-story { gap: 38px; padding-block: 80px; }
+  .pw-pace-story.is-compact { border-radius: 0; padding: 65px 20px; }
+  .pw-pace-tabs { width: 100%; justify-content: space-between; margin-left: 0; }
+  .pw-pace-tabs button { flex: 1; padding-inline: 6px; }
+  .pw-pace-console-body { min-height: 370px; grid-template-columns: 1fr; padding: 22px; }
+  .pw-pace-character { min-height: 105px; }
+  .pw-pace-hero { min-height: 0; }
+  .pw-pace-hero h1 { font-size: 54px; }
+  .pw-pace-hero-mark { min-height: 300px; }
+  .pw-pace-boundary { padding-block: 90px; }
+  .pw-pace-boundary .pw-shell { grid-template-columns: 1fr; }
+  .pw-pace-boundary .pw-eyebrow, .pw-pace-boundary .pw-button { grid-column: 1; }
+}

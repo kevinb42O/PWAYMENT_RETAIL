@@ -19,6 +19,7 @@ import { useMerchantProfile } from "../store/useMerchantProfile";
 import { useStoreConfiguration } from "../store/useStoreConfiguration";
 import { useCategories } from "../store/useCategories";
 import { useProducts } from "../store/useProducts";
+import { PaceMark } from "../pace/PaceMark";
 
 type GuideStep = "welcome" | "identity" | "categories" | "catalog" | "labels";
 export type SetupGuideTarget = "catalog-categories" | "catalog-products" | "labels";
@@ -196,7 +197,7 @@ export const StoreSetupGuide: React.FC<StoreSetupGuideProps> = ({
       onClose={close}
       closeOnBackdrop
       size="4xl"
-      icon={<Store size={21} />}
+      icon={<PaceMark size={30} active emotion={step === "welcome" ? "attentive" : step === "labels" ? "celebrating" : "guiding"} tone={step === "labels" ? "success" : "flow"} motionMode="subtle" />}
       title="Je winkel starten"
       subtitle="Een paar heldere stappen, daarna ben je klaar om te verkopen."
       className="store-setup-guide"
@@ -219,6 +220,14 @@ export const StoreSetupGuide: React.FC<StoreSetupGuideProps> = ({
       <div className="relative overflow-hidden px-1 py-1">
         <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-sky-100/70 blur-3xl" />
         <div className="relative">
+          <div className="mb-4 flex items-center gap-2 rounded-xl border border-cyan-100 bg-cyan-50/70 px-3 py-2 text-xs font-semibold leading-5 text-cyan-950">
+            <span className="h-2 w-2 shrink-0 rounded-full bg-cyan-500 shadow-[0_0_0_4px_rgba(6,182,212,0.1)]" />
+            {step === "welcome" && "Pace volgt de echte winkelstatus en brengt je telkens naar de eerstvolgende onvoltooide stap."}
+            {step === "identity" && "Deze gegevens worden door de bestaande ticketinstellingen bewaard; Pace leest geen betaal- of inloggegevens."}
+            {step === "categories" && "Categorieën structureren de kassa en rapportage. Pace controleert alleen of er minstens één actieve categorie bestaat."}
+            {step === "catalog" && "Je kiest zelf tussen import en handmatig productbeheer. Pace voert geen activatie zonder jouw bevestiging uit."}
+            {step === "labels" && "Barcodes zijn aanbevolen, niet verplicht om de basisopzet af te ronden. Je kunt dit bewust later doen."}
+          </div>
           {step === "welcome" && (
             <div className="space-y-6 py-2">
               <div className="rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50 to-white p-5 sm:p-6">

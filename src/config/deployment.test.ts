@@ -38,6 +38,8 @@ describe("Vercel deployment routing", () => {
       "/sw.js",
       "/manifest.webmanifest",
       "/branding/missing-logo.svg",
+      "/api/pace/respond",
+      "/api",
     ]) {
       expect(matchesFallback.test(fileRoute), fileRoute).toBe(false);
     }
