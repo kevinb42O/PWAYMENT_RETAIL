@@ -653,7 +653,9 @@ export const Cart: React.FC = () => {
     const booked = await runCheckout(flow.method, {
       ...flow.extras,
       clientRequestId: flow.clientRequestId,
-      paymentProviderReference: payment.id,
+      // A simulator payment is only a local UI aid: no Mollie transaction
+      // exists and therefore no external reconciliation reference may be sent.
+      paymentProviderReference: payment.simulator ? undefined : payment.id,
     });
     if (booked) {
       setMollieFlow(null);

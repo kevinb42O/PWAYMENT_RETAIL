@@ -38,6 +38,16 @@ describe("Pace outbox error language", () => {
     expect(issue.summary).not.toContain("product-not-found");
   });
 
+  it("explains why a historic simulator sale was rejected", () => {
+    const issue = humanizeOutboxIssue(entry({
+      payload: { paymentProviderReference: "sim_12345678123441238123123456789abc" },
+      lastError: "invalid payment provider reference",
+    }));
+    expect(issue.summary).toContain("betaalterminalsimulator");
+    expect(issue.resolution).toContain("zonder");
+    expect(issue.summary).not.toContain("invalid");
+  });
+
   it("prioritizes a permanently rejected financial row", async () => {
     await db.outbox.bulkAdd([
       entry({ kind: "upsert_product", deliveryStatus: "retrying", lastError: "Failed to fetch" }),

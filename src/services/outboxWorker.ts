@@ -46,6 +46,13 @@ const terminalTendersForServer = (tx: Transaction) => {
   return [];
 };
 
+// The built-in terminal simulator deliberately never creates a Mollie
+// payment. Historic local rows did persist its sim_* id as if it were a real
+// PSP reference, though. Strip that marker while syncing so those sales can
+// be booked normally without weakening validation for genuine Mollie ids.
+const isLocalMollieSimulatorReference = (reference?: string): boolean =>
+  /^sim_[a-f0-9]{32}$/i.test(reference ?? "");
+
 const pushTransactionToSupabase = async (
   storeId: string,
   tx: Transaction,
@@ -101,6 +108,7 @@ const pushTransactionToSupabase = async (
       } : undefined,
     }));
     const isGiftCardCheckout = tx.items.length > 0 && tx.items.every((item) => Boolean(item.giftCardOperation));
+    const isSimulatorPayment = isLocalMollieSimulatorReference(tx.paymentProviderReference);
     const payload = {
       client_request_id: tx.clientRequestId,
       cart_id: tx.tableId,
@@ -115,8 +123,10 @@ const pushTransactionToSupabase = async (
         amount_cents: card.amountCents,
       })),
       method: tx.paymentMethod,
-      payment_provider: tx.paymentProvider,
-      payment_provider_reference: tx.paymentProviderReference,
+      ...(isSimulatorPayment ? {} : {
+        payment_provider: tx.paymentProvider,
+        payment_provider_reference: tx.paymentProviderReference,
+      }),
       tenders,
       ...(hasCashTender
         ? { tendered_cents: tx.tenderedCents ?? tenders.find((tender) => tender.method === "Cash")?.amount_cents }
@@ -149,7 +159,7 @@ const pushTransactionToSupabase = async (
     if (error && !error.message.includes('duplicate')) {
       throw new Error(error.message);
     }
-    if (tx.paymentProvider && tx.paymentProviderReference && tx.clientRequestId) {
+    if (!isSimulatorPayment && tx.paymentProvider && tx.paymentProviderReference && tx.clientRequestId) {
       const providerResult = await rpc("record_payment_provider_reference", {
         target_store_id: storeId,
         request_id: tx.clientRequestId,

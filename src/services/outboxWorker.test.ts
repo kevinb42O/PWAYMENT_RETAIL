@@ -156,6 +156,30 @@ describe("synchronizeFinancialLedgerBeforeReport", () => {
     });
   });
 
+  it("books historic simulator sales without presenting their local id as a Mollie reference", async () => {
+    const row = {
+      ...transaction("mollie-simulator-contract"),
+      paymentProvider: "mollie" as const,
+      paymentProviderReference: "sim_12345678123441238123123456789abc",
+    };
+    const rpc = vi.spyOn(supabase, "rpc").mockResolvedValue({
+      data: { duplicate: false },
+      error: null,
+    } as never);
+
+    await synchronizeFinancialLedgerBeforeReport(
+      "00000000-0000-0000-0000-000000000001",
+      [row],
+      [],
+    );
+
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc.mock.calls[0][0]).toBe("checkout_sale");
+    const payload = (rpc.mock.calls[0][1] as { payload: Record<string, unknown> }).payload;
+    expect(payload).not.toHaveProperty("payment_provider");
+    expect(payload).not.toHaveProperty("payment_provider_reference");
+  });
+
   it("removes the matching outbox entry only after server confirmation", async () => {
     const row = transaction("close-race-2");
     await db.outbox.add({

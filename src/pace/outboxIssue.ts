@@ -15,6 +15,20 @@ const includes = (message: string, pattern: RegExp) => pattern.test(message);
  */
 export const humanizeOutboxIssue = (entry: OutboxEntry): HumanizedOutboxIssue => {
   const message = entry.lastError ?? "";
+  const simulatorReference = entry.kind === "transaction"
+    ? (entry.payload as { paymentProviderReference?: unknown }).paymentProviderReference
+    : undefined;
+
+  if (
+    typeof simulatorReference === "string"
+    && /^sim_[a-f0-9]{32}$/i.test(simulatorReference)
+    && includes(message, /invalid payment provider reference/i)
+  ) {
+    return {
+      summary: "Deze verkoop kwam uit de lokale betaalterminalsimulator, niet uit Mollie.",
+      resolution: "Probeer opnieuw; PWAYMENT boekt de verkoop zonder een niet-bestaande Mollie-referentie.",
+    };
+  }
 
   if (entry.kind === "webshop_email" || includes(message, /e-?mail.*not configured|mail.*niet geconfigureerd/i)) {
     return {
