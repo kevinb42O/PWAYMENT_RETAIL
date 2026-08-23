@@ -14,6 +14,7 @@ export interface MollieTerminalPayment {
   status: MolliePaymentStatus;
   amountCents: number;
   testMode: boolean;
+  simulator?: boolean;
   changePaymentStateUrl?: string;
 }
 
@@ -74,6 +75,14 @@ export const createMollieTerminalPayment = async (input: {
   });
   return readResponse(response);
 };
+
+export const createMollieTestSimulatorPayment = (amountCents: number): MollieTerminalPayment => ({
+  id: `sim_${crypto.randomUUID().replaceAll("-", "")}`,
+  status: "open",
+  amountCents,
+  testMode: true,
+  simulator: true,
+});
 
 export const getMollieTerminalPayment = async (
   paymentId: string,

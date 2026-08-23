@@ -77,8 +77,10 @@ import {
 } from "./SuspendedCartsModal";
 import {
   cancelMollieTerminalPayment,
+  createMollieTestSimulatorPayment,
   createMollieTerminalPayment,
   getMollieTerminalPayment,
+  MollieTerminalError,
   type MollieTerminalPayment,
 } from "../services/mollieTerminal";
 
@@ -677,6 +679,7 @@ export const Cart: React.FC = () => {
       return;
     }
     setMollieFlow({ ...flow, phase: "waiting", payment, error: undefined });
+    if (payment.simulator) return;
     for (let attempt = 0; attempt < 150; attempt += 1) {
       if (ignoredMolliePayments.current.has(payment.id)) return;
       if (payment.status === "paid") {
@@ -727,6 +730,21 @@ export const Cart: React.FC = () => {
     });
   };
 
+  const createMolliePaymentWithTestFallback = async (flow: MollieFlow) => {
+    try {
+      return await createMollieTerminalPayment({
+        amountCents: flow.amountCents,
+        description: `PWAYMENT kassaverkoop ${flow.clientRequestId.slice(0, 12)}`,
+        idempotencyKey: flow.mollieIdempotencyKey,
+      });
+    } catch (error) {
+      if (error instanceof MollieTerminalError && error.code === "MOLLIE_TEST_TERMINAL_NOT_READY") {
+        return createMollieTestSimulatorPayment(flow.amountCents);
+      }
+      throw error;
+    }
+  };
+
   const startMollieCheckout = async (method: TenderMethod, extras: CardCheckoutExtras = {}) => {
     if (!checkoutPreflight()) return;
     const giftCardCents = (extras.giftCards ?? cartGiftCards)
@@ -751,11 +769,7 @@ export const Cart: React.FC = () => {
     };
     setMollieFlow(flow);
     try {
-      const payment = await createMollieTerminalPayment({
-        amountCents,
-        description: `PWAYMENT kassaverkoop ${clientRequestId.slice(0, 12)}`,
-        idempotencyKey: flow.mollieIdempotencyKey,
-      });
+      const payment = await createMolliePaymentWithTestFallback(flow);
       await followMolliePayment(flow, payment);
     } catch (error) {
       setMollieFlow({
@@ -770,6 +784,11 @@ export const Cart: React.FC = () => {
     const flow = mollieFlow;
     if (!flow?.payment) return;
     ignoredMolliePayments.current.add(flow.payment.id);
+    if (flow.payment.simulator) {
+      const payment = { ...flow.payment, status: "canceled" as const };
+      setMollieFlow({ ...flow, phase: "declined", payment, error: "De testbetaling is geannuleerd." });
+      return;
+    }
     try {
       const payment = await cancelMollieTerminalPayment(flow.payment.id);
       setMollieFlow({ ...flow, phase: "declined", payment, error: "De betaling is geannuleerd." });
@@ -792,11 +811,7 @@ export const Cart: React.FC = () => {
     }
     try {
       ignoredMolliePayments.current.delete(flow.payment?.id ?? "");
-      const payment = flow.payment ?? await createMollieTerminalPayment({
-        amountCents: flow.amountCents,
-        description: `PWAYMENT kassaverkoop ${flow.clientRequestId.slice(0, 12)}`,
-        idempotencyKey: flow.mollieIdempotencyKey,
-      });
+      const payment = flow.payment ?? await createMolliePaymentWithTestFallback(flow);
       await followMolliePayment(flow, payment);
     } catch (error) {
       setMollieFlow({
@@ -805,6 +820,22 @@ export const Cart: React.FC = () => {
         error: error instanceof Error ? error.message : "De betaalstatus kon niet worden gecontroleerd.",
       });
     }
+  };
+
+  const completeSimulatedMolliePayment = async (status: "paid" | "failed") => {
+    const flow = mollieFlow;
+    if (!flow?.payment?.simulator) return;
+    const payment = { ...flow.payment, status };
+    if (status === "paid") {
+      await bookConfirmedMolliePayment(flow, payment);
+      return;
+    }
+    setMollieFlow({
+      ...flow,
+      phase: "declined",
+      payment,
+      error: "De testkaartbetaling is geweigerd.",
+    });
   };
 
   const closeMollieFlow = () => {
@@ -1543,8 +1574,30 @@ export const Cart: React.FC = () => {
                 Teststatus kiezen <ExternalLink size={15} />
               </a>
             )}
+            {mollieFlow.payment?.simulator && mollieFlow.phase === "waiting" && (
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => void completeSimulatedMolliePayment("failed")}
+                  className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                >
+                  Simuleer weigering
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void completeSimulatedMolliePayment("paid")}
+                  className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-bold text-white hover:bg-emerald-700"
+                >
+                  Simuleer geslaagde betaling
+                </button>
+              </div>
+            )}
             {mollieFlow.payment?.testMode && (
-              <p className="text-xs leading-5 text-slate-400">Mollie testmodus — er wordt geen echt geld afgeschreven.</p>
+              <p className="text-xs leading-5 text-slate-400">
+                {mollieFlow.payment.simulator
+                  ? "PWAYMENT terminalsimulator — er wordt niets naar Mollie gestuurd en geen geld afgeschreven."
+                  : "Mollie testmodus — er wordt geen echt geld afgeschreven."}
+              </p>
             )}
           </div>
         )}

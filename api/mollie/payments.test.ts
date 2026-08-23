@@ -61,6 +61,24 @@ describe("Mollie terminal endpoint", () => {
     });
   });
 
+  it("identifies a missing test terminal so the client can use its local simulator", async () => {
+    delete process.env.MOLLIE_TERMINAL_ID;
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(Response.json({ id: "user-1" }))
+      .mockResolvedValueOnce(Response.json({ _embedded: { terminals: [] } })));
+
+    const response = await handler.fetch(request("POST", {
+      amountCents: 750,
+      description: "Kassaverkoop",
+      idempotencyKey: "checkout-750:mollie:attempt-1",
+    }));
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      error: "MOLLIE_TEST_TERMINAL_NOT_READY",
+    });
+  });
+
   it("creates an authenticated point-of-sale payment using integer cents", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(Response.json({ id: "user-1" }))

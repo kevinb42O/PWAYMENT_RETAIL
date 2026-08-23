@@ -140,7 +140,9 @@ export default {
       }
       if (!terminalId) {
         return json(503, {
-          error: "MOLLIE_TERMINAL_NOT_READY",
+          error: mollieApiKey.startsWith("test_")
+            ? "MOLLIE_TEST_TERMINAL_NOT_READY"
+            : "MOLLIE_TERMINAL_NOT_READY",
           message: "Mollie heeft nog geen testterminal voor dit profiel geactiveerd.",
         });
       }
