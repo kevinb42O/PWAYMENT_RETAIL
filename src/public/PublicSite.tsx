@@ -645,13 +645,8 @@ const HomePage = () => (
         <motion.p variants={fadeUp}>Alles voor je winkel in één systeem. Minder werk, meer overzicht.</motion.p>
         <motion.div className="pw-hero-actions" variants={fadeUp}>
           <a href="/register?plan=professional" className="pw-button pw-button-dark">Start gratis met PWAYMENT <ArrowRight size={17} /></a>
-          <a href="/demo" className="pw-text-link">Plan een persoonlijke demo <ArrowRight size={15} /></a>
         </motion.div>
-        <motion.div className="pw-hero-proof" variants={fadeUp}><span>Blijf verkopen zonder internet</span><span>Belgische controle per dag</span><span>Eén voorraad, elk kanaal</span></motion.div>
       </motion.div>
-      <a className="pw-scroll-badge" href="#home-story" aria-label="Scroll naar beneden">
-        <ChevronDown size={20} strokeWidth={1.8} />
-      </a>
     </section>
 
     <section className="pw-home-proof" id="home-story" aria-label="PWAYMENT in het kort">
