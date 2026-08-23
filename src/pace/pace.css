@@ -42,7 +42,7 @@
 .pace-mark-morph.is-stretch { transform-origin: 14% 58%; }
 .pace-mark-morph.is-liquid { transform-origin: 52% 58%; }
 .pace-mark-morph.is-portal { transform-origin: 50% 50%; }
-.pace-mark-stage.is-performing .pace-mark-morph { opacity: 0 !important; }
+.pace-mark-stage.is-performing .pace-mark-morph { animation: pace-original-away 2.8s cubic-bezier(.22,1,.36,1); }
 
 .pace-mark-plane {
   position: absolute;
@@ -188,6 +188,7 @@
 @keyframes pace-form-glint { from { transform: translateX(-90%); } to { transform: translateX(110%); } }
 @keyframes pace-liquid-body { from { border-radius: 43% 57% 62% 38% / 58% 37% 63% 42%; transform: scale(.92,1.08) rotate(-7deg); } to { border-radius: 61% 39% 35% 65% / 39% 61% 44% 56%; transform: scale(1.1,.9) rotate(8deg); } }
 @keyframes pace-liquid-drop { 0%,100% { transform: translate(0,0) scale(.35); opacity: 0; } 45% { opacity: 1; } 70% { transform: translate(45%,38%) scale(1); opacity: 1; } }
+@keyframes pace-original-away { 0%, 82% { opacity: 0; } 100% { opacity: 1; } }
 
 @keyframes pace-mark-sheen {
   0%, 22% { background-position: 130% 0; opacity: 0; }

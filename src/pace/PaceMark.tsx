@@ -150,8 +150,8 @@ export const PaceMark = ({
         aria-hidden="true"
         style={{ filter: performanceActive && performance !== "portal" ? `url(#${filterId})` : undefined }}
         initial={false}
-        animate={performanceActive ? { ...performanceMovement(performance), opacity: [1, 0, 0, 1] } : undefined}
-        transition={{ duration: 2.8, times: performanceTimes(performance), ease: [0.22, 1, 0.36, 1], opacity: { duration: 2.8, times: [0, 0.12, 0.82, 1], ease: [0.22, 1, 0.36, 1] } }}
+        animate={performanceActive ? performanceMovement(performance) : undefined}
+        transition={{ duration: 2.8, times: performanceTimes(performance), ease: [0.22, 1, 0.36, 1] }}
       >
         <motion.span
           className="pace-mark-rig"
