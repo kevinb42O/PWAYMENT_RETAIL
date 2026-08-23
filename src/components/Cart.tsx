@@ -139,6 +139,7 @@ export const Cart: React.FC = () => {
     customers,
     giftCards,
     hydrate,
+    upsertCustomer,
     syncPersisted: syncPersistedCustomers,
   } = useCustomers();
   const linkedCustomer = useMemo(
@@ -238,6 +239,10 @@ export const Cart: React.FC = () => {
   const [giftCardSaleCode, setGiftCardSaleCode] = useState("");
   const [giftCardSaleAmount, setGiftCardSaleAmount] = useState("25,00");
   const [giftCardSaleCustomerId, setGiftCardSaleCustomerId] = useState("");
+  const [giftCardSaleNewCustomer, setGiftCardSaleNewCustomer] = useState(false);
+  const [giftCardSaleCustomerName, setGiftCardSaleCustomerName] = useState("");
+  const [giftCardSaleCustomerEmail, setGiftCardSaleCustomerEmail] = useState("");
+  const [giftCardSaleCustomerPhone, setGiftCardSaleCustomerPhone] = useState("");
   const [giftCardSaleError, setGiftCardSaleError] = useState<string | null>(null);
   const [queueOpen, setQueueOpen] = useState(false);
   const [resumeCartId, setResumeCartId] = useState<string | null>(null);
@@ -321,19 +326,30 @@ export const Cart: React.FC = () => {
     setGiftCardSaleCode(generateGiftCardCode());
     setGiftCardSaleAmount("25,00");
     setGiftCardSaleCustomerId(linkedCustomerId ?? "");
+    setGiftCardSaleNewCustomer(false);
+    setGiftCardSaleCustomerName("");
+    setGiftCardSaleCustomerEmail("");
+    setGiftCardSaleCustomerPhone("");
     setGiftCardSaleError(null);
     setGiftCardSaleOpen(true);
   };
-  const prepareGiftCardSale = () => {
+  const prepareGiftCardSale = async () => {
     const parsed = parseDecimalToCents(giftCardSaleAmount);
     if (!parsed.ok || parsed.cents <= 0) return setGiftCardSaleError("Geef een geldig positief bedrag in.");
     const code = giftCardSaleCode.trim().toUpperCase();
     const existing = giftCards.find((card) => card.code.replace(/[\s-]/g, "").toUpperCase() === code.replace(/[\s-]/g, "").toUpperCase());
     if (giftCardSaleMode === "recharge" && !existing) return setGiftCardSaleError("Geen bestaande cadeaubon gevonden voor deze code.");
     if (giftCardSaleMode === "issue" && existing) return setGiftCardSaleError("Deze cadeauboncode bestaat al. Kies een andere code.");
+    let customerId = giftCardSaleCustomerId || undefined;
+    if (giftCardSaleMode === "issue" && giftCardSaleNewCustomer) {
+      const name = giftCardSaleCustomerName.trim();
+      if (!name) return setGiftCardSaleError("Vul minstens de naam van de nieuwe klant in.");
+      customerId = generateId();
+      await upsertCustomer({ id: customerId, name, email: giftCardSaleCustomerEmail.trim() || undefined, phone: giftCardSaleCustomerPhone.trim() || undefined, totalSpentCents: 0, visitCount: 0, createdAt: new Date().toISOString(), isActive: true });
+    }
     addGiftCardCheckoutItem({
       action: giftCardSaleMode, cardId: existing?.id ?? generateId(), code,
-      amountCents: parsed.cents, customerId: giftCardSaleMode === "recharge" ? existing?.customerId : giftCardSaleCustomerId || undefined,
+      amountCents: parsed.cents, customerId: giftCardSaleMode === "recharge" ? existing?.customerId : customerId,
     });
     setGiftCardSaleOpen(false);
   };
@@ -751,7 +767,7 @@ export const Cart: React.FC = () => {
                 disabled={cart.orders.length > 0 || isProcessing}
                 onClick={openGiftCardSale}
                 title={cart.orders.length > 0 ? "Werk cadeaubonnen als een aparte kassatransactie af." : "Nieuwe cadeaubon uitgeven of bestaande opladen"}
-                className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-violet-800 transition-colors hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-sky-800 transition-colors hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Gift size={16} /> Cadeaubon uitgeven of opladen
               </button>
@@ -1152,16 +1168,16 @@ export const Cart: React.FC = () => {
         title="Cadeaubon via kassa"
         subtitle="Het saldo wijzigt pas na de normale betaling."
         icon={<Gift size={20} />}
-        footer={<div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" onClick={() => setGiftCardSaleOpen(false)} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700">Annuleren</button><button type="button" onClick={prepareGiftCardSale} className="rounded-xl bg-violet-700 px-4 py-2 text-sm font-bold text-white hover:bg-violet-800">Naar betaling</button></div>}
+        footer={<div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" onClick={() => setGiftCardSaleOpen(false)} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700">Annuleren</button><button type="button" onClick={() => void prepareGiftCardSale()} className="rounded-xl bg-sky-700 px-4 py-2 text-sm font-bold text-white hover:bg-sky-800">Naar betaling</button></div>}
       >
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1">
-            {(["issue", "recharge"] as const).map((mode) => <button key={mode} type="button" onClick={() => { setGiftCardSaleMode(mode); setGiftCardSaleError(null); }} className={`rounded-lg px-3 py-2 text-sm font-bold ${giftCardSaleMode === mode ? "bg-white text-violet-800 shadow-sm" : "text-slate-500"}`}>{mode === "issue" ? "Nieuwe bon" : "Opladen"}</button>)}
+            {(["issue", "recharge"] as const).map((mode) => <button key={mode} type="button" onClick={() => { setGiftCardSaleMode(mode); setGiftCardSaleError(null); }} className={`rounded-lg px-3 py-2 text-sm font-bold ${giftCardSaleMode === mode ? "bg-white text-sky-800 shadow-sm" : "text-slate-500"}`}>{mode === "issue" ? "Nieuwe bon" : "Opladen"}</button>)}
           </div>
           <label className="block text-sm font-bold text-slate-700">Cadeauboncode<input value={giftCardSaleCode} onChange={(event) => setGiftCardSaleCode(event.target.value.toUpperCase())} className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono text-sm" placeholder="Scan of voer code in" autoFocus /></label>
-          <div className="grid grid-cols-5 gap-2">{[10,25,50,75,100].map((amount) => <button key={amount} type="button" onClick={() => setGiftCardSaleAmount(`${amount},00`)} className={`rounded-lg border px-1 py-2 text-xs font-bold ${giftCardSaleAmount === `${amount},00` ? "border-violet-500 bg-violet-50 text-violet-800" : "border-slate-200 text-slate-600"}`}>€{amount}</button>)}</div>
+          <div className="grid grid-cols-5 gap-2">{[10,25,50,75,100].map((amount) => <button key={amount} type="button" onClick={() => setGiftCardSaleAmount(`${amount},00`)} className={`rounded-lg border px-1 py-2 text-xs font-bold ${giftCardSaleAmount === `${amount},00` ? "border-sky-500 bg-sky-50 text-sky-800" : "border-slate-200 text-slate-600"}`}>€{amount}</button>)}</div>
           <label className="block text-sm font-bold text-slate-700">Bedrag (€)<input inputMode="decimal" value={giftCardSaleAmount} onChange={(event) => setGiftCardSaleAmount(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-2 tabular-nums" /></label>
-          {giftCardSaleMode === "issue" && <label className="block text-sm font-bold text-slate-700">Klant koppelen <span className="font-normal text-slate-400">(optioneel)</span><select value={giftCardSaleCustomerId} onChange={(event) => setGiftCardSaleCustomerId(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-2"><option value="">Anonieme cadeaubon</option>{customers.filter((customer) => customer.isActive).map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}</select></label>}
+          {giftCardSaleMode === "issue" && <div className="space-y-2"><div className="flex items-center justify-between"><span className="text-sm font-bold text-slate-700">Klant koppelen <span className="font-normal text-slate-400">(optioneel)</span></span><button type="button" onClick={() => setGiftCardSaleNewCustomer((open) => !open)} className="text-xs font-bold text-sky-700 hover:text-sky-900">{giftCardSaleNewCustomer ? "Bestaande klant kiezen" : "+ Nieuwe klant"}</button></div>{giftCardSaleNewCustomer ? <div className="grid gap-2 rounded-xl border border-sky-100 bg-sky-50 p-3"><input value={giftCardSaleCustomerName} onChange={(event) => setGiftCardSaleCustomerName(event.target.value)} placeholder="Naam *" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" autoFocus /><div className="grid grid-cols-2 gap-2"><input value={giftCardSaleCustomerEmail} onChange={(event) => setGiftCardSaleCustomerEmail(event.target.value)} placeholder="E-mail" className="min-w-0 rounded-lg border border-slate-300 px-3 py-2 text-sm" /><input value={giftCardSaleCustomerPhone} onChange={(event) => setGiftCardSaleCustomerPhone(event.target.value)} placeholder="Telefoon" className="min-w-0 rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div></div> : <select value={giftCardSaleCustomerId} onChange={(event) => setGiftCardSaleCustomerId(event.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2"><option value="">Anonieme cadeaubon</option>{customers.filter((customer) => customer.isActive).map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}</select>}</div>}
           {giftCardSaleMode === "recharge" && <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">Scan de bestaande kaart. Het actuele saldo wordt opnieuw gecontroleerd zodra de betaling wordt geboekt.</p>}
           {giftCardSaleError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{giftCardSaleError}</p>}
         </div>
