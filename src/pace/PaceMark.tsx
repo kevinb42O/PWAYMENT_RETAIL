@@ -1,6 +1,7 @@
 import { motion, useReducedMotion } from "motion/react";
 import { useId, type CSSProperties } from "react";
 import type { PaceSignalTone } from "./paceSignals";
+import { paceTonePalette } from "./pacePalette";
 import type { PaceMotion } from "./usePace";
 import "./pace.css";
 
@@ -59,6 +60,26 @@ const displacementFor = (performance?: PacePerformance | null) => {
   return 0;
 };
 
+const PerformanceForm = ({ performance }: { performance: PacePerformance }) => (
+  <motion.span
+    className={`pace-performance-form is-${performance}`}
+    aria-hidden="true"
+    initial={{ opacity: 1, scale: 0.72, rotate: 0 }}
+    animate={{ opacity: [1, 1, 1, 1, 1, 0], scale: [0.72, 0.82, 1.08, 0.94, 1, 0.78], rotate: performance === "portal" ? [0, 0, 45, 220, 405, 450] : [0, 0, -4, 3, 0, 0] }}
+    transition={{ duration: 2.8, times: [0, 0.13, 0.24, 0.56, 0.84, 1], ease: [0.22, 1, 0.36, 1] }}
+  >
+    {performance === "stretch" && <span className="pace-form-ribbon"><i /></span>}
+    {performance === "slither" && (
+      <svg className="pace-form-slither" viewBox="0 0 180 100" preserveAspectRatio="none">
+        <motion.path d="M-8 68 C24 8 48 94 79 43 S137 12 188 66" pathLength="1" initial={{ pathLength: 0 }} animate={{ pathLength: [0, 1, 1, 0.88] }} transition={{ duration: 2.2, delay: 0.34, ease: [0.22, 1, 0.36, 1] }} />
+        <motion.path className="pace-form-slither-highlight" d="M-8 68 C24 8 48 94 79 43 S137 12 188 66" pathLength="1" initial={{ pathLength: 0 }} animate={{ pathLength: [0, 1, 1, 0.9] }} transition={{ duration: 2.05, delay: 0.43, ease: [0.22, 1, 0.36, 1] }} />
+      </svg>
+    )}
+    {performance === "liquid" && <span className="pace-form-liquid"><i /><b /></span>}
+    {performance === "portal" && <span className="pace-form-portal"><i /><b /></span>}
+  </motion.span>
+);
+
 export const PaceMark = ({
   size = 42,
   active = false,
@@ -83,14 +104,14 @@ export const PaceMark = ({
   const reducedMotion = useReducedMotion();
   const { canMove, fullMotion } = resolvePaceMotion({ reducedMotion: Boolean(reducedMotion), motionMode, forceMotion });
   const state: PaceEmotion = emotion ?? (thinking ? "thinking" : active ? "attentive" : "idle");
-  const accent = tone === "attention" ? "#f59e0b" : tone === "success" ? "#10b981" : "#00d9ff";
+  const palette = paceTonePalette(tone);
   const pause = state === "celebrating" ? 1.8 : state === "thinking" ? 0 : 0.35;
   const performanceActive = Boolean(performance && fullMotion);
 
   return (
     <motion.span
-      className={`pace-mark-stage is-${state}`}
-      style={{ width: size, height: size, perspective: Math.max(180, size * 5), "--pace-accent": accent } as CSSProperties}
+      className={`pace-mark-stage is-${state} tone-${tone}${performanceActive ? " is-performing" : ""}`}
+      style={{ width: size, height: size, perspective: Math.max(180, size * 5), "--pace-accent": palette.accent, "--pace-color-start": palette.start, "--pace-color-end": palette.end, "--pace-color-depth": palette.depth } as CSSProperties}
       role="img"
       aria-label={`Pace · ${state}`}
       initial={false}
@@ -129,8 +150,8 @@ export const PaceMark = ({
         aria-hidden="true"
         style={{ filter: performanceActive && performance !== "portal" ? `url(#${filterId})` : undefined }}
         initial={false}
-        animate={performanceActive ? performanceMovement(performance) : undefined}
-        transition={{ duration: 2.8, times: performanceTimes(performance), ease: [0.22, 1, 0.36, 1] }}
+        animate={performanceActive ? { ...performanceMovement(performance), opacity: [1, 0, 0, 1] } : undefined}
+        transition={{ duration: 2.8, times: performanceTimes(performance), ease: [0.22, 1, 0.36, 1], opacity: { duration: 2.8, times: [0, 0.12, 0.82, 1], ease: [0.22, 1, 0.36, 1] } }}
       >
         <motion.span
           className="pace-mark-rig"
@@ -143,6 +164,7 @@ export const PaceMark = ({
           <span className="pace-mark-plane pace-mark-front"><i className="pace-mark-sheen" /></span>
         </motion.span>
       </motion.span>
+      {performanceActive && performance && <PerformanceForm performance={performance} />}
       {state === "celebrating" && <motion.span className="pace-mark-burst" aria-hidden="true" animate={fullMotion ? { scale: [0.7, 1.25, 1], opacity: [0, 0.8, 0] } : { opacity: 0.35 }} transition={{ duration: 1.25, repeat: Infinity, repeatDelay: 1.9 }} />}
     </motion.span>
   );
