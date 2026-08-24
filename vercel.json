@@ -73,6 +73,14 @@
   ],
   "rewrites": [
     {
+      "source": "/(app|login|register|auth|admin|customer-display|service)(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/shop/checkout(.*)",
+      "destination": "/index.html"
+    },
+    {
       "source": "/((?!api/|api$|assets/|assets$|.*\\.[^/]+$).*)",
       "destination": "/index.html"
     }
