@@ -48,7 +48,7 @@ import { publicLeadStorageAvailable, submitPublicLead } from '../services/public
 import { trackPublicEvent } from '../services/publicAnalytics';
 import { PaceMark } from '../pace/PaceMark';
 import { applyRouteSeo } from './siteSeo';
-import { PaceCustomerStory, PacePublicPage } from './PacePublicExperience';
+import { PaceHomeTeaser, PacePublicPage } from './PacePublicExperience';
 import { localizePublicDom, localizedPublicPath, parsePublicPath, PUBLIC_LOCALE_INFO, PUBLIC_LOCALES, type PublicLocale } from './publicLocale';
 import './public-site.css';
 
@@ -714,7 +714,7 @@ const HomePage = () => (
       <motion.div className="pw-home-product-screen" variants={fadeUp}><div className="pw-window-bar"><i /><i /><i /><span>app.pwayment.be · Kassa</span><b>Live</b></div><img src={posImage} alt="PWAYMENT kassascherm met catalogus en winkelwagen" loading="lazy" /></motion.div>
     </motion.section>
 
-    <div className="pw-shell pw-pace-home-wrap"><PaceCustomerStory /></div>
+    <div className="pw-shell pw-pace-home-wrap"><PaceHomeTeaser /></div>
 
     <motion.section className="pw-home-outcomes" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>
       <div className="pw-shell"><motion.div className="pw-home-section-title" variants={fadeUp}><span className="pw-eyebrow">Wat verandert er in je dag?</span><h2>Van transactie naar<br />volgende stap.</h2></motion.div><div className="pw-home-outcome-grid">
