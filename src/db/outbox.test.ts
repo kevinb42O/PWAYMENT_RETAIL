@@ -95,6 +95,26 @@ describe("offline outbox", () => {
     });
   });
 
+  it("dead-letters a permanent atomic migration conflict after the first attempt", async () => {
+    await enqueueOutbox("migration_activate", { activation: { id: "migration-1" } });
+
+    const result = await drainOutbox(
+      async () => {
+        throw new Error("Migratiesynchronisatie mislukt: migration:family-create-conflict");
+      },
+      { now: Date.now(), workerId: "migration-worker" },
+    );
+
+    expect(result.retried).toHaveLength(0);
+    expect(result.deadLettered).toHaveLength(1);
+    expect(result.deadLettered[0]).toMatchObject({
+      kind: "migration_activate",
+      attempts: 1,
+      deliveryStatus: "dead_letter",
+      requiresManualResolution: true,
+    });
+  });
+
   it("can flush a foreground subset without bypassing leases for other work", async () => {
     await enqueueOutbox("migration_activate", { activation: { id: "migration-1" } });
     await enqueueOutbox("upsert_product", [{ id: "p-1" }]);

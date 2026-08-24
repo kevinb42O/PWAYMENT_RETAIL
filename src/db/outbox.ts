@@ -55,6 +55,7 @@ const isPermanentDeliveryError = (entry: OutboxEntry, message: string): boolean 
     /(?:checkout|refund|purchase|gift-card):(?:invalid|forbidden|product-not-found|customer-not-found|insufficient-stock|unsupported|discount-approval)/i,
     /retail-catalog:(?:not-authorized|invalid|duplicate|product-identity|category-not-found|create-conflict|update-conflict|special-product|family-identity|variant|option|archive-not-in-family|idempotency-conflict)/i,
     /catalog-category:(?:not-authorized|invalid|invalid-vat|name-required|parent-not-found|max-depth|duplicate|root-limit|has-children|in-use|family-in-use)/i,
+    /migration(?:-category)?:(?:not-authorized|invalid|activation-id|required|identity|duplicate|category-create-conflict|product-create-conflict|customer-create-conflict|family-create-conflict|category-parent-not-found|product-category-not-found)/i,
   ].some((pattern) => pattern.test(message));
 };
 

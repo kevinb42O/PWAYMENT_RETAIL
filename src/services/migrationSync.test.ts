@@ -67,4 +67,53 @@ describe("retail catalog migration delivery", () => {
       },
     });
   });
+
+  it("accepts one atomic server acknowledgement without replaying legacy relation RPCs", async () => {
+    rpc.mockReset();
+    rpc.mockResolvedValue({
+      data: { taxonomy_atomic: true, catalog_relations_atomic: true },
+      error: null,
+    });
+    const { pushMigrationOutboxEntry } = await import("./migrationSync");
+    const entry: OutboxEntry = {
+      id: 2,
+      timestamp: 0,
+      kind: "migration_activate",
+      attempts: 0,
+      payload: {
+        activation: {
+          id: "activation-atomic",
+          storeId: "store-1",
+          status: "active",
+          graphVersion: 1,
+          answersJson: {},
+          receiptJson: {},
+          activatedAt: 0,
+          createdAt: 0,
+          updatedAt: 0,
+        },
+        categories: [
+          { id: "services", name: "Services", vatRate: 21 },
+          { id: "services-maintenance", parentId: "services", name: "Onderhoud", vatRate: 21 },
+        ],
+        products: [],
+        customers: [],
+        inverseChanges: [],
+        catalogFamilies: [{
+          externalId: "family-atomic",
+          name: "Onderhoud",
+          categoryExternalId: "services-maintenance",
+          variants: [],
+        }],
+      },
+    };
+
+    await pushMigrationOutboxEntry("store-1", entry);
+
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith("apply_migration_activation", {
+      target_store_id: "store-1",
+      migration_payload: entry.payload,
+    });
+  });
 });

@@ -34,7 +34,10 @@ export interface MigrationLockOutboxPayload {
 }
 
 type MigrationRpcClient = {
-  rpc: (fn: string, args: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
+  rpc: (fn: string, args: Record<string, unknown>) => Promise<{
+    data?: unknown;
+    error: { message: string } | null;
+  }>;
 };
 const migrationRpc = supabase as unknown as MigrationRpcClient;
 
@@ -84,12 +87,21 @@ export const pushMigrationOutboxEntry = async (
   requireRemoteStore(storeId);
   if (entry.kind === "migration_activate") {
     const payload = entry.payload as MigrationActivationOutboxPayload;
-    const { error } = await migrationRpc.rpc("apply_migration_activation", {
+    const { data, error } = await migrationRpc.rpc("apply_migration_activation", {
       target_store_id: storeId,
       migration_payload: payload,
     });
     throwIfError(error);
-    if (payload.categories.some((category) => Boolean(category.parentId))) {
+    const acknowledgement = data && typeof data === "object"
+      ? data as { taxonomy_atomic?: unknown; catalog_relations_atomic?: unknown }
+      : null;
+    // Rolling-deploy compatibility: the new RPC commits taxonomy and family
+    // relations atomically. An older backend has no flags, so the client still
+    // completes its durable second phase until every environment is migrated.
+    if (
+      acknowledgement?.taxonomy_atomic !== true
+      && payload.categories.some((category) => Boolean(category.parentId))
+    ) {
       const { error: categoryError } = await migrationRpc.rpc("apply_migration_category_relations", {
         target_store_id: storeId,
         relations_payload: {
@@ -99,7 +111,10 @@ export const pushMigrationOutboxEntry = async (
       });
       throwIfError(categoryError);
     }
-    if ((payload.catalogFamilies?.length ?? 0) > 0) {
+    if (
+      acknowledgement?.catalog_relations_atomic !== true
+      && (payload.catalogFamilies?.length ?? 0) > 0
+    ) {
       const { error: catalogError } = await migrationRpc.rpc("apply_retail_catalog_relations", {
         target_store_id: storeId,
         relations_payload: {

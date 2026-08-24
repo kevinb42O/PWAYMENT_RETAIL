@@ -87,4 +87,28 @@ describe("migration activation and Mode 1 undo", () => {
     expect(undone).toMatchObject({ status: "undone" });
     expect(undone?.firstMeaningfulActivityAt).toBeUndefined();
   });
+
+  it("activates and undoes equal leaf names under separate roots without flattening them", async () => {
+    const categories: ProductCategory[] = [
+      { id: "services", name: "Services", vatRate: 21, isActive: true },
+      { id: "services-maintenance", parentId: "services", name: "Onderhoud", vatRate: 21, isActive: true },
+      { id: "tools", name: "Tools", vatRate: 21, isActive: true },
+      { id: "tools-maintenance", parentId: "tools", name: "Onderhoud", vatRate: 21, isActive: true },
+    ];
+    const products: Product[] = [
+      { ...product(1), category: "services-maintenance", subCategory: "Onderhoud" },
+      { ...product(2), category: "tools-maintenance", subCategory: "Onderhoud" },
+    ];
+
+    const execution = await executeMigration("store-1", graph, products, [], categories);
+    expect(await db.categories.where("name").equals("Onderhoud").count()).toBe(2);
+    expect((await db.products.toArray()).map((row) => row.category).sort()).toEqual([
+      "services-maintenance",
+      "tools-maintenance",
+    ]);
+
+    await undoMigrationActivation("store-1", execution.activation.id);
+    expect(await db.categories.count()).toBe(0);
+    expect(await db.products.count()).toBe(0);
+  });
 });

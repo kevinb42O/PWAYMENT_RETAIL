@@ -52,6 +52,35 @@ describe("migration record mapping", () => {
     expect(result.products[0].category).toBe(child?.id);
   });
 
+  it("keeps equal leaf names distinct when they belong to different roots", () => {
+    const parsed: ParsedImportFile = {
+      format: "csv",
+      headers: ["Artikelcode", "Productnaam", "Categorie", "Subcategorie", "Verkoopprijs"],
+      rows: [
+        ["SRV-1", "Servicebeurt", "Services", "Onderhoud", "15,00"],
+        ["TOOL-1", "Onderhoudsset", "Tools", "Onderhoud", "25,00"],
+      ],
+    };
+    const result = mapMigrationRecords({
+      kind: "catalog",
+      parsed,
+      mappings: inferMigrationMappings("catalog", parsed.headers, inferMappings),
+      defaultVat: 21,
+      existingCategories: [],
+    });
+
+    const leaves = result.categories.filter((category) => category.name === "Onderhoud");
+    expect(result.issues).toEqual([]);
+    expect(leaves).toHaveLength(2);
+    expect(new Set(leaves.map((category) => category.parentId)).size).toBe(2);
+    expect(result.products.map((product) => product.category)).toEqual(
+      leaves.map((category) => category.id),
+    );
+    expect(result.catalogFamilies.map((family) => family.categoryExternalId)).toEqual(
+      leaves.map((category) => category.id),
+    );
+  });
+
   it("maps customer contacts and rejects records that cannot be identified later", () => {
     const parsed: ParsedImportFile = {
       format: "csv",
