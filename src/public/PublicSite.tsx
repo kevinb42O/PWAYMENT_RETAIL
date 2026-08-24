@@ -1,4 +1,4 @@
-import React, { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import React, { FormEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight,
   BadgeCheck,
@@ -50,6 +50,7 @@ import { trackPublicEvent } from '../services/publicAnalytics';
 import { PaceMark } from '../pace/PaceMark';
 import { applyRouteSeo } from './siteSeo';
 import { PacePublicPage, PacePublicStory } from './PacePublicExperience';
+import { localizePublicDom, localizedPublicPath, parsePublicPath, PUBLIC_LOCALE_INFO, PUBLIC_LOCALES, type PublicLocale } from './publicLocale';
 import './public-site.css';
 
 // These captures come from the current local application in presentation mode.
@@ -458,17 +459,23 @@ const AnimatedPageHero = ({ eyebrow, title, intro, actions, className = '' }: { 
 );
 
 const PublicSite: React.FC = () => {
-  const path = window.location.pathname.replace(/\/$/, '') || '/';
+  const { locale, routePath: path } = parsePublicPath(window.location.pathname);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const siteRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (!siteRef.current) return;
+    return localizePublicDom(siteRef.current, locale);
+  }, [locale, path]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = 'light';
     document.documentElement.classList.add('theme-light');
     document.documentElement.classList.remove('theme-dark');
     document.documentElement.style.colorScheme = 'light';
-    applyRouteSeo(path);
+    applyRouteSeo(path, locale);
     window.scrollTo({ top: 0, behavior: 'instant' });
-  }, [path]);
+  }, [path, locale]);
 
   useEffect(() => {
     const trackClick = (event: MouseEvent) => {
@@ -497,16 +504,16 @@ const PublicSite: React.FC = () => {
   else page = <NotFoundPage />;
 
   return (
-    <div className={`pw-site${path === '/' ? ' pw-site-home' : ''}`}>
+    <div ref={siteRef} className={`pw-site${path === '/' ? ' pw-site-home' : ''}`}>
       <a className="pw-skip" href="#main">Ga naar inhoud</a>
-      <SiteHeader mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
+      <SiteHeader mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} locale={locale} routePath={path} />
       <main id="main">{page}</main>
-      <SiteFooter />
+      <SiteFooter locale={locale} routePath={path} />
     </div>
   );
 };
 
-export const SiteHeader = ({ mobileOpen, setMobileOpen }: { mobileOpen: boolean; setMobileOpen: (value: boolean) => void }) => {
+export const SiteHeader = ({ mobileOpen, setMobileOpen, locale = 'nl', routePath = '/' }: { mobileOpen: boolean; setMobileOpen: (value: boolean) => void; locale?: PublicLocale; routePath?: string }) => {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const navigationRef = useRef<HTMLDivElement>(null);
   const closeMenuTimer = useRef<number | null>(null);
@@ -585,6 +592,7 @@ export const SiteHeader = ({ mobileOpen, setMobileOpen }: { mobileOpen: boolean;
           <a href="/resources" onClick={closeNavigation}>Resources</a>
         </nav>
         <div className="pw-header-actions">
+          <LanguageSwitcher locale={locale} routePath={routePath} compact />
           <a href="/login" className="pw-login" onClick={closeNavigation}>Log in</a>
           <a href="/register" className="pw-button pw-button-dark pw-button-small" onClick={closeNavigation}>Start gratis <ArrowRight size={15} /></a>
         </div>
@@ -598,12 +606,31 @@ export const SiteHeader = ({ mobileOpen, setMobileOpen }: { mobileOpen: boolean;
           <div className="pw-mobile-nav-group"><strong>Product</strong><a href="/pace" onClick={closeNavigation}>Pace</a><a href="/pos" onClick={closeNavigation}>Kassa & betalingen</a><a href="/inventory" onClick={closeNavigation}>Voorraad & inkoop</a><a href="/customers" onClick={closeNavigation}>Klanten & loyalty</a><a href="/service-desk" onClick={closeNavigation}>ServiceDesk & herstellingen</a><a href="/webshop" onClick={closeNavigation}>Webshop & orders</a><a href="/insights" onClick={closeNavigation}>Retail intelligence</a><a href="/workforce" onClick={closeNavigation}>Team & planning</a><a href="/offline" onClick={closeNavigation}>Offline-first</a></div>
           <div className="pw-mobile-nav-group"><strong>Voor jouw winkel</strong><a href="/solutions/independent-retail" onClick={closeNavigation}>Onafhankelijke retail</a><a href="/solutions/specialist-retail" onClick={closeNavigation}>Speciaalzaken</a><a href="/solutions/multi-location" onClick={closeNavigation}>Keten & multi-location</a><a href="/migrate" onClick={closeNavigation}>Overstappen naar PWAYMENT</a></div>
           <a href="/pricing" onClick={closeNavigation}>Prijzen</a><a href="/resources" onClick={closeNavigation}>Resources</a>
+          <LanguageSwitcher locale={locale} routePath={routePath} />
           <div className="pw-mobile-actions"><a href="/login" onClick={closeNavigation}>Log in</a><a href="/register" className="pw-button pw-button-dark" onClick={closeNavigation}>Start gratis</a></div>
         </nav>
       )}
     </div>
   );
 };
+
+const LanguageSwitcher = ({ locale, routePath, compact = false }: { locale: PublicLocale; routePath: string; compact?: boolean }) => (
+  <nav className={`pw-language-switcher${compact ? ' is-compact' : ''}`} aria-label="Taal kiezen">
+    {PUBLIC_LOCALES.map((candidate) => (
+      <a
+        key={candidate}
+        href={localizedPublicPath(routePath, candidate)}
+        hrefLang={PUBLIC_LOCALE_INFO[candidate].hreflang}
+        lang={PUBLIC_LOCALE_INFO[candidate].htmlLang}
+        aria-current={candidate === locale ? 'page' : undefined}
+        aria-label={PUBLIC_LOCALE_INFO[candidate].label}
+        data-public-locale={candidate}
+      >
+        {PUBLIC_LOCALE_INFO[candidate].shortLabel}
+      </a>
+    ))}
+  </nav>
+);
 
 const NavGroup = ({ label, columns, active, onToggle, onHoverStart, onHoverEnd, onNavigate }: { label: string; columns: Array<{ title: string; links: string[][] }>; active: boolean; onToggle: () => void; onHoverStart: () => void; onHoverEnd: () => void; onNavigate: () => void }) => (
   <div className="pw-nav-group" onMouseEnter={onHoverStart} onMouseLeave={onHoverEnd} onFocus={onHoverStart} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) onHoverEnd(); }}>
@@ -644,12 +671,18 @@ const HomePage = () => (
       <HeroProductVideo />
       <div className="pw-hero-shade" aria-hidden="true" />
       <motion.div className="pw-hero-copy" initial="hidden" animate="visible" variants={stagger}>
-        <motion.h1 variants={fadeUp}>Het kassasysteem dat weet wat er speelt.<br /><em>Stuur je winkel beter.</em></motion.h1>
-        <motion.p variants={fadeUp}>Kassa, voorraad, klanten en webshop in één systeem voor Belgische winkels. Minder werk, meer overzicht.</motion.p>
+        <motion.div className="pw-kicker" variants={fadeUp}><span /> Retailplatform voor Belgische winkels</motion.div>
+        <motion.h1 variants={fadeUp}>Minder losse systemen.<br /><em>Meer grip op je winkel.</em></motion.h1>
+        <motion.p variants={fadeUp}>PWAYMENT verbindt kassa, voorraad, klanten, webshop en rapportage in één rustige werkplek. Zo verkoop je vlotter en neem je betere beslissingen met dezelfde gegevens.</motion.p>
         <motion.div className="pw-hero-actions" variants={fadeUp}>
           <a href="/register?plan=professional" className="pw-button pw-button-dark">Start gratis met PWAYMENT <ArrowRight size={17} /></a>
+          <a href="/demo" className="pw-text-link">Plan een persoonlijke demo <ArrowRight size={15} /></a>
         </motion.div>
+        <motion.div className="pw-hero-proof" variants={fadeUp}><span>Basis blijft gratis</span><span>30 dagen Professional</span><span>Offline-first kassa</span></motion.div>
       </motion.div>
+      <a className="pw-scroll-badge" href="#home-story" aria-label="Scroll naar beneden">
+        <ChevronDown size={20} strokeWidth={1.8} />
+      </a>
     </section>
 
     <section className="pw-home-proof" id="home-story" aria-label="PWAYMENT in het kort">
@@ -1107,8 +1140,8 @@ const NotFoundPage = () => <motion.section className="pw-not-found pw-shell" ini
 
 const FinalCta = ({ eyebrow = 'Klaar voor je volgende stap?', title = <>Begin gratis.<br />Probeer Professional 1 maand.</> }: { eyebrow?: string; title?: React.ReactNode }) => <motion.section className="pw-final" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><div className="pw-shell"><motion.span className="pw-eyebrow" variants={fadeUp}>{eyebrow}</motion.span><motion.h2 variants={fadeUp}>{title}</motion.h2><motion.p variants={fadeUp}>Basis blijft gratis. Na de proefperiode activeer je Professional of blijf je Basis gebruiken.</motion.p><motion.div variants={fadeUp}><a href="/register?plan=professional" className="pw-button pw-button-dark">Probeer Professional gratis <ArrowRight size={17} /></a><a href="/demo" className="pw-text-link">Plan liever een demo <ArrowRight size={15} /></a></motion.div></div></motion.section>;
 
-const SiteFooter = () => (
-  <footer className="pw-footer"><div className="pw-shell"><div className="pw-footer-top"><div className="pw-footer-brand"><a href="/" aria-label="PWAYMENT home"><PaceMark size={74} active emotion="idle" motionMode="subtle" /></a><p>Retailsoftware voor winkels die willen verkopen, beheren en groeien.</p></div><div className="pw-footer-links"><div><strong>Product</strong><a href="/pace">Pace</a><a href="/pos">POS & betalingen</a><a href="/history-returns-invoices">Retouren & facturen</a><a href="/daily-close-reporting">Dagafsluiting</a><a href="/purchasing-suppliers">Inkoop</a><a href="/team-permissions">Team & rechten</a></div><div><strong>Platform</strong><a href="/inventory">Voorraad</a><a href="/insights">Inzichten</a><a href="/customers">Klanten</a><a href="/webshop">Webshop</a><a href="/integrations">Integraties & status</a><a href="/hardware">Hardwarematrix</a></div><div><strong>Bedrijf</strong><a href="/about">Over PWAYMENT</a><a href="/customer-stories">Klantverhalen</a><a href="/resources">Resources</a><a href="/migrate">Migreren</a><a href="/contact">Contact</a></div><div><strong>Account</strong><a href="/pricing">Prijzen</a><a href="/login">Log in</a><a href="/register">Start gratis</a><a href="/demo">Plan een demo</a><a href="/contact">Support</a></div></div></div><div className="pw-footer-bottom"><span>© 2026 PWAYMENT. Alle rechten voorbehouden.</span><div><a href="/legal/privacy">Privacy</a><a href="/legal/cookies">Cookies</a><a href="/legal/terms">Voorwaarden</a><a href="/legal/dpa">Verwerkersovereenkomst</a><a href="/legal/subprocessors">Subverwerkers</a></div><span>NL <ChevronDown size={13} /></span></div></div></footer>
+const SiteFooter = ({ locale, routePath }: { locale: PublicLocale; routePath: string }) => (
+  <footer className="pw-footer"><div className="pw-shell"><div className="pw-footer-top"><div className="pw-footer-brand"><a href="/" aria-label="PWAYMENT home"><PaceMark size={74} active emotion="idle" motionMode="subtle" /></a><p>Retailsoftware voor winkels die willen verkopen, beheren en groeien.</p></div><div className="pw-footer-links"><div><strong>Product</strong><a href="/pace">Pace</a><a href="/pos">POS & betalingen</a><a href="/history-returns-invoices">Retouren & facturen</a><a href="/daily-close-reporting">Dagafsluiting</a><a href="/purchasing-suppliers">Inkoop</a><a href="/team-permissions">Team & rechten</a></div><div><strong>Platform</strong><a href="/inventory">Voorraad</a><a href="/insights">Inzichten</a><a href="/customers">Klanten</a><a href="/webshop">Webshop</a><a href="/integrations">Integraties & status</a><a href="/hardware">Hardwarematrix</a></div><div><strong>Bedrijf</strong><a href="/about">Over PWAYMENT</a><a href="/customer-stories">Klantverhalen</a><a href="/resources">Resources</a><a href="/migrate">Migreren</a><a href="/contact">Contact</a></div><div><strong>Account</strong><a href="/pricing">Prijzen</a><a href="/login">Log in</a><a href="/register">Start gratis</a><a href="/demo">Plan een demo</a><a href="/contact">Support</a></div></div></div><div className="pw-footer-bottom"><span>© 2026 PWAYMENT. Alle rechten voorbehouden.</span><div><a href="/legal/privacy">Privacy</a><a href="/legal/cookies">Cookies</a><a href="/legal/terms">Voorwaarden</a><a href="/legal/dpa">Verwerkersovereenkomst</a><a href="/legal/subprocessors">Subverwerkers</a></div><LanguageSwitcher locale={locale} routePath={routePath} /></div></div></footer>
 );
 
 export default PublicSite;

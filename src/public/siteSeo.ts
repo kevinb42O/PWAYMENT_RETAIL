@@ -1,4 +1,5 @@
 import registry from './public-site-registry.json';
+import { localizedPublicPath, PUBLIC_LOCALE_INFO, PUBLIC_LOCALES, translatePublicText, type PublicLocale } from './publicLocale';
 
 export interface PublicRouteMetadata {
   path: string;
@@ -36,13 +37,25 @@ const setCanonical = (url: string) => {
   link.href = url;
 };
 
+const setAlternate = (hreflang: string, url: string) => {
+  let link = document.head.querySelector<HTMLLinkElement>(`link[rel="alternate"][hreflang="${hreflang}"]`);
+  if (!link) {
+    link = document.createElement('link');
+    link.rel = 'alternate';
+    link.hreflang = hreflang;
+    document.head.appendChild(link);
+  }
+  link.href = url;
+};
+
 const routeLabel = (path: string) => {
   if (path === '/') return 'Home';
   const metadata = PUBLIC_ROUTE_REGISTRY.find((item) => item.path === path);
   return metadata?.title.replace(/\s+[—·-]\s+PWAYMENT$/i, '') ?? path.split('/').filter(Boolean).pop()?.replaceAll('-', ' ') ?? 'Pagina';
 };
 
-const structuredDataFor = (metadata: PublicRouteMetadata, canonical: string) => {
+const structuredDataFor = (metadata: PublicRouteMetadata, canonical: string, locale: PublicLocale) => {
+  const language = PUBLIC_LOCALE_INFO[locale].htmlLang;
   const organization = {
     '@type': 'Organization',
     '@id': `${PRIMARY_SITE_ORIGIN}/#organization`,
@@ -67,7 +80,7 @@ const structuredDataFor = (metadata: PublicRouteMetadata, canonical: string) => 
         '@type': 'Article',
         headline: routeLabel(metadata.path),
         description: metadata.description,
-        inLanguage: 'nl-BE',
+        inLanguage: language,
         mainEntityOfPage: canonical,
         publisher: { '@id': `${PRIMARY_SITE_ORIGIN}/#organization` },
       }
@@ -76,7 +89,7 @@ const structuredDataFor = (metadata: PublicRouteMetadata, canonical: string) => 
         name: metadata.title,
         description: metadata.description,
         url: canonical,
-        inLanguage: 'nl-BE',
+        inLanguage: language,
         isPartOf: { '@id': `${PRIMARY_SITE_ORIGIN}/#website` },
       };
 
@@ -84,7 +97,7 @@ const structuredDataFor = (metadata: PublicRouteMetadata, canonical: string) => 
     '@context': 'https://schema.org',
     '@graph': [
       organization,
-      { '@type': 'WebSite', '@id': `${PRIMARY_SITE_ORIGIN}/#website`, name: 'PWAYMENT', url: `${PRIMARY_SITE_ORIGIN}/`, inLanguage: 'nl-BE', publisher: { '@id': `${PRIMARY_SITE_ORIGIN}/#organization` } },
+      { '@type': 'WebSite', '@id': `${PRIMARY_SITE_ORIGIN}/#website`, name: 'PWAYMENT', url: `${PRIMARY_SITE_ORIGIN}/`, inLanguage: language, publisher: { '@id': `${PRIMARY_SITE_ORIGIN}/#organization` } },
       ...(metadata.path === '/' || metadata.path === '/product' || metadata.path === '/pos' ? [{
         '@type': 'SoftwareApplication',
         '@id': `${PRIMARY_SITE_ORIGIN}/#software`,
@@ -116,11 +129,18 @@ export const metadataForPath = (pathname: string): PublicRouteMetadata => {
   };
 };
 
-export const applyRouteSeo = (pathname: string) => {
-  const metadata = metadataForPath(pathname);
-  const canonical = `${PRIMARY_SITE_ORIGIN}${metadata.path === '/' ? '/' : metadata.path}`;
+export const applyRouteSeo = (pathname: string, locale: PublicLocale = 'nl') => {
+  const sourceMetadata = metadataForPath(pathname);
+  const metadata = {
+    ...sourceMetadata,
+    title: translatePublicText(sourceMetadata.title, locale),
+    description: translatePublicText(sourceMetadata.description, locale),
+  };
+  const canonicalPath = localizedPublicPath(metadata.path, locale);
+  const canonical = `${PRIMARY_SITE_ORIGIN}${canonicalPath === '/' ? '/' : canonicalPath}`;
   const shareImage = `${PRIMARY_SITE_ORIGIN}/og-website.png`;
 
+  document.documentElement.lang = PUBLIC_LOCALE_INFO[locale].htmlLang;
   document.title = metadata.title;
   setMeta('meta[name="description"]', 'name', 'description', metadata.description);
   setMeta('meta[property="og:type"]', 'property', 'og:type', metadata.path.startsWith('/guides/') ? 'article' : 'website');
@@ -128,12 +148,17 @@ export const applyRouteSeo = (pathname: string) => {
   setMeta('meta[property="og:description"]', 'property', 'og:description', metadata.description);
   setMeta('meta[property="og:url"]', 'property', 'og:url', canonical);
   setMeta('meta[property="og:image"]', 'property', 'og:image', shareImage);
+  setMeta('meta[property="og:locale"]', 'property', 'og:locale', PUBLIC_LOCALE_INFO[locale].ogLocale);
   setMeta('meta[name="twitter:card"]', 'name', 'twitter:card', 'summary_large_image');
   setMeta('meta[name="twitter:title"]', 'name', 'twitter:title', metadata.title);
   setMeta('meta[name="twitter:description"]', 'name', 'twitter:description', metadata.description);
   setMeta('meta[name="twitter:image"]', 'name', 'twitter:image', shareImage);
   setMeta('meta[name="robots"]', 'name', 'robots', metadata.index === false ? 'noindex, nofollow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
   setCanonical(canonical);
+  for (const candidate of PUBLIC_LOCALES) {
+    setAlternate(PUBLIC_LOCALE_INFO[candidate].hreflang, `${PRIMARY_SITE_ORIGIN}${localizedPublicPath(metadata.path, candidate)}`);
+  }
+  setAlternate('x-default', `${PRIMARY_SITE_ORIGIN}${localizedPublicPath(metadata.path, 'nl')}`);
 
   let script = document.head.querySelector<HTMLScriptElement>('script[data-pwayment-structured-data]');
   if (!script) {
@@ -142,5 +167,5 @@ export const applyRouteSeo = (pathname: string) => {
     script.dataset.pwaymentStructuredData = 'true';
     document.head.appendChild(script);
   }
-  script.textContent = JSON.stringify(structuredDataFor(metadata, canonical));
+  script.textContent = JSON.stringify(structuredDataFor(metadata, canonical, locale));
 };
