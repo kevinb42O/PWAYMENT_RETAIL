@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Check, CloudOff, EyeOff, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, CalendarClock, Check, CloudOff, EyeOff, Heart, ShieldCheck, Sparkles, UserRoundCheck } from "lucide-react";
 import { useState } from "react";
 import { PaceMark, type PaceEmotion } from "../pace/PaceMark";
 
@@ -23,6 +23,56 @@ export const PacePublicStory = ({ compact = false }: { compact?: boolean }) => {
         <div className="pw-pace-tabs" role="tablist" aria-label="Pace-situaties">{(Object.keys(SCENES) as SceneId[]).map((id) => <button key={id} type="button" role="tab" aria-selected={scene === id} onClick={() => { setScene(id); setPlayback((value) => value + 1); }}>{SCENES[id].label}</button>)}</div>
         <AnimatePresence mode="wait" initial={false}><motion.div className="pw-pace-live" key={`${scene}-${playback}`} initial={reducedMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={reducedMotion ? undefined : { opacity: 0, y: -8 }} transition={{ duration: .28, ease: [0.22, 1, 0.36, 1] }}><button className="pw-pace-character" type="button" onClick={() => setPlayback((value) => value + 1)} aria-label="Speel de Pace-animatie opnieuw"><PaceMark size={compact ? 154 : 184} active emotion={current.emotion} performance={scene === "setup" ? "stretch" : scene === "rush" ? "slither" : "liquid"} tone={current.tone} motionMode={reducedMotion ? "off" : "full"} /><span>Nog eens</span></button><div className="pw-pace-message"><span>{scene === "offline" ? <CloudOff size={13} /> : scene === "rush" ? <EyeOff size={13} /> : <Sparkles size={13} />} {current.eyebrow}</span><h3>{current.title}</h3><p>{current.body}</p><div><Check size={14} /> {current.note}</div></div></motion.div></AnimatePresence>
       </div>
+    </section>
+  );
+};
+
+export const PaceCustomerStory = () => {
+  const reducedMotion = useReducedMotion();
+
+  return (
+    <section className="pw-pace-customer-story" aria-label="Pace voorbeeld voor een terugkerende klant">
+      <motion.div
+        className="pw-pace-customer-copy"
+        initial={reducedMotion ? false : { opacity: 0, y: 18 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.35 }}
+        transition={{ duration: .55, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <span className="pw-eyebrow">Pace · op het juiste moment</span>
+        <h2>Persoonlijke service,<br />zonder giswerk.</h2>
+        <p>Wanneer een klant zich met toestemming herkent, brengt Pace relevante aankoopcontext naar de kassa. De medewerker krijgt één bruikbare gesprekstip—geen dossier om uit te pluizen.</p>
+        <a className="pw-text-link" href="/pace">Ontdek wat Pace doet <ArrowRight size={15} /></a>
+      </motion.div>
+
+      <motion.div
+        className="pw-pace-customer-demo"
+        initial={reducedMotion ? false : { opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.25 }}
+        transition={{ duration: .65, delay: .08, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <div className="pw-pace-demo-bar">
+          <div><span /><span /><span /></div>
+          <strong>Voorbeeld · terugkerende klant</strong>
+          <span className="pw-pace-consent"><ShieldCheck size={12} /> Toestemming actief</span>
+        </div>
+        <div className="pw-pace-demo-body">
+          <div className="pw-pace-returning-customer">
+            <span className="pw-pace-demo-label">Klant herkend</span>
+            <div className="pw-pace-customer-name"><span>AV</span><div><strong>Anneke V.</strong><small>Terug in de winkel</small></div></div>
+            <div className="pw-pace-purchase-row"><span>11 dagen geleden</span><strong>Blazer · maat M</strong><small>Samsøe Samsøe</small></div>
+            <div className="pw-pace-cart-total"><span>Huidig mandje</span><strong>€ 89,00</strong></div>
+          </div>
+          <div className="pw-pace-insight-panel">
+            <div className="pw-pace-insight-heading"><PaceMark size={42} active emotion="attentive" tone="attention" motionMode={reducedMotion ? "off" : "subtle"} /><div><span>Pace klanteninzicht</span><strong>Voor Anneke</strong></div></div>
+            <article className="is-urgent"><CalendarClock size={18} /><div><span>Ruiltermijn</span><strong>Vraag of de blazer goed zit.</strong><p>Vandaag is volgens het winkelbeleid de laatste dag om maat M te ruilen.</p></div></article>
+            <article><Heart size={18} /><div><span>Smaakprofiel</span><strong>Voorkeur voor Samsøe Samsøe</strong><p>De nieuwe collectie van dit merk is net binnen.</p></div></article>
+            <div className="pw-pace-conversation-tip"><UserRoundCheck size={16} /><p><span>Gesprekstip</span>“Hoe bevalt de blazer? Zit maat M goed?”</p></div>
+          </div>
+        </div>
+        <div className="pw-pace-demo-foot"><ShieldCheck size={13} /><span>Pace suggereert. De medewerker beslist. Alleen gegevens uit deze winkel.</span></div>
+      </motion.div>
     </section>
   );
 };
