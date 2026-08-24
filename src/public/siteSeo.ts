@@ -48,14 +48,22 @@ const setAlternate = (hreflang: string, url: string) => {
   link.href = url;
 };
 
-const routeLabel = (path: string) => {
+const routeLabel = (path: string, locale: PublicLocale = 'nl') => {
   if (path === '/') return 'Home';
   const metadata = PUBLIC_ROUTE_REGISTRY.find((item) => item.path === path);
-  return metadata?.title.replace(/\s+[—·-]\s+PWAYMENT$/i, '') ?? path.split('/').filter(Boolean).pop()?.replaceAll('-', ' ') ?? 'Pagina';
+  const label = metadata?.title.replace(/\s+[—·-]\s+PWAYMENT$/i, '') ?? path.split('/').filter(Boolean).pop()?.replaceAll('-', ' ') ?? 'Pagina';
+  return translatePublicText(label, locale);
+};
+
+const organizationDescriptions: Record<PublicLocale, string> = {
+  nl: 'Belgisch retailplatform voor kassa, voorraad, klanten, webshop en retail intelligence.',
+  fr: 'Plateforme belge de gestion retail pour la caisse, le stock, les clients, la boutique en ligne et l\u2019analyse commerciale.',
+  en: 'Belgian retail platform for POS, inventory, customers, online sales and retail intelligence.',
 };
 
 const structuredDataFor = (metadata: PublicRouteMetadata, canonical: string, locale: PublicLocale) => {
   const language = PUBLIC_LOCALE_INFO[locale].htmlLang;
+  const localizedHome = `${PRIMARY_SITE_ORIGIN}${localizedPublicPath('/', locale)}`;
   const organization = {
     '@type': 'Organization',
     '@id': `${PRIMARY_SITE_ORIGIN}/#organization`,
@@ -63,22 +71,22 @@ const structuredDataFor = (metadata: PublicRouteMetadata, canonical: string, loc
     url: `${PRIMARY_SITE_ORIGIN}/`,
     logo: `${PRIMARY_SITE_ORIGIN}/branding/PWAYMENTLOGOFINAL.png`,
     image: `${PRIMARY_SITE_ORIGIN}/og-website.png`,
-    description: 'Belgisch retailplatform voor kassa, voorraad, klanten, webshop en retail intelligence.',
+    description: organizationDescriptions[locale],
     areaServed: { '@type': 'Country', name: 'Belgium' },
   };
   const breadcrumb = {
     '@type': 'BreadcrumbList',
     itemListElement: metadata.path === '/'
-      ? [{ '@type': 'ListItem', position: 1, name: 'Home', item: `${PRIMARY_SITE_ORIGIN}/` }]
+      ? [{ '@type': 'ListItem', position: 1, name: 'Home', item: localizedHome }]
       : [
-          { '@type': 'ListItem', position: 1, name: 'Home', item: `${PRIMARY_SITE_ORIGIN}/` },
-          { '@type': 'ListItem', position: 2, name: routeLabel(metadata.path), item: canonical },
+          { '@type': 'ListItem', position: 1, name: 'Home', item: localizedHome },
+          { '@type': 'ListItem', position: 2, name: routeLabel(metadata.path, locale), item: canonical },
         ],
   };
   const page = metadata.path.startsWith('/guides/')
     ? {
         '@type': 'Article',
-        headline: routeLabel(metadata.path),
+        headline: routeLabel(metadata.path, locale),
         description: metadata.description,
         inLanguage: language,
         mainEntityOfPage: canonical,
@@ -97,7 +105,7 @@ const structuredDataFor = (metadata: PublicRouteMetadata, canonical: string, loc
     '@context': 'https://schema.org',
     '@graph': [
       organization,
-      { '@type': 'WebSite', '@id': `${PRIMARY_SITE_ORIGIN}/#website`, name: 'PWAYMENT', url: `${PRIMARY_SITE_ORIGIN}/`, inLanguage: language, publisher: { '@id': `${PRIMARY_SITE_ORIGIN}/#organization` } },
+      { '@type': 'WebSite', '@id': `${PRIMARY_SITE_ORIGIN}/#website`, name: 'PWAYMENT', url: localizedHome, inLanguage: language, publisher: { '@id': `${PRIMARY_SITE_ORIGIN}/#organization` } },
       ...(metadata.path === '/' || metadata.path === '/product' || metadata.path === '/pos' ? [{
         '@type': 'SoftwareApplication',
         '@id': `${PRIMARY_SITE_ORIGIN}/#software`,

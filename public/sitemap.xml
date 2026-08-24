@@ -1,211 +1,1051 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://www.pwayment.be/</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.00</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.00</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.00</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/product</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/product" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/product" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/product" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/product" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.90</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/product</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/product" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/product" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/product" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/product" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.90</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/product</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/product" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/product" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/product" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/product" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.90</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/pace</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/pace" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/pace" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/pace" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/pace" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.90</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/pace</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/pace" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/pace" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/pace" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/pace" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.90</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/pace</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/pace" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/pace" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/pace" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/pace" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.90</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/pos</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/pos" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/pos" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/pos" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/pos" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.90</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/pos</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/pos" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/pos" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/pos" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/pos" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.90</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/pos</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/pos" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/pos" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/pos" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/pos" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.90</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/inventory</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/inventory" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/inventory" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/inventory" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/inventory" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.90</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/inventory</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/inventory" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/inventory" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/inventory" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/inventory" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.90</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/inventory</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/inventory" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/inventory" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/inventory" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/inventory" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.90</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/insights</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/insights" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/insights" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/insights" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/insights" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.90</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/insights</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/insights" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/insights" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/insights" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/insights" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.90</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/insights</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/insights" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/insights" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/insights" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/insights" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.90</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/customers</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/customers" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/customers" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/customers" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/customers" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/customers</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/customers" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/customers" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/customers" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/customers" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/customers</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/customers" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/customers" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/customers" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/customers" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/webshop</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/webshop" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/webshop" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/webshop" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/webshop" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/webshop</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/webshop" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/webshop" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/webshop" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/webshop" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/webshop</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/webshop" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/webshop" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/webshop" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/webshop" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/service-desk</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/service-desk" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/service-desk" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/service-desk" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/service-desk" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.80</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/service-desk</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/service-desk" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/service-desk" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/service-desk" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/service-desk" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.80</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/service-desk</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/service-desk" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/service-desk" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/service-desk" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/service-desk" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/workforce</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/workforce" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/workforce" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/workforce" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/workforce" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/workforce</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/workforce" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/workforce" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/workforce" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/workforce" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/workforce</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/workforce" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/workforce" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/workforce" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/workforce" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/integrations</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/integrations" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/integrations" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/integrations" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/integrations" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.80</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/integrations</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/integrations" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/integrations" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/integrations" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/integrations" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.80</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/integrations</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/integrations" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/integrations" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/integrations" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/integrations" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/hardware</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/hardware" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/hardware" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/hardware" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/hardware" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.80</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/hardware</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/hardware" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/hardware" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/hardware" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/hardware" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.80</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/hardware</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/hardware" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/hardware" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/hardware" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/hardware" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/offline</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/offline" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/offline" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/offline" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/offline" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/offline</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/offline" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/offline" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/offline" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/offline" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/offline</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/offline" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/offline" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/offline" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/offline" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/security</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/security" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/security" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/security" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/security" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/security</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/security" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/security" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/security" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/security" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/security</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/security" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/security" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/security" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/security" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/solutions/independent-retail</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/solutions/independent-retail" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/solutions/independent-retail" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/solutions/independent-retail" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/solutions/independent-retail" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.70</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/solutions/independent-retail</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/solutions/independent-retail" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/solutions/independent-retail" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/solutions/independent-retail" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/solutions/independent-retail" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.70</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/solutions/independent-retail</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/solutions/independent-retail" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/solutions/independent-retail" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/solutions/independent-retail" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/solutions/independent-retail" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.70</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/solutions/specialist-retail</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/solutions/specialist-retail" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/solutions/specialist-retail" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/solutions/specialist-retail" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/solutions/specialist-retail" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.70</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/solutions/specialist-retail</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/solutions/specialist-retail" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/solutions/specialist-retail" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/solutions/specialist-retail" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/solutions/specialist-retail" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.70</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/solutions/specialist-retail</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/solutions/specialist-retail" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/solutions/specialist-retail" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/solutions/specialist-retail" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/solutions/specialist-retail" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.70</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/solutions/multi-location</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/solutions/multi-location" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/solutions/multi-location" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/solutions/multi-location" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/solutions/multi-location" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.70</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/solutions/multi-location</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/solutions/multi-location" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/solutions/multi-location" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/solutions/multi-location" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/solutions/multi-location" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.70</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/solutions/multi-location</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/solutions/multi-location" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/solutions/multi-location" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/solutions/multi-location" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/solutions/multi-location" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.70</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/solutions/accountants</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/solutions/accountants" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/solutions/accountants" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/solutions/accountants" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/solutions/accountants" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.65</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/solutions/accountants</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/solutions/accountants" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/solutions/accountants" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/solutions/accountants" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/solutions/accountants" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.65</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/solutions/accountants</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/solutions/accountants" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/solutions/accountants" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/solutions/accountants" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/solutions/accountants" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.65</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/history-returns-invoices</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/history-returns-invoices" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/history-returns-invoices" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/history-returns-invoices" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/history-returns-invoices" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/history-returns-invoices</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/history-returns-invoices" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/history-returns-invoices" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/history-returns-invoices" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/history-returns-invoices" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/history-returns-invoices</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/history-returns-invoices" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/history-returns-invoices" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/history-returns-invoices" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/history-returns-invoices" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/daily-close-reporting</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/daily-close-reporting" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/daily-close-reporting" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/daily-close-reporting" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/daily-close-reporting" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/daily-close-reporting</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/daily-close-reporting" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/daily-close-reporting" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/daily-close-reporting" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/daily-close-reporting" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/daily-close-reporting</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/daily-close-reporting" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/daily-close-reporting" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/daily-close-reporting" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/daily-close-reporting" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/purchasing-suppliers</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/purchasing-suppliers" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/purchasing-suppliers" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/purchasing-suppliers" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/purchasing-suppliers" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/purchasing-suppliers</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/purchasing-suppliers" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/purchasing-suppliers" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/purchasing-suppliers" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/purchasing-suppliers" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/purchasing-suppliers</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/purchasing-suppliers" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/purchasing-suppliers" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/purchasing-suppliers" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/purchasing-suppliers" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/team-permissions</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/team-permissions" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/team-permissions" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/team-permissions" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/team-permissions" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.80</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/team-permissions</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/team-permissions" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/team-permissions" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/team-permissions" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/team-permissions" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.80</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/team-permissions</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/team-permissions" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/team-permissions" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/team-permissions" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/team-permissions" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/pricing</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/pricing" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/pricing" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/pricing" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/pricing" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/pricing</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/pricing" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/pricing" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/pricing" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/pricing" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/pricing</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/pricing" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/pricing" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/pricing" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/pricing" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.95</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/migrate</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/migrate" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/migrate" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/migrate" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/migrate" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.70</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/migrate</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/migrate" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/migrate" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/migrate" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/migrate" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.70</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/migrate</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/migrate" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/migrate" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/migrate" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/migrate" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.70</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/demo</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/demo" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/demo" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/demo" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/demo" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/demo</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/demo" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/demo" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/demo" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/demo" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/demo</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/demo" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/demo" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/demo" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/demo" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/resources</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/resources" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/resources" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/resources" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/resources" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/resources</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/resources" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/resources" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/resources" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/resources" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/resources</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/resources" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/resources" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/resources" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/resources" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/customer-stories</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/customer-stories" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/customer-stories" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/customer-stories" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/customer-stories" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.60</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/customer-stories</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/customer-stories" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/customer-stories" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/customer-stories" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/customer-stories" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.60</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/customer-stories</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/customer-stories" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/customer-stories" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/customer-stories" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/customer-stories" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.60</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/guides/retouren</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/guides/retouren" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/guides/retouren" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/guides/retouren" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/guides/retouren" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.65</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/guides/retouren</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/guides/retouren" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/guides/retouren" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/guides/retouren" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/guides/retouren" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.65</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/guides/retouren</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/guides/retouren" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/guides/retouren" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/guides/retouren" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/guides/retouren" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.65</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/guides/z-rapport</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/guides/z-rapport" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/guides/z-rapport" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/guides/z-rapport" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/guides/z-rapport" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.65</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/guides/z-rapport</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/guides/z-rapport" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/guides/z-rapport" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/guides/z-rapport" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/guides/z-rapport" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.65</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/guides/z-rapport</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/guides/z-rapport" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/guides/z-rapport" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/guides/z-rapport" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/guides/z-rapport" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.65</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/guides/voorraadprognose</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/guides/voorraadprognose" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/guides/voorraadprognose" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/guides/voorraadprognose" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/guides/voorraadprognose" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.65</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/guides/voorraadprognose</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/guides/voorraadprognose" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/guides/voorraadprognose" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/guides/voorraadprognose" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/guides/voorraadprognose" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.65</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/guides/voorraadprognose</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/guides/voorraadprognose" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/guides/voorraadprognose" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/guides/voorraadprognose" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/guides/voorraadprognose" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.65</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/guides/cadeaubonnen</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/guides/cadeaubonnen" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/guides/cadeaubonnen" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/guides/cadeaubonnen" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/guides/cadeaubonnen" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.65</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/guides/cadeaubonnen</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/guides/cadeaubonnen" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/guides/cadeaubonnen" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/guides/cadeaubonnen" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/guides/cadeaubonnen" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.65</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/guides/cadeaubonnen</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/guides/cadeaubonnen" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/guides/cadeaubonnen" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/guides/cadeaubonnen" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/guides/cadeaubonnen" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.65</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/guides/webshopvoorraad</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/guides/webshopvoorraad" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/guides/webshopvoorraad" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/guides/webshopvoorraad" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/guides/webshopvoorraad" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.65</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/guides/webshopvoorraad</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/guides/webshopvoorraad" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/guides/webshopvoorraad" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/guides/webshopvoorraad" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/guides/webshopvoorraad" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.65</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/guides/webshopvoorraad</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/guides/webshopvoorraad" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/guides/webshopvoorraad" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/guides/webshopvoorraad" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/guides/webshopvoorraad" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.65</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/guides/belgische-retailflow</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/guides/belgische-retailflow" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/guides/belgische-retailflow" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/guides/belgische-retailflow" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/guides/belgische-retailflow" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.65</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/guides/belgische-retailflow</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/guides/belgische-retailflow" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/guides/belgische-retailflow" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/guides/belgische-retailflow" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/guides/belgische-retailflow" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.65</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/guides/belgische-retailflow</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/guides/belgische-retailflow" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/guides/belgische-retailflow" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/guides/belgische-retailflow" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/guides/belgische-retailflow" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.65</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/about</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/about" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/about" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/about" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/about" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.55</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/about</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/about" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/about" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/about" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/about" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.55</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/about</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/about" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/about" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/about" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/about" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.55</priority>
   </url>
   <url>
     <loc>https://www.pwayment.be/contact</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/contact" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/contact" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/contact" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/contact" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.65</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/fr/contact</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/contact" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/contact" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/contact" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/contact" />
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.65</priority>
+  </url>
+  <url>
+    <loc>https://www.pwayment.be/en/contact</loc>
+    <xhtml:link rel="alternate" hreflang="nl-BE" href="https://www.pwayment.be/contact" />
+    <xhtml:link rel="alternate" hreflang="fr-BE" href="https://www.pwayment.be/fr/contact" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.pwayment.be/en/contact" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.pwayment.be/contact" />
     <lastmod>2026-08-24</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.65</priority>

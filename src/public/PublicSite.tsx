@@ -616,19 +616,31 @@ export const SiteHeader = ({ mobileOpen, setMobileOpen, locale = 'nl', routePath
 
 const LanguageSwitcher = ({ locale, routePath, compact = false }: { locale: PublicLocale; routePath: string; compact?: boolean }) => (
   <nav className={`pw-language-switcher${compact ? ' is-compact' : ''}`} aria-label="Taal kiezen">
-    {PUBLIC_LOCALES.map((candidate) => (
-      <a
-        key={candidate}
-        href={localizedPublicPath(routePath, candidate)}
-        hrefLang={PUBLIC_LOCALE_INFO[candidate].hreflang}
-        lang={PUBLIC_LOCALE_INFO[candidate].htmlLang}
-        aria-current={candidate === locale ? 'page' : undefined}
-        aria-label={PUBLIC_LOCALE_INFO[candidate].label}
-        data-public-locale={candidate}
-      >
-        {PUBLIC_LOCALE_INFO[candidate].shortLabel}
-      </a>
-    ))}
+    <div className="pw-language-switcher-heading" aria-hidden="true">
+      <Globe2 size={15} strokeWidth={2} />
+      <span>Taal</span>
+    </div>
+    <div className="pw-language-options">
+      {PUBLIC_LOCALES.map((candidate) => {
+        const active = candidate === locale;
+        return (
+          <a
+            key={candidate}
+            href={localizedPublicPath(routePath, candidate)}
+            hrefLang={PUBLIC_LOCALE_INFO[candidate].hreflang}
+            lang={PUBLIC_LOCALE_INFO[candidate].htmlLang}
+            aria-current={active ? 'page' : undefined}
+            aria-label={PUBLIC_LOCALE_INFO[candidate].label}
+            title={PUBLIC_LOCALE_INFO[candidate].label}
+            data-public-locale={candidate}
+          >
+            <span className="pw-language-short">{PUBLIC_LOCALE_INFO[candidate].shortLabel}</span>
+            <span className="pw-language-name">{PUBLIC_LOCALE_INFO[candidate].label}</span>
+            {active && <Check className="pw-language-check" size={14} strokeWidth={2.5} aria-hidden="true" />}
+          </a>
+        );
+      })}
+    </div>
   </nav>
 );
 
@@ -1141,7 +1153,7 @@ const NotFoundPage = () => <motion.section className="pw-not-found pw-shell" ini
 const FinalCta = ({ eyebrow = 'Klaar voor je volgende stap?', title = <>Begin gratis.<br />Probeer Professional 1 maand.</> }: { eyebrow?: string; title?: React.ReactNode }) => <motion.section className="pw-final" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><div className="pw-shell"><motion.span className="pw-eyebrow" variants={fadeUp}>{eyebrow}</motion.span><motion.h2 variants={fadeUp}>{title}</motion.h2><motion.p variants={fadeUp}>Basis blijft gratis. Na de proefperiode activeer je Professional of blijf je Basis gebruiken.</motion.p><motion.div variants={fadeUp}><a href="/register?plan=professional" className="pw-button pw-button-dark">Probeer Professional gratis <ArrowRight size={17} /></a><a href="/demo" className="pw-text-link">Plan liever een demo <ArrowRight size={15} /></a></motion.div></div></motion.section>;
 
 const SiteFooter = ({ locale, routePath }: { locale: PublicLocale; routePath: string }) => (
-  <footer className="pw-footer"><div className="pw-shell"><div className="pw-footer-top"><div className="pw-footer-brand"><a href="/" aria-label="PWAYMENT home"><PaceMark size={74} active emotion="idle" motionMode="subtle" /></a><p>Retailsoftware voor winkels die willen verkopen, beheren en groeien.</p></div><div className="pw-footer-links"><div><strong>Product</strong><a href="/pace">Pace</a><a href="/pos">POS & betalingen</a><a href="/history-returns-invoices">Retouren & facturen</a><a href="/daily-close-reporting">Dagafsluiting</a><a href="/purchasing-suppliers">Inkoop</a><a href="/team-permissions">Team & rechten</a></div><div><strong>Platform</strong><a href="/inventory">Voorraad</a><a href="/insights">Inzichten</a><a href="/customers">Klanten</a><a href="/webshop">Webshop</a><a href="/integrations">Integraties & status</a><a href="/hardware">Hardwarematrix</a></div><div><strong>Bedrijf</strong><a href="/about">Over PWAYMENT</a><a href="/customer-stories">Klantverhalen</a><a href="/resources">Resources</a><a href="/migrate">Migreren</a><a href="/contact">Contact</a></div><div><strong>Account</strong><a href="/pricing">Prijzen</a><a href="/login">Log in</a><a href="/register">Start gratis</a><a href="/demo">Plan een demo</a><a href="/contact">Support</a></div></div></div><div className="pw-footer-bottom"><span>© 2026 PWAYMENT. Alle rechten voorbehouden.</span><div><a href="/legal/privacy">Privacy</a><a href="/legal/cookies">Cookies</a><a href="/legal/terms">Voorwaarden</a><a href="/legal/dpa">Verwerkersovereenkomst</a><a href="/legal/subprocessors">Subverwerkers</a></div><LanguageSwitcher locale={locale} routePath={routePath} /></div></div></footer>
+  <footer className="pw-footer"><div className="pw-shell"><div className="pw-footer-top"><div className="pw-footer-brand"><a href="/" aria-label="PWAYMENT home"><PaceMark size={74} active emotion="idle" motionMode="subtle" /></a><p>Retailsoftware voor winkels die willen verkopen, beheren en groeien.</p></div><div className="pw-footer-links"><div><strong>Product</strong><a href="/pace">Pace</a><a href="/pos">POS & betalingen</a><a href="/history-returns-invoices">Retouren & facturen</a><a href="/daily-close-reporting">Dagafsluiting</a><a href="/purchasing-suppliers">Inkoop</a><a href="/team-permissions">Team & rechten</a></div><div><strong>Platform</strong><a href="/inventory">Voorraad</a><a href="/insights">Inzichten</a><a href="/customers">Klanten</a><a href="/webshop">Webshop</a><a href="/integrations">Integraties & status</a><a href="/hardware">Hardwarematrix</a></div><div><strong>Bedrijf</strong><a href="/about">Over PWAYMENT</a><a href="/customer-stories">Klantverhalen</a><a href="/resources">Resources</a><a href="/migrate">Migreren</a><a href="/contact">Contact</a></div><div><strong>Account</strong><a href="/pricing">Prijzen</a><a href="/login">Log in</a><a href="/register">Start gratis</a><a href="/demo">Plan een demo</a><a href="/contact">Support</a></div></div></div><div className="pw-footer-bottom"><span>© 2026 PWAYMENT. Alle rechten voorbehouden.</span><div><a href="/legal/privacy">Privacy</a><a href="/legal/cookies">Cookies</a><a href="/legal/terms">Voorwaarden</a><a href="/legal/dpa">Verwerkersovereenkomst</a><a href="/legal/subprocessors">Subverwerkers</a></div><LanguageSwitcher locale={locale} routePath={routePath} compact /></div></div></footer>
 );
 
 export default PublicSite;

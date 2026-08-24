@@ -1,5 +1,6 @@
 import englishMessages from './locales/en.json';
 import frenchMessages from './locales/fr.json';
+import editorialOverrides from './locales/overrides.json';
 
 export type PublicLocale = 'nl' | 'fr' | 'en';
 
@@ -45,6 +46,8 @@ export const localizedHref = (href: string, locale: PublicLocale): string => {
 
 export const translatePublicText = (value: string, locale: PublicLocale): string => {
   if (locale === 'nl') return value;
+  const override = (editorialOverrides as Record<string, Partial<Record<Exclude<PublicLocale, 'nl'>, string>>>)[value]?.[locale];
+  if (override) return override;
   return dictionaries[locale][value] ?? value;
 };
 

@@ -4,7 +4,7 @@ import path from 'node:path';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relative) => readFile(path.join(root, relative), 'utf8');
-const [registryText, publicSite, sitemap, robots, planCatalog, billingSettings, marketingMigration] = await Promise.all([
+const [registryText, publicSite, sitemap, robots, planCatalog, billingSettings, marketingMigration, englishText, frenchText, overridesText, localeSource, seoSource, prerenderSource] = await Promise.all([
   read('src/public/public-site-registry.json'),
   read('src/public/PublicSite.tsx'),
   read('public/sitemap.xml'),
@@ -12,22 +12,54 @@ const [registryText, publicSite, sitemap, robots, planCatalog, billingSettings, 
   read('src/billing/planCatalog.ts'),
   read('src/components/BillingSettings.tsx'),
   read('supabase/migrations/20260812120000_public_marketing_leads.sql'),
+  read('src/public/locales/en.json'),
+  read('src/public/locales/fr.json'),
+  read('src/public/locales/overrides.json'),
+  read('src/public/publicLocale.ts'),
+  read('src/public/siteSeo.ts'),
+  read('scripts/prerender-public-site.mjs'),
 ]);
 
 const routes = JSON.parse(registryText);
 const errors = [];
 const paths = routes.map((route) => route.path);
+const english = JSON.parse(englishText);
+const french = JSON.parse(frenchText);
+const overrides = JSON.parse(overridesText);
+const localeVariants = [
+  ['nl', 'nl-BE'],
+  ['fr', 'fr-BE'],
+  ['en', 'en'],
+];
+const localizedUrl = (routePath, locale) => `https://www.pwayment.be${locale === 'nl' ? routePath : routePath === '/' ? `/${locale}` : `/${locale}${routePath}`}`;
 
 if (new Set(paths).size !== paths.length) errors.push('De publieke routeregistry bevat dubbele paden.');
 for (const route of routes) {
   if (!route.title || !route.description || route.description.length < 50) errors.push(`${route.path}: metadata is onvolledig.`);
-  const expectedUrl = `https://www.pwayment.be${route.path === '/' ? '/' : route.path}`;
-  if (route.index !== false && !sitemap.includes(`<loc>${expectedUrl}</loc>`)) errors.push(`${route.path}: ontbreekt in sitemap.xml.`);
-  if (route.index === false && sitemap.includes(`<loc>${expectedUrl}</loc>`)) errors.push(`${route.path}: noindex-route staat toch in sitemap.xml.`);
+  for (const [locale, hreflang] of localeVariants) {
+    const expectedUrl = localizedUrl(route.path, locale);
+    if (route.index !== false && !sitemap.includes(`<loc>${expectedUrl}</loc>`)) errors.push(`${route.path} (${locale}): ontbreekt in sitemap.xml.`);
+    if (route.index === false && sitemap.includes(`<loc>${expectedUrl}</loc>`)) errors.push(`${route.path} (${locale}): noindex-route staat toch in sitemap.xml.`);
+    if (route.index !== false && !sitemap.includes(`hreflang="${hreflang}" href="${expectedUrl}"`)) errors.push(`${route.path} (${locale}): hreflang ontbreekt in sitemap.xml.`);
+  }
+  for (const source of [route.title, route.description]) {
+    if (!english[source] || !french[source]) errors.push(`${route.path}: vertaalde metadata ontbreekt.`);
+    if (!overrides[source]?.en || !overrides[source]?.fr) errors.push(`${route.path}: redactionele metadatareview ontbreekt.`);
+  }
   if (route.path !== '/' && !publicSite.includes(`'${route.path}'`) && !publicSite.includes(`"${route.path}"`)) errors.push(`${route.path}: route komt niet voor in PublicSite.tsx.`);
 }
 
 if (!robots.includes('Sitemap: https://www.pwayment.be/sitemap.xml')) errors.push('robots.txt verwijst niet naar de canonieke sitemap.');
+if (!sitemap.includes('xmlns:xhtml="http://www.w3.org/1999/xhtml"')) errors.push('De meertalige sitemap mist de xhtml-namespace.');
+if (!localeSource.includes("type PublicLocale = 'nl' | 'fr' | 'en'")) errors.push('De publieke localelaag mist NL, FR of EN.');
+if (!seoSource.includes("setAlternate('x-default'")) errors.push('Runtime-SEO mist x-default hreflang.');
+if (!prerenderSource.includes('alternateTags(route.path)')) errors.push('Pre-rendering mist hreflang-tags.');
+for (const [locale, catalogText, catalog] of [['en', englishText, english], ['fr', frenchText, french]]) {
+  if (Object.keys(catalog).length < 1100) errors.push(`${locale}: vertaalcatalogus is onverwacht onvolledig.`);
+  for (const marker of ['ZZXPWTERM', 'reser TVA', 'PAYEMENT', 'PAYAGE']) {
+    if (catalogText.includes(marker)) errors.push(`${locale}: ongeldige vertaalrest gevonden: ${marker}.`);
+  }
+}
 if (!publicSite.includes("from '../billing/planCatalog'")) errors.push('De publieke prijzen gebruiken de centrale planCatalog niet.');
 for (const amount of ['€ 55', '€ 69', '€ 119', '€ 149']) {
   if (publicSite.includes(amount)) errors.push(`PublicSite.tsx bevat opnieuw een los planbedrag: ${amount}.`);

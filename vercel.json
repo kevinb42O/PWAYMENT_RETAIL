@@ -59,6 +59,16 @@
       "source": "/compare",
       "destination": "/pricing",
       "permanent": true
+    },
+    {
+      "source": "/fr/compare",
+      "destination": "/fr/pricing",
+      "permanent": true
+    },
+    {
+      "source": "/en/compare",
+      "destination": "/en/pricing",
+      "permanent": true
     }
   ],
   "rewrites": [
