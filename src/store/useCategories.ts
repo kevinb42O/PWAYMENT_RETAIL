@@ -108,7 +108,15 @@ export const useCategories = create<CategoriesState>((set, get) => ({
       if (materialized.updatedProducts.length > 0) await db.products.bulkPut(materialized.updatedProducts);
     });
     if (materialized.updatedProducts.length > 0) useProducts.getState().syncPersisted(materialized.updatedProducts);
-    set({ list: sortByName(materialized.categories), hydrated: true });
+
+    // Product hydration can materialize subcategories in the same IndexedDB
+    // while this hydrate is still running. Publishing `materialized.categories`
+    // here would restore the older snapshot captured above and leave products
+    // pointing at leaf IDs that the UI cannot resolve until a full reload.
+    // IndexedDB is the committed source of truth, so always publish a final
+    // read after our transaction has completed.
+    const committedCategories = await db.categories.toArray();
+    set({ list: sortByName(committedCategories), hydrated: true });
   },
 
   refresh: async () => {
@@ -127,7 +135,8 @@ export const useCategories = create<CategoriesState>((set, get) => ({
       if (materialized.updatedProducts.length > 0) await db.products.bulkPut(materialized.updatedProducts);
     });
     if (materialized.updatedProducts.length > 0) useProducts.getState().syncPersisted(materialized.updatedProducts);
-    set({ list: sortByName(materialized.categories), hydrated: true });
+    const committedCategories = await db.categories.toArray();
+    set({ list: sortByName(committedCategories), hydrated: true });
   },
 
   addCategory: async (rawName, requestedVatRate = BELGIAN_RETAIL_VAT_RATE) => {

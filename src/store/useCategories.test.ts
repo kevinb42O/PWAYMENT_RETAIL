@@ -1,5 +1,5 @@
 import "fake-indexeddb/auto";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useAuth } from "../auth/useAuth";
 import { productCategories } from "../data/categories";
 import { db } from "../db/db";
@@ -13,6 +13,32 @@ describe("category repository store", () => {
     useAuth.setState({ currentStoreIsDemo: false });
     useCategories.setState({ list: [], hydrated: false });
     useProducts.setState({ list: [], hydrated: false });
+    vi.restoreAllMocks();
+  });
+
+  it("publishes subcategories committed concurrently by product hydration", async () => {
+    const root = { id: "accessories", name: "Accessoires", vatRate: 21, isActive: true };
+    const leaf = {
+      id: "accessories-cadeaubonnen",
+      parentId: root.id,
+      name: "Cadeaubonnen",
+      vatRate: 21,
+      isActive: true,
+    };
+    await db.categories.put(root);
+
+    const readProducts = db.products.toArray.bind(db.products);
+    vi.spyOn(db.products, "toArray").mockImplementationOnce((async () => {
+      await db.categories.put(leaf);
+      return readProducts();
+    }) as never);
+
+    await useCategories.getState().hydrate();
+
+    expect(useCategories.getState().list).toEqual(expect.arrayContaining([
+      expect.objectContaining(root),
+      expect.objectContaining(leaf),
+    ]));
   });
 
   it("starts a real tenant with no categories", async () => {
