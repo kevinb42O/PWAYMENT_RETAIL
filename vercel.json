@@ -74,11 +74,11 @@
   "rewrites": [
     {
       "source": "/(app|login|register|auth|admin|customer-display|service)(.*)",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/shop/checkout(.*)",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/((?!api/|api$|assets/|assets$|.*\\.[^/]+$).*)",
