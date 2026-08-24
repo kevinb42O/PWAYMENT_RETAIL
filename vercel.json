@@ -1,11 +1,22 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "cleanUrls": true,
+  "trailingSlash": false,
   "git": {
     "deploymentEnabled": {
       "main": true
     }
   },
   "headers": [
+    {
+      "source": "/(app|login|register|auth|admin|customer-display|service|shop/checkout)(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
     {
       "source": "/((?!api/|api$|assets/|assets$|.*\\.[^/]+$).*)",
       "headers": [
@@ -41,6 +52,13 @@
           "value": "public, max-age=31536000, immutable"
         }
       ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/compare",
+      "destination": "/pricing",
+      "permanent": true
     }
   ],
   "rewrites": [

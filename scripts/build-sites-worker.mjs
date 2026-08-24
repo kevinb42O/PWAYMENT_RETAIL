@@ -10,6 +10,13 @@ export default {
     const response = await env.ASSETS.fetch(request);
     if (response.status !== 404 || !htmlRequest(request)) return response;
 
+    const requestUrl = new URL(request.url);
+    if (!requestUrl.pathname.endsWith('/')) {
+      const staticPageUrl = new URL(\`${'${requestUrl.pathname}'}.html\`, request.url);
+      const staticPage = await env.ASSETS.fetch(new Request(staticPageUrl, request));
+      if (staticPage.status !== 404) return staticPage;
+    }
+
     const fallbackUrl = new URL('/index.html', request.url);
     return env.ASSETS.fetch(new Request(fallbackUrl, request));
   },

@@ -47,15 +47,18 @@ const structuredDataFor = (metadata: PublicRouteMetadata, canonical: string) => 
     '@type': 'Organization',
     '@id': `${PRIMARY_SITE_ORIGIN}/#organization`,
     name: 'PWAYMENT',
-    url: PRIMARY_SITE_ORIGIN,
+    url: `${PRIMARY_SITE_ORIGIN}/`,
     logo: `${PRIMARY_SITE_ORIGIN}/branding/PWAYMENTLOGOFINAL.png`,
+    image: `${PRIMARY_SITE_ORIGIN}/og-website.png`,
+    description: 'Belgisch retailplatform voor kassa, voorraad, klanten, webshop en retail intelligence.',
+    areaServed: { '@type': 'Country', name: 'Belgium' },
   };
   const breadcrumb = {
     '@type': 'BreadcrumbList',
     itemListElement: metadata.path === '/'
-      ? [{ '@type': 'ListItem', position: 1, name: 'Home', item: PRIMARY_SITE_ORIGIN }]
+      ? [{ '@type': 'ListItem', position: 1, name: 'Home', item: `${PRIMARY_SITE_ORIGIN}/` }]
       : [
-          { '@type': 'ListItem', position: 1, name: 'Home', item: PRIMARY_SITE_ORIGIN },
+          { '@type': 'ListItem', position: 1, name: 'Home', item: `${PRIMARY_SITE_ORIGIN}/` },
           { '@type': 'ListItem', position: 2, name: routeLabel(metadata.path), item: canonical },
         ],
   };
@@ -81,7 +84,19 @@ const structuredDataFor = (metadata: PublicRouteMetadata, canonical: string) => 
     '@context': 'https://schema.org',
     '@graph': [
       organization,
-      { '@type': 'WebSite', '@id': `${PRIMARY_SITE_ORIGIN}/#website`, name: 'PWAYMENT', url: PRIMARY_SITE_ORIGIN, inLanguage: 'nl-BE', publisher: { '@id': `${PRIMARY_SITE_ORIGIN}/#organization` } },
+      { '@type': 'WebSite', '@id': `${PRIMARY_SITE_ORIGIN}/#website`, name: 'PWAYMENT', url: `${PRIMARY_SITE_ORIGIN}/`, inLanguage: 'nl-BE', publisher: { '@id': `${PRIMARY_SITE_ORIGIN}/#organization` } },
+      ...(metadata.path === '/' || metadata.path === '/product' || metadata.path === '/pos' ? [{
+        '@type': 'SoftwareApplication',
+        '@id': `${PRIMARY_SITE_ORIGIN}/#software`,
+        name: 'PWAYMENT',
+        applicationCategory: 'BusinessApplication',
+        applicationSubCategory: 'Point of Sale and retail management software',
+        operatingSystem: 'Web',
+        description: metadata.description,
+        url: canonical,
+        provider: { '@id': `${PRIMARY_SITE_ORIGIN}/#organization` },
+        areaServed: { '@type': 'Country', name: 'Belgium' },
+      }] : []),
       page,
       breadcrumb,
     ],
@@ -97,12 +112,13 @@ export const metadataForPath = (pathname: string): PublicRouteMetadata => {
     description: 'PWAYMENT verbindt kassa, voorraad, klanten, webshop en retail intelligence voor Belgische winkels.',
     changefreq: 'monthly',
     priority: 0.4,
+    index: false,
   };
 };
 
 export const applyRouteSeo = (pathname: string) => {
   const metadata = metadataForPath(pathname);
-  const canonical = `${PRIMARY_SITE_ORIGIN}${metadata.path === '/' ? '' : metadata.path}`;
+  const canonical = `${PRIMARY_SITE_ORIGIN}${metadata.path === '/' ? '/' : metadata.path}`;
   const shareImage = `${PRIMARY_SITE_ORIGIN}/og-website.png`;
 
   document.title = metadata.title;
@@ -116,7 +132,7 @@ export const applyRouteSeo = (pathname: string) => {
   setMeta('meta[name="twitter:title"]', 'name', 'twitter:title', metadata.title);
   setMeta('meta[name="twitter:description"]', 'name', 'twitter:description', metadata.description);
   setMeta('meta[name="twitter:image"]', 'name', 'twitter:image', shareImage);
-  setMeta('meta[name="robots"]', 'name', 'robots', metadata.index === false ? 'noindex, nofollow' : 'index, follow');
+  setMeta('meta[name="robots"]', 'name', 'robots', metadata.index === false ? 'noindex, nofollow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
   setCanonical(canonical);
 
   let script = document.head.querySelector<HTMLScriptElement>('script[data-pwayment-structured-data]');

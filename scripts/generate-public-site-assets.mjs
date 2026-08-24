@@ -14,7 +14,7 @@ const sitemap = [
   '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
   ...routes.filter((route) => route.index !== false).map((route) => [
     '  <url>',
-    `    <loc>${escapeXml(`${origin}${route.path === '/' ? '' : route.path}`)}</loc>`,
+    `    <loc>${escapeXml(`${origin}${route.path === '/' ? '/' : route.path}`)}</loc>`,
     `    <lastmod>${today}</lastmod>`,
     `    <changefreq>${route.changefreq}</changefreq>`,
     `    <priority>${Number(route.priority).toFixed(2)}</priority>`,
@@ -24,7 +24,7 @@ const sitemap = [
   '',
 ].join('\n');
 
-const robots = ['User-agent: *', 'Allow: /', 'Disallow: /app', 'Disallow: /login', 'Disallow: /register', 'Disallow: /shop/checkout', '', `Sitemap: ${origin}/sitemap.xml`, ''].join('\n');
+const robots = ['User-agent: *', 'Allow: /', 'Disallow: /api/', 'Disallow: /admin/', 'Disallow: /customer-display/', 'Disallow: /service/', '', `Sitemap: ${origin}/sitemap.xml`, ''].join('\n');
 
 await writeFile(path.join(root, 'public/sitemap.xml'), sitemap, 'utf8');
 await writeFile(path.join(root, 'public/robots.txt'), robots, 'utf8');

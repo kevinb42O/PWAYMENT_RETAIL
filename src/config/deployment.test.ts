@@ -2,11 +2,14 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 type VercelConfig = {
+  cleanUrls: boolean;
   headers: Array<{
     headers: Array<{ key: string; value: string }>;
     source: string;
   }>;
   rewrites: Array<{ destination: string; source: string }>;
+  redirects: Array<{ destination: string; permanent: boolean; source: string }>;
+  trailingSlash: boolean;
 };
 
 const config = JSON.parse(
@@ -14,6 +17,11 @@ const config = JSON.parse(
 ) as VercelConfig;
 
 describe("Vercel deployment routing", () => {
+  it("serves prerendered HTML on canonical extensionless URLs", () => {
+    expect(config.cleanUrls).toBe(true);
+    expect(config.trailingSlash).toBe(false);
+  });
+
   it("falls back to the SPA only for document routes", () => {
     const spaFallback = config.rewrites.find(
       ({ destination }) => destination === "/index.html",
@@ -56,5 +64,13 @@ describe("Vercel deployment routing", () => {
     expect(headerValue("/assets/(.*)", "Cache-Control")).toContain(
       "immutable",
     );
+  });
+
+  it("permanently consolidates duplicate public routes", () => {
+    expect(config.redirects).toContainEqual({
+      source: "/compare",
+      destination: "/pricing",
+      permanent: true,
+    });
   });
 });

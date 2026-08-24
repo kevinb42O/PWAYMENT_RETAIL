@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
     "prebuild": "npm run generate:site",
-    "build": "vite build && node scripts/build-sites-worker.mjs",
+    "build": "vite build && node scripts/prerender-public-site.mjs && node scripts/build-sites-worker.mjs",
     "preview": "vite preview",
     "preview:e2e": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
     "clean": "rm -rf dist",

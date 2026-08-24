@@ -644,8 +644,8 @@ const HomePage = () => (
       <HeroProductVideo />
       <div className="pw-hero-shade" aria-hidden="true" />
       <motion.div className="pw-hero-copy" initial="hidden" animate="visible" variants={stagger}>
-        <motion.h1 variants={fadeUp}>Weet wat er speelt.<br /><em>Stuur je winkel beter.</em></motion.h1>
-        <motion.p variants={fadeUp}>Alles voor je winkel in één systeem. Minder werk, meer overzicht.</motion.p>
+        <motion.h1 variants={fadeUp}>Het kassasysteem dat weet wat er speelt.<br /><em>Stuur je winkel beter.</em></motion.h1>
+        <motion.p variants={fadeUp}>Kassa, voorraad, klanten en webshop in één systeem voor Belgische winkels. Minder werk, meer overzicht.</motion.p>
         <motion.div className="pw-hero-actions" variants={fadeUp}>
           <a href="/register?plan=professional" className="pw-button pw-button-dark">Start gratis met PWAYMENT <ArrowRight size={17} /></a>
         </motion.div>
