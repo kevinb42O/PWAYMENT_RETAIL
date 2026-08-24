@@ -219,7 +219,7 @@ const fetchTenantContext = async (
   if (response.status === 401 || response.status === 403) throw new TenantAccessError("Geen toegang tot deze winkel.");
   if (!response.ok) {
     console.warn("Pace tenant context unavailable", { status: response.status });
-    return { unavailable: true, reason: "tenant-context-temporarily-unavailable" };
+    return { unavailable: true };
   }
   return await response.json().catch(() => ({ unavailable: true, reason: "context-invalid-json" }));
 };

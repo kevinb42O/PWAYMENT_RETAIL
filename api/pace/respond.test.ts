@@ -214,4 +214,32 @@ describe("Pace OpenAI endpoint", () => {
     const geminiBody = JSON.parse(String((fetchMock.mock.calls[3][1] as RequestInit).body));
     expect(JSON.stringify(geminiBody)).toContain("Herstelde winkelcontext");
   });
+
+  it("never exposes an internal tenant-context reason to Gemini", async () => {
+    process.env.GEMINI_API_KEY = "test-gemini-key";
+    const storeId = "33333333-3333-4333-8333-333333333333";
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({ id: "user-context-unavailable" }))
+      .mockResolvedValueOnce(Response.json({ code: "PGRST202" }, { status: 404 }))
+      .mockResolvedValueOnce(Response.json({ code: "PGRST202" }, { status: 404 }))
+      .mockResolvedValueOnce(Response.json({
+        candidates: [{ content: { parts: [{ text: "Ik kan nu alleen productuitleg geven." }] } }],
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handler.fetch(request({
+      question: "Hoeveel klanten heb ik?",
+      context: { storeId, view: "customers", role: "owner" },
+    }));
+
+    expect(response.status).toBe(200);
+    const geminiBody = JSON.parse(String((fetchMock.mock.calls[3][1] as RequestInit).body)) as {
+      contents: Array<{ parts: Array<{ text: string }> }>;
+    };
+    const prompt = geminiBody.contents.at(-1)?.parts[0]?.text ?? "";
+    expect(prompt).toContain('"unavailable":true');
+    expect(prompt).not.toContain("PGRST202");
+    expect(prompt).not.toContain("tenant-context-temporarily-unavailable");
+    expect(prompt).not.toContain("context-rpc");
+  });
 });
