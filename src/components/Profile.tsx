@@ -122,6 +122,7 @@ interface ProfileViewProps {
   initialTabRequestKey?: number;
   openNewProductRequestKey?: number;
   setupHighlightTarget?: 'catalog-categories' | 'catalog-products' | 'labels' | null;
+  catalogFilter?: { requestKey: number; productIds: string[]; label: string };
 }
 
 const SetupTargetCue = () => (
@@ -136,6 +137,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   initialTabRequestKey,
   openNewProductRequestKey,
   setupHighlightTarget,
+  catalogFilter,
 }) => {
   const currentStoreIsDemo = useAuth((s) => s.currentStoreIsDemo);
   const currentRole = useAuth((s) => s.currentRole);
@@ -793,6 +795,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <ProductAdmin
               initialTab={activeTab === 'catalog-categories' ? 'categories' : 'products'}
               openNewProductRequestKey={openNewProductRequestKey}
+              catalogFilter={catalogFilter}
             />
           </div>
         )}

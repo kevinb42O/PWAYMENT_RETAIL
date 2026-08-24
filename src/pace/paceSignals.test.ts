@@ -100,4 +100,23 @@ describe("Pace signal engine", () => {
     expect(offline[0]).toMatchObject({ id: "offline", priority: 100 });
     expect(offline[1]).toMatchObject({ source: "Klantcontext" });
   });
+
+  it("maps a recommendation to an explicit catalog filter without a cart action", () => {
+    const [signal] = buildPaceSignals(context({ customerInsights: [{
+      id: "rule:customer-1:rule-1",
+      kind: "recommendation-rule",
+      priority: 72,
+      tone: "flow",
+      title: "Completeer de look",
+      compact: "Twee artikelen beschikbaar",
+      detail: "Waarom en bewijs.",
+      evidence: [{ transactionId: 42, ruleId: "rule-1" }],
+      action: { kind: "catalog", label: "Bekijk 2 artikelen", productIds: ["one", "two"], filterLabel: "Completeer de look" },
+    }] }), DEFAULT_PACE_PREFERENCES);
+    expect(signal).toMatchObject({
+      actionLabel: "Bekijk 2 artikelen",
+      action: { kind: "catalog", productIds: ["one", "two"], filterLabel: "Completeer de look" },
+      evidenceLabel: "1 relevante aankoop · winkelregel",
+    });
+  });
 });

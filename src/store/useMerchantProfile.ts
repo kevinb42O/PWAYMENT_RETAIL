@@ -28,7 +28,7 @@ export const useMerchantProfile = create<MerchantProfileState>()(
     }),
     {
       name: 'pwayment:merchant-profile',
-      version: 3,
+      version: 4,
       migrate: (persistedState: any, version: number) => {
         const state = persistedState as MerchantProfileState | undefined;
         if (state?.profile) {
@@ -44,6 +44,7 @@ export const useMerchantProfile = create<MerchantProfileState>()(
           state.profile.customerInsightSettings ??= {
             ...DEFAULT_CUSTOMER_INSIGHT_SETTINGS,
           };
+          state.profile.paceRecommendationRules ??= [];
           state.profile.timezone ??= 'Europe/Brussels';
         }
         return state as MerchantProfileState;

@@ -2882,6 +2882,7 @@ export type Database = {
           locale: string
           name: string
           customer_insight_settings: Json
+          pace_recommendation_rules: Json
           onboarding_completed_at: string | null
           onboarding_config: Json
           phone: string | null
@@ -2909,6 +2910,7 @@ export type Database = {
           locale?: string
           name: string
           customer_insight_settings?: Json
+          pace_recommendation_rules?: Json
           onboarding_completed_at?: string | null
           onboarding_config?: Json
           phone?: string | null
@@ -2936,6 +2938,7 @@ export type Database = {
           locale?: string
           name?: string
           customer_insight_settings?: Json
+          pace_recommendation_rules?: Json
           onboarding_completed_at?: string | null
           onboarding_config?: Json
           phone?: string | null

@@ -242,7 +242,8 @@
 .pace-brief-top span { font-size: 0.6rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; }
 .pace-live-brief h3 { position: relative; z-index: 1; margin: 0.6rem 0 0; max-width: 19rem; color: #0f172a; font-size: 1.12rem; font-weight: 900; letter-spacing: -0.025em; line-height: 1.18; }
 .pace-live-brief p { position: relative; z-index: 1; margin: 0.55rem 0 0; max-width: 21rem; color: #475569; font-size: 0.76rem; font-weight: 600; line-height: 1.55; }
-.pace-brief-actions { position: relative; z-index: 1; display: flex; align-items: center; gap: 0.65rem; margin-top: 0.9rem; }
+.pace-evidence-line { position: relative; z-index: 1; display: flex; align-items: center; gap: 0.35rem; margin-top: 0.65rem; color: #0e7490; font-size: 0.62rem; font-weight: 850; letter-spacing: 0.02em; }
+.pace-brief-actions { position: relative; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-top: 0.9rem; }
 .pace-brief-actions button, .pace-response button {
   display: inline-flex;
   align-items: center;

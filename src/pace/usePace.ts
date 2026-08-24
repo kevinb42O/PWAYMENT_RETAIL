@@ -17,17 +17,27 @@ export interface PacePreferences {
   expressiveMorphs: boolean;
 }
 
+export type PaceCustomerFeedbackDisposition = "used" | "later" | "not-relevant";
+export interface PaceCustomerFeedback {
+  insightId: string;
+  disposition: PaceCustomerFeedbackDisposition;
+  recordedAt: number;
+  suppressUntil?: number;
+}
+
 interface PaceState {
   open: boolean;
   settingsOpen: boolean;
   preferences: PacePreferences;
   dismissedSignals: string[];
+  customerFeedback: PaceCustomerFeedback[];
   setOpen: (open: boolean) => void;
   toggle: () => void;
   setSettingsOpen: (open: boolean) => void;
   updatePreferences: (patch: Partial<PacePreferences>) => void;
   dismissSignal: (id: string) => void;
   resetDismissedSignals: () => void;
+  recordCustomerFeedback: (insightId: string, disposition: PaceCustomerFeedbackDisposition) => void;
 }
 
 export const DEFAULT_PACE_PREFERENCES: PacePreferences = {
@@ -49,6 +59,7 @@ export const usePace = create<PaceState>()(
       settingsOpen: false,
       preferences: DEFAULT_PACE_PREFERENCES,
       dismissedSignals: [],
+      customerFeedback: [],
       setOpen: (open) => set({ open, ...(open ? {} : { settingsOpen: false }) }),
       toggle: () => set((state) => ({ open: !state.open, settingsOpen: false })),
       setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
@@ -65,11 +76,25 @@ export const usePace = create<PaceState>()(
             ? state.dismissedSignals
             : [...state.dismissedSignals, id].slice(-40),
         })),
-      resetDismissedSignals: () => set({ dismissedSignals: [] }),
+      resetDismissedSignals: () => set({ dismissedSignals: [], customerFeedback: [] }),
+      recordCustomerFeedback: (insightId, disposition) => set((state) => {
+        const recordedAt = Date.now();
+        const suppressUntil = disposition === "later"
+          ? recordedAt + 4 * 60 * 60 * 1000
+          : disposition === "used"
+            ? recordedAt + 24 * 60 * 60 * 1000
+            : undefined;
+        return {
+          customerFeedback: [
+            ...state.customerFeedback.filter((entry) => entry.insightId !== insightId),
+            { insightId, disposition, recordedAt, suppressUntil },
+          ].slice(-80),
+        };
+      }),
     }),
     {
       name: "pwayment:pace:v1",
-      version: 3,
+      version: 4,
       migrate: (persisted) => {
         const state = persisted as Partial<PaceState>;
         if (state.preferences) {
@@ -78,11 +103,13 @@ export const usePace = create<PaceState>()(
             ...state.preferences,
           };
         }
+        state.customerFeedback ??= [];
         return state as PaceState;
       },
       partialize: (state) => ({
         preferences: state.preferences,
         dismissedSignals: state.dismissedSignals,
+        customerFeedback: state.customerFeedback,
       }),
     },
   ),

@@ -7,6 +7,8 @@ import {
   type CommercialReturnPolicy,
   type CustomerInsightSettings,
   type MerchantInfo,
+  type PaceRecommendationMatchKind,
+  type PaceRecommendationRule,
 } from "../data/merchant";
 import { supabase } from "../lib/supabase";
 import { useMerchantProfile } from "../store/useMerchantProfile";
@@ -117,6 +119,7 @@ const blankMerchant = (name: string): MerchantInfo => ({
   returnPolicy: "",
   commercialReturnPolicy: { ...DISABLED_COMMERCIAL_RETURN_POLICY },
   customerInsightSettings: { ...DEFAULT_CUSTOMER_INSIGHT_SETTINGS },
+  paceRecommendationRules: [],
   timezone: "Europe/Brussels",
 });
 
@@ -138,6 +141,39 @@ const customerInsightSettings = (value: Json | null): CustomerInsightSettings =>
   ...DEFAULT_CUSTOMER_INSIGHT_SETTINGS,
   ...jsonObject<Partial<CustomerInsightSettings>>(value),
 });
+
+const paceRecommendationRules = (value: Json | null): PaceRecommendationRule[] => {
+  if (!Array.isArray(value)) return [];
+  const isMatchKind = (kind: unknown): kind is PaceRecommendationMatchKind => kind === "product" || kind === "brand" || kind === "category";
+  return value.flatMap((entry) => {
+    const rule = jsonObject<Record<string, Json>>(entry);
+    const trigger = jsonObject<Record<string, Json>>(rule.trigger);
+    const recommendation = jsonObject<Record<string, Json>>(rule.recommendation);
+    if (
+      typeof rule.id !== "string" || !rule.id.trim()
+      || typeof rule.name !== "string" || !rule.name.trim()
+      || typeof rule.enabled !== "boolean"
+      || !isMatchKind(trigger.kind)
+      || typeof trigger.value !== "string" || !trigger.value.trim()
+      || !isMatchKind(recommendation.kind)
+      || typeof recommendation.value !== "string" || !recommendation.value.trim()
+      || typeof rule.reason !== "string" || !rule.reason.trim()
+      || typeof rule.priority !== "number" || rule.priority < 1 || rule.priority > 100
+    ) return [];
+    return [{
+      id: rule.id,
+      name: rule.name,
+      enabled: rule.enabled,
+      trigger: { kind: trigger.kind, value: trigger.value },
+      recommendation: { kind: recommendation.kind, value: recommendation.value },
+      reason: rule.reason,
+      priority: rule.priority,
+      validFrom: typeof rule.validFrom === "string" ? rule.validFrom : undefined,
+      validUntil: typeof rule.validUntil === "string" ? rule.validUntil : undefined,
+      scope: "store" as const,
+    }];
+  });
+};
 
 /**
  * Replace the single-device Dexie cache with the active Supabase store.
@@ -1080,6 +1116,7 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
       returnPolicy: store.return_policy ?? "",
       commercialReturnPolicy: commercialReturnPolicy(store.commercial_return_policy),
       customerInsightSettings: customerInsightSettings(store.customer_insight_settings),
+      paceRecommendationRules: paceRecommendationRules(store.pace_recommendation_rules),
       timezone: store.timezone || "Europe/Brussels",
     },
   });

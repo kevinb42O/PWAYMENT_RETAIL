@@ -41,16 +41,18 @@ interface PaceAssistantProps extends PaceContext {
   onNavigate: (view: MainView) => void;
   onOpenSetup: () => void;
   onOpenProfile: (tab: "billing" | "modules" | "catalog-products" | "webshop-general" | "integrations") => void;
+  onOpenCatalog: (filter: { productIds: string[]; label: string }) => void;
   onOpenMilestone: (milestone: PaceSetupMilestone) => void;
 }
 
 const executeAction = (
   action: PaceAction,
-  handlers: Pick<PaceAssistantProps, "onNavigate" | "onOpenSetup" | "onOpenProfile">,
+  handlers: Pick<PaceAssistantProps, "onNavigate" | "onOpenSetup" | "onOpenProfile" | "onOpenCatalog">,
 ) => {
   if (action.kind === "navigate") handlers.onNavigate(action.view);
   if (action.kind === "setup") handlers.onOpenSetup();
   if (action.kind === "profile") handlers.onOpenProfile(action.tab);
+  if (action.kind === "catalog") handlers.onOpenCatalog({ productIds: action.productIds, label: action.filterLabel });
 };
 
 const SelectRow = <T extends string>({
@@ -85,12 +87,14 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
     settingsOpen,
     preferences,
     dismissedSignals,
+    customerFeedback,
     toggle,
     setOpen,
     setSettingsOpen,
     updatePreferences,
     dismissSignal,
     resetDismissedSignals,
+    recordCustomerFeedback,
   } = usePace();
   const prefersReducedMotion = useReducedMotion();
   const [query, setQuery] = useState("");
@@ -117,8 +121,13 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
     customerInsights: props.customerInsights,
   }), [props.view, props.role, props.productCount, props.cartCount, props.firstRunCompleted, props.online, props.pendingSync, props.retryingSync, props.failedSync, props.syncIssueSummary, props.syncIssueResolution, props.customerInsights]);
   const signals = useMemo(
-    () => buildPaceSignals(context, preferences).filter((signal) => !dismissedSignals.includes(signal.id) && !sessionDismissedSignals.includes(signal.id)),
-    [context, preferences, dismissedSignals, sessionDismissedSignals],
+    () => buildPaceSignals(context, preferences).filter((signal) => {
+      if (dismissedSignals.includes(signal.id) || sessionDismissedSignals.includes(signal.id)) return false;
+      if (!signal.customerInsightId) return true;
+      const feedback = customerFeedback.find((entry) => entry.insightId === signal.customerInsightId);
+      return !feedback || (feedback.suppressUntil != null && feedback.suppressUntil <= Date.now());
+    }),
+    [context, preferences, dismissedSignals, sessionDismissedSignals, customerFeedback],
   );
   const primary = signals[0] ?? buildPaceSignals(context, preferences).at(-1)!;
   const shouldBadge = primary.priority >= 70 && preferences.proactivity !== "quiet";
@@ -210,9 +219,15 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
     }
   };
 
-  const runAction = (action: PaceAction) => {
+  const runAction = (action: PaceAction, customerInsightId?: string) => {
     executeAction(action, props);
+    if (action.kind === "catalog" && customerInsightId) recordCustomerFeedback(customerInsightId, "used");
     if (action.kind !== "none") setOpen(false);
+  };
+
+  const giveCustomerFeedback = (insightId: string, disposition: "used" | "later" | "not-relevant") => {
+    recordCustomerFeedback(insightId, disposition);
+    setSessionDismissedSignals((current) => current.includes(`customer:${insightId}`) ? current : [...current, `customer:${insightId}`]);
   };
 
   return (
@@ -334,9 +349,14 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                       <div className="pace-brief-top"><span>{primary.source}</span><Gauge size={15} /></div>
                       <h3>{primary.title}</h3>
                       <p>{signalCopy(primary, preferences.tone)}</p>
+                      {primary.evidenceLabel && <div className="pace-evidence-line"><ShieldCheck size={13} /> {primary.evidenceLabel}</div>}
                       <div className="pace-brief-actions">
-                        {primary.actionLabel && <button type="button" onClick={() => runAction(primary.action)}>{primary.actionLabel}<ArrowRight size={15} /></button>}
-                        {primary.priority >= 65 && <button type="button" className="is-quiet" onClick={() => primary.source === "Klantcontext" ? setSessionDismissedSignals((current) => [...current, primary.id]) : dismissSignal(primary.id)}>{primary.source === "Klantcontext" ? "Verberg tijdens dit bezoek" : "Niet meer tonen"}</button>}
+                        {primary.actionLabel && <button type="button" onClick={() => runAction(primary.action, primary.customerInsightId)}>{primary.actionLabel}<ArrowRight size={15} /></button>}
+                        {primary.customerInsightId ? <>
+                          <button type="button" className="is-quiet" onClick={() => giveCustomerFeedback(primary.customerInsightId!, "used")}>Gebruikt</button>
+                          <button type="button" className="is-quiet" onClick={() => giveCustomerFeedback(primary.customerInsightId!, "later")}>Later</button>
+                          <button type="button" className="is-quiet" onClick={() => giveCustomerFeedback(primary.customerInsightId!, "not-relevant")}>Niet relevant</button>
+                        </> : primary.priority >= 65 && <button type="button" className="is-quiet" onClick={() => dismissSignal(primary.id)}>Niet meer tonen</button>}
                       </div>
                     </section>
 
@@ -362,7 +382,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                       <section className="pace-signal-stack">
                         <div className="pace-stack-label"><Sparkles size={14} /> Daarna relevant</div>
                         {signals.slice(1, 3).map((signal) => (
-                          <button key={signal.id} type="button" onClick={() => signal.action.kind !== "none" ? runAction(signal.action) : undefined} className="pace-mini-signal">
+                          <button key={signal.id} type="button" onClick={() => signal.action.kind !== "none" ? runAction(signal.action, signal.customerInsightId) : undefined} className="pace-mini-signal">
                             <span className={`pace-mini-orb is-${signal.tone}`} />
                             <span><strong>{signal.title}</strong><small>{signal.compact}</small></span>
                             {signal.action.kind !== "none" && <ArrowRight size={14} />}

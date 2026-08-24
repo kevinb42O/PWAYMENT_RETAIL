@@ -25,6 +25,8 @@ export interface MerchantInfo {
   commercialReturnPolicy?: CommercialReturnPolicy;
   /** Store-wide switchboard; individual devices may still silence Pace. */
   customerInsightSettings?: CustomerInsightSettings;
+  /** Deterministic, store-scoped recommendations managed by the retailer. */
+  paceRecommendationRules?: PaceRecommendationRule[];
   /** IANA timezone used for calendar-day policy deadlines. */
   timezone?: string;
 }
@@ -45,6 +47,30 @@ export interface CustomerInsightSettings {
   brandAffinityEnabled: boolean;
   brandLookbackDays: number;
   minimumBrandTransactions: number;
+}
+
+export type PaceRecommendationMatchKind = 'product' | 'brand' | 'category';
+
+export interface PaceRecommendationMatch {
+  kind: PaceRecommendationMatchKind;
+  /** Product ID, normalized brand label, or category ID according to `kind`. */
+  value: string;
+}
+
+export interface PaceRecommendationRule {
+  id: string;
+  name: string;
+  enabled: boolean;
+  /** Match against net-positive purchases within the configured lookback. */
+  trigger: PaceRecommendationMatch;
+  /** Products offered as a catalog filter; Pace never adds these to the cart. */
+  recommendation: PaceRecommendationMatch;
+  reason: string;
+  priority: number;
+  validFrom?: string;
+  validUntil?: string;
+  /** Rules currently live on one store record; this keeps the scope explicit. */
+  scope: 'store';
 }
 
 export const DISABLED_COMMERCIAL_RETURN_POLICY: CommercialReturnPolicy = {
@@ -88,6 +114,7 @@ export const DEFAULT_MERCHANT: MerchantInfo = {
     ...DEFAULT_CUSTOMER_INSIGHT_SETTINGS,
     enabled: true,
   },
+  paceRecommendationRules: [],
   timezone: 'Europe/Brussels',
 };
 

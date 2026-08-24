@@ -17,6 +17,7 @@ export const useCustomerInsights = (
     products,
     policy: merchant.commercialReturnPolicy,
     settings: merchant.customerInsightSettings,
+    recommendationRules: merchant.paceRecommendationRules,
     timezone: merchant.timezone,
   });
-}, [customerId, products, merchant.commercialReturnPolicy, merchant.customerInsightSettings, merchant.timezone], []) ?? [];
+}, [customerId, products, merchant.commercialReturnPolicy, merchant.customerInsightSettings, merchant.paceRecommendationRules, merchant.timezone], []) ?? [];

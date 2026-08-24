@@ -1,10 +1,11 @@
 import type {
   CommercialReturnPolicy,
   CustomerInsightSettings,
+  PaceRecommendationRule,
 } from "../data/merchant";
 import type { Product, Transaction } from "../types";
 
-export type CustomerInsightKind = "return-window" | "brand-affinity";
+export type CustomerInsightKind = "return-window" | "brand-affinity" | "recommendation-rule";
 
 export interface CustomerInsight {
   id: string;
@@ -20,7 +21,16 @@ export interface CustomerInsight {
     lineId?: string;
     productId?: string;
     brand?: string;
+    categoryId?: string;
+    ruleId?: string;
   }[];
+  action?: {
+    kind: "catalog";
+    label: string;
+    productIds: string[];
+    filterLabel: string;
+  };
+  reason?: string;
 }
 
 interface BuildCustomerInsightsInput {
@@ -29,6 +39,7 @@ interface BuildCustomerInsightsInput {
   products: Product[];
   policy?: CommercialReturnPolicy;
   settings?: CustomerInsightSettings;
+  recommendationRules?: PaceRecommendationRule[];
   now?: number;
   timezone?: string;
 }
@@ -78,6 +89,7 @@ export const buildCustomerInsights = ({
   products,
   policy,
   settings,
+  recommendationRules = [],
   now = Date.now(),
   timezone = "Europe/Brussels",
 }: BuildCustomerInsightsInput): CustomerInsight[] => {
@@ -159,6 +171,63 @@ export const buildCustomerInsights = ({
         evidence: bucket.evidence,
       });
     }
+  }
+
+  const recommendationCutoff = now - settings.brandLookbackDays * 86_400_000;
+  const purchasedLines = sales.flatMap((sale) => sale.timestamp < recommendationCutoff || sale.id == null
+    ? []
+    : sale.items.flatMap((item) => {
+      const remaining = item.quantity - (returned.get(`${sale.id}:${item.lineId}`) ?? 0);
+      return remaining > 0 ? [{ sale, item }] : [];
+    }));
+  const availableProducts = products.filter(
+    (product) => product.isActive !== false && (product.stockQty == null || product.stockQty > 0),
+  );
+  const matches = (product: Product, match: PaceRecommendationRule["trigger"]) => {
+    if (match.kind === "product") return product.id === match.value;
+    if (match.kind === "category") return product.category === match.value;
+    return normalizedBrand(product.brand).toLocaleLowerCase("nl-BE")
+      === normalizedBrand(match.value).toLocaleLowerCase("nl-BE");
+  };
+
+  for (const rule of recommendationRules) {
+    if (!rule.enabled || rule.scope !== "store") continue;
+    const validFrom = rule.validFrom ? Date.parse(rule.validFrom) : Number.NEGATIVE_INFINITY;
+    const validUntil = rule.validUntil ? Date.parse(rule.validUntil) : Number.POSITIVE_INFINITY;
+    if ((rule.validFrom && !Number.isFinite(validFrom)) || (rule.validUntil && !Number.isFinite(validUntil))) continue;
+    if (now < validFrom || now > validUntil) continue;
+
+    const sourceLines = purchasedLines.filter(({ item }) => matches(item.product, rule.trigger));
+    if (sourceLines.length === 0) continue;
+    const targets = availableProducts.filter((product) => matches(product, rule.recommendation));
+    if (targets.length === 0) continue;
+
+    const sourceTransactionCount = new Set(sourceLines.map(({ sale }) => sale.id)).size;
+    insights.push({
+      id: `rule:${customerId}:${rule.id}`,
+      kind: "recommendation-rule",
+      priority: Math.min(100, Math.max(1, Math.round(rule.priority))),
+      tone: rule.priority >= 80 ? "attention" : "flow",
+      title: rule.name,
+      compact: `${targets.length} ${targets.length === 1 ? "passend artikel" : "passende artikelen"} beschikbaar · ${rule.reason}`,
+      detail: `Waarom: ${rule.reason} Bewijs: ${sourceTransactionCount} relevante ${sourceTransactionCount === 1 ? "aankoop" : "aankopen"} binnen deze winkel. Dit opent alleen een catalogusfilter; er wordt niets aan het winkelmandje toegevoegd.`,
+      expiresAt: Number.isFinite(validUntil) ? validUntil : undefined,
+      reason: rule.reason,
+      action: {
+        kind: "catalog",
+        label: targets.length === 1 ? "Bekijk artikel" : `Bekijk ${targets.length} artikelen`,
+        productIds: targets.map((product) => product.id),
+        filterLabel: rule.name,
+      },
+      evidence: sourceLines.map(({ sale, item }) => ({
+        transactionId: sale.id,
+        lineId: item.lineId,
+        productId: item.product.id,
+        brand: item.product.brand,
+        categoryId: item.product.category,
+        ruleId: rule.id,
+      })),
+    });
   }
 
   return insights.sort((left, right) => right.priority - left.priority || left.id.localeCompare(right.id));

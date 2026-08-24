@@ -61,9 +61,11 @@ interface ProductAdminProps {
   initialTab?: 'products' | 'categories';
   /** Used by the empty-store guide to enter the existing product editor directly. */
   openNewProductRequestKey?: number;
+  /** Explicit Pace selection; never mutates cart or product records. */
+  catalogFilter?: { requestKey: number; productIds: string[]; label: string };
 }
 
-export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'products', openNewProductRequestKey }) => {
+export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'products', openNewProductRequestKey, catalogFilter }) => {
   const list = useProducts((s) => s.list);
   const hydrateProducts = useProducts((s) => s.hydrate);
   const bulkUpsert = useProducts((s) => s.bulkUpsert);
@@ -92,6 +94,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
   const [filter, setFilter] = useState<'active' | 'archived' | 'all'>('active');
   const [categoryFilter, setCategoryFilter] = useState<string | 'all'>('all');
   const [search, setSearch] = useState('');
+  const [paceSelection, setPaceSelection] = useState<{ productIds: string[]; label: string } | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryVatRate, setNewCategoryVatRate] = useState<number>(configuredDefaultVat);
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
@@ -116,6 +119,15 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
   useEffect(() => {
     setViewTab(initialTab);
   }, [initialTab]);
+
+  useEffect(() => {
+    if (!catalogFilter) return;
+    setViewTab('products');
+    setFilter('active');
+    setCategoryFilter('all');
+    setSearch('');
+    setPaceSelection({ productIds: catalogFilter.productIds, label: catalogFilter.label });
+  }, [catalogFilter?.requestKey]);
 
   useEffect(() => {
     setNewCategoryVatRate(configuredDefaultVat);
@@ -189,6 +201,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
         if (filter === 'active' && p.isActive === false) return false;
         if (filter === 'archived' && p.isActive !== false) return false;
         if (categoryFilter !== 'all' && p.category !== categoryFilter) return false;
+        if (paceSelection && !paceSelection.productIds.includes(p.id)) return false;
         if (!term) return true;
 
         const catName = categoryNameById.get(p.category) ?? p.category;
@@ -222,7 +235,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
 
         return 0;
       });
-  }, [list, filter, categoryFilter, search, sortKey, sortDir, categoryNameById]);
+  }, [list, filter, categoryFilter, paceSelection, search, sortKey, sortDir, categoryNameById]);
 
   const ensureStartingCategory = async () => {
     // A real new tenant has no seeded categories. Create one safe starting
@@ -836,6 +849,19 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
         </div>
       ) : (
         <>
+          {paceSelection && (
+            <div className="flex flex-col gap-3 rounded-2xl border border-cyan-200 bg-cyan-50 p-4 text-sm text-cyan-950 shadow-2xs sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <PackageSearch size={19} className="mt-0.5 shrink-0 text-cyan-700" />
+                <div>
+                  <strong className="block">Pace-selectie · {paceSelection.label}</strong>
+                  <span className="mt-0.5 block text-xs text-cyan-800">Alleen beschikbare, passende catalogusartikelen worden getoond. Er is niets aan het winkelmandje toegevoegd.</span>
+                </div>
+              </div>
+              <button type="button" onClick={() => setPaceSelection(null)} className="shrink-0 rounded-xl border border-cyan-300 bg-white px-3 py-2 text-xs font-bold text-cyan-900 hover:bg-cyan-100">Toon volledige catalogus</button>
+            </div>
+          )}
+
           {/* KPI Stats Grid */}
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
             <Kpi label="Actieve Producten" value={String(activeProducts.length)} />

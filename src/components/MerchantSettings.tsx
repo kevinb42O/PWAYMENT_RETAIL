@@ -1,17 +1,23 @@
 import React, { useMemo, useState } from 'react';
-import { RotateCcw, Save } from 'lucide-react';
+import { Plus, RotateCcw, Save, Trash2 } from 'lucide-react';
 import { useMerchantProfile } from '../store/useMerchantProfile';
+import { useProducts } from '../store/useProducts';
+import { useCategories } from '../store/useCategories';
+import type { PaceRecommendationMatchKind, PaceRecommendationRule } from '../data/merchant';
 import { MerchantTicketPreview } from './MerchantTicketPreview';
 
 export const MerchantSettings: React.FC = () => {
   const profile = useMerchantProfile((state) => state.profile);
   const updateProfile = useMerchantProfile((state) => state.updateProfile);
   const resetProfile = useMerchantProfile((state) => state.resetProfile);
+  const products = useProducts((state) => state.list).filter((product) => product.isActive !== false);
+  const categories = useCategories((state) => state.list).filter((category) => category.isActive !== false);
   const [draft, setDraft] = useState(profile);
   const [saved, setSaved] = useState(false);
 
   const canSave = useMemo(() => {
-    return draft.name.trim() && draft.addressLine1.trim() && draft.addressLine2.trim() && draft.vatNumber.trim();
+    return draft.name.trim() && draft.addressLine1.trim() && draft.addressLine2.trim() && draft.vatNumber.trim()
+      && (draft.paceRecommendationRules ?? []).every((rule) => rule.name.trim() && rule.reason.trim() && rule.trigger.value && rule.recommendation.value && rule.priority >= 1 && rule.priority <= 100);
   }, [draft]);
 
   const set = (key: keyof typeof draft, value: string) => {
@@ -43,6 +49,46 @@ export const MerchantSettings: React.FC = () => {
         ...patch,
       },
     }));
+  };
+
+  const brands = useMemo(() => [...new Set(products.map((product) => product.brand?.trim()).filter((brand): brand is string => Boolean(brand)))].sort((a, b) => a.localeCompare(b)), [products]);
+  const matchOptions = (kind: PaceRecommendationMatchKind) => kind === 'product'
+    ? products.map((product) => ({ value: product.id, label: [product.name, product.variant].filter(Boolean).join(' · ') }))
+    : kind === 'brand'
+      ? brands.map((brand) => ({ value: brand, label: brand }))
+      : categories.map((category) => ({ value: category.id, label: category.name }));
+  const updateRecommendationRule = (id: string, patch: Partial<PaceRecommendationRule>) => {
+    setSaved(false);
+    setDraft((current) => ({
+      ...current,
+      paceRecommendationRules: (current.paceRecommendationRules ?? []).map((rule) => rule.id === id ? { ...rule, ...patch } : rule),
+    }));
+  };
+  const changeRuleMatchKind = (id: string, side: 'trigger' | 'recommendation', kind: PaceRecommendationMatchKind) => {
+    const first = matchOptions(kind)[0]?.value ?? '';
+    const current = (draft.paceRecommendationRules ?? []).find((rule) => rule.id === id);
+    if (!current) return;
+    updateRecommendationRule(id, { [side]: { kind, value: first } });
+  };
+  const addRecommendationRule = () => {
+    const product = products[0];
+    if (!product) return;
+    const rule: PaceRecommendationRule = {
+      id: crypto.randomUUID(),
+      name: 'Nieuwe Pace-regel',
+      enabled: true,
+      trigger: { kind: 'product', value: product.id },
+      recommendation: { kind: 'product', value: product.id },
+      reason: 'Leg kort uit waarom dit relevant is voor de klant.',
+      priority: 65,
+      scope: 'store',
+    };
+    setSaved(false);
+    setDraft((current) => ({ ...current, paceRecommendationRules: [...(current.paceRecommendationRules ?? []), rule] }));
+  };
+  const deleteRecommendationRule = (id: string) => {
+    setSaved(false);
+    setDraft((current) => ({ ...current, paceRecommendationRules: (current.paceRecommendationRules ?? []).filter((rule) => rule.id !== id) }));
   };
 
   const save = () => {
@@ -162,6 +208,53 @@ export const MerchantSettings: React.FC = () => {
                 <input type="number" min={0} max={30} value={draft.commercialReturnPolicy?.reminderLeadDays ?? 2} onChange={(event) => setReturnPolicy({ reminderLeadDays: Math.min(30, Math.max(0, Number(event.target.value) || 0)) })} className="input" />
               </Field>
             </div>
+          </div>
+
+          <div className="space-y-3 border-t border-zinc-800 pt-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h4 className="text-sm font-bold text-zinc-100">Actieregels</h4>
+                <p className="mt-1 max-w-2xl text-xs leading-5 text-zinc-500">Koppel een eerdere aankoop aan beschikbare catalogusartikelen. Elke regel geldt alleen voor deze winkel en opent uitsluitend een filter—nooit het winkelmandje.</p>
+              </div>
+              <button type="button" onClick={addRecommendationRule} disabled={products.length === 0 || (draft.paceRecommendationRules?.length ?? 0) >= 100} className="flex items-center gap-2 rounded-lg bg-cyan-700 px-3 py-2 text-xs font-bold text-white hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-40"><Plus size={14} /> Regel toevoegen</button>
+            </div>
+            {products.length === 0 && <p className="rounded-lg border border-amber-900/50 bg-amber-950/30 p-3 text-xs text-amber-200">Voeg eerst minstens één product toe aan de catalogus.</p>}
+            {(draft.paceRecommendationRules ?? []).length === 0 && products.length > 0 && <p className="rounded-lg border border-zinc-800 bg-zinc-950/45 p-3 text-xs text-zinc-500">Nog geen actieregels. Merkinteresse en retourcontext blijven onafhankelijk werken.</p>}
+            {(draft.paceRecommendationRules ?? []).map((rule) => (
+              <article key={rule.id} className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-950/55 p-3">
+                <div className="flex items-center gap-3">
+                  <input aria-label="Naam van de Pace-regel" value={rule.name} onChange={(event) => updateRecommendationRule(rule.id, { name: event.target.value })} className="input flex-1 font-semibold" />
+                  <label className="flex items-center gap-2 text-xs font-semibold text-zinc-400"><input type="checkbox" checked={rule.enabled} onChange={(event) => updateRecommendationRule(rule.id, { enabled: event.target.checked })} className="h-4 w-4 accent-cyan-500" /> Actief</label>
+                  <button type="button" onClick={() => deleteRecommendationRule(rule.id)} aria-label={`Verwijder ${rule.name}`} className="rounded-lg p-2 text-rose-300 hover:bg-rose-950/60"><Trash2 size={15} /></button>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {(['trigger', 'recommendation'] as const).map((side) => {
+                    const match = rule[side];
+                    const options = matchOptions(match.kind);
+                    return <div key={side} className="rounded-lg border border-zinc-800 p-3">
+                      <span className="mb-2 block text-[11px] font-bold uppercase tracking-wide text-zinc-500">{side === 'trigger' ? 'Als klant eerder kocht' : 'Toon in catalogus'}</span>
+                      <div className="grid gap-2">
+                        <select aria-label={`${side} type`} value={match.kind} onChange={(event) => changeRuleMatchKind(rule.id, side, event.target.value as PaceRecommendationMatchKind)} className="input">
+                          <option value="product">Product</option><option value="brand">Merk</option><option value="category">Categorie</option>
+                        </select>
+                        <select aria-label={`${side} waarde`} value={match.value} onChange={(event) => updateRecommendationRule(rule.id, { [side]: { ...match, value: event.target.value } })} className="input">
+                          {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                        </select>
+                      </div>
+                    </div>;
+                  })}
+                </div>
+                <Field label="Waarom is dit relevant? (zichtbaar als bewijs in Pace)">
+                  <input value={rule.reason} onChange={(event) => updateRecommendationRule(rule.id, { reason: event.target.value })} className="input" maxLength={240} />
+                </Field>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <Field label="Prioriteit (1–100)"><input type="number" min={1} max={100} value={rule.priority} onChange={(event) => updateRecommendationRule(rule.id, { priority: Math.min(100, Math.max(1, Number(event.target.value) || 1)) })} className="input" /></Field>
+                  <Field label="Geldig vanaf"><input type="date" value={rule.validFrom?.slice(0, 10) ?? ''} onChange={(event) => updateRecommendationRule(rule.id, { validFrom: event.target.value ? `${event.target.value}T00:00:00.000Z` : undefined })} className="input" /></Field>
+                  <Field label="Geldig tot en met"><input type="date" value={rule.validUntil?.slice(0, 10) ?? ''} onChange={(event) => updateRecommendationRule(rule.id, { validUntil: event.target.value ? `${event.target.value}T23:59:59.999Z` : undefined })} className="input" /></Field>
+                </div>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-600">Scope · alleen deze winkel</div>
+              </article>
+            ))}
           </div>
         </section>
 

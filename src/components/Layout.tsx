@@ -164,6 +164,7 @@ export const Layout: React.FC = () => {
     tab: "billing" | "webshop-general" | "modules" | "workforce" | "leave-approvals" | "catalog-products" | "catalog-categories" | "labels" | "integrations";
     requestKey: number;
     openNewProductRequestKey?: number;
+    catalogFilter?: { requestKey: number; productIds: string[]; label: string };
   }>({ tab: "billing", requestKey: 0 });
   const [storeSetupOpen, setStoreSetupOpen] = useState(false);
   const [storeSetupTarget, setStoreSetupTarget] = useState<SetupGuideTarget | null>(null);
@@ -228,6 +229,17 @@ export const Layout: React.FC = () => {
       requestKey: current.requestKey + 1,
       openNewProductRequestKey: current.requestKey + 1,
     }));
+    setMainView("profile");
+  };
+  const openPaceCatalogFilter = (filter: { productIds: string[]; label: string }) => {
+    setProfileInitialTarget((current) => {
+      const requestKey = current.requestKey + 1;
+      return {
+        tab: "catalog-products",
+        requestKey,
+        catalogFilter: { requestKey, productIds: filter.productIds, label: filter.label },
+      };
+    });
     setMainView("profile");
   };
   const openCategorySetup = () => {
@@ -682,6 +694,7 @@ export const Layout: React.FC = () => {
             onNavigate={(view) => setMainView(view)}
             onOpenSetup={() => setStoreSetupOpen(true)}
             onOpenProfile={(tab) => openProfile(tab)}
+            onOpenCatalog={openPaceCatalogFilter}
             onOpenMilestone={(milestone) => {
               if (milestone.action === "setup") setStoreSetupOpen(true);
               if (milestone.action === "categories") openCategorySetup();
@@ -1017,6 +1030,7 @@ export const Layout: React.FC = () => {
                 initialTab={profileInitialTarget.tab}
                 initialTabRequestKey={profileInitialTarget.requestKey}
                 openNewProductRequestKey={profileInitialTarget.openNewProductRequestKey}
+                catalogFilter={profileInitialTarget.catalogFilter}
                 setupHighlightTarget={storeSetupTarget}
               />
             ) : (

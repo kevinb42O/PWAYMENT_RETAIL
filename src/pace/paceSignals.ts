@@ -7,6 +7,7 @@ export type PaceAction =
   | { kind: "navigate"; view: MainView }
   | { kind: "setup" }
   | { kind: "profile"; tab: "billing" | "modules" | "catalog-products" | "webshop-general" | "integrations" }
+  | { kind: "catalog"; productIds: string[]; filterLabel: string }
   | { kind: "none" };
 
 export interface PaceSignal {
@@ -19,6 +20,8 @@ export interface PaceSignal {
   action: PaceAction;
   tone: PaceSignalTone;
   priority: number;
+  customerInsightId?: string;
+  evidenceLabel?: string;
 }
 
 export interface PaceContext {
@@ -132,9 +135,19 @@ export const buildPaceSignals = (
         title: insight.title,
         compact: insight.compact,
         detail: insight.detail,
-        action: { kind: "none" },
+        actionLabel: insight.action?.label,
+        action: insight.action
+          ? { kind: "catalog", productIds: insight.action.productIds, filterLabel: insight.action.filterLabel }
+          : { kind: "none" },
         tone: insight.tone,
         priority: insight.priority,
+        customerInsightId: insight.id,
+        evidenceLabel: insight.kind === "recommendation-rule"
+          ? (() => {
+            const count = new Set(insight.evidence.map((entry) => entry.transactionId).filter(Boolean)).size;
+            return `${count} relevante ${count === 1 ? "aankoop" : "aankopen"} · winkelregel`;
+          })()
+          : `${new Set(insight.evidence.map((entry) => entry.transactionId).filter(Boolean)).size} controleerbare ${insight.evidence.length === 1 ? "bron" : "bronnen"}`,
       });
     }
   }
