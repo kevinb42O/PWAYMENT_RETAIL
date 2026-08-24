@@ -104,7 +104,7 @@ describe('POSDatabase v9 → v12 migration', () => {
     const upgraded = new POSDatabase();
     try {
       await upgraded.open();
-      expect(upgraded.verno).toBe(22);
+      expect(upgraded.verno).toBe(23);
       expect(upgraded.transactions.schema.idxByName.customerId).toBeDefined();
       expect(upgraded.transactions.schema.idxByName["[customerId+timestamp]"]).toBeDefined();
       expect(upgraded.webshop_orders).toBeDefined();

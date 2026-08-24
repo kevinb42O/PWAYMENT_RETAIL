@@ -4,7 +4,7 @@ import { db } from "../db/db";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../auth/useAuth";
 import type { Transaction } from "../types";
-import { discardUndeliveredLocalSale, recoverKnownOutboxClientDefects, synchronizeFinancialLedgerBeforeReport } from "./outboxWorker";
+import { discardUndeliveredLocalSale, recoverKnownCategoryIdentityConflicts, recoverKnownOutboxClientDefects, synchronizeFinancialLedgerBeforeReport } from "./outboxWorker";
 
 const transaction = (requestId = "close-race-1"): Transaction => ({
   id: 1,
@@ -40,7 +40,52 @@ const transaction = (requestId = "close-race-1"): Transaction => ({
 beforeEach(async () => {
   if (!db.isOpen()) await db.open();
   await db.outbox.clear();
+  await db.categories.clear();
+  await db.products.clear();
   vi.restoreAllMocks();
+});
+
+describe("catalog conflict recovery", () => {
+  it("adopts an existing server category path and requeues affected products", async () => {
+    await db.categories.bulkPut([
+      { id: "apparel", name: "Kledij", vatRate: 21, isActive: true },
+      { id: "apparel-mutsen-petten-2", parentId: "apparel", name: "Mutsen & petten", vatRate: 21, isActive: true },
+    ]);
+    await db.products.put({
+      id: "cap",
+      name: "6 Panel Cap",
+      category: "apparel-mutsen-petten-2",
+      subCategory: "Mutsen & petten",
+      priceCents: 2495,
+      vatRate: 21,
+    });
+    const failedId = await db.outbox.add({
+      timestamp: Date.now(),
+      kind: "upsert_category",
+      payload: [{ id: "apparel-mutsen-petten-2", parentId: "apparel", name: "Mutsen & petten", vatRate: 21, isActive: true }],
+      attempts: Number.NaN,
+      deliveryStatus: "dead_letter",
+      requiresManualResolution: true,
+      lastError: "catalog-category:duplicate:Deze subcategorie bestaat al.",
+    });
+    const rows = [
+      { id: "root-db", external_id: "apparel", parent_id: null, name: "Kledij", vat_rate: 21, sort_order: 1, is_active: true },
+      { id: "leaf-db", external_id: "apparel-mutsen-petten", parent_id: "root-db", name: "Mutsen & petten", vat_rate: 21, sort_order: 2, is_active: true },
+    ];
+    const query: any = {
+      select: () => query,
+      eq: () => Promise.resolve({ data: rows, error: null }),
+    };
+    vi.spyOn(supabase, "from").mockReturnValue(query);
+
+    await expect(recoverKnownCategoryIdentityConflicts("store-1", failedId)).resolves.toBe(1);
+
+    await expect(db.outbox.get(failedId)).resolves.toBeUndefined();
+    await expect(db.categories.get("apparel-mutsen-petten-2")).resolves.toBeUndefined();
+    await expect(db.categories.get("apparel-mutsen-petten")).resolves.toMatchObject({ parentId: "apparel" });
+    await expect(db.products.get("cap")).resolves.toMatchObject({ category: "apparel-mutsen-petten" });
+    expect((await db.outbox.toArray()).some((entry) => entry.kind === "upsert_product")).toBe(true);
+  });
 });
 
 describe("synchronizeFinancialLedgerBeforeReport", () => {

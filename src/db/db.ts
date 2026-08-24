@@ -749,6 +749,19 @@ export class POSDatabase extends Dexie {
           });
         }
       });
+
+    // Historic outbox rows predate retry counters. Version 20 initialized the
+    // delivery status but omitted `attempts`, causing `undefined + 1` to be
+    // persisted as NaN on their first failure.
+    this.version(23)
+      .stores({
+        outbox: "++id, timestamp, kind, deliveryStatus, nextAttemptAt, leaseExpiresAt",
+      })
+      .upgrade(async (tx) => {
+        await tx.table("outbox").toCollection().modify((row: OutboxEntry) => {
+          if (!Number.isFinite(row.attempts)) row.attempts = 0;
+        });
+      });
   }
 }
 

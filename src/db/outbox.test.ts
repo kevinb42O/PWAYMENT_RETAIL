@@ -48,6 +48,23 @@ describe("offline outbox", () => {
     });
   });
 
+  it("repairs a historic non-finite attempt counter before incrementing it", async () => {
+    await db.outbox.add({
+      timestamp: Date.now(),
+      kind: "upsert_product",
+      payload: [{ id: "legacy-product" }],
+      attempts: Number.NaN,
+      deliveryStatus: "pending",
+    });
+
+    const result = await drainOutbox(
+      async () => { throw new Error("offline"); },
+      { now: Date.now(), workerId: "legacy-attempt-worker" },
+    );
+
+    expect(result.retried[0]).toMatchObject({ attempts: 1 });
+  });
+
   it("moves an unconfigured non-financial delivery to a retriable manual queue", async () => {
     await enqueueOutbox("webshop_email", { to: "customer@example.test" });
     await enqueueOutbox("upsert_product", [{ id: "p-1" }]);

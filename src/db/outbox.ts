@@ -35,6 +35,9 @@ export interface DrainOutboxOptions {
 const deliveryStatus = (entry: OutboxEntry): NonNullable<OutboxEntry["deliveryStatus"]> =>
   entry.deliveryStatus ?? "pending";
 
+export const outboxAttemptCount = (entry: Pick<OutboxEntry, "attempts">): number =>
+  Number.isFinite(entry.attempts) ? Math.max(0, Math.trunc(entry.attempts)) : 0;
+
 const retryDelay = (attempt: number): number =>
   Math.min(MAX_RETRY_DELAY_MS, BASE_RETRY_DELAY_MS * 2 ** Math.max(0, attempt - 1));
 
@@ -125,7 +128,7 @@ const recordClaimFailure = async (
     if (!current || current.leaseOwner !== workerId) return null;
 
     const message = errorMessage(error);
-    const attempts = current.attempts + 1;
+    const attempts = outboxAttemptCount(current) + 1;
     const permanent = isPermanentDeliveryError(current, message) || attempts >= MAX_RETRY_ATTEMPTS;
     const updated: OutboxEntry = {
       ...current,

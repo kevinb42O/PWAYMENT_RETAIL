@@ -71,6 +71,138 @@ export const recoverKnownOutboxClientDefects = async (): Promise<number> => {
   return entries.length;
 };
 
+type RemoteCategoryIdentity = {
+  id: string;
+  external_id: string | null;
+  parent_id: string | null;
+  name: string;
+  vat_rate: number | string;
+  sort_order: number | null;
+  is_active: boolean;
+};
+
+const normalizedCategoryIdentity = (value: string): string =>
+  value.trim().toLocaleLowerCase("nl-BE");
+
+const isRecoverableCategoryIdentityConflict = (entry: OutboxEntry): boolean =>
+  entry.kind === "upsert_category"
+  && entry.deliveryStatus === "dead_letter"
+  && /duplicate|bestaat al|conflict/i.test(entry.lastError ?? "")
+  && Array.isArray(entry.payload)
+  && entry.payload.length > 0;
+
+/**
+ * Old clients could create a second external ID for a category path that the
+ * server already knew. The server correctly rejected that duplicate, but a
+ * blind retry can never heal it. Adopt the existing server identity only when
+ * every queued category has an exact root/name path match. Sales and other
+ * financial commands are deliberately outside this recovery path.
+ */
+export const recoverKnownCategoryIdentityConflicts = async (
+  storeId: string,
+  onlyEntryId?: number,
+): Promise<number> => {
+  const conflicts = (await db.outbox.toArray()).filter((entry) =>
+    isRecoverableCategoryIdentityConflict(entry)
+    && (onlyEntryId == null || entry.id === onlyEntryId)
+  );
+  if (conflicts.length === 0) return 0;
+
+  const { data, error } = await supabase
+    .from("categories")
+    .select("id, external_id, parent_id, name, vat_rate, sort_order, is_active")
+    .eq("store_id", storeId);
+  if (error || !data) return 0;
+  const remote = data as RemoteCategoryIdentity[];
+  const externalByServerId = new Map(
+    remote.map((category) => [category.id, category.external_id ?? category.id]),
+  );
+  let recovered = 0;
+
+  for (const entry of conflicts) {
+    if (entry.id == null) continue;
+    const requested = [...entry.payload as ProductCategory[]]
+      .sort((left, right) => Number(Boolean(left.parentId)) - Number(Boolean(right.parentId)));
+    const canonicalByRequestedId = new Map<string, RemoteCategoryIdentity>();
+
+    for (const category of requested) {
+      const matchedParent = category.parentId
+        ? canonicalByRequestedId.get(category.parentId)
+        : undefined;
+      const expectedParent = matchedParent
+        ? matchedParent.external_id ?? matchedParent.id
+        : category.parentId;
+      const match = remote.find((candidate) => {
+        const candidateParent = candidate.parent_id
+          ? externalByServerId.get(candidate.parent_id)
+          : undefined;
+        return candidateParent === expectedParent
+          && normalizedCategoryIdentity(candidate.name) === normalizedCategoryIdentity(category.name);
+      });
+      if (!match) break;
+      canonicalByRequestedId.set(category.id, match);
+    }
+    if (canonicalByRequestedId.size !== requested.length) continue;
+
+    const updatedProducts: Product[] = [];
+    const updatedChildren: ProductCategory[] = [];
+    await db.transaction("rw", db.outbox, db.categories, db.products, async () => {
+      const current = await db.outbox.get(entry.id!);
+      if (!current || !isRecoverableCategoryIdentityConflict(current)) return;
+
+      for (const [requestedId, canonical] of canonicalByRequestedId) {
+        const canonicalId = canonical.external_id ?? canonical.id;
+        const canonicalParentId = canonical.parent_id
+          ? externalByServerId.get(canonical.parent_id)
+          : undefined;
+        await db.categories.put({
+          id: canonicalId,
+          serverId: canonical.id,
+          parentId: canonicalParentId,
+          name: canonical.name,
+          vatRate: Number(canonical.vat_rate),
+          sortOrder: canonical.sort_order ?? undefined,
+          isActive: canonical.is_active,
+        });
+        if (canonicalId === requestedId) continue;
+
+        const products = await db.products.where("category").equals(requestedId).toArray();
+        for (const product of products) {
+          updatedProducts.push({
+            ...product,
+            category: canonicalId,
+            subCategory: canonicalParentId ? canonical.name : product.subCategory,
+          });
+        }
+        const children = await db.categories.where("parentId").equals(requestedId).toArray();
+        updatedChildren.push(...children.map((child) => ({ ...child, parentId: canonicalId })));
+        await db.categories.delete(requestedId);
+      }
+      if (updatedProducts.length > 0) await db.products.bulkPut(updatedProducts);
+      if (updatedChildren.length > 0) await db.categories.bulkPut(updatedChildren);
+      await db.outbox.delete(entry.id!);
+      const timestamp = Date.now();
+      if (updatedChildren.length > 0) {
+        await db.outbox.add({ timestamp, kind: "upsert_category", payload: updatedChildren, attempts: 0, deliveryStatus: "pending", nextAttemptAt: timestamp });
+      }
+      if (updatedProducts.length > 0) {
+        await db.outbox.add({ timestamp, kind: "upsert_product", payload: updatedProducts, attempts: 0, deliveryStatus: "pending", nextAttemptAt: timestamp });
+      }
+      recovered += 1;
+    });
+  }
+
+  if (recovered > 0) {
+    const [{ useCategories }, { useProducts }] = await Promise.all([
+      import("../store/useCategories"),
+      import("../store/useProducts"),
+    ]);
+    await useCategories.getState().refresh();
+    await useProducts.getState().refresh();
+  }
+  return recovered;
+};
+
 /**
  * Outbox rows are durable snapshots, but older app versions can leave a
  * partial/stale snapshot behind. The transaction table is the local financial
@@ -694,6 +826,9 @@ export const retryOutboxEntryNow = async (id: number): Promise<OutboxRetryResult
   if (!storeId) throw new Error("Er is geen actieve winkel geselecteerd.");
   if (!isSupabaseConfigured) throw new Error("De beveiligde serververbinding is niet geconfigureerd.");
   if (globalThis.navigator?.onLine === false) throw new Error("Er is momenteel geen internetverbinding.");
+  if (await recoverKnownCategoryIdentityConflicts(storeId, id) > 0) {
+    return { delivered: true };
+  }
   if (!await retryOutboxEntry(id)) return { delivered: false };
 
   let outcome: OutboxRetryResult = { delivered: false };
@@ -727,6 +862,7 @@ export const startOutboxWorker = () => {
 
       await withOutboxLeader(storeId, async () => {
         await recoverKnownOutboxClientDefects();
+        await recoverKnownCategoryIdentityConflicts(storeId);
         const result = await drainOutbox(async (entry) => {
           await sendOutboxEntry(storeId, entry);
           if (entry.kind === "migration_activate") {

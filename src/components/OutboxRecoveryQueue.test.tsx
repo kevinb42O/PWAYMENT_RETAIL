@@ -47,4 +47,24 @@ describe("OutboxRecoveryQueue", () => {
     expect(container.textContent).toContain("nog geen maildienst is gekoppeld");
     expect(container.textContent).toContain("Opnieuw proberen");
   });
+
+  it("renders historic missing attempt counters as zero instead of NaN", async () => {
+    await db.outbox.add({
+      timestamp: Date.now(),
+      kind: "upsert_category",
+      payload: [{ id: "apparel", name: "Kledij" }],
+      attempts: Number.NaN,
+      deliveryStatus: "dead_letter",
+      requiresManualResolution: true,
+      lastError: "duplicate category",
+    });
+
+    await act(async () => root.render(<OutboxRecoveryQueue />));
+    for (let attempt = 0; attempt < 20 && !container.querySelector("#outbox-recovery-queue"); attempt += 1) {
+      await act(async () => new Promise((resolve) => setTimeout(resolve, 10)));
+    }
+
+    expect(container.textContent).toContain("poging 0");
+    expect(container.textContent).not.toContain("NaN");
+  });
 });

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { AlertCircle, CheckCircle2, RefreshCw, Trash2 } from "lucide-react";
-import { getOutboxEntriesNeedingResolution } from "../db/outbox";
+import { getOutboxEntriesNeedingResolution, outboxAttemptCount } from "../db/outbox";
 import { humanizeOutboxIssue } from "../pace/outboxIssue";
 import { discardUndeliveredLocalSale, isFailedLocalSale, isFailedSimulatorSale, retryOutboxEntryNow } from "../services/outboxWorker";
 
@@ -42,7 +42,7 @@ export const OutboxRecoveryQueue: React.FC<OutboxRecoveryQueueProps> = ({ focusR
         setMessage({ text: `${issue.summary} ${issue.resolution}`, success: false });
         return;
       }
-      setMessage({ text: "De verkoop is door de server bevestigd en uit de wachtrij verwijderd.", success: true });
+      setMessage({ text: "De wijziging is met de server gereconcilieerd en uit de wachtrij verwijderd.", success: true });
     } catch (error) {
       setMessage({
         text: error instanceof Error ? error.message : "Opnieuw proberen is mislukt.",
@@ -106,7 +106,7 @@ export const OutboxRecoveryQueue: React.FC<OutboxRecoveryQueueProps> = ({ focusR
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-black text-slate-900">
                   <span>{entry.kind === "transaction" ? ((entry.payload as { kind?: string }).kind === "refund" ? "Retour" : "Verkoop") : entry.kind === "gift_card_mutation" ? "Cadeaubonmutatie" : entry.kind === "webshop_email" ? "Webshopmail" : "Synchronisatie"}</span>
-                  <span className="text-[10px] font-medium text-slate-400">{formatDate(entry.timestamp)} · poging {entry.attempts}</span>
+                  <span className="text-[10px] font-medium text-slate-400">{formatDate(entry.timestamp)} · poging {outboxAttemptCount(entry)}</span>
                 </div>
                 <p className="mt-1 text-[11px] font-bold leading-relaxed text-rose-800">{issue.summary}</p>
                 <p className="mt-0.5 text-[11px] font-medium leading-relaxed text-slate-600">{issue.resolution}</p>
