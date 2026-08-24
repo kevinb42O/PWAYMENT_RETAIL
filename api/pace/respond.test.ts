@@ -187,4 +187,31 @@ describe("Pace OpenAI endpoint", () => {
     expect(prompt).toContain("insights.explain");
     expect(geminiBody.contents.slice(0, 2).map((item) => item.role)).toEqual(["user", "model"]);
   });
+
+  it("retries a transient PostgREST schema-cache 404 before calling Gemini", async () => {
+    process.env.GEMINI_API_KEY = "test-gemini-key";
+    const storeId = "22222222-2222-4222-8222-222222222222";
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({ id: "user-schema-retry" }))
+      .mockResolvedValueOnce(Response.json({ code: "PGRST202" }, { status: 404 }))
+      .mockResolvedValueOnce(Response.json({
+        store: { id: storeId, name: "Herstelde winkelcontext", role: "owner" },
+      }))
+      .mockResolvedValueOnce(Response.json({
+        candidates: [{ content: { parts: [{ text: "Je winkelcontext is geladen." }] } }],
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handler.fetch(request({
+      question: "Wat weet je over mijn winkel?",
+      context: { storeId, view: "profile", role: "owner" },
+    }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ answer: "Je winkelcontext is geladen." });
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock.mock.calls[1][0]).toBe(fetchMock.mock.calls[2][0]);
+    const geminiBody = JSON.parse(String((fetchMock.mock.calls[3][1] as RequestInit).body));
+    expect(JSON.stringify(geminiBody)).toContain("Herstelde winkelcontext");
+  });
 });

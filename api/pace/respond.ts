@@ -201,18 +201,26 @@ const fetchTenantContext = async (
   question: string,
 ) => {
   if (!storeId) return null;
-  const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/rpc/get_pace_ai_context`, {
-    method: "POST",
-    headers: {
-      apikey: publishableKey,
-      Authorization: authorization,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ target_store_id: storeId, user_query: question }),
-    signal: AbortSignal.timeout(8_000),
-  });
+  const endpoint = `${supabaseUrl.replace(/\/$/, "")}/rest/v1/rpc/get_pace_ai_context`;
+  const requestContext = () => fetch(endpoint, {
+      method: "POST",
+      headers: {
+        apikey: publishableKey,
+        Authorization: authorization,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ target_store_id: storeId, user_query: question }),
+      signal: AbortSignal.timeout(8_000),
+    });
+  let response = await requestContext();
+  // A newly deployed RPC can briefly be absent from one PostgREST schema
+  // cache. Retry once before degrading to product-only help.
+  if (response.status === 404) response = await requestContext();
   if (response.status === 401 || response.status === 403) throw new TenantAccessError("Geen toegang tot deze winkel.");
-  if (!response.ok) return { unavailable: true, reason: `context-rpc-${response.status}` };
+  if (!response.ok) {
+    console.warn("Pace tenant context unavailable", { status: response.status });
+    return { unavailable: true, reason: "tenant-context-temporarily-unavailable" };
+  }
   return await response.json().catch(() => ({ unavailable: true, reason: "context-invalid-json" }));
 };
 
@@ -249,6 +257,8 @@ Gedragsregels:
 - Bij een concreet winkelcijfer vermeld je de periode en dat de servercontext op het generatedAt-moment geldt.
 - Maak duidelijk onderscheid tussen de actieve lokale winkelmand en reeds gesynchroniseerde serverdata.
 - Als de vraag niet door productkennis of tenantcontext gedekt is, zeg precies wat ontbreekt en geef de veiligste controleerbare volgende stap.
+- Toon nooit interne foutcodes of technische reason-velden aan de gebruiker.
+- De gebruiker is al server-side geauthenticeerd. Adviseer dus nooit om "een actieve sessie" te starten wanneer tenantcontext tijdelijk ontbreekt.
 
 PWAYMENT bevat kassa en splitbetalingen, historiek en gedeeltelijke retouren, facturen, dagafsluiting, catalogus/varianten/voorraad/labels, klanten/loyalty/cadeaubonnen, webshoporders, herstellingen, personeel/verlof, inzichten/forecast/inkoop, importmigraties, hardware-instellingen, offline synchronisatie en winkelinstellingen.
 
