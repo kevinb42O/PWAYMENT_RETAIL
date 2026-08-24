@@ -315,6 +315,12 @@
 .pace-response h3 { margin: 0.5rem 0 0; color: #1e293b; font-size: 0.82rem; font-weight: 850; }
 .pace-response p { margin: 0.35rem 0 0; color: #64748b; font-size: 0.7rem; font-weight: 600; line-height: 1.5; }
 .pace-response button { margin-top: 0.65rem; }
+.pace-response-steps { display: grid; gap: 0.3rem; margin: 0.65rem 0 0; padding-left: 1.15rem; color: #475569; font-size: 0.67rem; font-weight: 650; line-height: 1.45; }
+.pace-response .pace-response-limit { display: flex; align-items: flex-start; gap: 0.4rem; border-radius: 0.7rem; background: #f0f9ff; padding: 0.55rem; color: #0c4a6e; }
+.pace-response-limit svg { flex: 0 0 auto; margin-top: 0.08rem; }
+.pace-response-followups { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.7rem; border-top: 1px solid #e2e8f0; padding-top: 0.65rem; }
+.pace-response .pace-response-followups button { margin: 0; border: 1px solid #dbe7ed; border-radius: 999px; background: #fff; padding: 0.3rem 0.5rem; color: #0e7490; font-size: 0.59rem; font-weight: 750; text-align: left; }
+.pace-response .pace-response-followups button:hover { border-color: #67e8f9; background: #ecfeff; }
 .pace-thinking-line { display: block; width: 88%; height: 0.58rem; border-radius: 999px; background: linear-gradient(90deg, #e2e8f0, #cffafe, #e2e8f0); background-size: 200% 100%; animation: pace-think 1s linear infinite; }
 .pace-thinking-line.is-short { width: 58%; margin-top: 0.55rem; }
 @keyframes pace-think { to { background-position: -200% 0; } }

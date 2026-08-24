@@ -1,12 +1,14 @@
 import type { MainView } from "../store/useStore";
 import type { PacePreferences, PaceTone } from "./usePace";
 import type { CustomerInsight } from "./customerInsights";
+import { answerFromPaceKnowledge } from "./paceKnowledge";
 
 export type PaceSignalTone = "flow" | "attention" | "success";
+export type PaceProfileTab = "billing" | "modules" | "catalog-products" | "catalog-categories" | "labels" | "webshop-general" | "integrations";
 export type PaceAction =
   | { kind: "navigate"; view: MainView }
   | { kind: "setup" }
-  | { kind: "profile"; tab: "billing" | "modules" | "catalog-products" | "webshop-general" | "integrations" }
+  | { kind: "profile"; tab: PaceProfileTab }
   | { kind: "catalog"; productIds: string[]; filterLabel: string }
   | { kind: "none" };
 
@@ -25,6 +27,7 @@ export interface PaceSignal {
 }
 
 export interface PaceContext {
+  storeId?: string | null;
   view: MainView;
   role: "owner" | "manager" | "cashier" | null;
   productCount: number;
@@ -36,7 +39,27 @@ export interface PaceContext {
   failedSync: number;
   syncIssueSummary?: string;
   syncIssueResolution?: string;
+  cartSummary?: {
+    items: Array<{ name: string; quantity: number; unitPriceCents: number; sku?: string; variant?: string }>;
+    customerLinked: boolean;
+    customerName?: string;
+    discountCents?: number;
+    documentType: "receipt" | "invoice-b2c" | "invoice-b2b";
+  };
   customerInsights?: CustomerInsight[];
+}
+
+export interface PaceQueryAnswer {
+  intentId: string;
+  title: string;
+  answer: string;
+  action: PaceAction;
+  actionLabel?: string;
+  steps?: string[];
+  limitation?: string;
+  followUps?: string[];
+  confidence: number;
+  matched: boolean;
 }
 
 const viewSignals: Record<MainView, Omit<PaceSignal, "id" | "priority">> = {
@@ -259,65 +282,4 @@ export const signalCopy = (signal: PaceSignal, tone: PaceTone) =>
 export const answerPaceQuery = (
   query: string,
   context: PaceContext,
-): { title: string; answer: string; action: PaceAction; actionLabel?: string } => {
-  const normalized = query.toLocaleLowerCase("nl-BE").trim();
-  if (/product|catalog|artikel|import/.test(normalized)) {
-    return {
-      title: "Catalogus openen",
-      answer: "Ik kan je naar de productcatalogus brengen. Daar kun je een product toevoegen, controleren of importeren.",
-      action: { kind: "profile", tab: "catalog-products" },
-      actionLabel: "Open catalogus",
-    };
-  }
-  if (/webshop|online|verzend/.test(normalized)) {
-    return {
-      title: "Webshopinstellingen",
-      answer: "Ik kan de centrale webshopinstellingen openen. Publiceren of voorwaarden wijzigen gebeurt pas na jouw expliciete keuze.",
-      action: { kind: "profile", tab: "webshop-general" },
-      actionLabel: "Open webshop",
-    };
-  }
-  if (/factur|abonnement|plan|upgrade/.test(normalized)) {
-    return {
-      title: "Plan en facturatie",
-      answer: "Ik kan je planoverzicht openen. Ik voer nooit zelfstandig een aankoop of abonnementswijziging uit.",
-      action: { kind: "profile", tab: "billing" },
-      actionLabel: "Bekijk plan",
-    };
-  }
-  if (
-    /sync|offline|verbinding|wachtrij/.test(normalized) ||
-    ((context.failedSync > 0 || context.retryingSync > 0) && /fout|waarom|mislukt/.test(normalized))
-  ) {
-    const failed = context.failedSync;
-    const retrying = context.retryingSync;
-    return {
-      title: failed > 0
-        ? "Herstel nodig"
-        : context.online ? "Verbinding actief" : "Offline werking actief",
-      answer: failed > 0
-        ? `${failed} synchronisatie${failed === 1 ? "" : "s"} ${failed === 1 ? "is" : "zijn"} afgewezen. ${context.syncIssueSummary ?? "De server heeft de wijziging niet aanvaard."} ${context.syncIssueResolution ?? "Open Integraties → Herstelwachtrij om de exacte oorzaak te bekijken."}`
-        : retrying > 0
-          ? `${retrying} lokale wijziging${retrying === 1 ? "" : "en"} ${retrying === 1 ? "wordt" : "worden"} opnieuw aangeboden. ${context.syncIssueSummary ?? "De laatste poging is niet bevestigd."} ${context.syncIssueResolution ?? "Voer de oorspronkelijke handeling niet opnieuw uit."}`
-          : context.pendingSync > 0
-        ? `${context.pendingSync} lokale wijziging${context.pendingSync === 1 ? "" : "en"} wacht${context.pendingSync === 1 ? "" : "en"} op bevestigde levering. Voer die niet opnieuw uit.`
-        : context.online
-          ? "Dit toestel is online en er staat momenteel niets in de lokale afleverwachtrij."
-          : "Je kunt ondersteunde flows verder gebruiken. PWAYMENT bewaart nieuwe mutaties lokaal tot de verbinding terug is.",
-      action: { kind: "none" },
-    };
-  }
-  if (/retour|ticket|histor/.test(normalized)) {
-    return {
-      title: "Verkoop terugvinden",
-      answer: "Open Historiek en zoek op ticket- of transactiegegevens. Een retour blijft een expliciete, gelogde handeling.",
-      action: { kind: "navigate", view: "audit-log" },
-      actionLabel: "Open Historiek",
-    };
-  }
-  return {
-    title: "Ik blijf bij verifieerbare context",
-    answer: "Deze eerste Pace-versie beantwoordt vragen over navigatie, catalogus, webshop, plannen, retouren en synchronisatie. Ik verzin geen antwoord buiten de data die PWAYMENT mij veilig geeft.",
-    action: { kind: "none" },
-  };
-};
+): PaceQueryAnswer => answerFromPaceKnowledge(query, context);

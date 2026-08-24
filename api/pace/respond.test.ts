@@ -11,6 +11,8 @@ const request = (body: unknown, token = "valid-token") => new Request("https://p
 
 describe("Pace OpenAI endpoint", () => {
   beforeEach(() => {
+    delete process.env.GEMINI_API_KEY;
+    delete process.env.GEMINI_PACE_MODEL;
     process.env.OPENAI_API_KEY = "test-openai-key";
     process.env.OPENAI_PACE_MODEL = "gpt-5-nano";
     process.env.SUPABASE_URL = "https://supabase.test";
@@ -23,6 +25,7 @@ describe("Pace OpenAI endpoint", () => {
   });
 
   it("falls back locally when server secrets are missing", async () => {
+    delete process.env.GEMINI_API_KEY;
     delete process.env.OPENAI_API_KEY;
     const response = await handler.fetch(request({ question: "Help", context: {} }));
     expect(response.status).toBe(503);
@@ -71,5 +74,90 @@ describe("Pace OpenAI endpoint", () => {
     expect(upstreamBody.store).toBe(false);
     expect(String(upstreamBody.input)).not.toContain("must-not-pass");
     expect(String(upstreamBody.input)).toContain('"productCount":0');
+  });
+
+  it("prefers Gemini, keeps the key in a server header, and returns Gemini text", async () => {
+    process.env.GEMINI_API_KEY = "test-gemini-key";
+    process.env.GEMINI_PACE_MODEL = "gemini-2.5-flash-lite";
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({ id: "user-gemini-test" }))
+      .mockResolvedValueOnce(Response.json({
+        candidates: [{ content: { parts: [{ text: "Open de productcatalogus via Instellingen." }] } }],
+        usageMetadata: { promptTokenCount: 50, candidatesTokenCount: 10 },
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handler.fetch(request({
+      question: "Waar beheer ik mijn artikelen?",
+      context: { view: "profile", role: "owner", productCount: 12, online: true },
+    }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      answer: "Open de productcatalogus via Instellingen.",
+      source: "gemini",
+      model: "gemini-2.5-flash-lite",
+    });
+    const [url, init] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(url).toContain("generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent");
+    expect((init.headers as Record<string, string>)["x-goog-api-key"]).toBe("test-gemini-key");
+    expect(String(init.body)).not.toContain("test-gemini-key");
+  });
+
+  it("returns an explicit local fallback when the Gemini free-tier quota is exhausted", async () => {
+    process.env.GEMINI_API_KEY = "test-gemini-key";
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({ id: "user-gemini-quota" }))
+      .mockResolvedValueOnce(Response.json({
+        error: { code: 429, status: "RESOURCE_EXHAUSTED", message: "Quota exceeded" },
+      }, { status: 429 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handler.fetch(request({ question: "Vrije vraag", context: {} }));
+    expect(response.status).toBe(429);
+    await expect(response.json()).resolves.toMatchObject({
+      error: "PACE_AI_QUOTA_EXHAUSTED",
+      fallback: "local",
+      provider: "gemini",
+    });
+  });
+
+  it("loads tenant context with the caller session and grounds Gemini in product knowledge", async () => {
+    process.env.GEMINI_API_KEY = "test-gemini-key";
+    const storeId = "11111111-1111-4111-8111-111111111111";
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({ id: "user-tenant-context" }))
+      .mockResolvedValueOnce(Response.json({
+        version: 1,
+        store: { id: storeId, name: "Testwinkel", role: "owner" },
+        catalog: { activeProducts: 42, lowStockProducts: 3 },
+        sales: { today: { transactionCount: 7, netTotalCents: 12345 } },
+      }))
+      .mockResolvedValueOnce(Response.json({
+        candidates: [{ content: { parts: [{ text: "Vandaag zijn 7 verkopen gesynchroniseerd." }] } }],
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handler.fetch(request({
+      question: "Hoeveel verkopen heb ik vandaag en wat betekent lage voorraad?",
+      context: { storeId, view: "insights", role: "owner", online: true },
+      history: [{ role: "user", text: "Vertel me over vandaag" }, { role: "assistant", text: "Welke metric bedoel je?" }],
+      localCandidate: { intentId: "insights.explain", title: "Inzichten", answer: "Controleer de actieve periode." },
+    }));
+
+    expect(response.status).toBe(200);
+    const [rpcUrl, rpcInit] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(rpcUrl).toContain("/rest/v1/rpc/get_pace_ai_context");
+    expect((rpcInit.headers as Record<string, string>).Authorization).toBe("Bearer valid-token");
+    expect(JSON.parse(String(rpcInit.body))).toEqual({ target_store_id: storeId, user_query: "Hoeveel verkopen heb ik vandaag en wat betekent lage voorraad?" });
+
+    const geminiInit = fetchMock.mock.calls[2][1] as RequestInit;
+    const geminiBody = JSON.parse(String(geminiInit.body)) as { contents: Array<{ role: string; parts: Array<{ text: string }> }> };
+    const prompt = geminiBody.contents.at(-1)?.parts[0]?.text ?? "";
+    expect(prompt).toContain("PWAYMENT-productkennis");
+    expect(prompt).toContain("Testwinkel");
+    expect(prompt).toContain('"transactionCount":7');
+    expect(prompt).toContain("insights.explain");
+    expect(geminiBody.contents.slice(0, 2).map((item) => item.role)).toEqual(["user", "model"]);
   });
 });

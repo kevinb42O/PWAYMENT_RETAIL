@@ -125,6 +125,8 @@ export const Layout: React.FC = () => {
     mobileView,
     setMobileView,
     cart,
+    cartDiscount,
+    cartDocumentRequest,
     mainView,
     setMainView,
     scanCodeToCart,
@@ -675,6 +677,7 @@ export const Layout: React.FC = () => {
           aria-label="Pwayment retail"
         >
           <PaceAssistant
+            storeId={currentStoreId}
             view={mainView}
             role={currentRole}
             userName={currentUserName}
@@ -687,6 +690,19 @@ export const Layout: React.FC = () => {
             failedSync={paceConnection.failedSync}
             syncIssueSummary={paceConnection.syncIssueSummary}
             syncIssueResolution={paceConnection.syncIssueResolution}
+            cartSummary={{
+              items: cart.orders.slice(0, 25).map((order) => ({
+                name: order.product.name,
+                quantity: order.quantity,
+                unitPriceCents: order.product.priceCents,
+                sku: order.product.sku,
+                variant: order.product.variant,
+              })),
+              customerLinked: Boolean(linkedCustomer),
+              customerName: linkedCustomer?.name,
+              discountCents: cartDiscount?.amountCents,
+              documentType: cartDocumentRequest.type,
+            }}
             customerName={linkedCustomer?.name}
             customerInsights={customerInsights}
             setupMilestones={paceSetupMilestones}

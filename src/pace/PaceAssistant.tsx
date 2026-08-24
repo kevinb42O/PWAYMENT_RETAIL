@@ -24,10 +24,13 @@ import {
   signalCopy,
   type PaceAction,
   type PaceContext,
+  type PaceProfileTab,
+  type PaceQueryAnswer,
 } from "./paceSignals";
+import { getPaceQueryHints } from "./paceKnowledge";
 import { PaceMark, type PacePerformance } from "./PaceMark";
 import { usePace, type PaceMotion, type PaceProactivity, type PaceTone } from "./usePace";
-import { askPaceAi } from "./paceAi";
+import { askPaceAi, type PaceConversationTurn } from "./paceAi";
 import {
   paceSetupProgress,
   type PaceSetupMilestone,
@@ -40,7 +43,7 @@ interface PaceAssistantProps extends PaceContext {
   suppressed?: boolean;
   onNavigate: (view: MainView) => void;
   onOpenSetup: () => void;
-  onOpenProfile: (tab: "billing" | "modules" | "catalog-products" | "webshop-general" | "integrations") => void;
+  onOpenProfile: (tab: PaceProfileTab) => void;
   onOpenCatalog: (filter: { productIds: string[]; label: string }) => void;
   onOpenMilestone: (milestone: PaceSetupMilestone) => void;
 }
@@ -98,15 +101,17 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   } = usePace();
   const prefersReducedMotion = useReducedMotion();
   const [query, setQuery] = useState("");
-  const [response, setResponse] = useState<ReturnType<typeof answerPaceQuery> | null>(null);
-  const [responseSource, setResponseSource] = useState<"openai" | "local">("local");
+  const [response, setResponse] = useState<PaceQueryAnswer | null>(null);
+  const [responseSource, setResponseSource] = useState<"gemini" | "openai" | "local">("local");
   const [thinking, setThinking] = useState(false);
   const [performance, setPerformance] = useState<PacePerformance | null>(null);
   const [performanceKey, setPerformanceKey] = useState(0);
   const [externalDialogOpen, setExternalDialogOpen] = useState(false);
   const [sessionDismissedSignals, setSessionDismissedSignals] = useState<string[]>([]);
+  const [conversation, setConversation] = useState<PaceConversationTurn[]>([]);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const context: PaceContext = useMemo(() => ({
+    storeId: props.storeId,
     view: props.view,
     role: props.role,
     productCount: props.productCount,
@@ -118,8 +123,9 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
     failedSync: props.failedSync,
     syncIssueSummary: props.syncIssueSummary,
     syncIssueResolution: props.syncIssueResolution,
+    cartSummary: props.cartSummary,
     customerInsights: props.customerInsights,
-  }), [props.view, props.role, props.productCount, props.cartCount, props.firstRunCompleted, props.online, props.pendingSync, props.retryingSync, props.failedSync, props.syncIssueSummary, props.syncIssueResolution, props.customerInsights]);
+  }), [props.storeId, props.view, props.role, props.productCount, props.cartCount, props.firstRunCompleted, props.online, props.pendingSync, props.retryingSync, props.failedSync, props.syncIssueSummary, props.syncIssueResolution, props.cartSummary, props.customerInsights]);
   const signals = useMemo(
     () => buildPaceSignals(context, preferences).filter((signal) => {
       if (dismissedSignals.includes(signal.id) || sessionDismissedSignals.includes(signal.id)) return false;
@@ -135,10 +141,15 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   const setupProgress = useMemo(() => paceSetupProgress(props.setupMilestones), [props.setupMilestones]);
   const unavailable = Boolean(props.suppressed || externalDialogOpen);
   const customerSignal = signals.find((signal) => signal.source === "Klantcontext");
+  const queryHints = useMemo(() => getPaceQueryHints(context), [context]);
 
   useEffect(() => {
     setSessionDismissedSignals([]);
   }, [props.customerName]);
+
+  useEffect(() => {
+    setConversation([]);
+  }, [props.storeId]);
 
   useEffect(() => {
     const detectDialogs = () => {
@@ -188,35 +199,46 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   };
   const performanceLabel = performance === "question" ? "Vraagteken" : performance === "exclamation" ? "Uitroepteken" : performance === "liquid" ? "Blob" : null;
 
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!query.trim() || thinking) return;
+  const runQuery = async (rawQuestion: string) => {
+    const question = rawQuestion.trim();
+    if (!question || thinking) return;
+    setQuery(question);
+    const local = answerPaceQuery(question, context);
+    const remember = (answer: string) => setConversation((current) => [
+      ...current,
+      { role: "user" as const, text: question },
+      { role: "assistant" as const, text: answer },
+    ].slice(-6));
     // A known local delivery failure has a deterministic, privacy-safe answer.
     // Prefer it over a generic AI response so "waarom?" always names the real
     // cause currently stored on this register.
     if (
       (context.failedSync > 0 || context.retryingSync > 0) &&
-      /sync|offline|verbinding|wachtrij|fout|waarom|mislukt/.test(query.toLocaleLowerCase("nl-BE"))
+      /sync|offline|verbinding|wachtrij|fout|waarom|mislukt/.test(question.toLocaleLowerCase("nl-BE"))
     ) {
-      setResponse(answerPaceQuery(query, context));
+      setResponse(local);
       setResponseSource("local");
+      remember(local.answer);
       return;
     }
     setThinking(true);
     try {
-      const ai = await askPaceAi(query, context);
-      setResponse({
-        title: "Antwoord vanuit Pace AI",
-        answer: ai.answer,
-        action: { kind: "none" },
-      });
-      setResponseSource("openai");
+      const ai = await askPaceAi(question, context, conversation, local);
+      setResponse({ ...local, title: local.matched ? local.title : "Antwoord vanuit Pace AI", answer: ai.answer });
+      setResponseSource(ai.source);
+      remember(ai.answer);
     } catch {
-      setResponse(answerPaceQuery(query, context));
+      setResponse(local);
       setResponseSource("local");
+      remember(local.answer);
     } finally {
       setThinking(false);
     }
+  };
+
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    void runQuery(query);
   };
 
   const runAction = (action: PaceAction, customerInsightId?: string) => {
@@ -398,14 +420,22 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                         <button type="submit" disabled={!query.trim() || thinking} aria-label="Stuur vraag"><Send size={16} /></button>
                       </form>
                       <div className="pace-query-hints">
-                        {["Syncstatus", "Product toevoegen", "Retour zoeken"].map((hint) => <button key={hint} type="button" onClick={() => setQuery(hint)}>{hint}</button>)}
+                        {queryHints.map((hint) => <button key={hint} type="button" onClick={() => void runQuery(hint)}>{hint}</button>)}
                       </div>
                     </section>
 
                     <AnimatePresence mode="wait">
                       {(thinking || response) && (
                         <motion.section className="pace-response" key={thinking ? "thinking" : response?.title} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}>
-                          {thinking ? <><span className="pace-thinking-line" /><span className="pace-thinking-line is-short" /></> : response && <><div><Check size={14} /> PACE · {responseSource === "openai" ? "OPENAI" : "LOKALE CONTEXT"}</div><h3>{response.title}</h3><p>{response.answer}</p>{response.actionLabel && <button type="button" onClick={() => runAction(response.action)}>{response.actionLabel}<ArrowRight size={14} /></button>}</>}
+                          {thinking ? <><span className="pace-thinking-line" /><span className="pace-thinking-line is-short" /></> : response && <>
+                            <div><Check size={14} /> PACE · {responseSource === "gemini" ? "GEMINI" : responseSource === "openai" ? "OPENAI" : "LOKALE KENNIS"}</div>
+                            <h3>{response.title}</h3>
+                            <p>{response.answer}</p>
+                            {response.steps && response.steps.length > 0 && <ol className="pace-response-steps">{response.steps.map((step) => <li key={step}>{step}</li>)}</ol>}
+                            {response.limitation && <p className="pace-response-limit"><ShieldCheck size={13} /> {response.limitation}</p>}
+                            {response.actionLabel && <button type="button" onClick={() => runAction(response.action)}>{response.actionLabel}<ArrowRight size={14} /></button>}
+                            {response.followUps && response.followUps.length > 0 && <div className="pace-response-followups">{response.followUps.slice(0, 3).map((followUp) => <button key={followUp} type="button" onClick={() => void runQuery(followUp)}>{followUp}</button>)}</div>}
+                          </>}
                         </motion.section>
                       )}
                     </AnimatePresence>

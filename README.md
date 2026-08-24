@@ -230,6 +230,9 @@ VITE_SUPABASE_PUBLISHABLE_KEY="sb_publishable_your_key"
 VITE_PUBLIC_WEBSHOP_IDENTIFIER="your-shop-subdomain"
 
 # Alleen server-side instellen; nooit met VITE_ prefix.
+GEMINI_API_KEY="your-rotated-server-secret"
+GEMINI_PACE_MODEL="gemini-flash-latest"
+# Optionele providerfallback wanneer Gemini niet is geconfigureerd.
 OPENAI_API_KEY="sk-project-secret"
 OPENAI_PACE_MODEL="gpt-5-nano"
 SUPABASE_URL="https://your-project-ref.supabase.co"
@@ -241,7 +244,7 @@ VITE_SEED_DEMO_PRODUCTS=false
 VITE_AUTO_RESET_LEGACY_CATALOG=true
 VITE_ENABLE_GIFT_CARD_PAYMENT=true
 VITE_ENABLE_CSV_IMPORT=false
-VITE_ENABLE_PACE_AI=false
+VITE_ENABLE_PACE_AI=true
 ```
 
 | Variabele | Standaard | Betekenis |
@@ -253,11 +256,13 @@ VITE_ENABLE_PACE_AI=false
 | `VITE_AUTO_RESET_LEGACY_CATALOG` | `true` | Herstel erkende legacycatalogus naar het actuele retailexemplaar |
 | `VITE_ENABLE_GIFT_CARD_PAYMENT` | `true` | Kill switch voor cadeaubonbetaling |
 | `VITE_ENABLE_CSV_IMPORT` | `false` | Kill switch voor CSV-import; export blijft beschikbaar |
-| `VITE_ENABLE_PACE_AI` | `false` | Optionele server-side AI-antwoorden voor Pace; de lokale assistent blijft volledig bruikbaar zonder API |
+| `VITE_ENABLE_PACE_AI` | `true` | Gebruikt de server-side AI-route voor contextuele antwoorden; zet op `false` voor volledig lokale werking |
 | `VITE_PRESENTATION_BUILD` | `false` | Schakelt alleen presentatie-unlock en viewlinks in |
 | `VITE_E2E_BUILD` | `false` | Schakelt alleen de geïsoleerde E2E-fixturemodus in |
-| `OPENAI_API_KEY` | — | Geheime server-side projectsleutel voor Pace AI; nooit aan browsercode blootstellen |
-| `OPENAI_PACE_MODEL` | `gpt-5-nano` | Goedkoopste standaardmodel voor vrije Pace-vragen; server-side vervangbaar zonder frontendbuild |
+| `GEMINI_API_KEY` | — | Geheime server-side Gemini-sleutel voor Pace; nooit met `VITE_` prefix of in browsercode zetten |
+| `GEMINI_PACE_MODEL` | `gemini-flash-latest` | Standaard Gemini Flash-alias voor volledige Pace-vragen; lokale kennis blijft de fout- en offlinefallback |
+| `OPENAI_API_KEY` | — | Optionele server-side fallbackprovider wanneer geen Gemini-sleutel is ingesteld |
+| `OPENAI_PACE_MODEL` | `gpt-5-nano` | Optioneel OpenAI-model; alleen gebruikt wanneer Gemini niet geconfigureerd is |
 | `SUPABASE_URL` | — | Server-side Supabase-URL voor sessievalidatie van Pace-verzoeken |
 | `SUPABASE_PUBLISHABLE_KEY` | — | Publishable key waarmee de Pace-endpoint een gebruikerssessie bij Supabase valideert |
 | `MOLLIE_API_KEY` | — | Geheime server-side Mollie test- of livesleutel; nooit met `VITE_` prefix |

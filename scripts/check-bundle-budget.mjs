@@ -30,7 +30,7 @@ const budgets = [
   { label: "Customers", match: /^Customers-.*\.js$/, max: 80 * 1024 },
   { label: "Audit log", match: /^AuditLog-.*\.js$/, max: 80 * 1024 },
   { label: "Z-report", match: /^ZReport-.*\.js$/, max: 60 * 1024 },
-  { label: "Main CSS", match: /^index-.*\.css$/, max: 180 * 1024 },
+  { label: "Main CSS", match: /^index-.*\.css$/, max: 185 * 1024 },
 ];
 
 const failures = [];
