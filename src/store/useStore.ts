@@ -12,6 +12,8 @@ import { audit, useAuth } from '../auth/useAuth';
 import { db } from '../db/db';
 import { useProducts } from './useProducts';
 import { recordSupabaseVoid } from '../services/supabaseAudit';
+import { useCategories } from './useCategories';
+import { resolveProductCategoryPath } from '../catalog/categoryTaxonomy';
 
 export interface CartDiscount {
   amountCents: number;
@@ -318,17 +320,27 @@ export const useStore = create<POSState>()(
 
       addOrderItem: (product) => {
         void audit('order.add', { cartId: RETAIL_CART_ID, productId: product.id });
+        const categoryPath = resolveProductCategoryPath(product, useCategories.getState().list);
+        const snapshotProduct: Product = categoryPath ? {
+          ...product,
+          categorySnapshot: {
+            rootId: categoryPath.root.id,
+            rootName: categoryPath.root.name,
+            leafId: categoryPath.leaf?.id,
+            leafName: categoryPath.leaf?.name,
+          },
+        } : product;
         set((state) => {
           const candidate: OrderItem = {
             lineId: '',
-            product,
+            product: snapshotProduct,
             quantity: 1,
           };
           const existing = state.cart.orders.find((o) => sameLineCandidate(o, candidate));
           const orders = existing
             ? state.cart.orders.map((o) =>
                 o.lineId === existing.lineId
-                  ? { ...o, quantity: Math.min(o.quantity + 1, product.stockQty ?? Number.POSITIVE_INFINITY) }
+                  ? { ...o, quantity: Math.min(o.quantity + 1, snapshotProduct.stockQty ?? Number.POSITIVE_INFINITY) }
                   : o,
               )
             : [...state.cart.orders, { ...candidate, lineId: lineId() }];

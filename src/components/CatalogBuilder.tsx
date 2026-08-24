@@ -8,6 +8,7 @@ import type {
 } from "../types";
 import { formatEUR, parseDecimalToCents } from "../utils/money";
 import { slugifyId } from "../utils/productCsv";
+import { resolveProductCategoryPath } from "../catalog/categoryTaxonomy";
 
 type BuilderView = "start" | "quick" | "variants";
 type VariantDimension = { id: string; name: string; valuesText: string };
@@ -142,7 +143,10 @@ export const CatalogBuilder: React.FC<CatalogBuilderProps> = ({
   categories, products, defaultVat, categoryVatById, draftKey, editingFamilyId,
   onClose, onOpenFullEditor, onOpenImport, onSaveProducts,
 }) => {
-  const activeCategories = categories.filter((category) => category.isActive !== false);
+  const activeCategories = categories.filter((category) => category.isActive !== false && !category.parentId);
+  const subcategoriesFor = (parentId: string) => categories.filter(
+    (category) => category.isActive !== false && category.parentId === parentId,
+  );
   const firstCategory = activeCategories[0]?.id ?? "";
   const familyMembers = useMemo(
     () => editingFamilyId ? products.filter((product) => product.familyId === editingFamilyId) : [],
@@ -153,6 +157,9 @@ export const CatalogBuilder: React.FC<CatalogBuilderProps> = ({
     [familyMembers],
   );
   const firstMember = activeFamilyMembers[0] ?? familyMembers[0];
+  const firstMemberCategoryPath = firstMember
+    ? resolveProductCategoryPath(firstMember, categories)
+    : null;
   const initialDimensions = useMemo<VariantDimension[]>(() => {
     if (familyMembers.length === 0) return [
       { id: uuid(), name: "Maat", valuesText: "" },
@@ -171,8 +178,8 @@ export const CatalogBuilder: React.FC<CatalogBuilderProps> = ({
     }));
   }, [activeFamilyMembers, familyMembers]);
   const baseShared: SharedFields = {
-    category: firstMember?.category ?? firstCategory,
-    subCategory: firstMember?.subCategory ?? "",
+    category: firstMemberCategoryPath?.root.id ?? firstMember?.category ?? firstCategory,
+    subCategory: firstMemberCategoryPath?.leaf?.name ?? firstMember?.subCategory ?? "",
     brand: firstMember?.brand ?? "",
     supplier: firstMember?.supplier ?? "",
     supplierCode: firstMember?.supplierCode ?? "",
@@ -270,6 +277,10 @@ export const CatalogBuilder: React.FC<CatalogBuilderProps> = ({
   const setQuickFields = (patch: Partial<QuickFields>) => { setQuick((current) => ({ ...current, ...patch })); markDirty(); };
   const setFamilyFields = (patch: Partial<FamilyFields>) => { setFamily((current) => ({ ...current, ...patch })); markDirty(); };
   const currentVat = (category: string) => categoryVatById.get(category) ?? defaultVat;
+  const canonicalCategoryId = (rootId: string, subcategoryName: string): string => {
+    const normalizedName = normalized(clean(subcategoryName));
+    return subcategoriesFor(rootId).find((category) => normalized(category.name) === normalizedName)?.id ?? rootId;
+  };
   const knownScanCode = useMemo(() => new Map<string, string>(products.flatMap((product) => [
     [normalized((product.sku ?? "").replace(/\s/g, "")), product.id] as const,
     [normalized((product.barcode ?? "").replace(/\s/g, "")), product.id] as const,
@@ -290,7 +301,7 @@ export const CatalogBuilder: React.FC<CatalogBuilderProps> = ({
     const used = new Set(products.map((product) => product.id));
     return {
       id: uniqueProductId(`${quick.brand || "product"}-${quick.name}`, used),
-      name: clean(quick.name), category: quick.category, subCategory: clean(quick.subCategory) || undefined,
+      name: clean(quick.name), category: canonicalCategoryId(quick.category, quick.subCategory), subCategory: clean(quick.subCategory) || undefined,
       brand: clean(quick.brand) || undefined, supplier: clean(quick.supplier) || undefined,
       supplierCode: supplierCode || undefined, sku: sku || undefined, barcode: barcode || undefined,
       identifiers: identifiersFor(sku, barcode, supplierCode), priceCents: price, costPriceCents: cost,
@@ -367,7 +378,7 @@ export const CatalogBuilder: React.FC<CatalogBuilderProps> = ({
       const id = existingId ?? uniqueProductId(`${family.brand || "product"}-${family.name}-${row.label}`, usedIds);
       if (sku) scanCodeOwners.set(skuKey, id); if (barcode) scanCodeOwners.set(barcodeKey, id);
       activeProducts.push({
-        ...row.existing, id, name: clean(family.name), category: family.category,
+        ...row.existing, id, name: clean(family.name), category: canonicalCategoryId(family.category, family.subCategory),
         subCategory: clean(family.subCategory) || undefined, brand: clean(family.brand) || undefined,
         supplier: clean(family.supplier) || undefined, supplierCode: supplierCode || undefined,
         variant: row.label, variantOptions: row.options, familyId: editingFamilyId ?? "",
@@ -385,7 +396,7 @@ export const CatalogBuilder: React.FC<CatalogBuilderProps> = ({
       .map((member) => ({ ...member, isActive: false }));
     const familyPayload: ManualCatalogFamilyPayload = {
       familyId, name: clean(family.name), brand: clean(family.brand) || undefined,
-      categoryExternalId: family.category,
+      categoryExternalId: canonicalCategoryId(family.category, family.subCategory),
       variants: activeProducts.map((product) => ({
         productExternalId: product.id, displayName: product.variant ?? "Variant",
         options: Object.entries(product.variantOptions ?? {}).map(([name, value]) => ({ name, value })),
@@ -409,7 +420,7 @@ export const CatalogBuilder: React.FC<CatalogBuilderProps> = ({
     const stock = whole(quick.stock); const minStock = whole(quick.minStock);
     const sku = clean(quick.sku); const barcode = clean(quick.barcode); const supplierCode = clean(quick.supplierCode);
     onOpenFullEditor({
-      id: "", name: clean(quick.name), category: quick.category || firstCategory,
+      id: "", name: clean(quick.name), category: canonicalCategoryId(quick.category || firstCategory, quick.subCategory),
       subCategory: clean(quick.subCategory) || undefined, brand: clean(quick.brand) || undefined,
       supplier: clean(quick.supplier) || undefined, supplierCode: supplierCode || undefined,
       sku: sku || undefined, barcode: barcode || undefined,
@@ -446,7 +457,7 @@ export const CatalogBuilder: React.FC<CatalogBuilderProps> = ({
 
         {view === "quick" && <form onSubmit={(event) => { event.preventDefault(); void saveQuick("next"); }} className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
           <div className="space-y-5">
-            <SharedPanel fields={quick} categories={activeCategories} vat={currentVat(quick.category)} onChange={setQuickFields} />
+            <SharedPanel fields={quick} categories={activeCategories} subcategories={subcategoriesFor(quick.category)} vat={currentVat(quick.category)} onChange={setQuickFields} />
             <div className="rounded-2xl border border-slate-200 p-4 sm:p-5">
               <div className="mb-4"><h3 className="font-black text-slate-950">Volgend product</h3><p className="mt-1 text-xs text-slate-500">Druk op Enter om veilig op te slaan en meteen verder te gaan.</p></div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -468,7 +479,7 @@ export const CatalogBuilder: React.FC<CatalogBuilderProps> = ({
         </form>}
 
         {view === "variants" && <div className="space-y-5">
-          <SharedPanel fields={family} categories={activeCategories} vat={currentVat(family.category)} family onChange={setFamilyFields} />
+          <SharedPanel fields={family} categories={activeCategories} subcategories={subcategoriesFor(family.category)} vat={currentVat(family.category)} family onChange={setFamilyFields} />
           <div className="rounded-2xl border border-slate-200 p-4 sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-black text-slate-950">2. Variantgroepen</h3><p className="mt-1 text-xs text-slate-500">Scheid waarden met komma, puntkomma of een nieuwe regel.</p></div><button type="button" onClick={() => { setDimensions((current) => [...current, { id: uuid(), name: "", valuesText: "" }]); markDirty(); }} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-black"><Plus size={14} /> Groep toevoegen</button></div>
             <div className="mt-4 space-y-3">{dimensions.map((dimension) => <div key={dimension.id} className="grid gap-3 rounded-xl bg-slate-50 p-3 sm:grid-cols-[180px_1fr_38px]"><TextField label="Groep" value={dimension.name} onChange={(name) => { setDimensions((current) => current.map((item) => item.id === dimension.id ? { ...item, name } : item)); markDirty(); }} placeholder="Maat" compact /><TextField label="Waarden" value={dimension.valuesText} onChange={(valuesText) => { setDimensions((current) => current.map((item) => item.id === dimension.id ? { ...item, valuesText } : item)); markDirty(); }} placeholder="S, M, L" compact /><button type="button" onClick={() => { setDimensions((current) => current.filter((item) => item.id !== dimension.id)); markDirty(); }} className="self-end rounded-lg p-2 text-slate-400 hover:bg-white hover:text-rose-700" aria-label="Variantgroep verwijderen"><X size={17} /></button></div>)}</div>
@@ -498,12 +509,13 @@ export const CatalogBuilder: React.FC<CatalogBuilderProps> = ({
   );
 };
 
-const SharedPanel = ({ fields, categories, vat, family, onChange }: { fields: SharedFields & Partial<FamilyFields>; categories: ProductCategory[]; vat: number; family?: boolean; onChange: (patch: Partial<FamilyFields & QuickFields>) => void }) => <div className="rounded-2xl border border-sky-100 bg-sky-50/45 p-4 sm:p-5"><h3 className="font-black text-slate-950">{family ? "1. Gedeelde productgegevens" : "Deze gegevens blijven staan"}</h3><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{family && <div className="sm:col-span-2 lg:col-span-3"><TextField label="Naam productfamilie *" value={fields.name ?? ""} onChange={(name) => onChange({ name })} /></div>}<SelectField label="Categorie" value={fields.category} categories={categories} onChange={(category) => onChange({ category })} /><TextField label="Subcategorie" value={fields.subCategory} onChange={(subCategory) => onChange({ subCategory })} /><TextField label="Merk" value={fields.brand} onChange={(brand) => onChange({ brand })} /><TextField label="Leverancier" value={fields.supplier} onChange={(supplier) => onChange({ supplier })} /><TextField label="Leverancierscode" value={fields.supplierCode} onChange={(supplierCode) => onChange({ supplierCode })} />{family && <><MoneyField label="Basis verkoopprijs" value={fields.price ?? ""} onChange={(price) => onChange({ price })} /><MoneyField label="Basis aankoopprijs" value={fields.cost ?? ""} onChange={(cost) => onChange({ cost })} /><TextField label="SKU-prefix" value={fields.skuPrefix ?? ""} onChange={(skuPrefix) => onChange({ skuPrefix })} /></>}<TextField label="Minimumvoorraad" value={fields.minStock} onChange={(minStock) => onChange({ minStock })} inputMode="numeric" /><Toggle label="Voorraad volgen" checked={fields.tracksStock} onChange={(tracksStock) => onChange({ tracksStock })} /></div><p className="mt-3 text-[11px] font-semibold text-slate-500">BTW {vat}% wordt overgenomen van de gekozen categorie.</p></div>;
+const SharedPanel = ({ fields, categories, subcategories, vat, family, onChange }: { fields: SharedFields & Partial<FamilyFields>; categories: ProductCategory[]; subcategories: ProductCategory[]; vat: number; family?: boolean; onChange: (patch: Partial<FamilyFields & QuickFields>) => void }) => <div className="rounded-2xl border border-sky-100 bg-sky-50/45 p-4 sm:p-5"><h3 className="font-black text-slate-950">{family ? "1. Gedeelde productgegevens" : "Deze gegevens blijven staan"}</h3><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{family && <div className="sm:col-span-2 lg:col-span-3"><TextField label="Naam productfamilie *" value={fields.name ?? ""} onChange={(name) => onChange({ name })} /></div>}<SelectField label="Categorie" value={fields.category} categories={categories} onChange={(category) => onChange({ category, subCategory: "" })} /><SubcategoryField value={fields.subCategory} subcategories={subcategories} onChange={(subCategory) => onChange({ subCategory })} /><TextField label="Merk" value={fields.brand} onChange={(brand) => onChange({ brand })} /><TextField label="Leverancier" value={fields.supplier} onChange={(supplier) => onChange({ supplier })} /><TextField label="Leverancierscode" value={fields.supplierCode} onChange={(supplierCode) => onChange({ supplierCode })} />{family && <><MoneyField label="Basis verkoopprijs" value={fields.price ?? ""} onChange={(price) => onChange({ price })} /><MoneyField label="Basis aankoopprijs" value={fields.cost ?? ""} onChange={(cost) => onChange({ cost })} /><TextField label="SKU-prefix" value={fields.skuPrefix ?? ""} onChange={(skuPrefix) => onChange({ skuPrefix })} /></>}<TextField label="Minimumvoorraad" value={fields.minStock} onChange={(minStock) => onChange({ minStock })} inputMode="numeric" /><Toggle label="Voorraad volgen" checked={fields.tracksStock} onChange={(tracksStock) => onChange({ tracksStock })} /></div><p className="mt-3 text-[11px] font-semibold text-slate-500">BTW {vat}% wordt overgenomen van de gekozen categorie.</p></div>;
 const Choice = ({ icon, title, detail, action, onClick, subtle }: { icon: React.ReactNode; title: string; detail: string; action: string; onClick: () => void; subtle?: boolean }) => <button type="button" onClick={onClick} className={`group flex min-h-48 flex-col items-start rounded-2xl border p-5 text-left transition ${subtle ? "border-slate-200 bg-slate-50 hover:bg-white" : "border-slate-200 bg-white hover:border-sky-300 hover:shadow-sm"}`}><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-50 text-sky-800">{icon}</span><h3 className="mt-4 text-base font-black text-slate-950">{title}</h3><p className="mt-1.5 text-sm leading-5 text-slate-500">{detail}</p><span className="mt-auto inline-flex items-center gap-1 pt-4 text-xs font-black text-sky-800">{action}<ChevronRight size={14} /></span></button>;
 const TextField = React.forwardRef<HTMLInputElement, { label: string; value: string; onChange: (value: string) => void; placeholder?: string; inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"]; autoFocus?: boolean; compact?: boolean }>(({ label, value, onChange, placeholder, inputMode, autoFocus, compact }, ref) => <label className={labelClass}>{label}<input ref={ref} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} inputMode={inputMode} autoFocus={autoFocus} className={compact ? "mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-sky-700" : inputClass} /></label>);
 TextField.displayName = "TextField";
 const MoneyField = ({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) => <label className={labelClass}>{label}<span className="relative mt-1.5 block"><span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">€</span><input value={value} onChange={(event) => onChange(event.target.value)} inputMode="decimal" placeholder="0,00" className={`${inputClass} mt-0 pl-7`} /></span></label>;
 const SelectField = ({ label, value, categories, onChange }: { label: string; value: string; categories: ProductCategory[]; onChange: (value: string) => void }) => <label className={labelClass}>{label}<select value={value} onChange={(event) => onChange(event.target.value)} className={inputClass}>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>;
+const SubcategoryField = ({ value, subcategories, onChange }: { value: string; subcategories: ProductCategory[]; onChange: (value: string) => void }) => <label className={labelClass}>Subcategorie<select value={value} onChange={(event) => onChange(event.target.value)} className={inputClass}><option value="">Geen subcategorie</option>{subcategories.map((subcategory) => <option key={subcategory.id} value={subcategory.name}>{subcategory.name}</option>)}{value && !subcategories.some((subcategory) => subcategory.name === value) && <option value={value}>{value} (bestaande waarde)</option>}</select></label>;
 const Toggle = ({ label, checked, onChange }: { label: string; checked: boolean; onChange: (value: boolean) => void }) => <label className={`${labelClass} flex min-h-[42px] cursor-pointer items-end gap-3 pb-2.5`}><input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="h-4 w-4 rounded border-slate-300" /><span className="normal-case tracking-normal text-sm font-bold text-slate-700">{label}</span></label>;
 const GridInput = ({ label, value, onChange, disabled, right }: { label: string; value: string; onChange: (value: string) => void; disabled?: boolean; right?: boolean }) => <td className="px-3 py-2"><input aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled} className={`w-full rounded-lg border border-slate-200 px-2.5 py-1.5 font-semibold outline-none focus:border-[#0e7490] focus:ring-2 focus:ring-cyan-100 disabled:bg-transparent ${right ? "text-right" : ""}`} /></td>;
 const Notice = ({ tone, text, action }: { tone: Feedback["tone"]; text: string; action?: React.ReactNode }) => <div role={tone === "error" ? "alert" : "status"} className={`mt-4 flex flex-col gap-2 rounded-xl border px-4 py-3 text-sm font-semibold sm:flex-row sm:items-center sm:justify-between ${tone === "error" ? "border-rose-200 bg-rose-50 text-rose-900" : tone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-sky-200 bg-sky-50 text-sky-900"}`}><span>{text}</span>{action}</div>;

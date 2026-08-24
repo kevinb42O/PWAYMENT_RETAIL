@@ -9,6 +9,12 @@ export const ProductSchema = z.object({
   name: z.string().min(1),
   category: CategoryEnum,
   subCategory: SubCategoryEnum.optional(),
+  categorySnapshot: z.object({
+    rootId: z.string().min(1),
+    rootName: z.string().min(1),
+    leafId: z.string().min(1).optional(),
+    leafName: z.string().min(1).optional(),
+  }).optional(),
   sku: z.string().min(1).optional(),
   barcode: z.string().min(1).optional(),
   priceCents: z.number().int().nonnegative(),

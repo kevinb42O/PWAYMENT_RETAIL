@@ -37,6 +37,13 @@ export interface Product {
   name: string;
   category: Category;
   subCategory?: SubCategory;
+  /** Immutable display classification when the product is embedded in a sale snapshot. */
+  categorySnapshot?: {
+    rootId: string;
+    rootName: string;
+    leafId?: string;
+    leafName?: string;
+  };
   /** Optional owner-defined SKU for inventory operations. */
   sku?: string;
   /** Optional scan code (EAN/UPC/custom). */

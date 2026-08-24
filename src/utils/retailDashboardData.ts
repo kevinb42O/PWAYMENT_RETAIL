@@ -1,6 +1,7 @@
 import { PaymentMethod, Transaction } from "../types";
 import { allocateCents } from "./money";
 import { isGiftCardProduct, transactionTenders } from "./financial";
+import { productRootCategoryLabel } from "../catalog/categoryTaxonomy";
 import {
   getZonedDateParts,
   STORE_TIME_ZONE,
@@ -74,7 +75,7 @@ export const buildCategoryPerformance = (
     const allocated = allocateCents(transaction.totalCents, lineTotals);
     for (const [index, item] of commerceItems.entries()) {
       const allocatedRevenue = allocated[index] ?? 0;
-      const category = item.product.category || "Ongecategoriseerd";
+      const category = productRootCategoryLabel(item.product);
       const current = categories.get(category) ?? {
         category,
         revenueCents: 0,

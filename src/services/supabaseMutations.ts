@@ -3,8 +3,16 @@ import type { Customer, ManualCatalogBatchPayload, Product, ProductCategory } fr
 import type { Database } from "../types/database.generated";
 
 type ProductInsert = Database["public"]["Tables"]["products"]["Insert"];
-type CategoryInsert = Database["public"]["Tables"]["categories"]["Insert"];
 type CustomerInsert = Database["public"]["Tables"]["customers"]["Insert"];
+
+type TaxonomyRpcClient = {
+  rpc: (
+    fn: "upsert_catalog_category" | "delete_catalog_category",
+    args: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: { message: string } | null }>;
+};
+
+const taxonomyRpc = supabase as unknown as TaxonomyRpcClient;
 
 const throwIfError = (error: { message: string } | null): void => {
   if (error) throw new Error(error.message);
@@ -24,19 +32,14 @@ export const upsertSupabaseCategories = async (
   categories: ProductCategory[],
 ): Promise<void> => {
   if (!storeId || categories.length === 0) return;
-  const rows: CategoryInsert[] = categories.map((category) => ({
-    store_id: storeId,
-    external_id: category.id,
-    name: category.name,
-    vat_rate: category.vatRate,
-    sort_order: category.sortOrder ?? null,
-    is_active: category.isActive !== false,
-    is_demo: false,
-  }));
-  const { error } = await supabase
-    .from("categories")
-    .upsert(rows, { onConflict: "store_id,external_id" });
-  throwIfError(error);
+  const ordered = [...categories].sort((a, b) => Number(Boolean(a.parentId)) - Number(Boolean(b.parentId)));
+  for (const category of ordered) {
+    const { error } = await taxonomyRpc.rpc("upsert_catalog_category", {
+      target_store_id: storeId,
+      category_payload: category,
+    });
+    throwIfError(error);
+  }
 };
 
 export const deleteSupabaseCategory = async (
@@ -44,11 +47,10 @@ export const deleteSupabaseCategory = async (
   externalId: string,
 ): Promise<void> => {
   if (!storeId) return;
-  const { error } = await supabase
-    .from("categories")
-    .delete()
-    .eq("store_id", storeId)
-    .eq("external_id", externalId);
+  const { error } = await taxonomyRpc.rpc("delete_catalog_category", {
+    target_store_id: storeId,
+    category_external_id: externalId,
+  });
   throwIfError(error);
 };
 
@@ -63,17 +65,33 @@ export const upsertSupabaseProducts = async (
   );
   const categoryId = new Map<string, string>();
   const categoryName = new Map<string, string>();
+  const subcategoryName = new Map<string, string | null>();
   if (categoryExternalIds.length > 0) {
     const { data, error } = await supabase
       .from("categories")
-      .select("id, external_id, name")
+      .select("id, external_id, name, parent_id")
       .eq("store_id", storeId)
       .in("external_id", categoryExternalIds);
     throwIfError(error);
+    const parentIds = Array.from(new Set((data ?? []).map((category) => category.parent_id).filter(Boolean))) as string[];
+    const parentNameById = new Map<string, string>();
+    if (parentIds.length > 0) {
+      const { data: parents, error: parentError } = await supabase
+        .from("categories")
+        .select("id, name")
+        .eq("store_id", storeId)
+        .in("id", parentIds);
+      throwIfError(parentError);
+      for (const parent of parents ?? []) parentNameById.set(parent.id, parent.name);
+    }
     for (const category of data ?? []) {
       if (category.external_id) {
         categoryId.set(category.external_id, category.id);
-        categoryName.set(category.external_id, category.name);
+        categoryName.set(
+          category.external_id,
+          category.parent_id ? parentNameById.get(category.parent_id) ?? category.name : category.name,
+        );
+        subcategoryName.set(category.external_id, category.parent_id ? category.name : null);
       }
     }
   }
@@ -84,7 +102,7 @@ export const upsertSupabaseProducts = async (
     category_id: categoryId.get(product.category) ?? null,
     name: product.name,
     category_name: categoryName.get(product.category) ?? product.category,
-    subcategory: product.subCategory ?? null,
+    subcategory: subcategoryName.get(product.category) ?? product.subCategory ?? null,
     sku: product.sku ?? null,
     barcode: product.barcode ?? null,
     price_cents: product.priceCents,

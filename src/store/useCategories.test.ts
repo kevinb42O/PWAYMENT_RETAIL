@@ -4,6 +4,7 @@ import { useAuth } from "../auth/useAuth";
 import { productCategories } from "../data/categories";
 import { db } from "../db/db";
 import { useCategories } from "./useCategories";
+import { useProducts } from "./useProducts";
 
 describe("category repository store", () => {
   beforeEach(async () => {
@@ -11,6 +12,7 @@ describe("category repository store", () => {
     await Promise.all([db.categories.clear(), db.products.clear(), db.outbox.clear()]);
     useAuth.setState({ currentStoreIsDemo: false });
     useCategories.setState({ list: [], hydrated: false });
+    useProducts.setState({ list: [], hydrated: false });
   });
 
   it("starts a real tenant with no categories", async () => {
@@ -37,5 +39,35 @@ describe("category repository store", () => {
       "upsert_category",
       "upsert_category",
     ]);
+  });
+
+  it("creates subcategories below a main category and prevents deleting a non-empty branch", async () => {
+    const parent = await useCategories.getState().addCategory("Schoenen", 21);
+    const child = await useCategories.getState().addSubcategory(parent!.id, "Sneakers");
+
+    expect(child).toMatchObject({ parentId: parent!.id, name: "Sneakers", vatRate: 21 });
+    expect(await useCategories.getState().removeCategory(parent!.id)).toBe(false);
+    expect(await db.categories.get(child!.id)).toMatchObject({ parentId: parent!.id });
+  });
+
+  it("renames a used subcategory without orphaning existing product selections", async () => {
+    const parent = await useCategories.getState().addCategory("Kleding", 21);
+    const child = await useCategories.getState().addSubcategory(parent!.id, "Truien");
+    const product = {
+      id: "hoodie",
+      name: "Hoodie",
+      category: parent!.id,
+      subCategory: child!.name,
+      priceCents: 5000,
+      vatRate: 21,
+    };
+    await db.products.put(product);
+    useProducts.setState({ list: [product], hydrated: true });
+
+    await useCategories.getState().renameCategory(child!.id, "Sweaters");
+
+    expect(await db.products.get(product.id)).toMatchObject({ subCategory: "Sweaters" });
+    expect(useProducts.getState().list[0]).toMatchObject({ subCategory: "Sweaters" });
+    expect(await useCategories.getState().removeCategory(child!.id)).toBe(false);
   });
 });

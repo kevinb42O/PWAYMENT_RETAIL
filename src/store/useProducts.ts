@@ -8,6 +8,7 @@ import { FEATURES } from '../config/features';
 import { isSupportedVatRate, UnsupportedVatRateError } from '../utils/vat';
 import { findProductByScanCode, ProductScanMatch } from '../utils/productLookup';
 import { FEATURE_KEYS, featureLimit } from '../billing/entitlements';
+import { materializeLegacySubcategories } from '../catalog/categoryTaxonomy';
 
 interface ProductsState {
   list: Product[];
@@ -176,15 +177,45 @@ export const useProducts = create<ProductsState>((set, get) => ({
       const isDemoStore = useAuth.getState().currentStoreIsDemo;
       if (isDemoStore && FEATURES.seedDemoProducts && seedProducts.length > 0) {
         const seeded: Product[] = seedProducts.map((p) => normalizeProduct({ ...p, isActive: true }, p));
-        await db.products.bulkPut(seeded);
-        set({ list: seeded, hydrated: true });
+        const materialized = materializeLegacySubcategories(await db.categories.toArray(), seeded);
+        await db.transaction('rw', db.categories, db.products, db.outbox, async () => {
+          if (materialized.createdCategories.length > 0) {
+            await enqueueOutbox('upsert_category', materialized.createdCategories);
+          }
+          if (materialized.updatedProducts.length > 0) {
+            await enqueueOutbox('upsert_product', materialized.updatedProducts);
+          }
+          await db.products.bulkPut(materialized.products);
+          if (materialized.createdCategories.length > 0) await db.categories.bulkPut(materialized.createdCategories);
+        });
+        set({ list: materialized.products, hydrated: true });
+        void import('./useCategories').then(({ useCategories }) => {
+          if (useCategories.getState().hydrated) void useCategories.getState().refresh();
+        });
       } else {
         set({ list: [], hydrated: true });
       }
       return;
     }
 
-    set({ list: existing.map((p) => normalizeProduct(p, p)), hydrated: true });
+    const normalized = existing.map((p) => normalizeProduct(p, p));
+    const materialized = materializeLegacySubcategories(await db.categories.toArray(), normalized);
+    await db.transaction('rw', db.categories, db.products, db.outbox, async () => {
+      if (materialized.createdCategories.length > 0) {
+        await enqueueOutbox('upsert_category', materialized.createdCategories);
+      }
+      if (materialized.updatedProducts.length > 0) {
+        await enqueueOutbox('upsert_product', materialized.updatedProducts);
+      }
+      if (materialized.createdCategories.length > 0) await db.categories.bulkPut(materialized.createdCategories);
+      if (materialized.updatedProducts.length > 0) await db.products.bulkPut(materialized.updatedProducts);
+    });
+    set({ list: materialized.products, hydrated: true });
+    if (materialized.createdCategories.length > 0) {
+      void import('./useCategories').then(({ useCategories }) => {
+        if (useCategories.getState().hydrated) void useCategories.getState().refresh();
+      });
+    }
   },
 
   refresh: async () => {

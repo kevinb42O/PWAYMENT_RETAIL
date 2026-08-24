@@ -175,4 +175,41 @@ describe('product CSV round trip', () => {
     expect(invalid.products).toEqual([]);
     expect(invalid.issues[0].message).toMatch(/isActive/);
   });
+
+  it('resolves a root plus subcategory to the canonical leaf id', () => {
+    const taxonomyCtx = {
+      existing: [],
+      categoryVatById: new Map([['clothing', 21], ['clothing-hoodies', 21]]),
+      categories: [
+        { id: 'clothing', name: 'Kleding', vatRate: 21, isActive: true },
+        { id: 'clothing-hoodies', parentId: 'clothing', name: 'Hoodies', vatRate: 21, isActive: true },
+      ],
+    };
+    const result = parseProductsCsv(
+      'name,category,subCategory,sellingPrice\nHoodie,clothing,Hoodies,50.00',
+      taxonomyCtx,
+    );
+    expect(result.issues).toEqual([]);
+    expect(result.products[0]).toMatchObject({
+      category: 'clothing-hoodies',
+      subCategory: 'Hoodies',
+    });
+  });
+
+  it('rejects a subcategory that belongs to another root', () => {
+    const result = parseProductsCsv(
+      'name,category,subCategory,sellingPrice\nHoodie,accessories,Hoodies,50.00',
+      {
+        existing: [],
+        categoryVatById: new Map([['accessories', 21], ['clothing-hoodies', 21]]),
+        categories: [
+          { id: 'clothing', name: 'Kleding', vatRate: 21, isActive: true },
+          { id: 'accessories', name: 'Accessoires', vatRate: 21, isActive: true },
+          { id: 'clothing-hoodies', parentId: 'clothing', name: 'Hoodies', vatRate: 21, isActive: true },
+        ],
+      },
+    );
+    expect(result.products).toEqual([]);
+    expect(result.issues[0].message).toMatch(/onbekende subcategorie/);
+  });
 });

@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { CheckCircle2, ChevronDown } from "lucide-react";
 import { db } from "../db/db";
-import { Customer, Product, Transaction, WebshopOrder } from "../types";
+import { Customer, Product, ProductCategory, Transaction, WebshopOrder } from "../types";
 import { useCustomers } from "../store/useCustomers";
 import { useCategories } from "../store/useCategories";
 import { useProducts } from "../store/useProducts";
 import { formatEUR } from "../utils/money";
+import { resolveCategoryPath, resolveProductCategoryPath } from "../catalog/categoryTaxonomy";
 import {
   buildRetailIntelligence,
   getTransactionSellerIdentity,
@@ -289,7 +290,10 @@ export const Insights = () => {
   const categoryLabels = useMemo(
     () =>
       Object.fromEntries(
-        categories.map((category) => [category.id, category.name]),
+        categories.map((category) => [
+          category.id,
+          resolveCategoryPath(category.id, categories)?.root.name ?? category.name,
+        ]),
       ),
     [categories],
   );
@@ -350,8 +354,8 @@ export const Insights = () => {
     [analysisTransactions, now],
   );
   const stockSnapshot = useMemo(
-    () => buildStockSnapshot(products, analysisTransactions),
-    [analysisTransactions, products],
+    () => buildStockSnapshot(products, analysisTransactions, categories),
+    [analysisTransactions, categories, products],
   );
   const actions = useMemo(
     () =>
@@ -2852,6 +2856,7 @@ const buildOwnerActions = ({
 const buildStockSnapshot = (
   products: Product[],
   transactions: Transaction[],
+  categories: ProductCategory[],
 ): StockSnapshot => {
   const start30 = Date.now() - 30 * DAY_MS;
   const start90 = Date.now() - 90 * DAY_MS;
@@ -2878,7 +2883,7 @@ const buildStockSnapshot = (
     .map((product) => ({
       productId: product.id,
       name: product.name,
-      category: product.category || "Ongecategoriseerd",
+      category: (resolveProductCategoryPath(product, categories)?.root.id ?? product.category) || "Ongecategoriseerd",
       stockQty: product.stockQty ?? 0,
       valueCents: (product.stockQty ?? 0) * (product.costPriceCents ?? 0),
       sold30d: sold30.get(product.id) ?? 0,

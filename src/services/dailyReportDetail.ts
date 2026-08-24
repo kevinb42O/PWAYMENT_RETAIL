@@ -6,6 +6,7 @@ import { transactionTenders } from "../utils/financial";
 import { allocateCents } from "../utils/money";
 import { vatBreakdownForTransaction } from "../utils/vat";
 import { vatBreakdownForReport } from "../utils/vatReport";
+import { productRootCategoryLabel } from "../catalog/categoryTaxonomy";
 
 export interface DailyReportProductDetail {
   key: string;
@@ -275,7 +276,7 @@ const deriveOfflineDetail = (
         productName: product.name,
         variant: product.variant,
         sku: product.sku,
-        categoryName: product.category,
+        categoryName: productRootCategoryLabel(product),
         productType: product.productType ?? "merchandise",
         vatRate: product.vatRate,
         soldQuantity: 0,

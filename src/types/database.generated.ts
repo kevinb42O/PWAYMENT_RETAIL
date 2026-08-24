@@ -4156,6 +4156,14 @@ export type Database = {
         Args: { relations_payload: Json; target_store_id: string }
         Returns: Json
       }
+      delete_catalog_category: {
+        Args: { category_external_id: string; target_store_id: string }
+        Returns: undefined
+      }
+      upsert_catalog_category: {
+        Args: { category_payload: Json; target_store_id: string }
+        Returns: Json
+      }
       upsert_manual_catalog_batch: {
         Args: { batch_payload: Json; target_store_id: string }
         Returns: Json

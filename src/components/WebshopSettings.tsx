@@ -30,6 +30,8 @@ import { WebshopPreviewModal } from './WebshopPreviewModal';
 import { Product } from '../types';
 import { WebshopOrders } from './WebshopOrders';
 import { FEATURE_KEYS, useEntitlements } from '../billing/entitlements';
+import { useCategories } from '../store/useCategories';
+import { categoryPathLabel, resolveProductCategoryPath } from '../catalog/categoryTaxonomy';
 
 interface WebshopSettingsProps {
   activeTab: string;
@@ -42,6 +44,8 @@ export const WebshopSettings: React.FC<WebshopSettingsProps> = ({
 }) => {
   const webshop = useWebshopStore();
   const { list: products } = useProducts();
+  const categories = useCategories((state) => state.list);
+  const categoryLabel = (product: Product) => categoryPathLabel(resolveProductCategoryPath(product, categories));
   const canPublishWebshop = useEntitlements(
     (state) => state.snapshot?.features[FEATURE_KEYS.webshopPublish] === true,
   );
@@ -98,7 +102,7 @@ export const WebshopSettings: React.FC<WebshopSettingsProps> = ({
       const q = productSearch.toLowerCase();
       return (
         p.name.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q) ||
+        categoryLabel(p).toLowerCase().includes(q) ||
         p.brand?.toLowerCase().includes(q) ||
         p.sku?.toLowerCase().includes(q)
       );
@@ -658,7 +662,7 @@ export const WebshopSettings: React.FC<WebshopSettingsProps> = ({
                     const isUnpublished = webshop.unpublishedProductIds.includes(p.id);
                     const isFeatured = webshop.featuredProductIds.includes(p.id);
                     const hasCustomDesc = !!webshop.productDescriptions[p.id];
-                    const currentDesc = webshop.productDescriptions[p.id] || `Premium ${p.name} uit onze ${p.category} collectie.`;
+                    const currentDesc = webshop.productDescriptions[p.id] || `Premium ${p.name} uit onze ${categoryLabel(p)} collectie.`;
                     const customImage = webshop.productImages[p.id];
 
                     return (
@@ -688,7 +692,7 @@ export const WebshopSettings: React.FC<WebshopSettingsProps> = ({
                           <div>{p.name}</div>
                           {p.sku && <div className="text-[10px] text-slate-400 font-mono">SKU: {p.sku}</div>}
                         </td>
-                        <td className="p-3 text-slate-600">{p.category}</td>
+                        <td className="p-3 text-slate-600">{categoryLabel(p)}</td>
                         <td className="p-3 font-extrabold text-slate-900">
                           €{(p.priceCents / 100).toFixed(2)}
                         </td>
@@ -1104,7 +1108,7 @@ export const WebshopSettings: React.FC<WebshopSettingsProps> = ({
                 <FileText size={22} />
               </div>
               <div className="space-y-0.5">
-                <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">{editingProduct.category}</span>
+                <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">{categoryLabel(editingProduct)}</span>
                 <h3 className="text-lg font-black text-slate-900">{editingProduct.name}</h3>
               </div>
             </div>
@@ -1116,7 +1120,7 @@ export const WebshopSettings: React.FC<WebshopSettingsProps> = ({
                   type="button"
                   onClick={() => {
                     setEditingDescriptionText(
-                      `Hoogwaardige en stijlvolle ${editingProduct.name} uit de categorie ${editingProduct.category}. Zorgvuldig geselecteerd voor onze online webshop met focus op kwaliteit en pasvorm.`
+                      `Hoogwaardige en stijlvolle ${editingProduct.name} uit de categorie ${categoryLabel(editingProduct)}. Zorgvuldig geselecteerd voor onze online webshop met focus op kwaliteit en pasvorm.`
                     );
                     triggerToast('Sjabloon tekst ingevuld!');
                   }}

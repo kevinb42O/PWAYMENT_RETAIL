@@ -122,7 +122,9 @@ export const buildCustomerInsights = ({
         const productType = item.product.productType ?? "merchandise";
         if (productType === "service" || productType === "gift-card") continue;
         if (salePolicy.excludedProductTypes.includes(productType as "service" | "gift-card")) continue;
-        if (salePolicy.excludedCategoryIds.includes(item.product.category)) continue;
+        if (salePolicy.excludedCategoryIds.includes(
+          item.product.categorySnapshot?.rootId ?? item.product.category,
+        )) continue;
         const remaining = item.quantity - (returned.get(`${sale.id}:${item.lineId}`) ?? 0);
         if (remaining <= 0) continue;
         const variant = sizeLabel(item.product);

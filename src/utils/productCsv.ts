@@ -1,6 +1,7 @@
-import { Product } from '../types';
+import { Product, ProductCategory } from '../types';
 import { centsToDecimalString, parseDecimalToCents } from './money';
 import { isSupportedVatRate, SUPPORTED_VAT_RATES } from './vat';
+import { childCategories, resolveCategoryPath } from '../catalog/categoryTaxonomy';
 
 export const PRODUCT_CSV_HEADERS = [
   'id',
@@ -113,6 +114,8 @@ export interface ProductCsvContext {
   existing: Product[];
   /** VAT rate per known category id; a row without `vatRate` inherits it. */
   categoryVatById: Map<string, number>;
+  /** Enables strict root/leaf resolution instead of retaining legacy free text. */
+  categories?: ProductCategory[];
 }
 
 const parseWholeNumber = (txt: string): number | undefined | null => {
@@ -300,12 +303,36 @@ export const parseProductsCsv = (
     const optionalText = (column: string, existingValue: string | undefined) =>
       hasColumn(column) ? cell(column) || undefined : existingValue;
 
+    let subCategory = optionalText('subCategory', existing?.subCategory);
+    let canonicalCategory = category;
+    if (ctx.categories) {
+      const path = resolveCategoryPath(category, ctx.categories, subCategory);
+      if (!path) {
+        issues.push({ line: lineNo, message: `${name}: categorie "${category}" kon niet worden gekoppeld.` });
+        continue;
+      }
+      if (subCategory) {
+        const leaf = path.leaf ?? childCategories(ctx.categories, path.root.id).find(
+          (candidate) => candidate.name.toLocaleLowerCase('nl-BE') === subCategory!.toLocaleLowerCase('nl-BE'),
+        );
+        if (!leaf || leaf.parentId !== path.root.id) {
+          issues.push({ line: lineNo, message: `${name}: onbekende subcategorie "${subCategory}" onder "${path.root.name}".` });
+          continue;
+        }
+        canonicalCategory = leaf.id;
+        subCategory = leaf.name;
+      } else {
+        canonicalCategory = path.leaf?.id ?? path.root.id;
+        subCategory = path.leaf?.name;
+      }
+    }
+
     products.push({
       ...existing,
       id,
       name,
-      category,
-      subCategory: optionalText('subCategory', existing?.subCategory),
+      category: canonicalCategory,
+      subCategory,
       brand: optionalText('brand', existing?.brand),
       supplier: optionalText('supplier', existing?.supplier),
       variant: optionalText('variant', existing?.variant),

@@ -23,6 +23,7 @@ import {
   VoidEntry,
   WebshopOrder,
 } from "../types";
+import { materializeLegacySubcategories } from "../catalog/categoryTaxonomy";
 
 /**
  * IndexedDB schema for PWAyment.
@@ -697,6 +698,57 @@ export class POSDatabase extends Dexie {
       migration_activity_locks: "id, migrationId, storeId, occurredAt, [storeId+occurredAt], [migrationId+occurredAt]",
       service_orders: "id, &number, &trackingToken, createdAt, updatedAt, status, substatus, route, customerId, customerEmail, customerPhone, identifierValue",
     });
+
+    // Products now point to the most-specific category record. Older caches
+    // stored a root ID plus a free-text subcategory; materialize those labels
+    // as children before any UI or sync path consumes the catalog.
+    this.version(22)
+      .stores({
+        transactions:
+          "++id, tableId, paymentMethod, timestamp, isFinalized, userId, customerId, [customerId+timestamp], shiftId, registerId, kind, source, originalTransactionId, documentNumber, receiptBarcode, &clientRequestId",
+        daily_reports: "++id, &reportNumber, timestamp, shiftId, registerId",
+        audit: "++id, timestamp, userId, action",
+        users: "id, role",
+        outbox: "++id, timestamp, kind, deliveryStatus, nextAttemptAt, leaseExpiresAt",
+        shifts: "++id, &shiftNumber, registerId, status, openedAt, closedAt, [registerId+status]",
+        voids: "++id, timestamp, tableId, productId, byUserId",
+        products: "id, category, isActive, productType, supplierCode",
+        categories: "id, parentId, name, isActive, [parentId+name]",
+        customers: "id, email, phone, priceGroup, isActive",
+        gift_cards: "id, customerId, code, isActive",
+        gift_card_events: "id, giftCardId, timestamp, type, source, transactionId, dailyReportId, [giftCardId+timestamp]",
+        business_actions: "id, type, status, createdAt, updatedAt, dueAt, ownerUserId",
+        purchase_orders: "id, supplier, status, createdAt, updatedAt, expectedDeliveryAt",
+        stock_movements: "++id, productId, reason, timestamp, purchaseOrderId, transactionId",
+        webshop_orders: "id, &clientRequestId, &number, createdAt, updatedAt, status, paymentStatus, fulfillmentStatus, source",
+        import_jobs: "id, createdAt, status, fileName, profileId",
+        import_mapping_profiles: "id, name, format, updatedAt, lastUsedAt",
+        migration_activations: "id, storeId, status, activatedAt, lockedAt, [storeId+status]",
+        migration_inverse_changes: "id, migrationId, sequence, [migrationId+sequence]",
+        migration_activity_locks: "id, migrationId, storeId, occurredAt, [migrationId+occurredAt]",
+        service_orders: "id, &number, &trackingToken, createdAt, updatedAt, status, substatus, route, customerId, customerEmail, customerPhone, identifierValue",
+      })
+      .upgrade(async (tx) => {
+        const categories = (await tx.table("categories").toArray()) as ProductCategory[];
+        const products = (await tx.table("products").toArray()) as Product[];
+        const materialized = materializeLegacySubcategories(categories, products);
+        if (materialized.createdCategories.length > 0) {
+          await tx.table("categories").bulkPut(materialized.createdCategories);
+          await tx.table("outbox").add({
+            timestamp: Date.now(),
+            kind: "upsert_category",
+            payload: materialized.createdCategories,
+          });
+        }
+        if (materialized.updatedProducts.length > 0) {
+          await tx.table("products").bulkPut(materialized.updatedProducts);
+          await tx.table("outbox").add({
+            timestamp: Date.now(),
+            kind: "upsert_product",
+            payload: materialized.updatedProducts,
+          });
+        }
+      });
   }
 }
 

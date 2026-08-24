@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, Barcode, Boxes, Building2, Check, CheckCircle2, Download, Package, PackageSearch, Palette, Pencil, Plus, RotateCcw, Search, Tag, Tags, Trash2, TrendingUp, Upload, X } from 'lucide-react';
+import { AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, Barcode, Boxes, Building2, Check, CheckCircle2, CornerDownRight, Download, Package, PackageSearch, Palette, Pencil, Plus, RotateCcw, Search, Tag, Tags, Trash2, TrendingUp, Upload, X } from 'lucide-react';
 import { useProducts } from '../store/useProducts';
 import { useStore } from '../store/useStore';
 import { InventoryAdjustmentReason, ManualCatalogFamilyPayload, Product } from '../types';
@@ -21,6 +21,7 @@ import { useStoreConfiguration } from '../store/useStoreConfiguration';
 import { configuredVatFallback } from '../onboarding/storeConfiguration';
 import { CatalogBuilder } from './CatalogBuilder';
 import { useAuth } from '../auth/useAuth';
+import { resolveProductCategoryPath } from '../catalog/categoryTaxonomy';
 
 const COLOR_PRESETS: { label: string; cls: string }[] = [
   { label: 'Deck blauw', cls: 'bg-sky-700' },
@@ -79,6 +80,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
   const categories = useCategories((s) => s.list);
   const hydrateCategories = useCategories((s) => s.hydrate);
   const addCategory = useCategories((s) => s.addCategory);
+  const addSubcategory = useCategories((s) => s.addSubcategory);
   const removeCategory = useCategories((s) => s.removeCategory);
   const renameCategory = useCategories((s) => s.renameCategory);
   const setCategoryVatRate = useCategories((s) => s.setCategoryVatRate);
@@ -97,6 +99,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
   const [paceSelection, setPaceSelection] = useState<{ productIds: string[]; label: string } | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryVatRate, setNewCategoryVatRate] = useState<number>(configuredDefaultVat);
+  const [newSubcategoryByParent, setNewSubcategoryByParent] = useState<Record<string, string>>({});
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
   const [editingCatName, setEditingCatName] = useState<string>('');
   const [editing, setEditing] = useState<Product | null>(null);
@@ -118,6 +121,11 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
 
   useEffect(() => {
     setViewTab(initialTab);
+    if (initialTab === 'categories') {
+      setCatalogBuilderOpen(false);
+      setEditingFamilyId(undefined);
+      setEditing(null);
+    }
   }, [initialTab]);
 
   useEffect(() => {
@@ -157,6 +165,19 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
     return m;
   }, [categories]);
 
+  const rootCategories = useMemo(
+    () => categories.filter((category) => !category.parentId),
+    [categories],
+  );
+  const subcategoriesByParent = useMemo(() => {
+    const grouped = new Map<string, typeof categories>();
+    for (const category of categories) {
+      if (!category.parentId) continue;
+      grouped.set(category.parentId, [...(grouped.get(category.parentId) ?? []), category]);
+    }
+    return grouped;
+  }, [categories]);
+
   const categoryVatById = useMemo(() => {
     const m = new Map<string, number>();
     for (const c of categories) m.set(c.id, c.vatRate ?? configuredDefaultVat);
@@ -167,11 +188,24 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
     const map = new Map<string, number>();
     for (const p of list) {
       if (p.isActive !== false) {
-        map.set(p.category, (map.get(p.category) || 0) + 1);
+        const path = resolveProductCategoryPath(p, categories);
+        const rootId = path?.root.id ?? p.category;
+        map.set(rootId, (map.get(rootId) || 0) + 1);
       }
     }
     return map;
-  }, [list]);
+  }, [categories, list]);
+  const productCountBySubcategory = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const subcategory of categories.filter((category) => category.parentId)) {
+      const count = list.filter((product) =>
+        product.isActive !== false
+        && resolveProductCategoryPath(product, categories)?.leaf?.id === subcategory.id
+      ).length;
+      counts.set(subcategory.id, count);
+    }
+    return counts;
+  }, [categories, list]);
   const familySizeById = useMemo(() => {
     const map = new Map<string, number>();
     for (const product of list) if (product.familyId) {
@@ -200,11 +234,12 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
       .filter((p) => {
         if (filter === 'active' && p.isActive === false) return false;
         if (filter === 'archived' && p.isActive !== false) return false;
-        if (categoryFilter !== 'all' && p.category !== categoryFilter) return false;
+        const categoryPath = resolveProductCategoryPath(p, categories);
+        if (categoryFilter !== 'all' && categoryPath?.root.id !== categoryFilter) return false;
         if (paceSelection && !paceSelection.productIds.includes(p.id)) return false;
         if (!term) return true;
 
-        const catName = categoryNameById.get(p.category) ?? p.category;
+        const catName = categoryPath?.root.name ?? categoryNameById.get(p.category) ?? p.category;
         const searchHaystack = [
           p.name, p.brand, p.supplier, p.variant, p.sku, p.barcode,
           p.subCategory, catName, ...(p.identifiers ?? []).map((identifier) => identifier.value),
@@ -220,8 +255,8 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
 
         if (sortKey === 'name') return mult * a.name.localeCompare(b.name);
         if (sortKey === 'category') {
-          const catA = categoryNameById.get(a.category) ?? a.category;
-          const catB = categoryNameById.get(b.category) ?? b.category;
+          const catA = resolveProductCategoryPath(a, categories)?.root.name ?? categoryNameById.get(a.category) ?? a.category;
+          const catB = resolveProductCategoryPath(b, categories)?.root.name ?? categoryNameById.get(b.category) ?? b.category;
           return mult * catA.localeCompare(catB);
         }
         if (sortKey === 'subCategory') return mult * (a.subCategory ?? '').localeCompare(b.subCategory ?? '');
@@ -235,13 +270,13 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
 
         return 0;
       });
-  }, [list, filter, categoryFilter, paceSelection, search, sortKey, sortDir, categoryNameById]);
+  }, [list, filter, categoryFilter, paceSelection, search, sortKey, sortDir, categoryNameById, categories]);
 
   const ensureStartingCategory = async () => {
     // A real new tenant has no seeded categories. Create one safe starting
     // category so the first-product route from the guided setup is usable
     // immediately, while the merchant can still rename or add categories later.
-    let category = categories[0];
+    let category = rootCategories[0];
     if (!category) {
       try {
         category = await addCategory('Algemeen', configuredDefaultVat) ?? undefined;
@@ -276,7 +311,14 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
       color: 'bg-sky-700',
       isActive: true,
     };
-    const next = seed ? { ...emptyProduct, ...seed, id: '' } : emptyProduct;
+    const seedPath = seed ? resolveProductCategoryPath(seed, categories) : null;
+    const next = seed ? {
+      ...emptyProduct,
+      ...seed,
+      id: '',
+      category: seedPath?.root.id ?? seed.category,
+      subCategory: seedPath?.leaf?.name ?? seed.subCategory,
+    } : emptyProduct;
     setEditing(next);
     setIsNew(true);
     setPriceText(centsToInput(next.priceCents));
@@ -323,7 +365,12 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
   }, [openNewProductRequestKey, categories, configuredDefaultVat]);
 
   const openEdit = (p: Product) => {
-    setEditing({ ...p });
+    const path = resolveProductCategoryPath(p, categories);
+    setEditing({
+      ...p,
+      category: path?.root.id ?? p.category,
+      subCategory: path?.leaf?.name ?? p.subCategory,
+    });
     setIsNew(false);
     setPriceText(centsToInput(p.priceCents));
     setCostText(centsToInput(p.costPriceCents));
@@ -415,6 +462,11 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
       supplier: supplier || undefined,
       supplierCode: supplierCode || undefined,
       variant: variant || undefined,
+      category: subCategory
+        ? subcategoriesByParent.get(editing.category)?.find(
+            (category) => category.name.toLocaleLowerCase('nl-BE') === subCategory.toLocaleLowerCase('nl-BE'),
+          )?.id ?? editing.category
+        : editing.category,
       subCategory: subCategory || undefined,
       costPriceCents,
       priceCents,
@@ -493,6 +545,15 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
     setNewCategoryName('');
   };
 
+  const createSubcategory = async (parentId: string) => {
+    const created = await addSubcategory(parentId, newSubcategoryByParent[parentId] ?? '');
+    if (!created) {
+      alert('Subcategorie kon niet toegevoegd worden (bestaat al of is ongeldig).');
+      return;
+    }
+    setNewSubcategoryByParent((current) => ({ ...current, [parentId]: '' }));
+  };
+
   const deleteCategory = async (id: string) => {
     const ok = await removeCategory(id);
     if (!ok) {
@@ -519,6 +580,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
     const { products, issues } = parseProductsCsv(await file.text(), {
       existing: list,
       categoryVatById,
+      categories,
     });
 
     if (issues.length > 0) {
@@ -738,7 +800,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
             <div className="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
               <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">
-                Alle Categorieën ({categories.length})
+                {rootCategories.length} hoofdcategorieën · {categories.length - rootCategories.length} subcategorieën
               </span>
               <span className="text-[11px] font-bold text-slate-400">
                 Onboarding-default: {configuredDefaultVat}%
@@ -746,12 +808,14 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
             </div>
 
             <div className="divide-y divide-slate-100">
-              {categories.map((c) => {
+              {rootCategories.map((c) => {
                 const productCount = productCountByCat.get(c.id) || 0;
                 const isEditingThis = editingCatId === c.id;
+                const subcategories = subcategoriesByParent.get(c.id) ?? [];
 
                 return (
-                  <div key={c.id} className="p-4 flex items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors">
+                  <div key={c.id}>
+                  <div className="p-4 flex items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors">
                     <div className="flex-1 min-w-0 flex items-center gap-3">
                       <div className="p-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold shrink-0">
                         <Tags size={16} />
@@ -836,10 +900,66 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                       </button>
                     </div>
                   </div>
+                  <div className="border-t border-slate-100 bg-slate-50/50 px-4 py-3 sm:pl-16">
+                    <div className="space-y-2">
+                      {subcategories.map((subcategory) => {
+                        const isEditingSubcategory = editingCatId === subcategory.id;
+                        const count = productCountBySubcategory.get(subcategory.id) ?? 0;
+                        return (
+                          <div key={subcategory.id} className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex min-w-0 items-center gap-2.5">
+                              <CornerDownRight size={15} className="shrink-0 text-sky-600" />
+                              {isEditingSubcategory ? (
+                                <div className="flex min-w-0 flex-1 items-center gap-2">
+                                  <input
+                                    value={editingCatName}
+                                    onChange={(event) => setEditingCatName(event.target.value)}
+                                    onKeyDown={(event) => {
+                                      if (event.key === 'Enter') {
+                                        void renameCategory(subcategory.id, editingCatName);
+                                        setEditingCatId(null);
+                                      } else if (event.key === 'Escape') setEditingCatId(null);
+                                    }}
+                                    className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-slate-900"
+                                    autoFocus
+                                  />
+                                  <button type="button" onClick={async () => { await renameCategory(subcategory.id, editingCatName); setEditingCatId(null); }} className="rounded-lg bg-[#0e7490] p-1.5 text-white" title="Opslaan"><Check size={14} /></button>
+                                  <button type="button" onClick={() => setEditingCatId(null)} className="rounded-lg bg-slate-100 p-1.5 text-slate-600" title="Annuleren"><X size={14} /></button>
+                                </div>
+                              ) : (
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="truncate text-xs font-extrabold text-slate-800">{subcategory.name}</span>
+                                    <button type="button" onClick={() => { setEditingCatId(subcategory.id); setEditingCatName(subcategory.name); }} className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-900" title="Subcategorie hernoemen"><Pencil size={12} /></button>
+                                  </div>
+                                  <span className="text-[10px] font-semibold text-slate-400">Neemt {c.vatRate ?? configuredDefaultVat}% BTW over van {c.name}</span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2 pl-6 sm:pl-0">
+                              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-bold text-slate-600">{count} {count === 1 ? 'product' : 'producten'}</span>
+                              <button type="button" onClick={() => void deleteCategory(subcategory.id)} className="rounded-lg p-1.5 text-rose-600 hover:bg-rose-50" title="Subcategorie verwijderen"><Trash2 size={14} /></button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <input
+                          value={newSubcategoryByParent[c.id] ?? ''}
+                          onChange={(event) => setNewSubcategoryByParent((current) => ({ ...current, [c.id]: event.target.value }))}
+                          onKeyDown={(event) => { if (event.key === 'Enter') void createSubcategory(c.id); }}
+                          placeholder={`Nieuwe subcategorie onder ${c.name}`}
+                          className="min-w-0 flex-1 rounded-xl border border-dashed border-slate-300 bg-white px-3 py-2 text-xs font-semibold focus:border-sky-500 focus:outline-none"
+                        />
+                        <button type="button" onClick={() => void createSubcategory(c.id)} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-extrabold text-sky-800 hover:bg-sky-100"><Plus size={14} /> Subcategorie toevoegen</button>
+                      </div>
+                    </div>
+                  </div>
+                  </div>
                 );
               })}
 
-              {categories.length === 0 && (
+              {rootCategories.length === 0 && (
                 <div className="p-8 text-center text-xs text-slate-400 font-medium">
                   Nog geen categorieën aanwezig.
                 </div>
@@ -903,7 +1023,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                 className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 shadow-2xs cursor-pointer"
               >
                 <option value="all">Alle Categorieën</option>
-                {categories.map((c) => (
+                {rootCategories.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
@@ -977,10 +1097,10 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                           </div>
                         </td>
                         <td className="py-3 px-3 font-bold text-slate-800 whitespace-nowrap">
-                          {categoryNameById.get(p.category) ?? p.category}
+                          {resolveProductCategoryPath(p, categories)?.root.name ?? categoryNameById.get(p.category) ?? p.category}
                         </td>
                         <td className="py-3 px-3 text-slate-500 whitespace-nowrap">
-                          {p.subCategory ?? '-'}
+                          {resolveProductCategoryPath(p, categories)?.leaf?.name ?? p.subCategory ?? '-'}
                         </td>
                         {/* SINGLE-LINE Crisp SKU Code Display */}
                         <td className="py-3 px-3 whitespace-nowrap font-mono text-[11px] text-slate-600 font-extrabold" title={p.sku}>
@@ -1191,11 +1311,11 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                   <Field label="Categorie *">
                     <select
                       value={editing.category}
-                      onChange={(e) => setEditing({ ...editing, category: e.target.value })}
+                      onChange={(e) => setEditing({ ...editing, category: e.target.value, subCategory: undefined })}
                       disabled={editingBelongsToFamily}
                       className="w-full bg-white border border-slate-300 focus:border-slate-900 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 cursor-pointer disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
                     >
-                      {categories.map((c) => (
+                      {rootCategories.map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.name} ({c.vatRate ?? BELGIAN_RETAIL_VAT_RATE}% BTW)
                         </option>
@@ -1203,13 +1323,20 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                     </select>
                   </Field>
                   <Field label="Subcategorie">
-                    <input
+                    <select
                       value={editing.subCategory ?? ''}
                       onChange={(e) => setEditing({ ...editing, subCategory: e.target.value })}
                       disabled={editingBelongsToFamily}
-                      placeholder="bv. Veters / Accessoires"
                       className="w-full bg-white border border-slate-300 focus:border-slate-900 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
-                    />
+                    >
+                      <option value="">Geen subcategorie</option>
+                      {(subcategoriesByParent.get(editing.category) ?? []).map((subcategory) => (
+                        <option key={subcategory.id} value={subcategory.name}>{subcategory.name}</option>
+                      ))}
+                      {editing.subCategory && !(subcategoriesByParent.get(editing.category) ?? []).some((subcategory) => subcategory.name === editing.subCategory) && (
+                        <option value={editing.subCategory}>{editing.subCategory} (bestaande waarde)</option>
+                      )}
+                    </select>
                   </Field>
                 </div>
               </div>

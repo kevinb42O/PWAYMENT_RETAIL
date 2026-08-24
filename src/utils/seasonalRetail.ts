@@ -1,6 +1,7 @@
 import { Transaction } from "../types";
 import { allocateCents } from "./money";
 import { isGiftCardProduct, transactionCostCents } from "./financial";
+import { productRootCategoryLabel } from "../catalog/categoryTaxonomy";
 import {
   calendarDayDifference,
   getZonedDateParts,
@@ -162,7 +163,7 @@ export const buildSeasonalRetailSnapshot = (
     for (const [index, item] of transaction.items.entries()) {
       if (isGiftCardProduct(item.product)) continue;
       occurrence.units += item.quantity;
-      const category = item.product.category || "Overig";
+      const category = productRootCategoryLabel(item.product) || "Overig";
       const categoryRow = occurrence.categories.get(category) ?? {
         revenueCents: 0,
         units: 0,

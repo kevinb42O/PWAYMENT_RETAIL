@@ -26,6 +26,13 @@ const resolveCategoryId = async (
       .filter((candidate) => candidate.serverId === row.category_id)
       .first();
     if (category) return category.id;
+    const { data: remoteCategory } = await supabase
+      .from("categories")
+      .select("external_id")
+      .eq("store_id", row.store_id)
+      .eq("id", row.category_id)
+      .maybeSingle();
+    if (remoteCategory?.external_id) return remoteCategory.external_id;
   }
 
   // Legacy caches created before `serverId` existed can still be repaired by
@@ -88,9 +95,28 @@ const mapCustomer = (row: Row<"customers">): Customer => ({
 });
 
 const mapCategory = async (row: Row<"categories">): Promise<ProductCategory> => {
-  const parent = row.parent_id
+  let parent = row.parent_id
     ? (await db.categories.toArray()).find((category) => category.serverId === row.parent_id)
     : undefined;
+  if (row.parent_id && !parent) {
+    const { data: remoteParent } = await supabase
+      .from("categories")
+      .select("id, external_id, name, vat_rate, sort_order, is_active")
+      .eq("store_id", row.store_id)
+      .eq("id", row.parent_id)
+      .maybeSingle();
+    if (remoteParent) {
+      parent = {
+        id: remoteParent.external_id ?? remoteParent.id,
+        serverId: remoteParent.id,
+        name: remoteParent.name,
+        vatRate: Number(remoteParent.vat_rate),
+        sortOrder: remoteParent.sort_order ?? undefined,
+        isActive: remoteParent.is_active,
+      };
+      await db.categories.put(parent);
+    }
+  }
   return {
     id: row.external_id ?? row.id,
     serverId: row.id,

@@ -9,6 +9,7 @@ import {
 } from "../utils/productLookup";
 import { Box, Grid2X2, Layers3, FileSpreadsheet } from "lucide-react";
 import { isGiftCardProduct } from "../utils/financial";
+import { resolveProductCategoryPath } from "../catalog/categoryTaxonomy";
 
 const stockLabel = (stockQty?: number): string => {
   if (stockQty == null) return "Geen voorraadtracking";
@@ -68,12 +69,12 @@ export const Menu: React.FC<MenuProps> = ({
   const categoryItems = useMemo(() => {
     if (categories.length > 0) {
       return categories
-        .filter((category) => category.isActive !== false)
+        .filter((category) => category.isActive !== false && !category.parentId)
         .map((category) => ({
           id: category.id,
           name: category.name,
           count: activeProducts.filter(
-            (product) => product.category === category.id,
+            (product) => resolveProductCategoryPath(product, categories)?.root.id === category.id,
           ).length,
         }))
         .filter((category) => category.count > 0);
@@ -96,34 +97,47 @@ export const Menu: React.FC<MenuProps> = ({
     () =>
       activeProducts.filter(
         (product) =>
-          activeCategory === "all" || product.category === activeCategory,
+          activeCategory === "all"
+          || resolveProductCategoryPath(product, categories)?.root.id === activeCategory,
       ),
-    [activeCategory, activeProducts],
+    [activeCategory, activeProducts, categories],
   );
 
   const subCategoryItems = useMemo(() => {
     const names = Array.from(
       new Set(
-        categoryProducts.map((product) => product.subCategory ?? "Overig"),
+        categoryProducts.map((product) =>
+          resolveProductCategoryPath(product, categories)?.leaf?.name
+          ?? product.subCategory
+          ?? "Overig"
+        ),
       ),
     ).sort();
     return names.map((name) => ({
       id: name,
       name,
       count: categoryProducts.filter(
-        (product) => (product.subCategory ?? "Overig") === name,
+        (product) => (
+          resolveProductCategoryPath(product, categories)?.leaf?.name
+          ?? product.subCategory
+          ?? "Overig"
+        ) === name,
       ).length,
     }));
-  }, [categoryProducts]);
+  }, [categories, categoryProducts]);
 
   const subCategoryProducts = useMemo(
     () =>
       categoryProducts.filter(
         (product) =>
           activeSubCategory === "all" ||
-          (product.subCategory ?? "Overig") === activeSubCategory,
+          (
+            resolveProductCategoryPath(product, categories)?.leaf?.name
+            ?? product.subCategory
+            ?? "Overig"
+          ) === activeSubCategory,
       ),
-    [activeSubCategory, categoryProducts],
+    [activeSubCategory, categories, categoryProducts],
   );
 
   const brandItems = useMemo(() => {
@@ -177,7 +191,13 @@ export const Menu: React.FC<MenuProps> = ({
   const exactCodeMatch = term ? findByScanCode(query) : null;
   const filteredProducts = useMemo(() => {
     const base = term
-      ? activeProducts.filter((product) => matchesCatalogQuery(product, term))
+      ? activeProducts.filter((product) => {
+          if (matchesCatalogQuery(product, term)) return true;
+          const path = resolveProductCategoryPath(product, categories);
+          return [path?.root.name, path?.leaf?.name]
+            .filter(Boolean)
+            .some((label) => normalizeCatalogQuery(label ?? "").includes(term));
+        })
       : subCategoryProducts.filter(
           (product) =>
             activeBrand === "all" ||
@@ -196,7 +216,7 @@ export const Menu: React.FC<MenuProps> = ({
         (a.variant ?? "").localeCompare(b.variant ?? "")
       );
     });
-  }, [activeBrand, activeProducts, subCategoryProducts, term]);
+  }, [activeBrand, activeProducts, categories, subCategoryProducts, term]);
 
   useEffect(() => {
     setVisibleProductCount(40);
@@ -432,7 +452,10 @@ export const Menu: React.FC<MenuProps> = ({
                   <div className="relative z-10 space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <span className="rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-600">
-                        {product.subCategory ?? product.category}
+                        {resolveProductCategoryPath(product, categories)?.leaf?.name
+                          ?? resolveProductCategoryPath(product, categories)?.root.name
+                          ?? product.subCategory
+                          ?? product.category}
                       </span>
                       {(outOfStock || lowStock) && (
                         <span

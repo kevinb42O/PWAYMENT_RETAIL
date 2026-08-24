@@ -3,6 +3,7 @@ import { allocateCents } from "./money";
 import { isGiftCardProduct } from "./financial";
 import { getTransactionSellerIdentity } from "./retailIntelligence";
 import { calendarDayDifference, getZonedDateParts } from "./time";
+import { productRootCategoryLabel } from "../catalog/categoryTaxonomy";
 
 export interface ProductInsightRow {
   productId: string;
@@ -117,7 +118,7 @@ export const buildProductInsights = (
         const current = products.get(item.product.id) ?? {
           productId: item.product.id,
           name: item.product.name,
-          category: item.product.category || "Ongecategoriseerd",
+          category: productRootCategoryLabel(item.product),
           revenueCents: 0,
           grossProfitCents: 0,
           units: 0,
@@ -216,7 +217,7 @@ export const buildDiscountInsights = (
         map.set(key, current);
       };
 
-      const category = item.product.category || "Ongecategoriseerd";
+      const category = productRootCategoryLabel(item.product);
       add(categoryRows, category, category, categoriesSeen);
       add(
         productRows,
