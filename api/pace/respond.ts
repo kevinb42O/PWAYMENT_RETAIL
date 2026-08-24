@@ -79,6 +79,11 @@ const MAX_BODY_BYTES = 40_000;
 const MAX_QUESTION_LENGTH = 800;
 const WINDOW_MS = 60_000;
 const REQUESTS_PER_WINDOW = 20;
+const GEMINI_FALLBACK_MODELS = [
+  "gemini-3.5-flash-lite",
+  "gemini-3.1-flash-lite",
+  "gemini-flash-latest",
+] as const;
 const rateWindows = new Map<string, { count: number; startedAt: number }>();
 
 const json = (status: number, body: Record<string, unknown>) =>
@@ -315,6 +320,30 @@ const callGemini = async (
   };
 };
 
+const callGeminiWithFallback = async (
+  apiKey: string,
+  preferredModel: string,
+  question: string,
+  context: ReturnType<typeof allowedContext>,
+  tenantContext: unknown,
+  history: PaceHistoryTurn[],
+  localCandidate: PaceLocalCandidate | undefined,
+) => {
+  const models = [...new Set([preferredModel, ...GEMINI_FALLBACK_MODELS])];
+  let lastFailure: Awaited<ReturnType<typeof callGemini>> | undefined;
+  for (const candidateModel of models) {
+    const result = await callGemini(apiKey, candidateModel, question, context, tenantContext, history, localCandidate);
+    if (result.ok) {
+      if (result.answer) return { ...result, model: candidateModel };
+      lastFailure = result;
+      continue;
+    }
+    lastFailure = result;
+    if (![404, 429, 500, 502, 503, 504].includes(result.status)) break;
+  }
+  return lastFailure ?? { ok: false as const, status: 503, quota: false };
+};
+
 const callOpenAi = async (
   apiKey: string,
   model: string,
@@ -364,7 +393,7 @@ export default {
     const openAiKey = process.env.OPENAI_API_KEY;
     const provider = geminiKey ? "gemini" as const : "openai" as const;
     const model = geminiKey
-      ? process.env.GEMINI_PACE_MODEL?.trim() || "gemini-flash-latest"
+      ? process.env.GEMINI_PACE_MODEL?.trim() || "gemini-3.5-flash-lite"
       : process.env.OPENAI_PACE_MODEL?.trim() || "gpt-5-nano";
     const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
     const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -411,10 +440,10 @@ export default {
       tenantContext = { unavailable: true, reason: "context-fetch-failed" };
     }
 
-    let upstreamResult: Awaited<ReturnType<typeof callGemini>> | Awaited<ReturnType<typeof callOpenAi>>;
+    let upstreamResult: Awaited<ReturnType<typeof callGeminiWithFallback>> | Awaited<ReturnType<typeof callOpenAi>>;
     try {
       upstreamResult = provider === "gemini"
-        ? await callGemini(geminiKey!, model, question, context, tenantContext, history, localCandidate)
+        ? await callGeminiWithFallback(geminiKey!, model, question, context, tenantContext, history, localCandidate)
         : await callOpenAi(openAiKey!, model, question, context, tenantContext, history, localCandidate, safetyIdentifier);
     } catch {
       return json(503, { error: "PACE_AI_UNAVAILABLE", fallback: "local" });
@@ -434,7 +463,7 @@ export default {
     return json(200, {
       answer,
       source: provider,
-      model,
+      model: "model" in upstreamResult ? upstreamResult.model : model,
       responseId: upstreamResult.responseId,
       usage: {
         inputTokens: upstreamResult.inputTokens,

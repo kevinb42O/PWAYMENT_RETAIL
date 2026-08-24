@@ -106,11 +106,14 @@ describe("Pace OpenAI endpoint", () => {
 
   it("returns an explicit local fallback when the Gemini free-tier quota is exhausted", async () => {
     process.env.GEMINI_API_KEY = "test-gemini-key";
+    const quotaResponse = () => Response.json({
+      error: { code: 429, status: "RESOURCE_EXHAUSTED", message: "Quota exceeded" },
+    }, { status: 429 });
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(Response.json({ id: "user-gemini-quota" }))
-      .mockResolvedValueOnce(Response.json({
-        error: { code: 429, status: "RESOURCE_EXHAUSTED", message: "Quota exceeded" },
-      }, { status: 429 }));
+      .mockResolvedValueOnce(quotaResponse())
+      .mockResolvedValueOnce(quotaResponse())
+      .mockResolvedValueOnce(quotaResponse());
     vi.stubGlobal("fetch", fetchMock);
 
     const response = await handler.fetch(request({ question: "Vrije vraag", context: {} }));
@@ -120,6 +123,30 @@ describe("Pace OpenAI endpoint", () => {
       fallback: "local",
       provider: "gemini",
     });
+  });
+
+  it("switches to an available Flash model when the preferred model is overloaded", async () => {
+    process.env.GEMINI_API_KEY = "test-gemini-key";
+    process.env.GEMINI_PACE_MODEL = "gemini-flash-latest";
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({ id: "user-gemini-retry" }))
+      .mockResolvedValueOnce(Response.json({
+        error: { code: 503, status: "UNAVAILABLE", message: "High demand" },
+      }, { status: 503 }))
+      .mockResolvedValueOnce(Response.json({
+        candidates: [{ content: { parts: [{ text: "Hallo! Waarmee kan ik helpen?" }] } }],
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handler.fetch(request({ question: "hi", context: { view: "pos" } }));
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      answer: "Hallo! Waarmee kan ik helpen?",
+      source: "gemini",
+      model: "gemini-3.5-flash-lite",
+    });
+    expect(String(fetchMock.mock.calls[1][0])).toContain("gemini-flash-latest");
+    expect(String(fetchMock.mock.calls[2][0])).toContain("gemini-3.5-flash-lite");
   });
 
   it("loads tenant context with the caller session and grounds Gemini in product knowledge", async () => {

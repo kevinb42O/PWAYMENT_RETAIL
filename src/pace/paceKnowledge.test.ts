@@ -16,6 +16,12 @@ const context = (patch: Partial<PaceContext> = {}): PaceContext => ({
 });
 
 describe("Pace product knowledge", () => {
+  it("responds naturally to a simple greeting even during local fallback", () => {
+    const answer = answerFromPaceKnowledge("hi", context());
+    expect(answer.intentId).toBe("conversation.greeting");
+    expect(answer.answer).toContain("Natuurlijk mag je gewoon hallo zeggen");
+  });
+
   it("covers every merchant-facing Pace domain with reviewed intent families", () => {
     expect(PACE_KNOWLEDGE_INTENT_IDS).toEqual(expect.arrayContaining([
       "pos.payment",

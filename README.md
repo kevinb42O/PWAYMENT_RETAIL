@@ -231,7 +231,7 @@ VITE_PUBLIC_WEBSHOP_IDENTIFIER="your-shop-subdomain"
 
 # Alleen server-side instellen; nooit met VITE_ prefix.
 GEMINI_API_KEY="your-rotated-server-secret"
-GEMINI_PACE_MODEL="gemini-flash-latest"
+GEMINI_PACE_MODEL="gemini-3.5-flash-lite"
 # Optionele providerfallback wanneer Gemini niet is geconfigureerd.
 OPENAI_API_KEY="sk-project-secret"
 OPENAI_PACE_MODEL="gpt-5-nano"

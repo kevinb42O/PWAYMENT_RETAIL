@@ -19,6 +19,14 @@ const entry = (value: PaceKnowledgeEntry) => value;
 
 const KNOWLEDGE: PaceKnowledgeEntry[] = [
   entry({
+    id: "conversation.greeting",
+    patterns: [/^(hi|hey|hallo|hallo pace|hoi|goedemorgen|goedemiddag|goedenavond|hello|bonjour|salut)[!.? ]*$/i],
+    title: "Hallo, ik ben Pace",
+    answer: (context) => `Hallo! Natuurlijk mag je gewoon hallo zeggen. Ik kan vrij met je meedenken én ik ken de PWAYMENT-werkruimte. Je zit nu in ${context.view}; vraag gerust wat je wilt weten of doen.`,
+    followUps: ["Wat kan ik hier vragen?", "Welke gegevens gebruikt Pace?", "Wat is mijn synchronisatiestatus?"],
+    priority: 30,
+  }),
+  entry({
     id: "sync.status",
     patterns: [/\b(sync|synchronis|offline|online|verbinding|wachtrij|aflever)\w*/i, /waarom.+(mislukt|fout|vast)/i],
     title: "Synchronisatiestatus",
