@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { formatPaceKnowledgeForPrompt, retrievePaceKnowledge } from "../../src/pace/paceProductKnowledge";
+import { formatPaceKnowledgeForPrompt, retrievePaceKnowledge } from "../../src/pace/paceProductKnowledge.js";
 
 type PaceRole = "owner" | "manager" | "cashier";
 type PaceView =
