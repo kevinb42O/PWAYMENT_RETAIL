@@ -14,7 +14,6 @@ import {
   Database,
   FileText,
   Gift,
-  Globe2,
   Layers3,
   LockKeyhole,
   Menu,
@@ -617,7 +616,6 @@ export const SiteHeader = ({ mobileOpen, setMobileOpen, locale = 'nl', routePath
 const LanguageSwitcher = ({ locale, routePath, compact = false }: { locale: PublicLocale; routePath: string; compact?: boolean }) => (
   <nav className={`pw-language-switcher${compact ? ' is-compact' : ''}`} aria-label="Taal kiezen">
     <div className="pw-language-switcher-heading" aria-hidden="true">
-      <Globe2 size={15} strokeWidth={2} />
       <span>Taal</span>
     </div>
     <div className="pw-language-options">
