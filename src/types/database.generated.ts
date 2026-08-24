@@ -4115,6 +4115,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_pace_product_recommendations: {
+        Args: {
+          target_store_id: string
+          purchased_product_external_ids: string[]
+          result_limit?: number
+        }
+        Returns: {
+          product_external_id: string
+          pair_sale_count: number
+          confidence: number
+          evidence_label: string
+        }[]
+      }
       adjust_leave_balance: {
         Args: { payload: Json; target_store_id: string }
         Returns: Json

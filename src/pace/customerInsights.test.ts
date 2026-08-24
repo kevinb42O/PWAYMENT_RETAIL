@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CommercialReturnPolicy, CustomerInsightSettings, PaceRecommendationRule } from "../data/merchant";
+import type { CommercialReturnPolicy, CustomerInsightSettings } from "../data/merchant";
 import type { Product, Transaction } from "../types";
 import { buildCustomerInsights } from "./customerInsights";
 
@@ -38,18 +38,6 @@ const scarf: Product = {
   vatRate: 21,
   brand: "Samsoe Samsoe",
   stockQty: 2,
-};
-const recommendationRule: PaceRecommendationRule = {
-  id: "blazer-to-scarf",
-  name: "Maak de blazerlook compleet",
-  enabled: true,
-  trigger: { kind: "product", value: blazer.id },
-  recommendation: { kind: "category", value: scarf.category },
-  reason: "Een sjaal combineert met deze blazer.",
-  priority: 72,
-  validFrom: "2026-08-01T00:00:00.000Z",
-  validUntil: "2026-08-31T23:59:59.999Z",
-  scope: "store",
 };
 const sale = (id: number, timestamp: number, product: Product = blazer): Transaction => ({
   id,
@@ -116,29 +104,58 @@ describe("Pace customer insight engine", () => {
     expect(insights).toEqual([]);
   });
 
-  it("turns an active retailer rule into a stock-backed catalog action", () => {
+  it("learns a stock-backed catalog action from real purchase combinations", () => {
+    const customerPurchase = sale(8, Date.parse("2026-08-12T12:00:00.000Z"));
+    const combination: Transaction = {
+      ...sale(10, Date.parse("2026-08-14T12:00:00.000Z")),
+      customerId: "another-customer",
+      items: [
+        { lineId: "combo-blazer", product: blazer, quantity: 1 },
+        { lineId: "combo-scarf", product: scarf, quantity: 1 },
+      ],
+    };
     const insights = buildCustomerInsights({
       customerId,
-      transactions: [sale(8, Date.parse("2026-08-12T12:00:00.000Z"))],
+      transactions: [customerPurchase, combination],
       products: [blazer, scarf],
       policy,
       settings,
-      recommendationRules: [recommendationRule],
       now,
     });
-    expect(insights.find((insight) => insight.kind === "recommendation-rule")).toMatchObject({
-      title: "Maak de blazerlook compleet",
-      reason: "Een sjaal combineert met deze blazer.",
+    expect(insights.find((insight) => insight.kind === "automatic-recommendation")).toMatchObject({
+      title: "Vaak samen gekozen met Blazer",
       action: { kind: "catalog", productIds: [scarf.id] },
-      evidence: [{ transactionId: 8, productId: blazer.id, ruleId: recommendationRule.id }],
+      evidence: [{ transactionId: 10, productId: blazer.id }],
     });
   });
 
-  it("does not emit expired rules or recommendations without available stock", () => {
-    const rows = [sale(9, Date.parse("2026-08-12T12:00:00.000Z"))];
-    const expired = { ...recommendationRule, validUntil: "2026-08-20T23:59:59.999Z" };
+  it("does not recommend products without available stock", () => {
+    const customerPurchase = sale(9, Date.parse("2026-08-12T12:00:00.000Z"));
+    const combination: Transaction = {
+      ...sale(11, Date.parse("2026-08-14T12:00:00.000Z")),
+      customerId: "another-customer",
+      items: [{ lineId: "combo-blazer", product: blazer, quantity: 1 }, { lineId: "combo-scarf", product: scarf, quantity: 1 }],
+    };
     const outOfStock = { ...scarf, stockQty: 0 };
-    expect(buildCustomerInsights({ customerId, transactions: rows, products: [blazer, scarf], policy, settings, recommendationRules: [expired], now }).some((insight) => insight.kind === "recommendation-rule")).toBe(false);
-    expect(buildCustomerInsights({ customerId, transactions: rows, products: [blazer, outOfStock], policy, settings, recommendationRules: [recommendationRule], now }).some((insight) => insight.kind === "recommendation-rule")).toBe(false);
+    expect(buildCustomerInsights({ customerId, transactions: [customerPurchase, combination], products: [blazer, outOfStock], policy, settings, now }).some((insight) => insight.kind === "automatic-recommendation")).toBe(false);
+  });
+
+  it("deduplicates a central candidate learned through multiple earlier products", () => {
+    const insights = buildCustomerInsights({
+      customerId,
+      transactions: [sale(12, Date.parse("2026-08-12T12:00:00.000Z"))],
+      products: [blazer, scarf],
+      policy,
+      settings,
+      now,
+      serverRecommendations: [
+        { productId: scarf.id, pairSaleCount: 2, confidence: 0.4 },
+        { productId: scarf.id, pairSaleCount: 3, confidence: 0.6 },
+      ],
+    });
+    expect(insights.find((insight) => insight.kind === "automatic-recommendation")).toMatchObject({
+      action: { productIds: [scarf.id] },
+      evidenceSummary: "3 relevante verkopen · automatisch geleerd",
+    });
   });
 });

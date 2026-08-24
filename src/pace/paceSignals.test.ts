@@ -104,7 +104,7 @@ describe("Pace signal engine", () => {
   it("maps a recommendation to an explicit catalog filter without a cart action", () => {
     const [signal] = buildPaceSignals(context({ customerInsights: [{
       id: "rule:customer-1:rule-1",
-      kind: "recommendation-rule",
+      kind: "automatic-recommendation",
       priority: 72,
       tone: "flow",
       title: "Completeer de look",
@@ -116,7 +116,7 @@ describe("Pace signal engine", () => {
     expect(signal).toMatchObject({
       actionLabel: "Bekijk 2 artikelen",
       action: { kind: "catalog", productIds: ["one", "two"], filterLabel: "Completeer de look" },
-      evidenceLabel: "1 relevante aankoop · winkelregel",
+      evidenceLabel: "1 relevante verkoop · automatisch geleerd",
     });
   });
 });

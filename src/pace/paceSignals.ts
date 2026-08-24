@@ -142,12 +142,12 @@ export const buildPaceSignals = (
         tone: insight.tone,
         priority: insight.priority,
         customerInsightId: insight.id,
-        evidenceLabel: insight.kind === "recommendation-rule"
+        evidenceLabel: insight.evidenceSummary ?? (insight.kind === "automatic-recommendation"
           ? (() => {
             const count = new Set(insight.evidence.map((entry) => entry.transactionId).filter(Boolean)).size;
-            return `${count} relevante ${count === 1 ? "aankoop" : "aankopen"} · winkelregel`;
+            return `${count} relevante ${count === 1 ? "verkoop" : "verkopen"} · automatisch geleerd`;
           })()
-          : `${new Set(insight.evidence.map((entry) => entry.transactionId).filter(Boolean)).size} controleerbare ${insight.evidence.length === 1 ? "bron" : "bronnen"}`,
+          : `${new Set(insight.evidence.map((entry) => entry.transactionId).filter(Boolean)).size} controleerbare ${insight.evidence.length === 1 ? "bron" : "bronnen"}`),
       });
     }
   }

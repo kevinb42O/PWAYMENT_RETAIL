@@ -37,7 +37,6 @@ export const startTenantSettingsPersistence = (storeId: string): void => {
           return_policy: profile.returnPolicy || null,
           commercial_return_policy: (profile.commercialReturnPolicy ?? null) as unknown as Json | null,
           customer_insight_settings: (profile.customerInsightSettings ?? null) as unknown as Json | null,
-          pace_recommendation_rules: (profile.paceRecommendationRules ?? []) as unknown as Json,
         })
         .eq("id", storeId)
         .then(({ error }) => {

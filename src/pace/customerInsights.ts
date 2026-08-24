@@ -1,11 +1,10 @@
 import type {
   CommercialReturnPolicy,
   CustomerInsightSettings,
-  PaceRecommendationRule,
 } from "../data/merchant";
 import type { Product, Transaction } from "../types";
 
-export type CustomerInsightKind = "return-window" | "brand-affinity" | "recommendation-rule";
+export type CustomerInsightKind = "return-window" | "brand-affinity" | "automatic-recommendation";
 
 export interface CustomerInsight {
   id: string;
@@ -31,6 +30,13 @@ export interface CustomerInsight {
     filterLabel: string;
   };
   reason?: string;
+  evidenceSummary?: string;
+}
+
+export interface ServerPaceRecommendation {
+  productId: string;
+  pairSaleCount: number;
+  confidence: number;
 }
 
 interface BuildCustomerInsightsInput {
@@ -39,9 +45,9 @@ interface BuildCustomerInsightsInput {
   products: Product[];
   policy?: CommercialReturnPolicy;
   settings?: CustomerInsightSettings;
-  recommendationRules?: PaceRecommendationRule[];
   now?: number;
   timezone?: string;
+  serverRecommendations?: ServerPaceRecommendation[];
 }
 
 const daySerial = (timestamp: number, timezone: string): number => {
@@ -89,9 +95,9 @@ export const buildCustomerInsights = ({
   products,
   policy,
   settings,
-  recommendationRules = [],
   now = Date.now(),
   timezone = "Europe/Brussels",
+  serverRecommendations = [],
 }: BuildCustomerInsightsInput): CustomerInsight[] => {
   if (!customerId || !settings?.enabled) return [];
 
@@ -158,75 +164,121 @@ export const buildCustomerInsights = ({
       if (bucket.transactionIds.size < settings.minimumBrandTransactions) continue;
       const available = products.filter(
         (product) => product.isActive !== false && normalizedBrand(product.brand).toLocaleLowerCase("nl-BE") === brandKey && (product.stockQty == null || product.stockQty > 0),
-      ).length;
-      if (available === 0) continue;
+      );
+      if (available.length === 0) continue;
       insights.push({
         id: `brand:${customerId}:${brandKey}`,
         kind: "brand-affinity",
         priority: 55,
         tone: "flow",
         title: `Terugkerende interesse in ${bucket.label}`,
-        compact: `${bucket.transactionIds.size} eerdere aankopen · ${available} ${available === 1 ? "artikel" : "artikelen"} van dit merk beschikbaar.`,
+        compact: `${bucket.transactionIds.size} eerdere aankopen · ${available.length} ${available.length === 1 ? "artikel" : "artikelen"} van dit merk beschikbaar.`,
         detail: "Dit is een feitelijk aankooppatroon, geen voorspeld smaakprofiel. Gebruik het alleen wanneer het natuurlijk in het gesprek past.",
         evidence: bucket.evidence,
+        action: {
+          kind: "catalog",
+          label: available.length === 1 ? "Bekijk artikel" : `Bekijk ${available.length} artikelen`,
+          productIds: available.map((product) => product.id),
+          filterLabel: `Merkinteresse · ${bucket.label}`,
+        },
       });
     }
   }
 
   const recommendationCutoff = now - settings.brandLookbackDays * 86_400_000;
-  const purchasedLines = sales.flatMap((sale) => sale.timestamp < recommendationCutoff || sale.id == null
+  const globalReturned = returnedByOriginalLine(transactions);
+  const allSales = transactions.filter((row) =>
+    (row.kind ?? "sale") === "sale"
+    && row.isFinalized === 1
+    && row.source !== "demo"
+    && row.timestamp >= recommendationCutoff
+    && row.id != null,
+  );
+  const purchasedProductIds = new Set(sales.flatMap((sale) => sale.timestamp < recommendationCutoff
     ? []
-    : sale.items.flatMap((item) => {
-      const remaining = item.quantity - (returned.get(`${sale.id}:${item.lineId}`) ?? 0);
-      return remaining > 0 ? [{ sale, item }] : [];
-    }));
+    : sale.items.flatMap((item) => item.quantity - (returned.get(`${sale.id}:${item.lineId}`) ?? 0) > 0 ? [item.product.id] : [])));
   const availableProducts = products.filter(
     (product) => product.isActive !== false && (product.stockQty == null || product.stockQty > 0),
   );
-  const matches = (product: Product, match: PaceRecommendationRule["trigger"]) => {
-    if (match.kind === "product") return product.id === match.value;
-    if (match.kind === "category") return product.category === match.value;
-    return normalizedBrand(product.brand).toLocaleLowerCase("nl-BE")
-      === normalizedBrand(match.value).toLocaleLowerCase("nl-BE");
-  };
+  const availableById = new Map(availableProducts.map((product) => [product.id, product]));
+  const affinities = new Map<string, { sourceId: string; pairCount: number; sourceCount: number; transactionIds: Set<number> }>();
+  for (const sourceId of purchasedProductIds) {
+    let sourceCount = 0;
+    const candidateCounts = new Map<string, { pairCount: number; transactionIds: Set<number> }>();
+    for (const sale of allSales) {
+      const saleProductIds = new Set(sale.items.flatMap((item) => item.quantity - (globalReturned.get(`${sale.id}:${item.lineId}`) ?? 0) > 0 ? [item.product.id] : []));
+      if (!saleProductIds.has(sourceId)) continue;
+      sourceCount += 1;
+      for (const candidateId of saleProductIds) {
+        if (candidateId === sourceId || purchasedProductIds.has(candidateId) || !availableById.has(candidateId)) continue;
+        const candidate = candidateCounts.get(candidateId) ?? { pairCount: 0, transactionIds: new Set<number>() };
+        candidate.pairCount += 1;
+        if (sale.id != null) candidate.transactionIds.add(sale.id);
+        candidateCounts.set(candidateId, candidate);
+      }
+    }
+    for (const [candidateId, candidate] of candidateCounts) {
+      const current = affinities.get(candidateId);
+      if (!current || candidate.pairCount / Math.max(1, sourceCount) > current.pairCount / Math.max(1, current.sourceCount)) {
+        affinities.set(candidateId, { sourceId, pairCount: candidate.pairCount, sourceCount, transactionIds: candidate.transactionIds });
+      }
+    }
+  }
 
-  for (const rule of recommendationRules) {
-    if (!rule.enabled || rule.scope !== "store") continue;
-    const validFrom = rule.validFrom ? Date.parse(rule.validFrom) : Number.NEGATIVE_INFINITY;
-    const validUntil = rule.validUntil ? Date.parse(rule.validUntil) : Number.POSITIVE_INFINITY;
-    if ((rule.validFrom && !Number.isFinite(validFrom)) || (rule.validUntil && !Number.isFinite(validUntil))) continue;
-    if (now < validFrom || now > validUntil) continue;
-
-    const sourceLines = purchasedLines.filter(({ item }) => matches(item.product, rule.trigger));
-    if (sourceLines.length === 0) continue;
-    const targets = availableProducts.filter((product) => matches(product, rule.recommendation));
-    if (targets.length === 0) continue;
-
-    const sourceTransactionCount = new Set(sourceLines.map(({ sale }) => sale.id)).size;
+  const minimumSupport = allSales.length >= 20 ? 2 : 1;
+  const ranked = [...affinities.entries()]
+    .filter(([, affinity]) => affinity.pairCount >= minimumSupport)
+    .sort(([, left], [, right]) => (right.pairCount / Math.max(1, right.sourceCount)) - (left.pairCount / Math.max(1, left.sourceCount)) || right.pairCount - left.pairCount)
+    .slice(0, 4);
+  const uniqueServerRecommendations = [...serverRecommendations.reduce((recommendations, recommendation) => {
+    const current = recommendations.get(recommendation.productId);
+    if (!current || recommendation.confidence > current.confidence || (recommendation.confidence === current.confidence && recommendation.pairSaleCount > current.pairSaleCount)) {
+      recommendations.set(recommendation.productId, recommendation);
+    }
+    return recommendations;
+  }, new Map<string, ServerPaceRecommendation>()).values()];
+  const serverTargets = uniqueServerRecommendations
+    .map((recommendation) => ({ recommendation, product: availableById.get(recommendation.productId) }))
+    .filter((entry): entry is { recommendation: ServerPaceRecommendation; product: Product } => Boolean(entry.product))
+    .slice(0, 4);
+  if (serverTargets.length > 0) {
+    const strongest = serverTargets[0].recommendation;
+    const targets = serverTargets.map((entry) => entry.product);
     insights.push({
-      id: `rule:${customerId}:${rule.id}`,
-      kind: "recommendation-rule",
-      priority: Math.min(100, Math.max(1, Math.round(rule.priority))),
-      tone: rule.priority >= 80 ? "attention" : "flow",
-      title: rule.name,
-      compact: `${targets.length} ${targets.length === 1 ? "passend artikel" : "passende artikelen"} beschikbaar · ${rule.reason}`,
-      detail: `Waarom: ${rule.reason} Bewijs: ${sourceTransactionCount} relevante ${sourceTransactionCount === 1 ? "aankoop" : "aankopen"} binnen deze winkel. Dit opent alleen een catalogusfilter; er wordt niets aan het winkelmandje toegevoegd.`,
-      expiresAt: Number.isFinite(validUntil) ? validUntil : undefined,
-      reason: rule.reason,
+      id: `automatic-server:${customerId}:${targets.map((product) => product.id).join(",")}`,
+      kind: "automatic-recommendation",
+      priority: Math.min(79, 58 + Math.round(strongest.confidence * 20)),
+      tone: "flow",
+      title: "Past bij eerdere aankopen",
+      compact: `${targets.length} ${targets.length === 1 ? "artikel" : "artikelen"} beschikbaar · automatisch geleerd uit winkelbrede aankoopcombinaties.`,
+      detail: `Pace vond dit zelf in ${strongest.pairSaleCount} relevante ${strongest.pairSaleCount === 1 ? "verkoop" : "verkopen"} binnen deze winkel. De centrale score wordt bij iedere nieuwe verkoop incrementeel bijgewerkt. Er wordt niets aan het winkelmandje toegevoegd.`,
+      reason: "Automatisch afgeleid uit aankoopcombinaties en actuele voorraad.",
+      evidenceSummary: `${strongest.pairSaleCount} relevante ${strongest.pairSaleCount === 1 ? "verkoop" : "verkopen"} · automatisch geleerd`,
+      action: { kind: "catalog", label: targets.length === 1 ? "Bekijk artikel" : `Bekijk ${targets.length} artikelen`, productIds: targets.map((product) => product.id), filterLabel: "Pace · automatisch passend" },
+      evidence: [],
+    });
+  } else if (ranked.length > 0) {
+    const strongest = ranked[0][1];
+    const source = products.find((product) => product.id === strongest.sourceId);
+    const confidence = strongest.pairCount / Math.max(1, strongest.sourceCount);
+    const targets = ranked.map(([productId]) => availableById.get(productId)!).filter(Boolean);
+    insights.push({
+      id: `automatic:${customerId}:${strongest.sourceId}:${targets.map((product) => product.id).join(",")}`,
+      kind: "automatic-recommendation",
+      priority: Math.min(79, 58 + Math.round(confidence * 20)),
+      tone: "flow",
+      title: source ? `Vaak samen gekozen met ${source.name}` : "Past bij eerdere aankopen",
+      compact: `${targets.length} ${targets.length === 1 ? "artikel" : "artikelen"} beschikbaar · automatisch gevonden in echte aankoopcombinaties.`,
+      detail: `Pace vond dit zelf in ${strongest.pairCount} relevante ${strongest.pairCount === 1 ? "verkoop" : "verkopen"} binnen deze winkel. De score wordt automatisch sterker of zwakker naarmate nieuwe verkopen binnenkomen. Er wordt niets aan het winkelmandje toegevoegd.`,
+      reason: "Automatisch afgeleid uit aankoopcombinaties en actuele voorraad.",
+      evidenceSummary: `${strongest.pairCount} relevante ${strongest.pairCount === 1 ? "verkoop" : "verkopen"} · automatisch geleerd`,
       action: {
         kind: "catalog",
         label: targets.length === 1 ? "Bekijk artikel" : `Bekijk ${targets.length} artikelen`,
         productIds: targets.map((product) => product.id),
-        filterLabel: rule.name,
+        filterLabel: "Pace · automatisch passend",
       },
-      evidence: sourceLines.map(({ sale, item }) => ({
-        transactionId: sale.id,
-        lineId: item.lineId,
-        productId: item.product.id,
-        brand: item.product.brand,
-        categoryId: item.product.category,
-        ruleId: rule.id,
-      })),
+      evidence: [...strongest.transactionIds].map((transactionId) => ({ transactionId, productId: strongest.sourceId })),
     });
   }
 

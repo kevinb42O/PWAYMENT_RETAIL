@@ -44,7 +44,6 @@ export const useMerchantProfile = create<MerchantProfileState>()(
           state.profile.customerInsightSettings ??= {
             ...DEFAULT_CUSTOMER_INSIGHT_SETTINGS,
           };
-          state.profile.paceRecommendationRules ??= [];
           state.profile.timezone ??= 'Europe/Brussels';
         }
         return state as MerchantProfileState;

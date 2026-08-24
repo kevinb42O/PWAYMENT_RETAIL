@@ -5,6 +5,7 @@ import { useAuth } from '../auth/useAuth';
 import { useStore } from '../store/useStore';
 import { ProductAdmin } from './ProductAdmin';
 import { MerchantSettings } from './MerchantSettings';
+import { PaceSettings } from './PaceSettings';
 import { BarcodeLabelPrint } from './BarcodeLabelPrint';
 import { ThermalPrinterPanel } from './ThermalPrinterPanel';
 import { IntegrationsSettings } from './IntegrationsSettings';
@@ -75,6 +76,7 @@ import {
   Clock,
   Edit2,
   MousePointer2,
+  Sparkles,
   Trash2,
   UserPlus,
   KeyRound,
@@ -87,6 +89,7 @@ type WorkspaceTab =
   | 'billing-payment'
   | 'billing-addons'
   | 'modules'
+  | 'pace'
   | 'workforce'
   | 'leave-approvals'
   | 'catalog'
@@ -202,6 +205,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     ];
     if (requested === 'integrations') return 'integrations';
     if (requested === 'modules') return 'modules';
+    if (requested === 'pace') return 'pace';
     if (requested === 'workforce') return 'workforce';
     if (directWebshopTabs.includes(requested as WorkspaceTab)) return requested as WorkspaceTab;
     return 'billing';
@@ -334,6 +338,21 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </div>
             </button>
           )}
+
+          <button
+            onClick={() => setActiveTab('pace')}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'pace'
+                ? 'border border-cyan-200 bg-cyan-50 text-cyan-900 shadow-xs'
+                : 'border border-transparent text-slate-600 hover:border-cyan-100 hover:bg-cyan-50 hover:text-cyan-900'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Sparkles size={16} className={activeTab === 'pace' ? 'text-cyan-700' : 'text-slate-500'} />
+              <span>PACE</span>
+            </div>
+            <span className="rounded-md bg-cyan-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-cyan-800">Auto</span>
+          </button>
 
           <button
             onClick={() => setActiveTab('workforce')}
@@ -708,6 +727,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <h1 className="text-xl font-black text-slate-900 tracking-tight">
               {activeTab === 'billing-plan' && 'Licentieplan & Upgrades'}
               {activeTab === 'modules' && 'Modules & navigatie'}
+              {activeTab === 'pace' && 'PACE · Retail intelligence'}
               {activeTab === 'workforce' && 'Personeel, verlof & bezetting'}
               {activeTab === 'leave-approvals' && 'Verlof goedkeuren'}
               {activeTab === 'billing-invoices' && "Facturen & Creditnota's"}
@@ -732,11 +752,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 ? 'Transparante tarieven per winkelpunt. Onbeperkte kassa-omzet zonder verborgen transactiekosten.'
                 : activeTab === 'modules'
                 ? 'Zet werkmodules rechtstreeks aan of uit. Uw navigatie volgt onmiddellijk en bewaren gebeurt automatisch.'
+                : activeTab === 'pace'
+                ? 'Automatische, winkel-eigen klantinzichten op basis van verkoopbewijs, retourcontext en actuele voorraad.'
                 : activeTab === 'workforce'
                 ? 'Beheer medewerkers, verlofsaldi en de regels waarmee PWAYMENT de winkelbezetting controleert.'
                 : activeTab === 'leave-approvals'
                 ? 'Beoordeel aanvragen veilig vanuit eigenaarstoegang. Elke beslissing wordt gelogd en vereist uw persoonlijke PIN.'
-                : (activeTab === 'catalog' || activeTab.startsWith('catalog-'))
+                : activeTab === 'catalog-categories'
+                ? 'Voeg hoofd- en subcategorieën toe en beheer de structuur die u bij producten kunt selecteren.'
+                : (activeTab === 'catalog' || activeTab === 'catalog-products')
                 ? 'Beheer uw artikelbestand, inkoop-/verkoopprijzen, voorraad en Btw-tarieven.'
                 : activeTab.startsWith('webshop')
                 ? 'Beheer publicatie, assortiment, bestellingen en klantinstellingen vanuit één centrale omgeving.'
@@ -760,6 +784,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         )}
 
         {activeTab === 'modules' && <ModuleSettings />}
+        {activeTab === 'pace' && <PaceSettings />}
         {activeTab === 'workforce' && (
           <FeatureGate
             feature={FEATURE_KEYS.workforce}
@@ -793,6 +818,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         {(activeTab === 'catalog' || activeTab === 'catalog-products' || activeTab === 'catalog-categories') && (
           <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-2xs">
             <ProductAdmin
+              key={activeTab === 'catalog-categories' ? 'category-management' : 'product-management'}
               initialTab={activeTab === 'catalog-categories' ? 'categories' : 'products'}
               openNewProductRequestKey={openNewProductRequestKey}
               catalogFilter={catalogFilter}
