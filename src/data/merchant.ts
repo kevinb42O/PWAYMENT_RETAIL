@@ -21,7 +21,48 @@ export interface MerchantInfo {
   invoiceTerms?: string;
   footer?: string;
   returnPolicy?: string;
+  /** Machine-readable commercial return policy used by local Pace guidance. */
+  commercialReturnPolicy?: CommercialReturnPolicy;
+  /** Store-wide switchboard; individual devices may still silence Pace. */
+  customerInsightSettings?: CustomerInsightSettings;
+  /** IANA timezone used for calendar-day policy deadlines. */
+  timezone?: string;
 }
+
+export interface CommercialReturnPolicy {
+  enabled: boolean;
+  windowDays: number;
+  reminderLeadDays: number;
+  excludedProductTypes: Array<'service' | 'gift-card'>;
+  excludedCategoryIds: string[];
+  /** Only purchases on or after this ISO instant are eligible for guidance. */
+  effectiveFrom: string;
+}
+
+export interface CustomerInsightSettings {
+  enabled: boolean;
+  returnRemindersEnabled: boolean;
+  brandAffinityEnabled: boolean;
+  brandLookbackDays: number;
+  minimumBrandTransactions: number;
+}
+
+export const DISABLED_COMMERCIAL_RETURN_POLICY: CommercialReturnPolicy = {
+  enabled: false,
+  windowDays: 14,
+  reminderLeadDays: 2,
+  excludedProductTypes: ['service', 'gift-card'],
+  excludedCategoryIds: [],
+  effectiveFrom: new Date(0).toISOString(),
+};
+
+export const DEFAULT_CUSTOMER_INSIGHT_SETTINGS: CustomerInsightSettings = {
+  enabled: false,
+  returnRemindersEnabled: true,
+  brandAffinityEnabled: true,
+  brandLookbackDays: 540,
+  minimumBrandTransactions: 2,
+};
 
 export const DEFAULT_MERCHANT: MerchantInfo = {
   name: 'PWAYMENT',
@@ -38,6 +79,16 @@ export const DEFAULT_MERCHANT: MerchantInfo = {
   invoiceTerms: '',
   footer: 'Bedankt voor uw aankoop.',
   returnPolicy: 'Retour of omruiling volgens winkelvoorwaarden met origineel ticket.',
+  commercialReturnPolicy: {
+    ...DISABLED_COMMERCIAL_RETURN_POLICY,
+    enabled: true,
+    effectiveFrom: '2026-01-01T00:00:00.000Z',
+  },
+  customerInsightSettings: {
+    ...DEFAULT_CUSTOMER_INSIGHT_SETTINGS,
+    enabled: true,
+  },
+  timezone: 'Europe/Brussels',
 };
 
 export const MERCHANT = DEFAULT_MERCHANT;

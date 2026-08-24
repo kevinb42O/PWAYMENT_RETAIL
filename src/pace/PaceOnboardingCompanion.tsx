@@ -56,7 +56,7 @@ export const PaceOnboardingCompanion = ({
         size={compact ? 42 : 58}
         active
         emotion={hasError ? "attentive" : step === "review" ? "celebrating" : "guiding"}
-        performance={step === "review" && !hasError ? "portal" : null}
+        performance={step === "review" && !hasError ? "liquid" : null}
         tone={hasError ? "attention" : step === "review" ? "success" : "flow"}
         motionMode={reducedMotion ? "off" : step === "review" ? "full" : "subtle"}
       />

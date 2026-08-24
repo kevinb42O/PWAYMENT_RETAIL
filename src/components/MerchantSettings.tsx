@@ -19,6 +19,32 @@ export const MerchantSettings: React.FC = () => {
     setDraft((current) => ({ ...current, [key]: value }));
   };
 
+  const setReturnPolicy = (
+    patch: Partial<NonNullable<typeof draft.commercialReturnPolicy>>,
+  ) => {
+    setSaved(false);
+    setDraft((current) => ({
+      ...current,
+      commercialReturnPolicy: {
+        ...current.commercialReturnPolicy!,
+        ...patch,
+      },
+    }));
+  };
+
+  const setCustomerInsights = (
+    patch: Partial<NonNullable<typeof draft.customerInsightSettings>>,
+  ) => {
+    setSaved(false);
+    setDraft((current) => ({
+      ...current,
+      customerInsightSettings: {
+        ...current.customerInsightSettings!,
+        ...patch,
+      },
+    }));
+  };
+
   const save = () => {
     if (!canSave) return;
     updateProfile({
@@ -95,6 +121,49 @@ export const MerchantSettings: React.FC = () => {
         <Field label="Retourbeleid op ticket">
           <textarea value={draft.returnPolicy ?? ''} onChange={(e) => set('returnPolicy', e.target.value)} rows={2} className="input resize-none" />
         </Field>
+
+        <section className="rounded-xl border border-cyan-900/60 bg-cyan-950/25 p-4 space-y-4">
+          <div>
+            <h3 className="text-sm font-bold text-cyan-100">Pace · klantcontext</h3>
+            <p className="mt-1 text-xs leading-5 text-zinc-400">
+              Pace berekent deze service-inzichten lokaal binnen deze winkel. Klant- en aankoopdata worden niet naar Pace AI gestuurd.
+            </p>
+          </div>
+          <label className="flex items-start justify-between gap-4 text-sm font-semibold">
+            <span><span className="block text-zinc-100">Klantcontext activeren</span><span className="mt-1 block text-xs font-normal text-zinc-500">Toon alleen na een bewuste klantkoppeling aan de kassa.</span></span>
+            <input type="checkbox" checked={draft.customerInsightSettings?.enabled === true} onChange={(event) => setCustomerInsights({ enabled: event.target.checked })} className="mt-1 h-4 w-4 accent-cyan-500" />
+          </label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="rounded-lg border border-zinc-800 bg-zinc-950/45 p-3 text-xs font-semibold text-zinc-300">
+              <span className="flex items-center justify-between gap-3"><span>Retourherinneringen</span><input type="checkbox" checked={draft.customerInsightSettings?.returnRemindersEnabled === true} onChange={(event) => setCustomerInsights({ returnRemindersEnabled: event.target.checked })} className="h-4 w-4 accent-cyan-500" /></span>
+            </label>
+            <label className="rounded-lg border border-zinc-800 bg-zinc-950/45 p-3 text-xs font-semibold text-zinc-300">
+              <span className="flex items-center justify-between gap-3"><span>Merkinteresse</span><input type="checkbox" checked={draft.customerInsightSettings?.brandAffinityEnabled === true} onChange={(event) => setCustomerInsights({ brandAffinityEnabled: event.target.checked })} className="h-4 w-4 accent-cyan-500" /></span>
+            </label>
+          </div>
+          <div className="border-t border-zinc-800 pt-4">
+            <label className="flex items-start justify-between gap-4 text-sm font-semibold">
+              <span><span className="block text-zinc-100">Commerciële retourtermijn berekenen</span><span className="mt-1 block text-xs font-normal text-zinc-500">Dit staat los van wettelijke garantie en vervangt de tickettekst niet.</span></span>
+              <input
+                type="checkbox"
+                checked={draft.commercialReturnPolicy?.enabled === true}
+                onChange={(event) => setReturnPolicy({
+                  enabled: event.target.checked,
+                  ...(event.target.checked ? { effectiveFrom: new Date().toISOString() } : {}),
+                })}
+                className="mt-1 h-4 w-4 accent-cyan-500"
+              />
+            </label>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <Field label="Retourvenster (kalenderdagen)">
+                <input type="number" min={1} max={365} value={draft.commercialReturnPolicy?.windowDays ?? 14} onChange={(event) => setReturnPolicy({ windowDays: Math.min(365, Math.max(1, Number(event.target.value) || 1)) })} className="input" />
+              </Field>
+              <Field label="Waarschuw vooraf (dagen)">
+                <input type="number" min={0} max={30} value={draft.commercialReturnPolicy?.reminderLeadDays ?? 2} onChange={(event) => setReturnPolicy({ reminderLeadDays: Math.min(30, Math.max(0, Number(event.target.value) || 0)) })} className="input" />
+              </Field>
+            </div>
+          </div>
+        </section>
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-800 pt-4">
           <button

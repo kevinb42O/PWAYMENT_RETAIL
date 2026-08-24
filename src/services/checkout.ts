@@ -305,7 +305,9 @@ const runCheckout = async (
   const allocations = dedupeGiftCards(input.giftCards);
   const now = Date.now();
   const documentRequest = validateDocumentRequest(input.documentRequest);
-  const merchantSnapshot = { ...getMerchantProfileSnapshot() };
+  // Policy objects must be frozen with the sale. A later settings change may
+  // never rewrite the commercial deadline that applied at checkout time.
+  const merchantSnapshot = structuredClone(getMerchantProfileSnapshot());
 
   return db.transaction(
     "rw",

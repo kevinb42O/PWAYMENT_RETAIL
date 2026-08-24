@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { DEFAULT_MERCHANT, MerchantInfo } from '../data/merchant';
+import {
+  DEFAULT_CUSTOMER_INSIGHT_SETTINGS,
+  DEFAULT_MERCHANT,
+  DISABLED_COMMERCIAL_RETURN_POLICY,
+  MerchantInfo,
+} from '../data/merchant';
 
 interface MerchantProfileState {
   profile: MerchantInfo;
@@ -23,7 +28,7 @@ export const useMerchantProfile = create<MerchantProfileState>()(
     }),
     {
       name: 'pwayment:merchant-profile',
-      version: 2,
+      version: 3,
       migrate: (persistedState: any, version: number) => {
         const state = persistedState as MerchantProfileState | undefined;
         if (state?.profile) {
@@ -33,6 +38,13 @@ export const useMerchantProfile = create<MerchantProfileState>()(
           if (state.profile.legalName === 'PWAyment Retail BV' || state.profile.legalName === 'PWAyment Skate Shop') {
             state.profile.legalName = 'PWAYMENT';
           }
+          state.profile.commercialReturnPolicy ??= {
+            ...DISABLED_COMMERCIAL_RETURN_POLICY,
+          };
+          state.profile.customerInsightSettings ??= {
+            ...DEFAULT_CUSTOMER_INSIGHT_SETTINGS,
+          };
+          state.profile.timezone ??= 'Europe/Brussels';
         }
         return state as MerchantProfileState;
       },

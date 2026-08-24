@@ -668,6 +668,35 @@ export class POSDatabase extends Dexie {
           row.nextAttemptAt ??= row.timestamp;
         });
       });
+
+    // Customer-linked Pace guidance and the existing CRM history both need a
+    // selective lookup. The compound index keeps newest-first queries local
+    // and avoids scanning the tenant's complete financial history.
+    this.version(21).stores({
+      transactions:
+        "++id, tableId, paymentMethod, timestamp, isFinalized, userId, customerId, [customerId+timestamp], shiftId, registerId, kind, source, originalTransactionId, documentNumber, receiptBarcode, &clientRequestId",
+      daily_reports: "++id, &reportNumber, timestamp, shiftId, registerId",
+      audit: "++id, timestamp, userId, action",
+      users: "id, role",
+      outbox: "++id, timestamp, kind, deliveryStatus, nextAttemptAt, leaseExpiresAt",
+      shifts: "++id, &shiftNumber, registerId, status, openedAt, closedAt, [registerId+status]",
+      voids: "++id, timestamp, tableId, productId, byUserId",
+      products: "id, category, isActive, productType, supplierCode",
+      categories: "id, name, isActive",
+      customers: "id, email, phone, priceGroup, isActive",
+      gift_cards: "id, customerId, code, isActive",
+      gift_card_events: "id, giftCardId, timestamp, type, source, transactionId, dailyReportId, [giftCardId+timestamp]",
+      business_actions: "id, type, status, createdAt, updatedAt, dueAt, ownerUserId",
+      purchase_orders: "id, supplier, status, createdAt, updatedAt, expectedDeliveryAt",
+      stock_movements: "++id, productId, reason, timestamp, purchaseOrderId, transactionId",
+      webshop_orders: "id, &clientRequestId, &number, createdAt, updatedAt, status, paymentStatus, fulfillmentStatus, source",
+      import_jobs: "id, createdAt, status, fileName, profileId",
+      import_mapping_profiles: "id, name, format, updatedAt, lastUsedAt",
+      migration_activations: "id, storeId, status, activatedAt, lockedAt, [storeId+status]",
+      migration_inverse_changes: "id, migrationId, sequence, [migrationId+sequence]",
+      migration_activity_locks: "id, migrationId, storeId, occurredAt, [storeId+occurredAt], [migrationId+occurredAt]",
+      service_orders: "id, &number, &trackingToken, createdAt, updatedAt, status, substatus, route, customerId, customerEmail, customerPhone, identifierValue",
+    });
   }
 }
 

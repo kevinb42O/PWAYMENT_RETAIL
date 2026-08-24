@@ -82,4 +82,22 @@ describe("Pace signal engine", () => {
     expect(answer.answer).toContain("geen gekoppelde maildienst");
     expect(answer.answer).toContain("Koppel eerst een mailprovider");
   });
+
+  it("keeps safety above customer coaching and customer coaching above generic POS copy", () => {
+    const customerInsight = {
+      id: "return:customer:1:line:deadline",
+      kind: "return-window" as const,
+      priority: 88,
+      tone: "attention" as const,
+      title: "Retourtermijn eindigt vandaag",
+      compact: "Blazer · maat M",
+      detail: "Feitelijke aankoopcontext.",
+      evidence: [],
+    };
+    const normal = buildPaceSignals(context({ customerInsights: [customerInsight] }), DEFAULT_PACE_PREFERENCES);
+    expect(normal[0]).toMatchObject({ source: "Klantcontext", priority: 88 });
+    const offline = buildPaceSignals(context({ online: false, customerInsights: [customerInsight] }), DEFAULT_PACE_PREFERENCES);
+    expect(offline[0]).toMatchObject({ id: "offline", priority: 100 });
+    expect(offline[1]).toMatchObject({ source: "Klantcontext" });
+  });
 });

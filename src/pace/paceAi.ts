@@ -9,6 +9,20 @@ export interface PaceAiAnswer {
 
 export class PaceAiUnavailableError extends Error {}
 
+export const toPaceAiContext = (context: PaceContext) => ({
+  view: context.view,
+  role: context.role,
+  productCount: context.productCount,
+  cartCount: context.cartCount,
+  firstRunCompleted: context.firstRunCompleted,
+  online: context.online,
+  pendingSync: context.pendingSync,
+  retryingSync: context.retryingSync,
+  failedSync: context.failedSync,
+  syncIssueSummary: context.syncIssueSummary,
+  syncIssueResolution: context.syncIssueResolution,
+});
+
 export const askPaceAi = async (
   question: string,
   context: PaceContext,
@@ -20,6 +34,10 @@ export const askPaceAi = async (
   const token = data.session?.access_token;
   if (!token) throw new PaceAiUnavailableError("Pace AI vereist een actieve sessie.");
 
+  // Customer insight records are deliberately local-only. Keep this allow-list
+  // on the client as well as on the API boundary so PII never leaves the till.
+  const safeContext = toPaceAiContext(context);
+
   let response: Response;
   try {
     response = await fetch("/api/pace/respond", {
@@ -28,7 +46,7 @@ export const askPaceAi = async (
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ question, context }),
+      body: JSON.stringify({ question, context: safeContext }),
       signal: AbortSignal.timeout(22_000),
     });
   } catch {

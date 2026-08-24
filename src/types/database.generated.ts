@@ -2871,6 +2871,7 @@ export type Database = {
           address_line_2: string | null
           city: string | null
           country_code: string
+          commercial_return_policy: Json
           created_at: string
           currency: string
           email: string | null
@@ -2880,6 +2881,7 @@ export type Database = {
           legal_name: string | null
           locale: string
           name: string
+          customer_insight_settings: Json
           onboarding_completed_at: string | null
           onboarding_config: Json
           phone: string | null
@@ -2896,6 +2898,7 @@ export type Database = {
           address_line_2?: string | null
           city?: string | null
           country_code?: string
+          commercial_return_policy?: Json
           created_at?: string
           currency?: string
           email?: string | null
@@ -2905,6 +2908,7 @@ export type Database = {
           legal_name?: string | null
           locale?: string
           name: string
+          customer_insight_settings?: Json
           onboarding_completed_at?: string | null
           onboarding_config?: Json
           phone?: string | null
@@ -2921,6 +2925,7 @@ export type Database = {
           address_line_2?: string | null
           city?: string | null
           country_code?: string
+          commercial_return_policy?: Json
           created_at?: string
           currency?: string
           email?: string | null
@@ -2930,6 +2935,7 @@ export type Database = {
           legal_name?: string | null
           locale?: string
           name?: string
+          customer_insight_settings?: Json
           onboarding_completed_at?: string | null
           onboarding_config?: Json
           phone?: string | null

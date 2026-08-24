@@ -14,6 +14,8 @@ import { Modal } from "./Modal";
 import { StoreSetupGuide, type SetupGuideTarget } from "./StoreSetupGuide";
 import { FirstProductTour } from "./FirstProductTour";
 import { PaceAssistant } from "../pace/PaceAssistant";
+import { useCustomerInsights } from "../pace/useCustomerInsights";
+import { useCustomers } from "../store/useCustomers";
 import { getOutboxHealthMetadata } from "../services/platformTelemetry";
 import { liveQuery } from "dexie";
 import { useMerchantProfile } from "../store/useMerchantProfile";
@@ -142,6 +144,8 @@ export const Layout: React.FC = () => {
   );
   const storeConfiguration = useStoreConfiguration((state) => state.configuration);
   const merchantProfile = useMerchantProfile((state) => state.profile);
+  const linkedCustomerId = useStore((state) => state.linkedCustomerId);
+  const customers = useCustomers((state) => state.customers);
   const categories = useCategories((state) => state.list);
   const hydrateCategories = useCategories((state) => state.hydrate);
 
@@ -184,6 +188,15 @@ export const Layout: React.FC = () => {
   const userMenuButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const cartCount = cart.orders.reduce((acc, o) => acc + o.quantity, 0);
+  const linkedCustomer = React.useMemo(
+    () => customers.find((customer) => customer.id === linkedCustomerId),
+    [customers, linkedCustomerId],
+  );
+  const customerInsights = useCustomerInsights(
+    linkedCustomerId,
+    products,
+    merchantProfile,
+  );
   const paceSetupMilestones = React.useMemo(
     () => derivePaceSetupMilestones({ configuration: storeConfiguration, profile: merchantProfile, categories, products }),
     [categories, merchantProfile, products, storeConfiguration],
@@ -662,6 +675,8 @@ export const Layout: React.FC = () => {
             failedSync={paceConnection.failedSync}
             syncIssueSummary={paceConnection.syncIssueSummary}
             syncIssueResolution={paceConnection.syncIssueResolution}
+            customerName={linkedCustomer?.name}
+            customerInsights={customerInsights}
             setupMilestones={paceSetupMilestones}
             suppressed={storeSetupOpen || Boolean(firstProductTourName) || leaveApprovalGateOpen}
             onNavigate={(view) => setMainView(view)}

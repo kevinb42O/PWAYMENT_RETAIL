@@ -35,6 +35,8 @@ export const startTenantSettingsPersistence = (storeId: string): void => {
           website: profile.website || null,
           receipt_footer: profile.footer || null,
           return_policy: profile.returnPolicy || null,
+          commercial_return_policy: (profile.commercialReturnPolicy ?? null) as unknown as Json | null,
+          customer_insight_settings: (profile.customerInsightSettings ?? null) as unknown as Json | null,
         })
         .eq("id", storeId)
         .then(({ error }) => {

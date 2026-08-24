@@ -1,6 +1,13 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 import { activateTenantDatabase, db } from "../db/db";
-import { DEFAULT_MERCHANT, type MerchantInfo } from "../data/merchant";
+import {
+  DEFAULT_CUSTOMER_INSIGHT_SETTINGS,
+  DEFAULT_MERCHANT,
+  DISABLED_COMMERCIAL_RETURN_POLICY,
+  type CommercialReturnPolicy,
+  type CustomerInsightSettings,
+  type MerchantInfo,
+} from "../data/merchant";
 import { supabase } from "../lib/supabase";
 import { useMerchantProfile } from "../store/useMerchantProfile";
 import { useStoreConfiguration } from "../store/useStoreConfiguration";
@@ -108,6 +115,28 @@ const blankMerchant = (name: string): MerchantInfo => ({
   website: "",
   footer: "",
   returnPolicy: "",
+  commercialReturnPolicy: { ...DISABLED_COMMERCIAL_RETURN_POLICY },
+  customerInsightSettings: { ...DEFAULT_CUSTOMER_INSIGHT_SETTINGS },
+  timezone: "Europe/Brussels",
+});
+
+const commercialReturnPolicy = (value: Json | null): CommercialReturnPolicy => {
+  const candidate = jsonObject<Partial<CommercialReturnPolicy>>(value);
+  return {
+    ...DISABLED_COMMERCIAL_RETURN_POLICY,
+    ...candidate,
+    excludedProductTypes: Array.isArray(candidate.excludedProductTypes)
+      ? candidate.excludedProductTypes.filter((item): item is "service" | "gift-card" => item === "service" || item === "gift-card")
+      : [...DISABLED_COMMERCIAL_RETURN_POLICY.excludedProductTypes],
+    excludedCategoryIds: Array.isArray(candidate.excludedCategoryIds)
+      ? candidate.excludedCategoryIds.filter((item): item is string => typeof item === "string")
+      : [],
+  };
+};
+
+const customerInsightSettings = (value: Json | null): CustomerInsightSettings => ({
+  ...DEFAULT_CUSTOMER_INSIGHT_SETTINGS,
+  ...jsonObject<Partial<CustomerInsightSettings>>(value),
 });
 
 /**
@@ -1049,6 +1078,9 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
       website: store.website ?? "",
       footer: store.receipt_footer ?? "",
       returnPolicy: store.return_policy ?? "",
+      commercialReturnPolicy: commercialReturnPolicy(store.commercial_return_policy),
+      customerInsightSettings: customerInsightSettings(store.customer_insight_settings),
+      timezone: store.timezone || "Europe/Brussels",
     },
   });
 

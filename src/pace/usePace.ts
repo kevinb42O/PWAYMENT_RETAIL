@@ -13,6 +13,8 @@ export interface PacePreferences {
   operationalSignals: boolean;
   setupGuidance: boolean;
   insightGuidance: boolean;
+  customerGuidance: boolean;
+  expressiveMorphs: boolean;
 }
 
 interface PaceState {
@@ -36,6 +38,8 @@ export const DEFAULT_PACE_PREFERENCES: PacePreferences = {
   operationalSignals: true,
   setupGuidance: true,
   insightGuidance: true,
+  customerGuidance: true,
+  expressiveMorphs: true,
 };
 
 export const usePace = create<PaceState>()(
@@ -65,7 +69,17 @@ export const usePace = create<PaceState>()(
     }),
     {
       name: "pwayment:pace:v1",
-      version: 1,
+      version: 3,
+      migrate: (persisted) => {
+        const state = persisted as Partial<PaceState>;
+        if (state.preferences) {
+          state.preferences = {
+            ...DEFAULT_PACE_PREFERENCES,
+            ...state.preferences,
+          };
+        }
+        return state as PaceState;
+      },
       partialize: (state) => ({
         preferences: state.preferences,
         dismissedSignals: state.dismissedSignals,

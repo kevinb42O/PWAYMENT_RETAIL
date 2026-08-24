@@ -36,6 +36,7 @@ import {
 interface PaceAssistantProps extends PaceContext {
   userName: string | null;
   setupMilestones: PaceSetupMilestone[];
+  customerName?: string;
   suppressed?: boolean;
   onNavigate: (view: MainView) => void;
   onOpenSetup: () => void;
@@ -99,6 +100,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   const [performance, setPerformance] = useState<PacePerformance | null>(null);
   const [performanceKey, setPerformanceKey] = useState(0);
   const [externalDialogOpen, setExternalDialogOpen] = useState(false);
+  const [sessionDismissedSignals, setSessionDismissedSignals] = useState<string[]>([]);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const context: PaceContext = useMemo(() => ({
     view: props.view,
@@ -112,16 +114,22 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
     failedSync: props.failedSync,
     syncIssueSummary: props.syncIssueSummary,
     syncIssueResolution: props.syncIssueResolution,
-  }), [props.view, props.role, props.productCount, props.cartCount, props.firstRunCompleted, props.online, props.pendingSync, props.retryingSync, props.failedSync, props.syncIssueSummary, props.syncIssueResolution]);
+    customerInsights: props.customerInsights,
+  }), [props.view, props.role, props.productCount, props.cartCount, props.firstRunCompleted, props.online, props.pendingSync, props.retryingSync, props.failedSync, props.syncIssueSummary, props.syncIssueResolution, props.customerInsights]);
   const signals = useMemo(
-    () => buildPaceSignals(context, preferences).filter((signal) => !dismissedSignals.includes(signal.id)),
-    [context, preferences, dismissedSignals],
+    () => buildPaceSignals(context, preferences).filter((signal) => !dismissedSignals.includes(signal.id) && !sessionDismissedSignals.includes(signal.id)),
+    [context, preferences, dismissedSignals, sessionDismissedSignals],
   );
   const primary = signals[0] ?? buildPaceSignals(context, preferences).at(-1)!;
   const shouldBadge = primary.priority >= 70 && preferences.proactivity !== "quiet";
   const canAnimate = !prefersReducedMotion && preferences.motion !== "off";
   const setupProgress = useMemo(() => paceSetupProgress(props.setupMilestones), [props.setupMilestones]);
   const unavailable = Boolean(props.suppressed || externalDialogOpen);
+  const customerSignal = signals.find((signal) => signal.source === "Klantcontext");
+
+  useEffect(() => {
+    setSessionDismissedSignals([]);
+  }, [props.customerName]);
 
   useEffect(() => {
     const detectDialogs = () => {
@@ -161,11 +169,15 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
     return () => window.clearTimeout(timer);
   }, [performance, performanceKey]);
 
+  useEffect(() => {
+    if (!preferences.expressiveMorphs) setPerformance(null);
+  }, [preferences.expressiveMorphs]);
+
   const playPerformance = (next: PacePerformance) => {
     setPerformance(next);
     setPerformanceKey((current) => current + 1);
   };
-  const performanceLabel = performance === "stretch" ? "Uitrekken" : performance === "slither" ? "Slang" : performance === "liquid" ? "Vloeibaar" : performance === "portal" ? "Portal" : null;
+  const performanceLabel = performance === "question" ? "Vraagteken" : performance === "exclamation" ? "Uitroepteken" : performance === "liquid" ? "Blob" : null;
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -223,9 +235,22 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
         aria-expanded={open}
         aria-controls="pace-assistant-panel"
       >
-        <PaceMark size={46} active={open || shouldBadge} emotion={open ? "thinking" : undefined} tone={primary.tone} motionMode={preferences.motion} />
+        <PaceMark size={46} active={open || shouldBadge} emotion={open ? "thinking" : undefined} tone={primary.tone} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
         {shouldBadge && !open && <span className={`pace-signal-dot is-${primary.tone}`} aria-label="Pace heeft een relevant signaal" />}
       </button>
+
+      {customerSignal && props.view === "pos" && !open && !unavailable && preferences.enabled && (
+        <button
+          type="button"
+          className={`pace-customer-edge is-${customerSignal.tone}`}
+          onClick={() => setOpen(true)}
+          aria-label="Open Pace-klantcontext"
+          title="Pace heeft relevante klantcontext"
+        >
+          <span className="pace-customer-edge-dot" />
+          <span>Pace · klantcontext</span>
+        </button>
+      )}
 
       {createPortal(<AnimatePresence>
         {open && !unavailable && (
@@ -241,16 +266,16 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
               id="pace-assistant-panel"
               className="pace-panel"
               role="dialog"
-              aria-modal="true"
+              aria-modal="false"
               aria-label="Pace operationele assistent"
-              initial={canAnimate ? { opacity: 0, x: 28, scale: 0.985 } : false}
+              initial={canAnimate ? { opacity: 0, x: -28, scale: 0.985 } : false}
               animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={canAnimate ? { opacity: 0, x: 20, scale: 0.99 } : { opacity: 0 }}
+              exit={canAnimate ? { opacity: 0, x: -20, scale: 0.99 } : { opacity: 0 }}
               transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
             >
               <header className="pace-panel-header">
                 <div className="pace-identity">
-                  <PaceMark size={52} active thinking={thinking} performance={thinking ? "liquid" : null} tone={primary.tone} motionMode={preferences.motion} />
+                  <PaceMark size={52} active thinking={thinking} tone={primary.tone} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
                   <div><span>PWAYMENT · LIVE CONTEXT</span><h2>Pace</h2></div>
                 </div>
                 <div className="pace-header-actions">
@@ -266,23 +291,24 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                     <div className="pace-section-heading"><span>Persoonlijke werking</span><h3>{props.userName ? `${props.userName}, jij bepaalt het tempo.` : "Jij bepaalt zijn tempo."}</h3><p>Deze voorkeuren blijven op dit toestel. Winkelrechten en beveiliging zijn altijd leidend.</p></div>
                     <section className="pace-motion-lab" aria-label="Pace Motion Lab">
                       <div className="pace-motion-lab-stage">
-                        <PaceMark key={performanceKey} size={108} active emotion="attentive" performance={performance} motionMode="full" forceMotion />
+                        <PaceMark key={performanceKey} size={108} active emotion="attentive" performance={performance} motionMode="full" forceMotion expressive={preferences.expressiveMorphs} />
                         <span><Sparkles size={13} /> MOTION LAB</span>
                       </div>
                       <div className="pace-motion-lab-copy"><strong>Morph Pace.</strong><small>Elke test keert veilig terug naar het originele merkteken.</small></div>
                       <div className="pace-motion-lab-controls">
                         {([
-                          ["stretch", "Uitrekken"],
-                          ["slither", "Slang"],
-                          ["liquid", "Vloeibaar"],
-                          ["portal", "Portal"],
-                        ] as Array<[PacePerformance, string]>).map(([mode, label]) => <button key={mode} type="button" className={performance === mode ? "is-playing" : ""} onClick={() => playPerformance(mode)} aria-pressed={performance === mode}>{label}</button>)}
+                          ["question", "Vraagteken"],
+                          ["exclamation", "Uitroepteken"],
+                          ["liquid", "Blob"],
+                        ] as Array<[PacePerformance, string]>).map(([mode, label]) => <button key={mode} type="button" className={performance === mode ? "is-playing" : ""} onClick={() => playPerformance(mode)} aria-pressed={performance === mode} disabled={!preferences.expressiveMorphs}>{label}</button>)}
                       </div>
-                      <div className={`pace-motion-status${performance ? " is-playing" : ""}`} aria-live="polite"><i /> {performanceLabel ? `${performanceLabel} speelt nu` : "Kies een performance om hem direct af te spelen"}</div>
+                      <div className={`pace-motion-status${performance ? " is-playing" : ""}`} aria-live="polite"><i /> {!preferences.expressiveMorphs ? "Expressieve morphs staan uit" : performanceLabel ? `${performanceLabel} speelt nu` : "Kies een performance om hem direct af te spelen"}</div>
                       {(preferences.motion === "off" || prefersReducedMotion) && <p>Automatische beweging blijft uit; een bewust aangeklikte labpreview speelt één keer af.</p>}
                     </section>
                     <div className="pace-settings-card">
                       <ToggleRow label="Pace actief" detail="Toon Pace op dit toestel" checked={preferences.enabled} onChange={(enabled) => updatePreferences({ enabled })} />
+                      <ToggleRow label="Expressieve morphs" detail="Vraagteken, uitroepteken en blob" checked={preferences.expressiveMorphs} onChange={(expressiveMorphs) => updatePreferences({ expressiveMorphs })} />
+                      <ToggleRow label="Klantcontext" detail="Toon lokale service-inzichten na klantkoppeling" checked={preferences.customerGuidance} onChange={(customerGuidance) => updatePreferences({ customerGuidance })} />
                       <SelectRow<PaceProactivity> label="Proactiviteit" value={preferences.proactivity} onChange={(proactivity) => updatePreferences({ proactivity })} options={[{ value: "quiet", label: "Stil" }, { value: "balanced", label: "Gebalanceerd" }, { value: "coach", label: "Coach" }]} />
                       <SelectRow<PaceMotion> label="Beweging" value={preferences.motion} onChange={(motion) => updatePreferences({ motion })} options={[{ value: "full", label: "Volledig" }, { value: "subtle", label: "Subtiel" }, { value: "off", label: "Uit" }]} />
                       <SelectRow<PaceTone> label="Antwoorden" value={preferences.tone} onChange={(tone) => updatePreferences({ tone })} options={[{ value: "compact", label: "Kort" }, { value: "friendly", label: "Vriendelijk" }, { value: "explanatory", label: "Met uitleg" }]} />
@@ -301,6 +327,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                       <span><CircleDot size={12} /> {props.online ? "Online" : "Offline-ready"}</span>
                       <span><Eye size={12} /> {props.view}</span>
                       <span><ShieldCheck size={12} /> {props.role ?? "gebruiker"}</span>
+                      {props.customerName && <span><Eye size={12} /> Klant · {props.customerName}</span>}
                     </div>
 
                     <section className={`pace-live-brief is-${primary.tone}`}>
@@ -309,7 +336,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                       <p>{signalCopy(primary, preferences.tone)}</p>
                       <div className="pace-brief-actions">
                         {primary.actionLabel && <button type="button" onClick={() => runAction(primary.action)}>{primary.actionLabel}<ArrowRight size={15} /></button>}
-                        {primary.priority >= 65 && <button type="button" className="is-quiet" onClick={() => dismissSignal(primary.id)}>Niet meer tonen</button>}
+                        {primary.priority >= 65 && <button type="button" className="is-quiet" onClick={() => primary.source === "Klantcontext" ? setSessionDismissedSignals((current) => [...current, primary.id]) : dismissSignal(primary.id)}>{primary.source === "Klantcontext" ? "Verberg tijdens dit bezoek" : "Niet meer tonen"}</button>}
                       </div>
                     </section>
 

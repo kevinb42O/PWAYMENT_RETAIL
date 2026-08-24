@@ -1,5 +1,6 @@
 import type { MainView } from "../store/useStore";
 import type { PacePreferences, PaceTone } from "./usePace";
+import type { CustomerInsight } from "./customerInsights";
 
 export type PaceSignalTone = "flow" | "attention" | "success";
 export type PaceAction =
@@ -10,7 +11,7 @@ export type PaceAction =
 
 export interface PaceSignal {
   id: string;
-  source: "Werkruimte" | "Winkelconfiguratie" | "Lokale status" | "Rol & rechten";
+  source: "Werkruimte" | "Winkelconfiguratie" | "Lokale status" | "Rol & rechten" | "Klantcontext";
   title: string;
   compact: string;
   detail: string;
@@ -32,6 +33,7 @@ export interface PaceContext {
   failedSync: number;
   syncIssueSummary?: string;
   syncIssueResolution?: string;
+  customerInsights?: CustomerInsight[];
 }
 
 const viewSignals: Record<MainView, Omit<PaceSignal, "id" | "priority">> = {
@@ -121,6 +123,21 @@ export const buildPaceSignals = (
   preferences: PacePreferences,
 ): PaceSignal[] => {
   const signals: PaceSignal[] = [];
+
+  if (preferences.customerGuidance) {
+    for (const insight of context.customerInsights ?? []) {
+      signals.push({
+        id: `customer:${insight.id}`,
+        source: "Klantcontext",
+        title: insight.title,
+        compact: insight.compact,
+        detail: insight.detail,
+        action: { kind: "none" },
+        tone: insight.tone,
+        priority: insight.priority,
+      });
+    }
+  }
 
   if (preferences.operationalSignals && !context.online) {
     signals.push({

@@ -337,6 +337,9 @@ export interface Transaction {
     website?: string;
     footer?: string;
     returnPolicy?: string;
+    commercialReturnPolicy?: import("../data/merchant").CommercialReturnPolicy;
+    customerInsightSettings?: import("../data/merchant").CustomerInsightSettings;
+    timezone?: string;
   };
   registerId?: string;
   shiftId?: number;
