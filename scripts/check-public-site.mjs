@@ -56,7 +56,7 @@ if (!seoSource.includes("setAlternate('x-default'")) errors.push('Runtime-SEO mi
 if (!prerenderSource.includes('alternateTags(route.path)')) errors.push('Pre-rendering mist hreflang-tags.');
 for (const [locale, catalogText, catalog] of [['en', englishText, english], ['fr', frenchText, french]]) {
   if (Object.keys(catalog).length < 1100) errors.push(`${locale}: vertaalcatalogus is onverwacht onvolledig.`);
-  for (const marker of ['ZZXPWTERM', 'reser TVA', 'PAYEMENT', 'PAYAGE']) {
+  for (const marker of ['ZZXPWTERM', 'reser TVA', 'PAYEMENT', 'PAYAGE', 'Gallus', 'Inlimité', 'Étendre', 'mammaires', 'AAI', 'Détail Professional']) {
     if (catalogText.includes(marker)) errors.push(`${locale}: ongeldige vertaalrest gevonden: ${marker}.`);
   }
 }
