@@ -10,9 +10,13 @@ import {
   type PlatformStoreDetail,
 } from "./platformApi";
 
-const dateTime = (value: string | null) => value
-  ? new Intl.DateTimeFormat("nl-BE", { dateStyle: "short", timeStyle: "short" }).format(new Date(value))
-  : "Nog actief";
+const dateTime = (value: string | null | undefined) => {
+  if (!value) return "Nog actief";
+  const date = new Date(value);
+  return Number.isFinite(date.getTime())
+    ? new Intl.DateTimeFormat("nl-BE", { dateStyle: "short", timeStyle: "short" }).format(date)
+    : "Onbekend moment";
+};
 
 const runTone = (status: PlatformIntegrationRun["status"]) =>
   status === "completed" ? "bg-emerald-100 text-emerald-700"
@@ -47,7 +51,7 @@ export const TenantControls = ({ storeId, detail, onDeleted, section }: {
 
   const loadRuns = useCallback(async () => {
     setRunsLoading(true);
-    try { setRuns((await listPlatformIntegrationRuns(storeId)).items); }
+    try { setRuns((await listPlatformIntegrationRuns(storeId)).items ?? []); }
     catch (err) { setError(err instanceof Error ? err.message : "Integratieacties konden niet geladen worden."); }
     finally { setRunsLoading(false); }
   }, [storeId]);

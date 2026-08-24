@@ -73,6 +73,8 @@ export interface PlatformStore {
   name: string;
   is_demo: boolean;
   created_at: string;
+  owner_email?: string | null;
+  account_created_at?: string | null;
   plan_code: string | null;
   subscription_status: string | null;
   last_active_at: string | null;
@@ -639,112 +641,110 @@ type RpcClient = {
 const rpc = supabase as unknown as RpcClient;
 
 const call = async <T>(fn: string, args?: Record<string, unknown>): Promise<T> => {
-  try {
-    const { data, error } = await rpc.rpc(fn, args);
-    if (!error && data !== null && data !== undefined) {
-      if (fn === "platform_get_overview") {
-        const ov = data as PlatformOverview;
-        if (ov.metrics && ov.metrics.active_stores_24h > 0) return data as T;
-      } else if (fn === "platform_list_stores") {
-        const st = data as { items: PlatformStore[] };
-        if (st.items && st.items.length >= 4) return data as T;
-      } else if (fn === "platform_list_members") {
-        const mem = data as PlatformMember[];
-        if (mem && mem.length >= 3) return data as T;
-      } else if (fn === "platform_list_releases") {
-        const rel = data as PlatformRelease[];
-        if (rel && rel.length >= 2) return data as T;
-      } else if (fn === "platform_get_store_detail") {
-        const det = data as PlatformStoreDetail;
-        if (det.devices && det.devices.length > 0) return data as T;
-      } else {
-        return data as T;
-      }
-    }
-  } catch {
-    // Fallback to rich demo data
+  const { data, error } = await rpc.rpc(fn, args);
+  if (error) {
+    throw new Error(error.message || `Platformaanvraag ${fn} is mislukt.`);
   }
+  return data as T;
+};
 
-  // Rich Demo Fallback Dispatcher
-  if (fn === "get_platform_session") {
-    return {
-      user_id: "usr-kevin",
-      role: "superadmin",
-      scopes: ["all"],
-      mfa_verified_at: new Date().toISOString(),
-    } as T;
-  }
-  if (fn === "platform_get_overview") return DEMO_OVERVIEW as T;
-  if (fn === "platform_refresh_store_health_snapshots") return 6 as T;
-  if (fn === "platform_list_stores") {
-    const term = (args?.search_term as string | undefined)?.toLowerCase();
-    const filter = args?.health_filter as string | undefined;
-    let items = DEMO_STORES;
-    if (term) items = items.filter(s => s.name.toLowerCase().includes(term));
-    if (filter) items = items.filter(s => s.health_status === filter);
-    return { items } as T;
-  }
-  if (fn === "platform_get_store_detail") return DEMO_STORE_DETAIL as T;
-  if (fn === "platform_get_support_snapshot") {
-    return {
-      store_contact: {
-        legal_name: "Pwayment Skatestore BV",
-        email: "kevin@webaanzee.be",
-        phone: "+32 59 12 34 56",
-        city: "Oostende",
+const asRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+
+const asArray = <T>(value: unknown): T[] => Array.isArray(value) ? value as T[] : [];
+
+const healthStatuses = new Set<PlatformHealthStatus>([
+  "not_activated", "healthy", "at_risk", "critical", "inactive", "data_only",
+]);
+
+const safeHealthStatus = (value: unknown): PlatformHealthStatus =>
+  healthStatuses.has(value as PlatformHealthStatus)
+    ? value as PlatformHealthStatus
+    : "not_activated";
+
+const normalizeStore = (value: PlatformStore): PlatformStore => ({
+  ...value,
+  health_status: safeHealthStatus(value?.health_status),
+  health_reason: value?.health_reason || "Nog geen betrouwbare gezondheidsmeting beschikbaar.",
+  data_coverage_status: value?.data_coverage_status === "measured" || value?.data_coverage_status === "server_data_only"
+    ? value.data_coverage_status
+    : "not_activated",
+  open_incidents: Number.isFinite(Number(value?.open_incidents)) ? Number(value.open_incidents) : 0,
+  pending_queue_count: Number.isFinite(Number(value?.pending_queue_count)) ? Number(value.pending_queue_count) : 0,
+});
+
+const normalizeOverview = (value: unknown): PlatformOverview => {
+  const overview = asRecord(value);
+  const metrics = asRecord(overview.metrics);
+  const subscriptions = asRecord(metrics.subscriptions);
+  const health = asRecord(metrics.health);
+  const number = (input: unknown) => Number.isFinite(Number(input)) ? Number(input) : 0;
+  return {
+    metrics: {
+      active_stores_24h: number(metrics.active_stores_24h),
+      critical_incidents: number(metrics.critical_incidents),
+      sync_at_risk: number(metrics.sync_at_risk),
+      financial_failures_24h: number(metrics.financial_failures_24h),
+      subscriptions: {
+        trialing: number(subscriptions.trialing),
+        active: number(subscriptions.active),
+        past_due: number(subscriptions.past_due),
       },
-      active_members: [
-        { display_name: "Kevin · Webaanzee", role: "Eigenaar / Beheerder" },
-        { display_name: "Robin Janssens", role: "Hoofd Atelier & Balie" },
-        { display_name: "Nora Peeters", role: "Winkelverantwoordelijke" }
-      ],
-      recent_audit: [
-        { occurred_at: new Date(Date.now() - 1000 * 60 * 12).toISOString(), action: "support_access.granted", user_name: "Fabrice", source: "Platform Console" },
-        { occurred_at: new Date(Date.now() - 1000 * 60 * 60 * 14).toISOString(), action: "z_report.closed", user_name: "Kevin", source: "POS Kassa" }
-      ]
-    } as T;
-  }
-  if (fn === "platform_list_members") return DEMO_MEMBERS as T;
-  if (fn === "platform_list_releases") return DEMO_RELEASES as T;
-  if (fn === "platform_list_audit_entries") return { items: DEMO_AUDIT_ENTRIES } as T;
-  if (fn === "platform_list_incidents") {
-    return {
-      items: [
-        {
-          id: "inc-01",
-          title: "Mollie Terminal Cloud Timeout (Kortstondige netwerkvertraging)",
-          severity: "p2",
-          status: "resolved",
-          affected_store_count: 1,
-          last_seen_at: new Date(Date.now() - 1000 * 60 * 18).toISOString(),
-          operation: "payment.terminal_handshake",
-          first_seen_at: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
-          resolution_note: "Automatische failover naar lokale kaartlezer succesvol geactiveerd",
-          events: [
-            { event_type: "terminal.recovered", note: "Hersteld", occurred_at: new Date(Date.now() - 1000 * 60 * 18).toISOString() }
-          ]
-        }
-      ]
-    } as T;
-  }
-
-  return {} as T;
+      health: {
+        healthy: number(health.healthy),
+        at_risk: number(health.at_risk),
+        critical: number(health.critical),
+        not_activated: number(health.not_activated),
+        inactive: number(health.inactive),
+        data_only: number(health.data_only),
+      },
+    },
+    incidents: asArray<PlatformIncident>(overview.incidents),
+    priority_stores: asArray<PlatformOverview["priority_stores"][number]>(overview.priority_stores)
+      .map((store) => ({ ...store, health_status: safeHealthStatus(store?.health_status) })),
+  };
 };
 
 export const getPlatformSession = () => call<PlatformSession>("get_platform_session");
-export const getPlatformOverview = () => call<PlatformOverview>("platform_get_overview");
+export const getPlatformOverview = async () =>
+  normalizeOverview(await call<unknown>("platform_get_overview"));
 export const refreshPlatformHealthSnapshots = () =>
   call<number>("platform_refresh_store_health_snapshots");
-export const listPlatformStores = (searchTerm: string, healthFilter: string) =>
-  call<{ items: PlatformStore[] }>("platform_list_stores", {
+export const listPlatformStores = async (searchTerm: string, healthFilter: string) => {
+  const result = await call<{ items: PlatformStore[] }>("platform_list_stores", {
     search_term: searchTerm.trim() || null,
     health_filter: healthFilter || null,
     page_limit: 100,
   });
-export const getPlatformStoreDetail = (storeId: string) =>
-  call<PlatformStoreDetail>("platform_get_store_detail", { target_store_id: storeId });
-export const getPlatformSupportSnapshot = (storeId: string) =>
-  call<PlatformSupportSnapshot>("platform_get_support_snapshot", { target_store_id: storeId });
+  // Defence in depth for databases where the real-store-only RPC migration has
+  // not reached production yet. Demo tenants must never appear in /admin.
+  return { items: asArray<PlatformStore>(result?.items).filter((store) => !store?.is_demo).map(normalizeStore) };
+};
+export const getPlatformStoreDetail = async (storeId: string) => {
+  const detail = await call<PlatformStoreDetail>("platform_get_store_detail", { target_store_id: storeId });
+  if (!detail?.store || !detail?.activity || !detail?.health) {
+    throw new Error("Het winkeldossier bevat geen geldige servergegevens.");
+  }
+  return {
+    ...detail,
+    subscription: detail.subscription ?? {},
+    health: { ...detail.health, status: safeHealthStatus(detail.health.status) },
+    devices: asArray<PlatformStoreDetail["devices"][number]>(detail.devices),
+    recent_health_events: asArray<PlatformStoreDetail["recent_health_events"][number]>(detail.recent_health_events),
+    incidents: asArray<PlatformStoreDetail["incidents"][number]>(detail.incidents),
+    active_support_grant: detail.active_support_grant ?? {},
+  };
+};
+export const getPlatformSupportSnapshot = async (storeId: string) => {
+  const snapshot = await call<PlatformSupportSnapshot>("platform_get_support_snapshot", { target_store_id: storeId });
+  return {
+    store_contact: snapshot?.store_contact ?? {},
+    active_members: asArray<PlatformSupportSnapshot["active_members"][number]>(snapshot?.active_members),
+    recent_audit: asArray<PlatformSupportSnapshot["recent_audit"][number]>(snapshot?.recent_audit),
+  };
+};
 export const requestSupportAccess = (
   storeId: string,
   reason: string,
@@ -761,12 +761,17 @@ export const requestSupportAccess = (
   );
 export const revokeSupportAccess = (grantId: string) =>
   call<void>("platform_revoke_support_access", { grant_id: grantId });
-export const listPlatformIncidents = (statusFilter = "", severityFilter = "") =>
-  call<{ items: PlatformIncidentDetail[] }>("platform_list_incidents", {
+export const listPlatformIncidents = async (statusFilter = "", severityFilter = "") => {
+  const result = await call<{ items: PlatformIncidentDetail[] }>("platform_list_incidents", {
     status_filter: statusFilter || null,
     severity_filter: severityFilter || null,
     page_limit: 100,
   });
+  return { items: asArray<PlatformIncidentDetail>(result?.items).map((incident) => ({
+    ...incident,
+    events: asArray<PlatformIncidentDetail["events"][number]>(incident?.events),
+  })) };
+};
 export const updatePlatformIncident = (
   incidentId: string,
   status: "acknowledged" | "investigating" | "mitigated" | "resolved" | "false_positive",
@@ -778,7 +783,11 @@ export const updatePlatformIncident = (
     operator_note: note?.trim() || null,
   });
 
-export const listPlatformMembers = () => call<PlatformMember[]>("platform_list_members");
+export const listPlatformMembers = async () =>
+  asArray<PlatformMember>(await call<unknown>("platform_list_members")).map((member) => ({
+    ...member,
+    scopes: asArray<string>(member?.scopes),
+  }));
 
 export const upsertPlatformMember = (
   email: string,
@@ -792,7 +801,11 @@ export const upsertPlatformMember = (
   member_status: status,
 });
 
-export const listPlatformReleases = () => call<PlatformRelease[]>("platform_list_releases");
+export const listPlatformReleases = async () =>
+  asArray<PlatformRelease>(await call<unknown>("platform_list_releases")).map((release) => ({
+    ...release,
+    target_store_ids: asArray<string>(release?.target_store_ids),
+  }));
 
 export const createPlatformRelease = (input: {
   featureKey: string;
@@ -818,17 +831,30 @@ export const transitionPlatformRelease = (releaseId: string, nextStatus: Platfor
     next_status: nextStatus,
   });
 
-export const listPlatformAuditEntries = (searchTerm = "") =>
-  call<{ items: PlatformAuditEntry[] }>("platform_list_audit_entries", {
+export const listPlatformAuditEntries = async (searchTerm = "") => {
+  const result = await call<{ items: PlatformAuditEntry[] }>("platform_list_audit_entries", {
     search_term: searchTerm.trim() || null,
     page_limit: 100,
   });
+  return { items: asArray<PlatformAuditEntry>(result?.items).map((entry) => ({
+    ...entry,
+    detail: asRecord(entry?.detail),
+  })) };
+};
 
-export const listPlatformIntegrationRuns = (storeId: string) =>
-  call<{ items: PlatformIntegrationRun[] }>("platform_list_integration_runs", {
+export const listPlatformIntegrationRuns = async (storeId: string) => {
+  const result = await call<{ items: PlatformIntegrationRun[] }>("platform_list_integration_runs", {
     target_store_id: storeId,
     page_limit: 100,
   });
+  return { items: asArray<PlatformIntegrationRun>(result?.items).map((run) => ({
+    ...run,
+    status: ["queued", "running", "completed", "completed_with_errors", "failed", "cancelled"].includes(run?.status)
+      ? run.status
+      : "failed",
+    events: asArray<PlatformIntegrationRun["events"][number]>(run?.events),
+  })) };
+};
 
 export const updatePlatformStoreSubscription = (
   storeId: string,
@@ -849,9 +875,19 @@ export const deletePlatformStore = (storeId: string, expectedStoreName: string, 
     deletion_reason: reason,
   });
 
-export const listPlatformDevelopmentUpdates = (cursor?: PlatformDevelopmentCursor | null) =>
-  call<PlatformDevelopmentUpdatesPage>("platform_list_development_updates", {
+export const listPlatformDevelopmentUpdates = async (cursor?: PlatformDevelopmentCursor | null) => {
+  const page = await call<PlatformDevelopmentUpdatesPage>("platform_list_development_updates", {
     page_limit: 100,
     before_pushed_at: cursor?.pushed_at,
     before_id: cursor?.id,
   });
+  return {
+    items: asArray<PlatformDevelopmentUpdate>(page?.items).map((update) => ({
+      ...update,
+      github_push_id: update?.github_push_id || "unknown",
+      branch_name: update?.branch_name || "unknown",
+      commits: asArray(update?.commits),
+    })),
+    next_cursor: page?.next_cursor ?? null,
+  };
+};

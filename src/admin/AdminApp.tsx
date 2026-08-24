@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { Component, FormEvent, useCallback, useEffect, useMemo, useState, type ErrorInfo, type ReactNode } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -62,10 +62,12 @@ import {
 
 type AdminView = "overview" | "stores" | "store" | "incidents" | "team" | "releases" | "audit" | "development";
 
-const formatDate = (value: string | null | undefined) =>
-  value
-    ? new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value))
-    : "Geen bevestiging";
+const formatDate = (value: string | null | undefined) => {
+  if (!value) return "Geen bevestiging";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "Geen bevestiging";
+  return new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short" }).format(date);
+};
 
 const relativeTime = (value: string | null | undefined) => {
   if (!value) return "Geen bevestiging";
@@ -105,11 +107,40 @@ const currentRoute = (): { view: AdminView; storeId?: string } => {
   return { view: "overview" };
 };
 
-const StatusBadge = ({ status }: { status: PlatformHealthStatus }) => (
-  <span className={`inline-flex rounded-lg border px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.06em] ${healthConfig[status].className}`}>
-    {healthConfig[status].label}
+const healthDisplay = (status: PlatformHealthStatus | string | null | undefined) =>
+  healthConfig[status as PlatformHealthStatus] ?? healthConfig.not_activated;
+
+const StatusBadge = ({ status }: { status: PlatformHealthStatus | string | null | undefined }) => (
+  <span className={`inline-flex rounded-lg border px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.06em] ${healthDisplay(status).className}`}>
+    {healthDisplay(status).label}
   </span>
 );
+
+class AdminRouteBoundary extends Component<{
+  routeKey: string;
+  children: ReactNode;
+}, { error: Error | null }> {
+  state: { error: Error | null } = { error: null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("Adminroute kon niet renderen", error, info.componentStack);
+  }
+
+  componentDidUpdate(previous: Readonly<{ routeKey: string; children: ReactNode }>) {
+    if (previous.routeKey !== this.props.routeKey && this.state.error) {
+      this.setState({ error: null });
+    }
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children;
+    return <section className="rounded-2xl border border-rose-200 bg-white p-6 shadow-sm"><CircleAlert className="text-rose-700" size={24} /><h1 className="mt-3 text-lg font-extrabold text-slate-950">Deze adminpagina kon niet worden weergegeven</h1><p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">De rest van de platformconsole blijft beschikbaar. Probeer deze pagina opnieuw; bij een afwijkend serverantwoord verschijnt hier een leesbare fout in plaats van een witte pagina.</p><Button className="mt-4" onClick={() => this.setState({ error: null })}><RefreshCw size={15} /> Pagina opnieuw proberen</Button></section>;
+  }
+}
 
 const MetricCard = ({ label, value, detail, Icon, tone = "neutral" }: {
   label: string;
@@ -173,7 +204,7 @@ const Stores = ({ onOpen }: { onOpen: (store: PlatformStore) => void }) => {
   const [stores, setStores] = useState<PlatformStore[]>([]); const [search, setSearch] = useState(""); const [health, setHealth] = useState(""); const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null);
   const load = useCallback(async () => { setLoading(true); setError(null); try { setStores((await listPlatformStores(search, health)).items); } catch (err) { setError(err instanceof Error ? err.message : "Winkels konden niet geladen worden."); } finally { setLoading(false); } }, [search, health]);
   useEffect(() => { const timer = window.setTimeout(() => void load(), 180); return () => window.clearTimeout(timer); }, [load]);
-  return <section><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-[0.12em] text-cyan-700">Klantengezondheid</p><h1 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-950">Winkels</h1><p className="mt-1 text-sm text-slate-500">Status, meetdekking, wachtrijen en een verklaarbare volgende actie per winkel.</p></div><Button onClick={() => void load()} disabled={loading}><RefreshCw size={15} /> Vernieuwen</Button></div><div className="mt-5 flex flex-col gap-2 sm:flex-row"><label className="relative flex-1"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Zoek op winkelnaam" className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100" /></label><select value={health} onChange={(event) => setHealth(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none focus:border-cyan-500"> <option value="">Alle gezondheidstoestanden</option>{Object.entries(healthConfig).map(([value, config]) => <option key={value} value={value}>{config.label}</option>)}</select></div>{error && <FeedbackBanner tone="error" className="mt-4">{error}</FeedbackBanner>}<div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]"><div className="overflow-x-auto"><table className="w-full min-w-[1020px] text-left"><thead className="border-b border-slate-100 bg-slate-50 text-[10px] font-extrabold uppercase tracking-[0.08em] text-slate-500"><tr><th className="px-4 py-3">Winkel</th><th className="px-4 py-3">Gezondheid</th><th className="px-4 py-3">Verklaring</th><th className="px-4 py-3">Laatste sync</th><th className="px-4 py-3">Wachtrij</th><th className="px-4 py-3">Incidenten</th><th className="px-4 py-3" /></tr></thead><tbody>{loading ? <tr><td colSpan={7} className="px-4 py-10 text-center text-sm font-semibold text-slate-500">Winkels laden…</td></tr> : stores.length ? stores.map((store) => <tr key={store.id} className="border-b border-slate-100 align-top last:border-0 hover:bg-slate-50/70"><td className="px-4 py-3"><p className="text-sm font-bold text-slate-900">{store.name}</p><p className="mt-0.5 text-[11px] text-slate-500">{store.is_demo ? "Demo · " : ""}{store.plan_code ?? "Geen plan"} · aangemaakt {formatDate(store.created_at)}</p></td><td className="px-4 py-3"><StatusBadge status={store.health_status} /><p className="mt-1 text-[11px] text-slate-500">{store.data_coverage_status === "measured" ? "Meetagent actief" : store.data_coverage_status === "server_data_only" ? "Alleen serverdata" : "Activatie vereist"}</p></td><td className="max-w-[310px] px-4 py-3 text-xs leading-5 text-slate-600">{store.health_reason}</td><td className="px-4 py-3 text-xs font-semibold text-slate-700">{relativeTime(store.last_sync_at)}</td><td className="px-4 py-3 text-xs font-bold text-slate-700">{store.pending_queue_count}</td><td className="px-4 py-3 text-xs font-bold text-slate-700">{store.open_incidents}</td><td className="px-4 py-3 text-right"><Button size="sm" onClick={() => onOpen(store)}>Open</Button></td></tr>) : <tr><td colSpan={7} className="px-4 py-10 text-center"><p className="text-sm font-bold text-slate-800">Geen winkels gevonden</p><p className="mt-1 text-xs text-slate-500">Pas je zoekopdracht of gezondheidsfilter aan.</p></td></tr>}</tbody></table></div></div></section>;
+  return <section><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-[0.12em] text-cyan-700">Echte registraties</p><h1 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-950">Winkels</h1><p className="mt-1 text-sm text-slate-500">Alleen echte, server-geregistreerde winkels en de accountregistratie van hun eigenaar.</p></div><Button onClick={() => void load()} disabled={loading}><RefreshCw size={15} /> Vernieuwen</Button></div><div className="mt-5 flex flex-col gap-2 sm:flex-row"><label className="relative flex-1"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Zoek op winkelnaam" className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100" /></label><select value={health} onChange={(event) => setHealth(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none focus:border-cyan-500"> <option value="">Alle gezondheidstoestanden</option>{Object.entries(healthConfig).map(([value, config]) => <option key={value} value={value}>{config.label}</option>)}</select></div>{error && <FeedbackBanner tone="error" className="mt-4">{error}</FeedbackBanner>}<div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]"><div className="overflow-x-auto"><table className="w-full min-w-[1180px] text-left"><thead className="border-b border-slate-100 bg-slate-50 text-[10px] font-extrabold uppercase tracking-[0.08em] text-slate-500"><tr><th className="px-4 py-3">Winkel</th><th className="px-4 py-3">Account</th><th className="px-4 py-3">Gezondheid</th><th className="px-4 py-3">Verklaring</th><th className="px-4 py-3">Laatste sync</th><th className="px-4 py-3">Wachtrij</th><th className="px-4 py-3">Incidenten</th><th className="px-4 py-3" /></tr></thead><tbody>{loading ? <tr><td colSpan={8} className="px-4 py-10 text-center text-sm font-semibold text-slate-500">Echte registraties laden…</td></tr> : stores.length ? stores.map((store) => <tr key={store.id} className="border-b border-slate-100 align-top last:border-0 hover:bg-slate-50/70"><td className="px-4 py-3"><p className="text-sm font-bold text-slate-900">{store.name}</p><p className="mt-0.5 text-[11px] text-slate-500">{store.plan_code ?? "Geen plan"} · winkel aangemaakt {formatDate(store.created_at)}</p></td><td className="px-4 py-3"><p className="text-xs font-bold text-slate-800">{store.owner_email ?? "Account geregistreerd"}</p><p className="mt-0.5 text-[11px] text-slate-500">{store.account_created_at ? `Account aangemaakt ${formatDate(store.account_created_at)}` : "Registratiedatum volgt uit de winkelregistratie"}</p></td><td className="px-4 py-3"><StatusBadge status={store.health_status} /><p className="mt-1 text-[11px] text-slate-500">{store.data_coverage_status === "measured" ? "Meetagent actief" : store.data_coverage_status === "server_data_only" ? "Alleen serverdata" : "Activatie vereist"}</p></td><td className="max-w-[310px] px-4 py-3 text-xs leading-5 text-slate-600">{store.health_reason}</td><td className="px-4 py-3 text-xs font-semibold text-slate-700">{relativeTime(store.last_sync_at)}</td><td className="px-4 py-3 text-xs font-bold text-slate-700">{store.pending_queue_count}</td><td className="px-4 py-3 text-xs font-bold text-slate-700">{store.open_incidents}</td><td className="px-4 py-3 text-right"><Button size="sm" onClick={() => onOpen(store)}>Open</Button></td></tr>) : <tr><td colSpan={8} className="px-4 py-10 text-center"><p className="text-sm font-bold text-slate-800">Nog geen echte winkelaccounts</p><p className="mt-1 text-xs text-slate-500">Een nieuwe accountregistratie verschijnt hier automatisch; demo- en voorbeelddata worden nooit getoond.</p></td></tr>}</tbody></table></div></div></section>;
 };
 
 const StoreDetail = ({ storeId, onBack }: { storeId: string; onBack: () => void }) => {
@@ -282,5 +313,24 @@ export default function AdminApp() {
   const title = useMemo(() => route.view === "overview" ? "Overzicht" : route.view === "stores" ? "Winkels" : route.view === "incidents" ? "Incidenten" : route.view === "development" ? "Ontwikkelupdates" : route.view === "team" ? "Team & toegang" : route.view === "releases" ? "Releases" : route.view === "audit" ? "Platformaudit" : "Winkeldossier", [route.view]);
   if (checking) return <main className="flex min-h-dvh items-center justify-center bg-slate-50 text-sm font-bold text-slate-500">Platformsessie controleren…</main>;
   if (!session) return <PlatformLogin onAuthenticated={authenticate} />;
-  return <div className="flex min-h-dvh flex-col bg-slate-50 text-slate-900 lg:flex-row"><Sidebar view={route.view} onNavigate={navigate} onLogout={() => void logout()} /><main className="min-w-0 flex-1"><header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 sm:px-6"><div><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">PWAYMENT · {session.role}</p><p className="mt-0.5 text-sm font-extrabold text-slate-900">{title}</p></div><button type="button" onClick={() => void logout()} className="rounded-lg p-2 text-slate-500 hover:bg-slate-50 lg:hidden" aria-label="Afmelden"><LogOut size={17} /></button></header>{accessError && <div className="px-4 pt-4 sm:px-6"><FeedbackBanner tone="error" onDismiss={() => setAccessError(null)}>{accessError}</FeedbackBanner></div>}<div className="p-4 sm:p-6">{route.view === "overview" && <Overview overview={overview} loading={overviewLoading} onRefresh={() => void loadOverview()} onOpenStores={(storeId) => navigate(storeId ? `/admin/stores/${encodeURIComponent(storeId)}` : "/admin/stores")} />}{route.view === "stores" && <Stores onOpen={(store) => navigate(`/admin/stores/${encodeURIComponent(store.id)}`)} />}{route.view === "store" && route.storeId && <StoreDetailWithControls storeId={route.storeId} onBack={() => navigate("/admin/stores")} onDeleted={() => navigate("/admin/stores")} />}{route.view === "incidents" && <Incidents />}{route.view === "development" && <DevelopmentLog />}{route.view === "team" && <Team session={session} />}{route.view === "releases" && <Releases />}{route.view === "audit" && <Audit />}</div></main></div>;
+  const routeKey = `${route.view}:${route.storeId ?? ""}`;
+  return <div className="flex min-h-dvh flex-col bg-slate-50 text-slate-900 lg:flex-row">
+    <Sidebar view={route.view} onNavigate={navigate} onLogout={() => void logout()} />
+    <main className="min-w-0 flex-1">
+      <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 sm:px-6"><div><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">PWAYMENT · {session.role}</p><p className="mt-0.5 text-sm font-extrabold text-slate-900">{title}</p></div><button type="button" onClick={() => void logout()} className="rounded-lg p-2 text-slate-500 hover:bg-slate-50 lg:hidden" aria-label="Afmelden"><LogOut size={17} /></button></header>
+      {accessError && <div className="px-4 pt-4 sm:px-6"><FeedbackBanner tone="error" onDismiss={() => setAccessError(null)}>{accessError}</FeedbackBanner></div>}
+      <div className="p-4 sm:p-6">
+        <AdminRouteBoundary routeKey={routeKey}>
+          {route.view === "overview" && <Overview overview={overview} loading={overviewLoading} onRefresh={() => void loadOverview()} onOpenStores={(storeId) => navigate(storeId ? `/admin/stores/${encodeURIComponent(storeId)}` : "/admin/stores")} />}
+          {route.view === "stores" && <Stores onOpen={(store) => navigate(`/admin/stores/${encodeURIComponent(store.id)}`)} />}
+          {route.view === "store" && route.storeId && <StoreDetailWithControls storeId={route.storeId} onBack={() => navigate("/admin/stores")} onDeleted={() => navigate("/admin/stores")} />}
+          {route.view === "incidents" && <Incidents />}
+          {route.view === "development" && <DevelopmentLog />}
+          {route.view === "team" && <Team session={session} />}
+          {route.view === "releases" && <Releases />}
+          {route.view === "audit" && <Audit />}
+        </AdminRouteBoundary>
+      </div>
+    </main>
+  </div>;
 }

@@ -4,7 +4,13 @@ import { Button } from "../components/ui/Button";
 import { FeedbackBanner } from "../components/ui/FeedbackBanner";
 import { listPlatformDevelopmentUpdates, type PlatformDevelopmentCursor, type PlatformDevelopmentUpdate } from "./platformApi";
 
-const when = (value: string) => new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+const when = (value: string | null | undefined) => {
+  if (!value) return "Onbekend moment";
+  const date = new Date(value);
+  return Number.isFinite(date.getTime())
+    ? new Intl.DateTimeFormat("nl-BE", { dateStyle: "medium", timeStyle: "short" }).format(date)
+    : "Onbekend moment";
+};
 const shortSha = (value: string) => value.slice(0, 8);
 
 export const DevelopmentLog = () => {
