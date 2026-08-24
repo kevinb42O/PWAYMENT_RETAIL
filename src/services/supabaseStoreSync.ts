@@ -181,6 +181,7 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
       movement.transactionId != null && pendingTransactionIds.has(movement.transactionId),
     );
   const pendingProductIds = new Set<string>();
+  const pendingCategoriesById = new Map<string, ProductCategory>();
   for (const entry of pendingOutbox) {
     if (entry.kind === "upsert_product") {
       for (const product of entry.payload as Product[]) pendingProductIds.add(product.id);
@@ -188,6 +189,11 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
     if (entry.kind === "upsert_catalog_batch") {
       const payload = entry.payload as { products?: Product[] };
       for (const product of payload.products ?? []) pendingProductIds.add(product.id);
+    }
+    if (entry.kind === "upsert_category") {
+      for (const category of entry.payload as ProductCategory[]) {
+        pendingCategoriesById.set(category.id, category);
+      }
     }
   }
   reportLoadingProgress("store-data");
@@ -460,7 +466,7 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
   const categoryExternalIdByDatabaseId = new Map(
     categoryRows.map((row) => [row.id, row.external_id ?? row.id]),
   );
-  const categories: ProductCategory[] = categoryRows.map((row) => ({
+  let categories: ProductCategory[] = categoryRows.map((row) => ({
     id: row.external_id ?? row.id,
     serverId: row.id,
     parentId: row.parent_id
@@ -471,6 +477,18 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
     sortOrder: row.sort_order ?? undefined,
     isActive: row.is_active,
   }));
+  // Category creation is offline-first just like product editing. A server
+  // refresh may arrive between the local category/product commit and the
+  // outbox acknowledgement. Overlay those pending categories so products can
+  // never be left pointing at leaf IDs that the authoritative cache replace
+  // has temporarily removed.
+  if (pendingCategoriesById.size > 0) {
+    const categoriesById = new Map(categories.map((category) => [category.id, category]));
+    for (const category of pendingCategoriesById.values()) {
+      categoriesById.set(category.id, category);
+    }
+    categories = [...categoriesById.values()];
+  }
 
   const familyVariantByProductId = new Map(
     productFamilyVariantRows.map((variant) => [variant.product_id, variant]),
@@ -1100,11 +1118,13 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
 
   const [
     { useProducts },
+    { useCategories },
     { useCustomers },
     { useStore },
     { useIntegrations },
   ] = await Promise.all([
     import("../store/useProducts"),
+    import("../store/useCategories"),
     import("../store/useCustomers"),
     import("../store/useStore"),
     import("../store/useIntegrations"),
@@ -1133,7 +1153,10 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
     // Tenant database isolation remains effective without localStorage access.
   }
   await Promise.all([
-    useProducts.getState().refresh(),
+    // An authoritative refresh can run after repository stores have already
+    // hydrated. Replacing IndexedDB without refreshing both stores leaves the
+    // UI with products from one snapshot and categories from another.
+    useCategories.getState().refresh().then(() => useProducts.getState().refresh()),
     useCustomers.getState().hydrate(true),
   ]);
 };

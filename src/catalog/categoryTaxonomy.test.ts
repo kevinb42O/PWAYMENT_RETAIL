@@ -36,4 +36,28 @@ describe("catalog category taxonomy", () => {
     expect(second.createdCategories).toHaveLength(0);
     expect(second.updatedProducts).toHaveLength(0);
   });
+
+  it("reconstructs a missing leaf from an already-canonical product id", () => {
+    const result = materializeLegacySubcategories(
+      [{ id: "apparel", name: "Kledij", vatRate: 21, isActive: true }],
+      [product({
+        id: "cap",
+        name: "6 Panel Cap",
+        category: "apparel-mutsen-petten",
+        subCategory: "Mutsen & petten",
+      })],
+    );
+
+    expect(result.createdCategories).toEqual([
+      expect.objectContaining({
+        id: "apparel-mutsen-petten",
+        parentId: "apparel",
+        name: "Mutsen & petten",
+      }),
+    ]);
+    expect(result.products[0]).toMatchObject({
+      category: "apparel-mutsen-petten",
+      subCategory: "Mutsen & petten",
+    });
+  });
 });

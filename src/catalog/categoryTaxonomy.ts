@@ -105,7 +105,21 @@ export const materializeLegacySubcategories = (
   const createdCategories: ProductCategory[] = [];
   const updatedProducts: Product[] = [];
   const products = originalProducts.map((product) => {
-    const existingPath = resolveProductCategoryPath(product, categories);
+    let existingPath = resolveProductCategoryPath(product, categories);
+    // Repair a cache that retained canonical leaf IDs on products while an
+    // older authoritative refresh replaced the taxonomy with roots only. The
+    // leaf ID is generated deterministically from root + subcategory, so this
+    // match is unambiguous and restores the missing category record instead
+    // of exposing an internal slug in the UI.
+    if (!existingPath && product.subCategory?.trim()) {
+      const leafId = product.category;
+      const subcategorySlug = slugify(product.subCategory);
+      const inferredRoot = categories.find((category) =>
+        !category.parentId
+        && `${category.id}-${subcategorySlug}`.slice(0, 64) === leafId
+      );
+      if (inferredRoot) existingPath = { root: inferredRoot };
+    }
     if (existingPath?.leaf) {
       if (product.category === existingPath.leaf.id && product.subCategory === existingPath.leaf.name) return product;
       const updated = { ...product, category: existingPath.leaf.id, subCategory: existingPath.leaf.name };

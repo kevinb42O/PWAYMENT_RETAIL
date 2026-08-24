@@ -85,7 +85,8 @@ describe("Supabase store bootstrap", () => {
     await tenantDb.products.put({
       id: "pending-product",
       name: "Lokale hoodie",
-      category: "decks",
+      category: "hardware-local-leaf",
+      subCategory: "Lokale leaf",
       priceCents: 4500,
       vatRate: 21,
       stockQty: 7,
@@ -100,6 +101,25 @@ describe("Supabase store bootstrap", () => {
         products: [{ id: "pending-product" }],
         existingProductExternalIds: [],
       },
+      attempts: 0,
+    });
+    await tenantDb.categories.put({
+      id: "hardware-local-leaf",
+      parentId: "hardware",
+      name: "Lokale leaf",
+      vatRate: 21,
+      isActive: true,
+    });
+    await tenantDb.outbox.add({
+      timestamp: Date.parse(now) + 3,
+      kind: "upsert_category",
+      payload: [{
+        id: "hardware-local-leaf",
+        parentId: "hardware",
+        name: "Lokale leaf",
+        vatRate: 21,
+        isActive: true,
+      }],
       attempts: 0,
     });
 
@@ -174,6 +194,7 @@ describe("Supabase store bootstrap", () => {
     });
     expect(await activeDb.products.get("pending-product")).toMatchObject({
       name: "Lokale hoodie",
+      category: "hardware-local-leaf",
       stockQty: 7,
       familyId: "00000000-0000-4000-8000-000000000099",
       variantOptions: { Maat: "M" },
@@ -181,6 +202,21 @@ describe("Supabase store bootstrap", () => {
     expect(await activeDb.categories.get("decks")).toMatchObject({
       parentId: "hardware",
     });
+    expect(await activeDb.categories.get("hardware-local-leaf")).toMatchObject({
+      parentId: "hardware",
+      name: "Lokale leaf",
+    });
+    const [{ useCategories }, { useProducts }] = await Promise.all([
+      import("../store/useCategories"),
+      import("../store/useProducts"),
+    ]);
+    expect(useCategories.getState().list).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "hardware" }),
+      expect.objectContaining({ id: "hardware-local-leaf", parentId: "hardware" }),
+    ]));
+    expect(useProducts.getState().list).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "pending-product", category: "hardware-local-leaf" }),
+    ]));
     expect(await activeDb.customers.get("customer-1")).toMatchObject({ name: "Ari Klant" });
     expect(await activeDb.transactions.get(1)).toMatchObject({
       clientRequestId: "request-1",
