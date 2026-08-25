@@ -4,7 +4,7 @@ import path from 'node:path';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relative) => readFile(path.join(root, relative), 'utf8');
-const [registryText, publicSite, sitemap, robots, planCatalog, billingSettings, marketingMigration, englishText, frenchText, overridesText, localeSource, seoSource, prerenderSource] = await Promise.all([
+const [registryText, publicSite, sitemap, robots, planCatalog, billingSettings, marketingMigration, englishText, frenchText, overridesText, localeSource, seoSource, prerenderSource, indexSource] = await Promise.all([
   read('src/public/public-site-registry.json'),
   read('src/public/PublicSite.tsx'),
   read('public/sitemap.xml'),
@@ -18,6 +18,7 @@ const [registryText, publicSite, sitemap, robots, planCatalog, billingSettings, 
   read('src/public/publicLocale.ts'),
   read('src/public/siteSeo.ts'),
   read('scripts/prerender-public-site.mjs'),
+  read('index.html'),
 ]);
 
 const routes = JSON.parse(registryText);
@@ -54,6 +55,10 @@ if (!sitemap.includes('xmlns:xhtml="http://www.w3.org/1999/xhtml"')) errors.push
 if (!localeSource.includes("type PublicLocale = 'nl' | 'fr' | 'en'")) errors.push('De publieke localelaag mist NL, FR of EN.');
 if (!seoSource.includes("setAlternate('x-default'")) errors.push('Runtime-SEO mist x-default hreflang.');
 if (!prerenderSource.includes('alternateTags(route.path)')) errors.push('Pre-rendering mist hreflang-tags.');
+for (const requiredShareMeta of ['og:image:secure_url', 'og:image:type', 'og:image:width', 'og:image:height', 'og:image:alt', 'twitter:image:alt']) {
+  if (!indexSource.includes(requiredShareMeta)) errors.push(`De HTML-shell mist social-previewmetadata: ${requiredShareMeta}.`);
+  if (!seoSource.includes(requiredShareMeta)) errors.push(`Runtime-SEO mist social-previewmetadata: ${requiredShareMeta}.`);
+}
 for (const [locale, catalogText, catalog] of [['en', englishText, english], ['fr', frenchText, french]]) {
   if (Object.keys(catalog).length < 1100) errors.push(`${locale}: vertaalcatalogus is onverwacht onvolledig.`);
   for (const marker of ['ZZXPWTERM', 'reser TVA', 'PAYEMENT', 'PAYAGE', 'Gallus', 'Inlimité', 'Étendre', 'mammaires', 'AAI', 'Détail Professional']) {

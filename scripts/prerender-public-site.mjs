@@ -36,11 +36,16 @@ const organizationDescriptions = {
   fr: 'Plateforme belge de gestion retail pour la caisse, le stock, les clients, la boutique en ligne et l\u2019analyse commerciale.',
   en: 'Belgian retail platform for POS, inventory, customers, online sales and retail intelligence.',
 };
+const shareImageAlt = {
+  nl: 'PWAYMENT — je winkel, één helder systeem',
+  fr: 'PWAYMENT — votre magasin, un système clair',
+  en: 'PWAYMENT — your store, one clear system',
+};
 
 const structuredData = (route, canonical, locale) => ({
   '@context': 'https://schema.org',
   '@graph': [
-    { '@type': 'Organization', '@id': `${origin}/#organization`, name: 'PWAYMENT', url: `${origin}/`, logo: `${origin}/branding/PWAYMENTLOGOFINAL.png`, image: `${origin}/og-website.png`, description: organizationDescriptions[locale], areaServed: { '@type': 'Country', name: 'Belgium' } },
+    { '@type': 'Organization', '@id': `${origin}/#organization`, name: 'PWAYMENT', url: `${origin}/`, logo: `${origin}/branding/PWAYMENTLOGOFINAL.png`, image: `${origin}/og-pwayment-social-2026.jpg`, description: organizationDescriptions[locale], areaServed: { '@type': 'Country', name: 'Belgium' } },
     { '@type': 'WebSite', '@id': `${origin}/#website`, name: 'PWAYMENT', url: urlFor('/', locale), inLanguage: localeInfo[locale].htmlLang, publisher: { '@id': `${origin}/#organization` } },
     { '@type': route.path.startsWith('/guides/') ? 'Article' : 'WebPage', '@id': `${canonical}#webpage`, name: route.title, headline: labelFor(route, locale), description: route.description, url: canonical, inLanguage: localeInfo[locale].htmlLang, isPartOf: { '@id': `${origin}/#website` }, publisher: { '@id': `${origin}/#organization` } },
     { '@type': 'BreadcrumbList', itemListElement: route.path === '/'
@@ -82,8 +87,10 @@ const render = (sourceRoute, locale) => {
     .replace(/<meta property="og:description"[^>]*>/, `<meta property="og:description" content="${escapeHtml(route.description)}" />`)
     .replace(/<meta property="og:url"[^>]*>/, `<meta property="og:url" content="${escapeHtml(canonical)}" />`)
     .replace(/<meta property="og:locale"[^>]*>/, `<meta property="og:locale" content="${localeInfo[locale].ogLocale}" />`)
+    .replace(/<meta property="og:image:alt"[^>]*>/, `<meta property="og:image:alt" content="${escapeHtml(shareImageAlt[locale])}" />`)
     .replace(/<meta name="twitter:title"[^>]*>/, `<meta name="twitter:title" content="${escapeHtml(route.title)}" />`)
     .replace(/<meta name="twitter:description"[^>]*>/, `<meta name="twitter:description" content="${escapeHtml(route.description)}" />`)
+    .replace(/<meta name="twitter:image:alt"[^>]*>/, `<meta name="twitter:image:alt" content="${escapeHtml(shareImageAlt[locale])}" />`)
     .replace(/<div id="root">[\s\S]*?<\/div>/, renderBody(route, locale));
   html = html.replace('</head>', `    <script type="application/ld+json" data-pwayment-structured-data>${JSON.stringify(structuredData(route, canonical, locale)).replaceAll('<', '\\u003c')}</script>\n  </head>`);
   return html;

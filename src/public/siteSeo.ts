@@ -12,6 +12,13 @@ export interface PublicRouteMetadata {
 
 export const PUBLIC_ROUTE_REGISTRY = registry as PublicRouteMetadata[];
 const PRIMARY_SITE_ORIGIN = 'https://www.pwayment.be';
+const SHARE_IMAGE_URL = `${PRIMARY_SITE_ORIGIN}/og-pwayment-social-2026.jpg`;
+
+const shareImageAlt: Record<PublicLocale, string> = {
+  nl: 'PWAYMENT — je winkel, één helder systeem',
+  fr: 'PWAYMENT — votre magasin, un système clair',
+  en: 'PWAYMENT — your store, one clear system',
+};
 
 const aliases: Record<string, string> = {
   '/compare': '/pricing',
@@ -70,7 +77,7 @@ const structuredDataFor = (metadata: PublicRouteMetadata, canonical: string, loc
     name: 'PWAYMENT',
     url: `${PRIMARY_SITE_ORIGIN}/`,
     logo: `${PRIMARY_SITE_ORIGIN}/branding/PWAYMENTLOGOFINAL.png`,
-    image: `${PRIMARY_SITE_ORIGIN}/og-website.png`,
+    image: SHARE_IMAGE_URL,
     description: organizationDescriptions[locale],
     areaServed: { '@type': 'Country', name: 'Belgium' },
   };
@@ -146,7 +153,7 @@ export const applyRouteSeo = (pathname: string, locale: PublicLocale = 'nl') => 
   };
   const canonicalPath = localizedPublicPath(metadata.path, locale);
   const canonical = `${PRIMARY_SITE_ORIGIN}${canonicalPath === '/' ? '/' : canonicalPath}`;
-  const shareImage = `${PRIMARY_SITE_ORIGIN}/og-website.png`;
+  const shareImage = SHARE_IMAGE_URL;
 
   document.documentElement.lang = PUBLIC_LOCALE_INFO[locale].htmlLang;
   document.title = metadata.title;
@@ -156,11 +163,17 @@ export const applyRouteSeo = (pathname: string, locale: PublicLocale = 'nl') => 
   setMeta('meta[property="og:description"]', 'property', 'og:description', metadata.description);
   setMeta('meta[property="og:url"]', 'property', 'og:url', canonical);
   setMeta('meta[property="og:image"]', 'property', 'og:image', shareImage);
+  setMeta('meta[property="og:image:secure_url"]', 'property', 'og:image:secure_url', shareImage);
+  setMeta('meta[property="og:image:type"]', 'property', 'og:image:type', 'image/jpeg');
+  setMeta('meta[property="og:image:width"]', 'property', 'og:image:width', '1200');
+  setMeta('meta[property="og:image:height"]', 'property', 'og:image:height', '630');
+  setMeta('meta[property="og:image:alt"]', 'property', 'og:image:alt', shareImageAlt[locale]);
   setMeta('meta[property="og:locale"]', 'property', 'og:locale', PUBLIC_LOCALE_INFO[locale].ogLocale);
   setMeta('meta[name="twitter:card"]', 'name', 'twitter:card', 'summary_large_image');
   setMeta('meta[name="twitter:title"]', 'name', 'twitter:title', metadata.title);
   setMeta('meta[name="twitter:description"]', 'name', 'twitter:description', metadata.description);
   setMeta('meta[name="twitter:image"]', 'name', 'twitter:image', shareImage);
+  setMeta('meta[name="twitter:image:alt"]', 'name', 'twitter:image:alt', shareImageAlt[locale]);
   setMeta('meta[name="robots"]', 'name', 'robots', metadata.index === false ? 'noindex, nofollow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
   setCanonical(canonical);
   for (const candidate of PUBLIC_LOCALES) {
