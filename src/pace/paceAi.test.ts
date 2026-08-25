@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { toPaceAiContext } from "./paceAi";
+import { normalizePaceAiAnswer, toPaceAiContext } from "./paceAi";
 import type { PaceContext } from "./paceSignals";
 
 describe("Pace AI privacy boundary", () => {
+  it("removes model markdown before plain-text UI rendering", () => {
+    expect(normalizePaceAiAnswer("Op basis van **data** is `An` de beste.\nNog een zin.")).toBe(
+      "Op basis van data is An de beste. Nog een zin.",
+    );
+  });
+
   it("drops every customer insight before a request leaves the till", () => {
     const context: PaceContext = {
       view: "pos",

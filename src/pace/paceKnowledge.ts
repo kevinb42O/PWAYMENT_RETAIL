@@ -27,6 +27,16 @@ const KNOWLEDGE: PaceKnowledgeEntry[] = [
     priority: 30,
   }),
   entry({
+    id: "customers.best",
+    views: ["customers"],
+    patterns: [/(beste|top|meeste).*(klant|besteed|uitgaven|omzet)/i, /(welke|wie).*(beste klant|meest besteed)/i],
+    title: "Je beste klant",
+    answer: "Ik haal hiervoor de actuele klantenrangschikking van je winkel op. Als die tijdelijk niet beschikbaar is, verzin ik geen naam of bedrag.",
+    action: { kind: "navigate", view: "customers" },
+    actionLabel: "Open Klanten",
+    followUps: ["Hoeveel klanten heb ik?", "Waar zie ik de aankopen van deze klant?"],
+  }),
+  entry({
     id: "sync.status",
     patterns: [/\b(sync|synchronis|offline|online|verbinding|wachtrij|aflever)\w*/i, /waarom.+(mislukt|fout|vast)/i],
     title: "Synchronisatiestatus",

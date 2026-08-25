@@ -48,6 +48,7 @@ describe("Pace product knowledge", () => {
     ["Hoe voeg ik maten en kleuren toe?", "catalog.variants-identifiers"],
     ["Wat betekent days of cover?", "insights.forecast-po"],
     ["Hoe waardeer ik een cadeaubon op?", "customers.giftcards"],
+    ["Wie is mijn beste klant?", "customers.best"],
     ["Wanneer wordt webshopvoorraad gereserveerd?", "webshop.orders"],
     ["Waar noteer ik de diagnose van een herstelling?", "service.workflow"],
     ["Waarom mag ik mijn eigen verlof niet goedkeuren?", "workforce.leave"],

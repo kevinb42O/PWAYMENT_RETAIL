@@ -321,9 +321,16 @@
 .pace-response-followups { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.7rem; border-top: 1px solid #e2e8f0; padding-top: 0.65rem; }
 .pace-response .pace-response-followups button { margin: 0; border: 1px solid #dbe7ed; border-radius: 999px; background: #fff; padding: 0.3rem 0.5rem; color: #0e7490; font-size: 0.59rem; font-weight: 750; text-align: left; }
 .pace-response .pace-response-followups button:hover { border-color: #67e8f9; background: #ecfeff; }
-.pace-thinking-line { display: block; width: 88%; height: 0.58rem; border-radius: 999px; background: linear-gradient(90deg, #e2e8f0, #cffafe, #e2e8f0); background-size: 200% 100%; animation: pace-think 1s linear infinite; }
-.pace-thinking-line.is-short { width: 58%; margin-top: 0.55rem; }
-@keyframes pace-think { to { background-position: -200% 0; } }
+.pace-thinking-performance { display: grid; grid-template-columns: 76px minmax(0, 1fr); align-items: center; gap: 0.9rem; min-height: 92px; overflow: hidden; }
+.pace-thinking-performance .pace-mark-stage { filter: drop-shadow(0 12px 18px rgb(8 145 178 / 0.16)); }
+.pace-thinking-copy { min-width: 0; }
+.pace-thinking-copy strong { display: block; color: #172033; font-size: 0.8rem; font-weight: 850; }
+.pace-thinking-steps { position: relative; display: block; height: 1.2rem; margin-top: 0.35rem; overflow: hidden; color: #64748b; font-size: 0.66rem; font-weight: 650; }
+.pace-thinking-steps i { position: absolute; inset: 0; opacity: 0; font-style: normal; transform: translateY(8px); animation: pace-thinking-copy 5.4s ease-in-out infinite; }
+.pace-thinking-steps i:nth-child(2) { animation-delay: 1.8s; }
+.pace-thinking-steps i:nth-child(3) { animation-delay: 3.6s; }
+@keyframes pace-thinking-copy { 0% { opacity: 0; transform: translateY(8px); } 12%, 26% { opacity: 1; transform: translateY(0); } 34%, 100% { opacity: 0; transform: translateY(-7px); } }
+@media (prefers-reduced-motion: reduce) { .pace-thinking-steps i { animation: none; opacity: 0; transform: none; } .pace-thinking-steps i:first-child { opacity: 1; } }
 .pace-trust-line { display: flex; align-items: center; gap: 0.4rem; margin: 1rem 0 0.25rem; color: #64748b; font-size: 0.6rem; font-weight: 650; line-height: 1.4; }
 
 .pace-back-link { display: inline-flex; align-items: center; gap: 0.25rem; border: 0; background: transparent; padding: 0; color: #0e7490; font-size: 0.66rem; font-weight: 800; }

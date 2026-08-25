@@ -39,6 +39,7 @@ const durationFor = (state: PaceEmotion) => {
 
 const performanceSequence = (glyph: PaceGlyph) => [PACE_MORPH_BODY.pace, PACE_MORPH_BODY[glyph], PACE_MORPH_BODY[glyph], PACE_MORPH_BODY.pace];
 const dotSequence = (glyph: PaceGlyph) => [PACE_MORPH_DOT.pace, PACE_MORPH_DOT[glyph], PACE_MORPH_DOT[glyph], PACE_MORPH_DOT.pace];
+export const PACE_THINKING_GLYPH_SEQUENCE = ["pace", "question", "question", "liquid", "liquid", "question", "pace"] as const satisfies readonly PaceGlyph[];
 
 export const resolvePaceGlyph = ({ state, tone, active, performance, expressive = true }: { state: PaceEmotion; tone: PaceSignalTone; active: boolean; performance?: PacePerformance | null; expressive?: boolean }): PaceGlyph =>
   expressive ? performance ?? (state === "thinking" ? "question" : tone === "attention" && active ? "exclamation" : "pace") : "pace";
@@ -76,16 +77,24 @@ export const PaceMark = ({
   const palette = paceTonePalette(tone);
   const pause = state === "celebrating" ? 1.8 : state === "thinking" ? 0 : 0.35;
   const performanceActive = Boolean(expressive && performance && fullMotion);
+  const thinkingMorphActive = Boolean(expressive && !performance && state === "thinking" && fullMotion);
+  const morphActive = performanceActive || thinkingMorphActive;
   const glyph = resolvePaceGlyph({ state, tone, active, performance, expressive });
-  const bodyD = performanceActive ? performanceSequence(glyph) : PACE_MORPH_BODY[glyph];
-  const dotD = performanceActive ? dotSequence(glyph) : PACE_MORPH_DOT[glyph];
-  const morphTransition = performanceActive
+  const bodyD = thinkingMorphActive
+    ? PACE_THINKING_GLYPH_SEQUENCE.map((step) => PACE_MORPH_BODY[step])
+    : performanceActive ? performanceSequence(glyph) : PACE_MORPH_BODY[glyph];
+  const dotD = thinkingMorphActive
+    ? PACE_THINKING_GLYPH_SEQUENCE.map((step) => PACE_MORPH_DOT[step])
+    : performanceActive ? dotSequence(glyph) : PACE_MORPH_DOT[glyph];
+  const morphTransition = thinkingMorphActive
+    ? { duration: 5.6, times: [0, 0.14, 0.3, 0.48, 0.67, 0.84, 1], repeat: Infinity, ease: [0.65, 0, 0.35, 1] as const }
+    : performanceActive
     ? { duration: 2.8, times: [0, 0.24, 0.72, 1], ease: [0.65, 0, 0.35, 1] as const }
     : { duration: canMove ? 0.72 : 0, ease: [0.22, 1, 0.36, 1] as const };
 
   return (
     <motion.span
-      className={`pace-mark-stage is-${state} tone-${tone}${performanceActive ? " is-performing" : ""}`}
+      className={`pace-mark-stage is-${state} tone-${tone}${performanceActive ? " is-performing" : ""}${thinkingMorphActive ? " is-pondering" : ""}`}
       style={{ width: size, height: size, perspective: Math.max(180, size * 5), "--pace-accent": palette.accent, "--pace-color-start": palette.start, "--pace-color-end": palette.end, "--pace-color-depth": palette.depth } as CSSProperties}
       role="img"
       aria-label={`Pace · ${state}`}
@@ -94,14 +103,14 @@ export const PaceMark = ({
       transition={canMove ? { duration: state === "celebrating" ? 1.35 : 3.8, repeat: Infinity, repeatDelay: pause, ease: "easeInOut" } : undefined}
     >
       <motion.span
-        className={`pace-mark-morph${performanceActive ? ` is-${performance}` : ""}`}
+        className={`pace-mark-morph${performanceActive ? ` is-${performance}` : ""}${thinkingMorphActive ? " is-pondering" : ""}`}
         aria-hidden="true"
       >
         <motion.span
           className="pace-mark-rig"
           initial={false}
-          animate={movementFor(state, fullMotion && !performanceActive)}
-          transition={{ duration: durationFor(state), repeat: canMove && !performanceActive ? Infinity : 0, repeatDelay: pause, ease: state === "thinking" ? "linear" : [0.22, 1, 0.36, 1] }}
+          animate={movementFor(state, fullMotion && !morphActive)}
+          transition={{ duration: durationFor(state), repeat: canMove && !morphActive ? Infinity : 0, repeatDelay: pause, ease: state === "thinking" ? "linear" : [0.22, 1, 0.36, 1] }}
         >
           <svg className="pace-mark-vector" viewBox="-7 -5 114 112" overflow="visible" shapeRendering="geometricPrecision">
             <defs>
@@ -121,7 +130,7 @@ export const PaceMark = ({
               <use key={depth} className="pace-mark-vector-depth" href={`#${bodyId}`} transform={`translate(${depth * 0.42} ${depth * -0.28})`} />
             ))}
             <use className="pace-mark-vector-front" href={`#${bodyId}`} fill={`url(#${gradientId})`} />
-            <motion.use className="pace-mark-vector-sheen" href={`#${bodyId}`} fill={`url(#${sheenId})`} animate={{ opacity: performanceActive ? [0.26, 0.7, 0.4, 0.62, 0.26] : 0.38 }} transition={{ duration: performanceActive ? 2.8 : 0.4, times: performanceActive ? [0, 0.2, 0.4, 0.76, 1] : undefined, ease: "easeInOut" }} />
+            <motion.use className="pace-mark-vector-sheen" href={`#${bodyId}`} fill={`url(#${sheenId})`} animate={{ opacity: morphActive ? [0.26, 0.7, 0.4, 0.62, 0.26] : 0.38 }} transition={{ duration: thinkingMorphActive ? 5.6 : performanceActive ? 2.8 : 0.4, times: morphActive ? [0, 0.2, 0.4, 0.76, 1] : undefined, repeat: thinkingMorphActive ? Infinity : 0, ease: "easeInOut" }} />
             <use className="pace-mark-vector-rim" href={`#${bodyId}`} />
             <use className="pace-mark-vector-dot-depth" href={`#${dotId}`} transform="translate(-2 2)" />
             <use className="pace-mark-vector-dot" href={`#${dotId}`} fill={`url(#${gradientId})`} />

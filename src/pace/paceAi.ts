@@ -16,6 +16,13 @@ export interface PaceConversationTurn {
 
 let aiUnavailableUntil = 0;
 
+export const normalizePaceAiAnswer = (answer: string) => answer
+  .replace(/\*\*(.*?)\*\*/g, "$1")
+  .replace(/`([^`]+)`/g, "$1")
+  .replace(/^#{1,6}\s+/gm, "")
+  .replace(/\s+/g, " ")
+  .trim();
+
 export const toPaceAiContext = (context: PaceContext) => ({
   storeId: context.storeId,
   view: context.view,
@@ -98,7 +105,7 @@ export const askPaceAi = async (
   }
   aiUnavailableUntil = 0;
   return {
-    answer: result.answer,
+    answer: normalizePaceAiAnswer(result.answer),
     source: result.source,
     model: typeof result.model === "string" ? result.model : result.source === "gemini" ? "Gemini" : "OpenAI",
   };

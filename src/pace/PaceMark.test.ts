@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { resolvePaceGlyph, resolvePaceMotion } from "./PaceMark";
+import { PACE_THINKING_GLYPH_SEQUENCE, resolvePaceGlyph, resolvePaceMotion } from "./PaceMark";
 import { paceTonePalette } from "./pacePalette";
 import { PACE_MORPH_BODY, PACE_MORPH_DOT } from "./paceMorphPaths";
 
 const commandSignature = (path: string) => path.match(/[a-z]/gi)?.join("") ?? "";
 
 describe("Pace motion resolution", () => {
+  it("morphs through both the question and liquid silhouettes while thinking", () => {
+    expect(PACE_THINKING_GLYPH_SEQUENCE).toContain("question");
+    expect(PACE_THINKING_GLYPH_SEQUENCE).toContain("liquid");
+    expect(PACE_THINKING_GLYPH_SEQUENCE.at(0)).toBe("pace");
+    expect(PACE_THINKING_GLYPH_SEQUENCE.at(-1)).toBe("pace");
+  });
+
   it("respects automatic reduced-motion and disabled preferences", () => {
     expect(resolvePaceMotion({ reducedMotion: true, motionMode: "full" })).toEqual({ canMove: false, fullMotion: false });
     expect(resolvePaceMotion({ reducedMotion: false, motionMode: "off" })).toEqual({ canMove: false, fullMotion: false });

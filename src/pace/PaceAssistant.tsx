@@ -224,7 +224,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
     setThinking(true);
     try {
       const ai = await askPaceAi(question, context, conversation, local);
-      setResponse({ ...local, title: local.matched ? local.title : "Antwoord vanuit Pace AI", answer: ai.answer });
+      setResponse({ ...local, title: local.matched ? local.title : "Dit heb ik voor je gevonden", answer: ai.answer });
       setResponseSource(ai.source);
       remember(ai.answer);
     } catch {
@@ -427,7 +427,17 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                     <AnimatePresence mode="wait">
                       {(thinking || response) && (
                         <motion.section className="pace-response" key={thinking ? "thinking" : response?.title} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}>
-                          {thinking ? <><span className="pace-thinking-line" /><span className="pace-thinking-line is-short" /></> : response && <>
+                          {thinking ? <div className="pace-thinking-performance">
+                            <PaceMark size={76} active thinking tone={primary.tone} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
+                            <div className="pace-thinking-copy">
+                              <strong>Pace denkt met je mee</strong>
+                              <span className="pace-thinking-steps" aria-live="polite">
+                                <i>Je vraag begrijpen</i>
+                                <i>Je winkelcontext erbij nemen</i>
+                                <i>Een helder antwoord maken</i>
+                              </span>
+                            </div>
+                          </div> : response && <>
                             <div><Check size={14} /> PACE · {responseSource === "gemini" ? "GEMINI" : responseSource === "openai" ? "OPENAI" : "LOKALE KENNIS"}</div>
                             <h3>{response.title}</h3>
                             <p>{response.answer}</p>
