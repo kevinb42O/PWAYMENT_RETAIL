@@ -683,7 +683,7 @@ const HomePage = () => (
       <motion.div className="pw-hero-copy" initial="hidden" animate="visible" variants={stagger}>
         <motion.div className="pw-kicker" variants={fadeUp}><span /> Retailplatform voor Belgische winkels</motion.div>
         <motion.h1 variants={fadeUp}>Minder losse systemen.<br /><em>Meer grip op je winkel.</em></motion.h1>
-        <motion.p variants={fadeUp}>PWAYMENT verbindt kassa, voorraad, klanten, webshop en rapportage in één rustige werkplek. Zo verkoop je vlotter en neem je betere beslissingen met dezelfde gegevens.</motion.p>
+        <motion.p variants={fadeUp}>PWAYMENT verbindt kassa, voorraad, klanten, webshop en rapportage in één rustige werkplek. Pace, de geïntegreerde AI-laag, helpt je begrijpen wat er nu speelt en welke stap daarna telt.</motion.p>
         <motion.div className="pw-hero-actions" variants={fadeUp}>
           <a href="/register?plan=professional" className="pw-button pw-button-dark">Start gratis met PWAYMENT <ArrowRight size={17} /></a>
           <a href="/demo" className="pw-text-link">Plan een persoonlijke demo <ArrowRight size={15} /></a>
