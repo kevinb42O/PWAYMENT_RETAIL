@@ -729,7 +729,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <h1 className="text-xl font-black text-slate-900 tracking-tight">
               {activeTab === 'billing-plan' && 'Licentieplan & Upgrades'}
               {activeTab === 'modules' && 'Modules & navigatie'}
-              {activeTab === 'pace' && 'PACE · Persoonlijke service'}
+              {activeTab === 'pace' && 'Pace-instellingen'}
               {activeTab === 'workforce' && 'Personeel, verlof & bezetting'}
               {activeTab === 'leave-approvals' && 'Verlof goedkeuren'}
               {activeTab === 'billing-invoices' && "Facturen & Creditnota's"}
@@ -755,7 +755,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 : activeTab === 'modules'
                 ? 'Zet werkmodules rechtstreeks aan of uit. Uw navigatie volgt onmiddellijk en bewaren gebeurt automatisch.'
                 : activeTab === 'pace'
-                ? 'Bepaal hoe Pace jouw team helpt om terugkerende klanten persoonlijker te bedienen.'
+                ? 'Beheer je persoonlijke Pace-ervaring, AI-antwoorden, winkelcontext, animaties en winkelbrede begeleiding.'
                 : activeTab === 'workforce'
                 ? 'Beheer medewerkers, verlofsaldi en de regels waarmee PWAYMENT de winkelbezetting controleert.'
                 : activeTab === 'leave-approvals'

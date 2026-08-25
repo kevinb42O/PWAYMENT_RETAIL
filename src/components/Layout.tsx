@@ -132,7 +132,7 @@ export const Layout: React.FC = () => {
     setMainView,
     scanCodeToCart,
   } = useStore();
-  const { currentUserName, currentRole, currentStoreId, logout, verifyCurrentOwnerPin } = useAuth();
+  const { currentUserId, currentUserName, currentRole, currentStoreId, logout, verifyCurrentOwnerPin } = useAuth();
   const verifyApprovalPin = useWorkforce((state) => state.verifyApprovalPin);
   const workforceMutating = useWorkforce((state) => state.mutating);
   const refreshEntitlements = useEntitlements((state) => state.load);
@@ -164,7 +164,7 @@ export const Layout: React.FC = () => {
     useState(false);
   const [returnReceiptBarcode, setReturnReceiptBarcode] = useState<string | null>(null);
   const [profileInitialTarget, setProfileInitialTarget] = useState<{
-    tab: "billing" | "webshop-general" | "modules" | "workforce" | "leave-approvals" | "catalog-products" | "catalog-categories" | "labels" | "integrations";
+    tab: "billing" | "webshop-general" | "modules" | "pace" | "workforce" | "leave-approvals" | "catalog-products" | "catalog-categories" | "labels" | "integrations";
     requestKey: number;
     openNewProductRequestKey?: number;
     catalogFilter?: { requestKey: number; productIds: string[]; label: string };
@@ -218,7 +218,7 @@ export const Layout: React.FC = () => {
     && isFeatureEnabledForSnapshot(entitlementSnapshot, FEATURE_KEYS.workforce);
 
   const openProfile = (
-    tab: "billing" | "webshop-general" | "modules" | "workforce" | "leave-approvals" | "catalog-products" | "catalog-categories" | "labels" | "integrations" = "billing",
+    tab: "billing" | "webshop-general" | "modules" | "pace" | "workforce" | "leave-approvals" | "catalog-products" | "catalog-categories" | "labels" | "integrations" = "billing",
   ) => {
     setProfileInitialTarget((current) => ({
       tab,
@@ -724,6 +724,7 @@ export const Layout: React.FC = () => {
             view={mainView}
             role={currentRole}
             userName={currentUserName}
+            userId={currentUserId}
             productCount={products.length}
             cartCount={cartCount}
             firstRunCompleted={firstRunCompleted}

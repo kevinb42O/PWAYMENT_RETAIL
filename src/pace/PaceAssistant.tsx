@@ -2,13 +2,10 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   ArrowRight,
   Check,
-  ChevronLeft,
   CircleDot,
   Command,
   Eye,
-  EyeOff,
   Gauge,
-  RotateCcw,
   Send,
   Settings2,
   ShieldCheck,
@@ -28,8 +25,8 @@ import {
   type PaceQueryAnswer,
 } from "./paceSignals";
 import { getPaceQueryHints } from "./paceKnowledge";
-import { PaceMark, type PacePerformance } from "./PaceMark";
-import { usePace, type PaceMotion, type PaceProactivity, type PaceTone } from "./usePace";
+import { PaceMark } from "./PaceMark";
+import { usePace } from "./usePace";
 import { askPaceAi, type PaceConversationTurn } from "./paceAi";
 import {
   paceSetupProgress,
@@ -37,6 +34,7 @@ import {
 } from "./setupMilestones";
 
 interface PaceAssistantProps extends PaceContext {
+  userId: string | null;
   userName: string | null;
   setupMilestones: PaceSetupMilestone[];
   customerName?: string;
@@ -58,54 +56,24 @@ const executeAction = (
   if (action.kind === "catalog") handlers.onOpenCatalog({ productIds: action.productIds, label: action.filterLabel });
 };
 
-const SelectRow = <T extends string>({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: T;
-  options: Array<{ value: T; label: string }>;
-  onChange: (value: T) => void;
-}) => (
-  <label className="pace-setting-row">
-    <span>{label}</span>
-    <select value={value} onChange={(event) => onChange(event.target.value as T)}>
-      {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-    </select>
-  </label>
-);
-
-const ToggleRow = ({ label, detail, checked, onChange }: { label: string; detail: string; checked: boolean; onChange: (checked: boolean) => void }) => (
-  <label className="pace-toggle-row">
-    <span><strong>{label}</strong><small>{detail}</small></span>
-    <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
-  </label>
-);
-
 export const PaceAssistant = (props: PaceAssistantProps) => {
   const {
     open,
-    settingsOpen,
     preferences,
     dismissedSignals,
     customerFeedback,
     toggle,
     setOpen,
-    setSettingsOpen,
     updatePreferences,
     dismissSignal,
-    resetDismissedSignals,
     recordCustomerFeedback,
+    hydrateScope,
   } = usePace();
   const prefersReducedMotion = useReducedMotion();
   const [query, setQuery] = useState("");
   const [response, setResponse] = useState<PaceQueryAnswer | null>(null);
   const [responseSource, setResponseSource] = useState<"gemini" | "openai" | "local">("local");
   const [thinking, setThinking] = useState(false);
-  const [performance, setPerformance] = useState<PacePerformance | null>(null);
-  const [performanceKey, setPerformanceKey] = useState(0);
   const [externalDialogOpen, setExternalDialogOpen] = useState(false);
   const [sessionDismissedSignals, setSessionDismissedSignals] = useState<string[]>([]);
   const [conversation, setConversation] = useState<PaceConversationTurn[]>([]);
@@ -152,6 +120,10 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   }, [props.storeId]);
 
   useEffect(() => {
+    void hydrateScope(props.storeId ?? null, props.userId);
+  }, [hydrateScope, props.storeId, props.userId]);
+
+  useEffect(() => {
     const detectDialogs = () => {
       const dialogs = Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]'));
       setExternalDialogOpen(dialogs.some((dialog) => dialog.id !== "pace-assistant-panel"));
@@ -183,22 +155,6 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
     setResponse(null);
   }, [props.view]);
 
-  useEffect(() => {
-    if (!performance) return;
-    const timer = window.setTimeout(() => setPerformance(null), 3_050);
-    return () => window.clearTimeout(timer);
-  }, [performance, performanceKey]);
-
-  useEffect(() => {
-    if (!preferences.expressiveMorphs) setPerformance(null);
-  }, [preferences.expressiveMorphs]);
-
-  const playPerformance = (next: PacePerformance) => {
-    setPerformance(next);
-    setPerformanceKey((current) => current + 1);
-  };
-  const performanceLabel = performance === "question" ? "Vraagteken" : performance === "exclamation" ? "Uitroepteken" : performance === "liquid" ? "Blob" : null;
-
   const runQuery = async (rawQuestion: string) => {
     const question = rawQuestion.trim();
     if (!question || thinking) return;
@@ -223,7 +179,10 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
     }
     setThinking(true);
     try {
-      const ai = await askPaceAi(question, context, conversation, local);
+      const ai = await askPaceAi(question, context, conversation, local, {
+        enabled: preferences.aiEnabled,
+        includeLiveStoreContext: preferences.liveStoreContext,
+      });
       setResponse({ ...local, title: local.matched ? local.title : "Dit heb ik voor je gevonden", answer: ai.answer });
       setResponseSource(ai.source);
       remember(ai.answer);
@@ -261,7 +220,6 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
         onClick={() => {
           if (!preferences.enabled) {
             updatePreferences({ enabled: true });
-            setSettingsOpen(true);
             setOpen(true);
             return;
           }
@@ -319,50 +277,14 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                   <div><span>PWAYMENT · LIVE CONTEXT</span><h2>Pace</h2></div>
                 </div>
                 <div className="pace-header-actions">
-                  <button type="button" onClick={() => setSettingsOpen(!settingsOpen)} aria-label="Pace-instellingen" title="Pace-instellingen"><Settings2 size={17} /></button>
+                  <button type="button" onClick={() => { props.onOpenProfile("pace"); setOpen(false); }} aria-label="Open volledige Pace-instellingen" title="Pace-instellingen"><Settings2 size={17} /></button>
                   <button ref={closeButtonRef} type="button" onClick={() => setOpen(false)} aria-label="Sluit Pace"><X size={18} /></button>
                 </div>
               </header>
 
-              <AnimatePresence mode="wait" initial={false}>
-                {settingsOpen ? (
-                  <motion.div className="pace-scroll" key="settings" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }} transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}>
-                    <button className="pace-back-link" type="button" onClick={() => setSettingsOpen(false)}><ChevronLeft size={15} /> Terug naar live context</button>
-                    <div className="pace-section-heading"><span>Persoonlijke werking</span><h3>{props.userName ? `${props.userName}, jij bepaalt het tempo.` : "Jij bepaalt zijn tempo."}</h3><p>Deze voorkeuren blijven op dit toestel. Winkelrechten en beveiliging zijn altijd leidend.</p></div>
-                    <section className="pace-motion-lab" aria-label="Pace Motion Lab">
-                      <div className="pace-motion-lab-stage">
-                        <PaceMark key={performanceKey} size={108} active emotion="attentive" performance={performance} motionMode="full" forceMotion expressive={preferences.expressiveMorphs} />
-                        <span><Sparkles size={13} /> MOTION LAB</span>
-                      </div>
-                      <div className="pace-motion-lab-copy"><strong>Morph Pace.</strong><small>Elke test keert veilig terug naar het originele merkteken.</small></div>
-                      <div className="pace-motion-lab-controls">
-                        {([
-                          ["question", "Vraagteken"],
-                          ["exclamation", "Uitroepteken"],
-                          ["liquid", "Blob"],
-                        ] as Array<[PacePerformance, string]>).map(([mode, label]) => <button key={mode} type="button" className={performance === mode ? "is-playing" : ""} onClick={() => playPerformance(mode)} aria-pressed={performance === mode} disabled={!preferences.expressiveMorphs}>{label}</button>)}
-                      </div>
-                      <div className={`pace-motion-status${performance ? " is-playing" : ""}`} aria-live="polite"><i /> {!preferences.expressiveMorphs ? "Expressieve morphs staan uit" : performanceLabel ? `${performanceLabel} speelt nu` : "Kies een performance om hem direct af te spelen"}</div>
-                      {(preferences.motion === "off" || prefersReducedMotion) && <p>Automatische beweging blijft uit; een bewust aangeklikte labpreview speelt één keer af.</p>}
-                    </section>
-                    <div className="pace-settings-card">
-                      <ToggleRow label="Pace actief" detail="Toon Pace op dit toestel" checked={preferences.enabled} onChange={(enabled) => updatePreferences({ enabled })} />
-                      <ToggleRow label="Expressieve morphs" detail="Vraagteken, uitroepteken en blob" checked={preferences.expressiveMorphs} onChange={(expressiveMorphs) => updatePreferences({ expressiveMorphs })} />
-                      <ToggleRow label="Klantcontext" detail="Toon lokale service-inzichten na klantkoppeling" checked={preferences.customerGuidance} onChange={(customerGuidance) => updatePreferences({ customerGuidance })} />
-                      <SelectRow<PaceProactivity> label="Proactiviteit" value={preferences.proactivity} onChange={(proactivity) => updatePreferences({ proactivity })} options={[{ value: "quiet", label: "Stil" }, { value: "balanced", label: "Gebalanceerd" }, { value: "coach", label: "Coach" }]} />
-                      <SelectRow<PaceMotion> label="Beweging" value={preferences.motion} onChange={(motion) => updatePreferences({ motion })} options={[{ value: "full", label: "Volledig" }, { value: "subtle", label: "Subtiel" }, { value: "off", label: "Uit" }]} />
-                      <SelectRow<PaceTone> label="Antwoorden" value={preferences.tone} onChange={(tone) => updatePreferences({ tone })} options={[{ value: "compact", label: "Kort" }, { value: "friendly", label: "Vriendelijk" }, { value: "explanatory", label: "Met uitleg" }]} />
-                    </div>
-                    <div className="pace-settings-card">
-                      <ToggleRow label="Operationele signalen" detail="Offline status en lokale wachtrij" checked={preferences.operationalSignals} onChange={(operationalSignals) => updatePreferences({ operationalSignals })} />
-                      <ToggleRow label="Configuratiehulp" detail="Volgende stap bij winkelinstellingen" checked={preferences.setupGuidance} onChange={(setupGuidance) => updatePreferences({ setupGuidance })} />
-                      <ToggleRow label="Inzichtbegeleiding" detail="Van patroon naar controleerbare actie" checked={preferences.insightGuidance} onChange={(insightGuidance) => updatePreferences({ insightGuidance })} />
-                    </div>
-                    <button type="button" className="pace-reset-button" onClick={resetDismissedSignals}><RotateCcw size={15} /> Gesloten signalen herstellen</button>
-                    <button type="button" className="pace-disable-button" onClick={() => updatePreferences({ enabled: false })}><EyeOff size={15} /> Pace nu uitschakelen</button>
-                  </motion.div>
-                ) : (
-                  <motion.div className="pace-scroll" key="live" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}>
+              <motion.div className="pace-scroll pace-live-layout" key="live" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}>
+                    <div className="pace-overview-window">
+                      <div className="pace-overview-heading"><span>Nu belangrijk</span><small>{signals.length} {signals.length === 1 ? "aandachtspunt" : "aandachtspunten"}</small></div>
                     <div className="pace-context-rail" aria-label="Actieve Pace-context">
                       <span><CircleDot size={12} /> {props.online ? "Online" : "Offline-ready"}</span>
                       <span><Eye size={12} /> {props.view}</span>
@@ -415,11 +337,13 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                         ))}
                       </section>
                     )}
+                    </div>
 
+                    <section className="pace-conversation-window">
                     <section className="pace-command-zone">
-                      <div className="pace-stack-label"><Command size={14} /> Vraag vanuit deze context</div>
+                      <div className="pace-conversation-heading"><span><Command size={14} /> Vraag Pace</span><small>{preferences.aiEnabled ? preferences.liveStoreContext ? "AI + actuele winkelgegevens" : "AI zonder winkelgegevens" : "Lokale hulp"}</small></div>
                       <form onSubmit={submit}>
-                        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="bv. waar beheer ik producten?" aria-label="Vraag Pace" />
+                        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Stel je vraag…" aria-label="Vraag Pace" />
                         <button type="submit" disabled={!query.trim() || thinking} aria-label="Stuur vraag"><Send size={16} /></button>
                       </form>
                       <div className="pace-query-hints">
@@ -453,10 +377,11 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                       )}
                     </AnimatePresence>
 
+                    {!thinking && !response && <div className="pace-conversation-empty"><PaceMark size={72} active emotion="attentive" motionMode={preferences.motion} expressive={preferences.expressiveMorphs} /><div><strong>Waar kan ik mee helpen?</strong><span>Vraag iets over PWAYMENT of over wat er nu in je winkel gebeurt.</span></div></div>}
+
                     <footer className="pace-trust-line"><ShieldCheck size={14} /> Pace voert geen financiële of gevoelige actie zelfstandig uit.</footer>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                    </section>
+              </motion.div>
             </motion.aside>
           </>
         )}

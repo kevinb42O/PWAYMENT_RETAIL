@@ -1,116 +1,128 @@
-import type { ReactNode } from 'react';
-import { Check, HeartHandshake, PackageCheck, ReceiptText, ShieldCheck, Sparkles, UserRoundCheck } from 'lucide-react';
-import { PaceMark } from '../pace/PaceMark';
-import { useMerchantProfile } from '../store/useMerchantProfile';
-import { useProducts } from '../store/useProducts';
+import { useEffect, useState, type ReactNode } from "react";
+import {
+  BellRing, Bot, BrainCircuit, Check, Cloud, Database, Eye, Gauge,
+  HeartHandshake, Palette, ReceiptText, RotateCcw, ShieldCheck, Sparkles, Store, UserRound,
+} from "lucide-react";
+import { useAuth } from "../auth/useAuth";
+import { PaceMark, type PacePerformance } from "../pace/PaceMark";
+import { usePace, type PaceMotion, type PaceProactivity, type PaceTone } from "../pace/usePace";
+import { useMerchantProfile } from "../store/useMerchantProfile";
 
-const SettingSwitch = ({ label, detail, checked, onChange, icon, emphasis = false }: {
-  label: string;
-  detail: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  icon: ReactNode;
-  emphasis?: boolean;
+const Switch = ({ label, detail, checked, onChange, icon, disabled = false, badge }: {
+  label: string; detail: string; checked: boolean; onChange: (checked: boolean) => void;
+  icon: ReactNode; disabled?: boolean; badge?: string;
 }) => (
-  <label className={`flex cursor-pointer items-start gap-4 rounded-2xl border p-4 transition-colors ${emphasis ? 'border-cyan-200 bg-cyan-50/70' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
-    <span className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${emphasis ? 'bg-cyan-100 text-cyan-800' : 'bg-slate-100 text-slate-600'}`}>{icon}</span>
+  <label className={`flex items-start gap-4 rounded-2xl border p-4 transition ${disabled ? "cursor-not-allowed border-slate-200 bg-slate-50 opacity-70" : "cursor-pointer border-slate-200 bg-white hover:border-sky-300 hover:shadow-sm"}`}>
+    <span className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${checked ? "bg-sky-50 text-sky-700" : "bg-slate-100 text-slate-500"}`}>{icon}</span>
     <span className="min-w-0 flex-1">
-      <strong className="block text-sm font-extrabold text-slate-950">{label}</strong>
-      <span className="mt-1 block max-w-2xl text-xs leading-5 text-slate-600">{detail}</span>
+      <span className="flex flex-wrap items-center gap-2"><strong className="text-sm font-extrabold text-slate-950">{label}</strong>{badge && <small className="rounded-full bg-slate-100 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-slate-500">{badge}</small>}</span>
+      <span className="mt-1 block max-w-2xl text-xs font-medium leading-5 text-slate-500">{detail}</span>
     </span>
     <span className="relative mt-1 shrink-0">
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="peer sr-only" />
-      <span className="block h-6 w-11 rounded-full bg-slate-300 transition-colors peer-checked:bg-cyan-700 peer-focus-visible:ring-2 peer-focus-visible:ring-cyan-500 peer-focus-visible:ring-offset-2" />
+      <input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} className="peer sr-only" />
+      <span className="block h-6 w-11 rounded-full bg-slate-300 transition-colors peer-checked:bg-sky-600 peer-focus-visible:ring-2 peer-focus-visible:ring-sky-500 peer-focus-visible:ring-offset-2 peer-disabled:bg-slate-200" />
       <span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5" />
     </span>
   </label>
 );
 
+const Choice = <T extends string>({ label, value, options, onChange }: { label: string; value: T; options: Array<{ value: T; label: string; detail: string }>; onChange: (value: T) => void }) => (
+  <fieldset>
+    <legend className="mb-3 text-xs font-black uppercase tracking-[0.12em] text-slate-500">{label}</legend>
+    <div className="grid gap-2 sm:grid-cols-3">
+      {options.map((option) => <button key={option.value} type="button" onClick={() => onChange(option.value)} className={`rounded-2xl border p-3 text-left transition ${value === option.value ? "border-sky-400 bg-sky-50 ring-2 ring-sky-100" : "border-slate-200 bg-white hover:border-slate-300"}`} aria-pressed={value === option.value}>
+        <strong className="block text-xs font-extrabold text-slate-900">{option.label}</strong><span className="mt-1 block text-[11px] leading-4 text-slate-500">{option.detail}</span>
+      </button>)}
+    </div>
+  </fieldset>
+);
+
+const Section = ({ icon, eyebrow, title, description, children }: { icon: ReactNode; eyebrow: string; title: string; description: string; children: ReactNode }) => (
+  <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+    <div className="flex items-start gap-3 border-b border-slate-100 pb-5">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-sky-50 text-sky-700">{icon}</span>
+      <div><span className="text-[10px] font-black uppercase tracking-[0.15em] text-sky-700">{eyebrow}</span><h3 className="mt-1 text-lg font-black tracking-tight text-slate-950">{title}</h3><p className="mt-1 max-w-3xl text-xs font-medium leading-5 text-slate-500">{description}</p></div>
+    </div>
+    <div className="mt-5 space-y-4">{children}</div>
+  </section>
+);
+
 export const PaceSettings = () => {
+  const currentStoreId = useAuth((state) => state.currentStoreId);
+  const currentUserId = useAuth((state) => state.currentUserId);
+  const currentRole = useAuth((state) => state.currentRole);
+  const currentUserName = useAuth((state) => state.currentUserName);
   const profile = useMerchantProfile((state) => state.profile);
   const updateProfile = useMerchantProfile((state) => state.updateProfile);
-  const activeProducts = useProducts((state) => state.list).filter((product) => product.isActive !== false).length;
-  const settings = profile.customerInsightSettings!;
-  const policy = profile.commercialReturnPolicy!;
+  const { preferences, syncState, hydrateScope, updatePreferences, resetDismissedSignals } = usePace();
+  const customerSettings = profile.customerInsightSettings!;
+  const returnPolicy = profile.commercialReturnPolicy!;
+  const owner = currentRole === "owner";
+  const [preview, setPreview] = useState<PacePerformance | null>(null);
 
-  const updateSettings = (patch: Partial<typeof settings>) => updateProfile({ customerInsightSettings: { ...settings, ...patch } });
-  const updatePolicy = (patch: Partial<typeof policy>) => updateProfile({ commercialReturnPolicy: { ...policy, ...patch } });
-  const returnHelpEnabled = settings.returnRemindersEnabled && policy.enabled;
-  const setReturnHelpEnabled = (enabled: boolean) => {
-    updateProfile({
-      customerInsightSettings: { ...settings, returnRemindersEnabled: enabled },
-      commercialReturnPolicy: {
-        ...policy,
-        enabled,
-        ...(enabled && !policy.enabled ? { effectiveFrom: new Date().toISOString() } : {}),
-      },
-    });
-  };
+  useEffect(() => { void hydrateScope(currentStoreId, currentUserId); }, [currentStoreId, currentUserId, hydrateScope]);
+  useEffect(() => {
+    if (!preview) return;
+    const timer = window.setTimeout(() => setPreview(null), 3_100);
+    return () => window.clearTimeout(timer);
+  }, [preview]);
 
-  return <div className="mx-auto max-w-6xl space-y-5 pb-8">
-    <section className="relative overflow-hidden rounded-[28px] bg-slate-950 px-6 py-7 text-white shadow-xl shadow-slate-900/10 md:px-8 md:py-9">
-      <div className="absolute -right-20 -top-28 h-72 w-72 rounded-full bg-cyan-400/20 blur-3xl" />
-      <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center">
-        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl border border-white/10 bg-white shadow-2xl"><PaceMark size={62} active emotion="attentive" motionMode="subtle" /></div>
+  const updateCustomerSettings = (patch: Partial<typeof customerSettings>) => updateProfile({ customerInsightSettings: { ...customerSettings, ...patch } });
+  const playPreview = (performance: PacePerformance) => setPreview(performance);
+  const syncLabel = syncState === "loading" ? "Voorkeuren laden" : syncState === "saved" ? "Bewaard voor jou" : syncState === "error" ? "Lokaal bewaard" : syncState === "local" ? "Beschikbaar op dit toestel" : "Wijzigingen worden automatisch bewaard";
+
+  return <div className="mx-auto max-w-6xl space-y-5 pb-10">
+    <section className="overflow-hidden rounded-3xl border border-sky-200 bg-gradient-to-br from-white via-sky-50/60 to-cyan-50/40 p-5 shadow-sm md:p-7">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl border border-sky-100 bg-white shadow-sm"><PaceMark size={62} active emotion="attentive" motionMode={preferences.motion} expressive={preferences.expressiveMorphs} /></div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.16em] text-cyan-300"><Sparkles size={14} /> Pace voor jouw team</div>
-          <h2 className="mt-2 max-w-3xl text-2xl font-black tracking-tight sm:text-3xl">Persoonlijke service, zonder alles te hoeven onthouden.</h2>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">Wanneer je een terugkerende klant koppelt, brengt Pace relevante aankopen, voorkeuren en retourmomenten onder de aandacht. Je medewerker kiest altijd zelf wat past in het gesprek.</p>
+          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-sky-700"><Sparkles size={13} /> Pace · jouw werkassistent</div>
+          <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">{currentUserName ? `${currentUserName}, bepaal hoe Pace met je meewerkt.` : "Bepaal hoe Pace met je meewerkt."}</h2>
+          <p className="mt-2 max-w-3xl text-sm font-medium leading-6 text-slate-600">Stel vrije vragen, krijg hulp in de huidige werkruimte en kies zelf wanneer AI of actuele winkelgegevens gebruikt mogen worden.</p>
         </div>
-        <span className={`inline-flex shrink-0 items-center gap-2 self-start rounded-full px-3 py-2 text-xs font-black ${settings.enabled ? 'bg-emerald-400/15 text-emerald-200 ring-1 ring-emerald-300/25' : 'bg-white/10 text-slate-300 ring-1 ring-white/10'}`}><span className={`h-2 w-2 rounded-full ${settings.enabled ? 'bg-emerald-400' : 'bg-slate-400'}`} />{settings.enabled ? 'Pace helpt mee' : 'Pace is gepauzeerd'}</span>
-      </div>
-      <div className="relative mt-6 flex flex-wrap gap-x-6 gap-y-2 border-t border-white/10 pt-5 text-xs font-semibold text-slate-300">
-        <span className="flex items-center gap-2"><Check size={15} className="text-cyan-300" /> Werkt zodra een klant is gekoppeld</span>
-        <span className="flex items-center gap-2"><PackageCheck size={15} className="text-cyan-300" /> Kiest uit {activeProducts} beschikbare artikelen</span>
-        <span className="flex items-center gap-2"><ShieldCheck size={15} className="text-cyan-300" /> Klantgegevens blijven binnen jouw winkel</span>
+        <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+          <span className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-extrabold ${preferences.enabled ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200" : "bg-slate-100 text-slate-500 ring-1 ring-slate-200"}`}><span className={`h-2 w-2 rounded-full ${preferences.enabled ? "bg-emerald-500" : "bg-slate-400"}`} />{preferences.enabled ? "Pace zichtbaar" : "Pace verborgen"}</span>
+          <small className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500"><Cloud size={12} /> {syncLabel}</small>
+        </div>
       </div>
     </section>
 
-    <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="space-y-5">
-        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-          <div className="mb-5">
-            <h3 className="text-base font-black text-slate-950">Welke hulp wil je inschakelen?</h3>
-            <p className="mt-1 text-xs leading-5 text-slate-500">Je wijzigingen worden automatisch bewaard.</p>
-          </div>
-          <div className="space-y-3">
-            <SettingSwitch label="Persoonlijke verkoophulp" detail="Laat Pace relevante klantinzichten en passende producten tonen aan je medewerker. Zet dit uit om alle klantgerichte hulp tijdelijk te pauzeren." checked={settings.enabled} onChange={(enabled) => updateSettings({ enabled })} icon={<HeartHandshake size={18} />} emphasis />
-            <SettingSwitch label="Merkvoorkeuren herkennen" detail="Laat Pace terugkerende merken benoemen wanneer een klant daar meermaals iets van kocht en er passende artikelen beschikbaar zijn." checked={settings.brandAffinityEnabled} onChange={(brandAffinityEnabled) => updateSettings({ brandAffinityEnabled })} icon={<Sparkles size={18} />} />
-          </div>
-        </section>
+        <Section icon={<UserRound size={19} />} eyebrow="Persoonlijk" title="Mijn Pace" description="Deze keuzes volgen jou per winkel, ook wanneer je op een andere kassa aanmeldt.">
+          <Switch label="Pace tonen" detail="Toon de Pace-knop en persoonlijke hulp in je werkruimte. Dit verandert niets voor andere medewerkers." checked={preferences.enabled} onChange={(enabled) => updatePreferences({ enabled })} icon={<Eye size={18} />} badge="Alleen voor jou" />
+          <Switch label="AI-antwoorden gebruiken" detail="Laat Pace Gemini gebruiken voor vrije vragen en uitgebreidere uitleg. Uit betekent dat er geen AI-aanvraag wordt verstuurd; lokale hulp blijft werken." checked={preferences.aiEnabled} onChange={(aiEnabled) => updatePreferences({ aiEnabled })} icon={<BrainCircuit size={18} />} badge="Alleen voor jou" />
+          <Switch label="Actuele winkelgegevens meenemen" detail="Geef Pace toestemming om bij een AI-vraag relevante gegevens van deze winkel te lezen, zoals assortiment, klanten, verkoop en synchronisatiestatus." checked={preferences.liveStoreContext} disabled={!preferences.aiEnabled} onChange={(liveStoreContext) => updatePreferences({ liveStoreContext })} icon={<Database size={18} />} badge="Alleen voor jou" />
+          <Choice<PaceTone> label="Stijl van antwoorden" value={preferences.tone} onChange={(tone) => updatePreferences({ tone })} options={[{ value: "compact", label: "Kort", detail: "Direct antwoord, weinig uitleg." }, { value: "friendly", label: "Vriendelijk", detail: "Menselijk en praktisch." }, { value: "explanatory", label: "Met uitleg", detail: "Meer stappen en context." }]} />
+          <Choice<PaceProactivity> label="Hoe vaak Pace zelf iets toont" value={preferences.proactivity} onChange={(proactivity) => updatePreferences({ proactivity })} options={[{ value: "quiet", label: "Stil", detail: "Alleen wanneer jij vraagt." }, { value: "balanced", label: "Gebalanceerd", detail: "Alleen relevante momenten." }, { value: "coach", label: "Coach", detail: "Ook tips en vervolgstappen." }]} />
+        </Section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-          <div className="mb-4 flex items-start gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700"><ReceiptText size={18} /></span>
-            <div><h3 className="text-base font-black text-slate-950">Retourservice</h3><p className="mt-1 text-xs leading-5 text-slate-500">Help medewerkers om op het juiste moment te vragen of een aankoop helemaal in orde is.</p></div>
+        <Section icon={<Palette size={19} />} eyebrow="Beleving" title="Beweging en expressie" description="De bestaande Pace-animaties blijven herkenbaar, maar jij bepaalt hoeveel beweging prettig is.">
+          <div className="grid items-center gap-4 rounded-2xl border border-sky-100 bg-sky-50/60 p-4 sm:grid-cols-[130px_minmax(0,1fr)]">
+            <div className="flex min-h-28 items-center justify-center rounded-2xl bg-white"><PaceMark key={preview ?? "idle"} size={92} active emotion="attentive" performance={preview} forceMotion={Boolean(preview)} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} /></div>
+            <div><strong className="text-sm font-extrabold text-slate-900">Bekijk een expressie</strong><p className="mt-1 text-xs leading-5 text-slate-500">Pace keert na elke preview terug naar het gewone merkteken.</p><div className="mt-3 flex flex-wrap gap-2">{([["question", "Vraagteken"], ["exclamation", "Uitroepteken"], ["liquid", "Blob"]] as Array<[PacePerformance, string]>).map(([mode, label]) => <button type="button" key={mode} disabled={!preferences.expressiveMorphs} onClick={() => playPreview(mode)} className="rounded-xl border border-sky-200 bg-white px-3 py-2 text-[11px] font-extrabold text-sky-800 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-40">{label}</button>)}</div></div>
           </div>
-          <SettingSwitch label="Retourherinneringen tonen" detail="Pace kan bij een gekoppelde klant een vriendelijke herinnering tonen zolang jouw retourtermijn nog loopt." checked={returnHelpEnabled} onChange={setReturnHelpEnabled} icon={<ReceiptText size={18} />} />
-          {returnHelpEnabled && <div className="mt-4 grid gap-3 rounded-2xl bg-slate-50 p-4 sm:grid-cols-2">
-            <label className="text-xs font-bold text-slate-700">Retour mogelijk gedurende
-              <span className="relative mt-1.5 block"><input type="number" min={1} max={365} value={policy.windowDays} onChange={(event) => updatePolicy({ windowDays: Math.min(365, Math.max(1, Number(event.target.value) || 1)) })} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 pr-14 text-sm font-semibold text-slate-900 outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100" /><span className="pointer-events-none absolute right-3 top-2.5 font-medium text-slate-400">dagen</span></span>
-            </label>
-            <label className="text-xs font-bold text-slate-700">Herinner vanaf
-              <span className="relative mt-1.5 block"><input type="number" min={0} max={30} value={policy.reminderLeadDays} onChange={(event) => updatePolicy({ reminderLeadDays: Math.min(30, Math.max(0, Number(event.target.value) || 0)) })} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 pr-20 text-sm font-semibold text-slate-900 outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100" /><span className="pointer-events-none absolute right-3 top-2.5 font-medium text-slate-400">dagen vooraf</span></span>
-            </label>
-            <p className="text-[11px] leading-5 text-slate-500 sm:col-span-2">Deze instelling ondersteunt jouw eigen winkelservice en verandert niets aan de wettelijke garantierechten van de klant.</p>
-          </div>}
-        </section>
+          <Switch label="Expressieve animaties" detail="Gebruik het vraagteken, uitroepteken en de blob tijdens passende momenten." checked={preferences.expressiveMorphs} onChange={(expressiveMorphs) => updatePreferences({ expressiveMorphs })} icon={<Sparkles size={18} />} />
+          <Choice<PaceMotion> label="Hoeveel beweging" value={preferences.motion} onChange={(motion) => updatePreferences({ motion })} options={[{ value: "full", label: "Volledig", detail: "Alle rustige merkbewegingen." }, { value: "subtle", label: "Subtiel", detail: "Alleen functionele beweging." }, { value: "off", label: "Uit", detail: "Statisch, behalve bewuste previews." }]} />
+        </Section>
+
+        <Section icon={<BellRing size={19} />} eyebrow="Begeleiding" title="Wat Pace onder de aandacht brengt" description="Kies welke soorten hulp naast je eigen vragen zichtbaar mogen worden.">
+          <Switch label="Operationele meldingen" detail="Waarschuw bij offline status, mislukte synchronisatie en werk dat nog in de wachtrij staat." checked={preferences.operationalSignals} onChange={(operationalSignals) => updatePreferences({ operationalSignals })} icon={<Gauge size={18} />} />
+          <Switch label="Hulp bij winkelsetup" detail="Toon de eerstvolgende nuttige stap zolang belangrijke winkelinstellingen nog ontbreken." checked={preferences.setupGuidance} onChange={(setupGuidance) => updatePreferences({ setupGuidance })} icon={<Check size={18} />} />
+          <Switch label="Inzichten en vervolgstappen" detail="Vertaal patronen en statusinformatie naar een controleerbare volgende stap." checked={preferences.insightGuidance} onChange={(insightGuidance) => updatePreferences({ insightGuidance })} icon={<Bot size={18} />} />
+          <button type="button" onClick={resetDismissedSignals} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-extrabold text-slate-600 hover:border-sky-300 hover:text-sky-700"><RotateCcw size={14} /> Eerder gesloten meldingen opnieuw tonen</button>
+        </Section>
+
+        <Section icon={<Store size={19} />} eyebrow="Voor deze winkel" title="Klanthulp voor het hele team" description={owner ? "Deze winkelbrede keuzes gelden voor iedere medewerker." : "Alleen een eigenaar kan deze winkelbrede keuzes aanpassen."}>
+          <Switch label="Klantinzichten tonen" detail="Toon relevante aankopen en servicekansen nadat een medewerker bewust een klant heeft gekoppeld." checked={customerSettings.enabled} disabled={!owner} onChange={(enabled) => updateCustomerSettings({ enabled })} icon={<HeartHandshake size={18} />} badge="Hele winkel" />
+          <Switch label="Merkvoorkeuren herkennen" detail="Benoem terugkerende merken alleen wanneer het patroon duidelijk is en er passende artikelen beschikbaar zijn." checked={customerSettings.brandAffinityEnabled} disabled={!owner || !customerSettings.enabled} onChange={(brandAffinityEnabled) => updateCustomerSettings({ brandAffinityEnabled })} icon={<Sparkles size={18} />} badge="Hele winkel" />
+          <Switch label="Retourherinneringen" detail={`Help medewerkers bij servicevragen binnen de ingestelde retourtermijn van ${returnPolicy.windowDays} dagen.`} checked={customerSettings.returnRemindersEnabled && returnPolicy.enabled} disabled={!owner || !customerSettings.enabled} onChange={(enabled) => updateProfile({ customerInsightSettings: { ...customerSettings, returnRemindersEnabled: enabled }, commercialReturnPolicy: { ...returnPolicy, enabled } })} icon={<ReceiptText size={18} />} badge="Hele winkel" />
+        </Section>
       </div>
 
-      <aside className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-6">
-        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-800"><UserRoundCheck size={20} /></span>
-        <h3 className="mt-4 text-base font-black text-slate-950">Zo helpt Pace in de winkel</h3>
-        <ol className="mt-5 space-y-5">
-          {[
-            ['1', 'Koppel de klant', 'Zoek de klant op of scan de klantenkaart tijdens het bezoek.'],
-            ['2', 'Pace kijkt mee', 'Relevante aankopen, voorkeuren en handige aandachtspunten verschijnen vanzelf.'],
-            ['3', 'Je medewerker beslist', 'Een tip kan worden gebruikt of genegeerd. Pace voegt nooit zelf iets toe aan het winkelmandje.'],
-          ].map(([number, title, detail]) => <li key={number} className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-950 text-[11px] font-black text-white">{number}</span><span><strong className="block text-xs font-extrabold text-slate-900">{title}</strong><span className="mt-1 block text-xs leading-5 text-slate-500">{detail}</span></span></li>)}
-        </ol>
-        <div className="mt-6 rounded-2xl bg-slate-50 p-4">
-          <div className="flex items-center gap-2 text-xs font-extrabold text-slate-800"><ShieldCheck size={16} className="text-emerald-600" /> Vertrouwd omgaan met klantgegevens</div>
-          <p className="mt-2 text-[11px] leading-5 text-slate-500">Aankoopgegevens worden alleen gebruikt om het team van deze winkel te helpen en worden nooit met andere winkels gedeeld.</p>
-        </div>
+      <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><ShieldCheck size={22} className="text-emerald-600" /><h3 className="mt-3 text-sm font-black text-slate-950">Jij houdt de controle</h3><ul className="mt-4 space-y-3 text-xs font-medium leading-5 text-slate-600"><li>AI uit? Dan vertrekt er geen vraag naar Gemini.</li><li>Winkelgegevens uit? Dan krijgt AI geen actuele winkelcontext.</li><li>Pace voert nooit zelfstandig betalingen, retouren of wijzigingen uit.</li></ul></div>
+        <div className="rounded-3xl border border-sky-200 bg-sky-50/70 p-5"><div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-sky-800"><Database size={15} /> Wat gebruikt Pace?</div><p className="mt-3 text-xs font-medium leading-5 text-slate-600">Alleen informatie die relevant is voor je vraag en waarvoor je binnen deze winkel toegang hebt. Klantcontext verschijnt pas na een bewuste klantkoppeling.</p></div>
       </aside>
     </div>
   </div>;

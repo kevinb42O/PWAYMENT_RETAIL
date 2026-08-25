@@ -4,7 +4,7 @@ import type { CustomerInsight } from "./customerInsights";
 import { answerFromPaceKnowledge } from "./paceKnowledge";
 
 export type PaceSignalTone = "flow" | "attention" | "success";
-export type PaceProfileTab = "billing" | "modules" | "catalog-products" | "catalog-categories" | "labels" | "webshop-general" | "integrations";
+export type PaceProfileTab = "billing" | "modules" | "pace" | "catalog-products" | "catalog-categories" | "labels" | "webshop-general" | "integrations";
 export type PaceAction =
   | { kind: "navigate"; view: MainView }
   | { kind: "setup" }

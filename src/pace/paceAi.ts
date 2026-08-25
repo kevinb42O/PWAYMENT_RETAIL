@@ -23,20 +23,20 @@ export const normalizePaceAiAnswer = (answer: string) => answer
   .replace(/\s+/g, " ")
   .trim();
 
-export const toPaceAiContext = (context: PaceContext) => ({
-  storeId: context.storeId,
+export const toPaceAiContext = (context: PaceContext, includeLiveStoreContext = true) => ({
+  storeId: includeLiveStoreContext ? context.storeId : undefined,
   view: context.view,
   role: context.role,
-  productCount: context.productCount,
-  cartCount: context.cartCount,
-  firstRunCompleted: context.firstRunCompleted,
-  online: context.online,
-  pendingSync: context.pendingSync,
-  retryingSync: context.retryingSync,
-  failedSync: context.failedSync,
-  syncIssueSummary: context.syncIssueSummary,
-  syncIssueResolution: context.syncIssueResolution,
-  cartSummary: context.cartSummary ? {
+  productCount: includeLiveStoreContext ? context.productCount : undefined,
+  cartCount: includeLiveStoreContext ? context.cartCount : undefined,
+  firstRunCompleted: includeLiveStoreContext ? context.firstRunCompleted : undefined,
+  online: includeLiveStoreContext ? context.online : undefined,
+  pendingSync: includeLiveStoreContext ? context.pendingSync : undefined,
+  retryingSync: includeLiveStoreContext ? context.retryingSync : undefined,
+  failedSync: includeLiveStoreContext ? context.failedSync : undefined,
+  syncIssueSummary: includeLiveStoreContext ? context.syncIssueSummary : undefined,
+  syncIssueResolution: includeLiveStoreContext ? context.syncIssueResolution : undefined,
+  cartSummary: includeLiveStoreContext && context.cartSummary ? {
     items: context.cartSummary.items.slice(0, 25).map((item) => ({
       name: item.name.slice(0, 120),
       quantity: Math.max(0, Math.floor(item.quantity)),
@@ -56,7 +56,11 @@ export const askPaceAi = async (
   context: PaceContext,
   history: PaceConversationTurn[] = [],
   localCandidate?: PaceQueryAnswer,
+  options: { enabled?: boolean; includeLiveStoreContext?: boolean } = {},
 ): Promise<PaceAiAnswer> => {
+  if (options.enabled === false) {
+    throw new PaceAiUnavailableError("AI-antwoorden staan uit in je Pace-instellingen.");
+  }
   if (import.meta.env.VITE_ENABLE_PACE_AI === "false") {
     throw new PaceAiUnavailableError("Pace AI is niet ingeschakeld.");
   }
@@ -69,7 +73,7 @@ export const askPaceAi = async (
 
   // Customer insight records are deliberately local-only. Keep this allow-list
   // on the client as well as on the API boundary so PII never leaves the till.
-  const safeContext = toPaceAiContext(context);
+  const safeContext = toPaceAiContext(context, options.includeLiveStoreContext !== false);
 
   let response: Response;
   try {

@@ -1,12 +1,16 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { supabase } from "../lib/supabase";
+import type { Json } from "../types/database.generated";
 
 export type PaceProactivity = "quiet" | "balanced" | "coach";
 export type PaceMotion = "full" | "subtle" | "off";
 export type PaceTone = "compact" | "friendly" | "explanatory";
+export type PacePreferenceSync = "idle" | "loading" | "saved" | "local" | "error";
 
 export interface PacePreferences {
   enabled: boolean;
+  aiEnabled: boolean;
+  liveStoreContext: boolean;
   proactivity: PaceProactivity;
   motion: PaceMotion;
   tone: PaceTone;
@@ -25,15 +29,19 @@ export interface PaceCustomerFeedback {
   suppressUntil?: number;
 }
 
-interface PaceState {
-  open: boolean;
-  settingsOpen: boolean;
+interface PaceStoredState {
   preferences: PacePreferences;
   dismissedSignals: string[];
   customerFeedback: PaceCustomerFeedback[];
+}
+
+interface PaceState extends PaceStoredState {
+  open: boolean;
+  scopeKey: string | null;
+  syncState: PacePreferenceSync;
   setOpen: (open: boolean) => void;
   toggle: () => void;
-  setSettingsOpen: (open: boolean) => void;
+  hydrateScope: (storeId: string | null, userId: string | null) => Promise<void>;
   updatePreferences: (patch: Partial<PacePreferences>) => void;
   dismissSignal: (id: string) => void;
   resetDismissedSignals: () => void;
@@ -42,6 +50,8 @@ interface PaceState {
 
 export const DEFAULT_PACE_PREFERENCES: PacePreferences = {
   enabled: true,
+  aiEnabled: true,
+  liveStoreContext: true,
   proactivity: "balanced",
   motion: "full",
   tone: "compact",
@@ -52,65 +62,127 @@ export const DEFAULT_PACE_PREFERENCES: PacePreferences = {
   expressiveMorphs: true,
 };
 
-export const usePace = create<PaceState>()(
-  persist(
-    (set) => ({
-      open: false,
-      settingsOpen: false,
-      preferences: DEFAULT_PACE_PREFERENCES,
-      dismissedSignals: [],
-      customerFeedback: [],
-      setOpen: (open) => set({ open, ...(open ? {} : { settingsOpen: false }) }),
-      toggle: () => set((state) => ({ open: !state.open, settingsOpen: false })),
-      setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
-      updatePreferences: (patch) =>
-        set((state) => ({
-          preferences: { ...state.preferences, ...patch },
-          ...("enabled" in patch && patch.enabled === false
-            ? { open: false, settingsOpen: false }
-            : {}),
-        })),
-      dismissSignal: (id) =>
-        set((state) => ({
-          dismissedSignals: state.dismissedSignals.includes(id)
-            ? state.dismissedSignals
-            : [...state.dismissedSignals, id].slice(-40),
-        })),
-      resetDismissedSignals: () => set({ dismissedSignals: [], customerFeedback: [] }),
-      recordCustomerFeedback: (insightId, disposition) => set((state) => {
-        const recordedAt = Date.now();
-        const suppressUntil = disposition === "later"
-          ? recordedAt + 4 * 60 * 60 * 1000
-          : disposition === "used"
-            ? recordedAt + 24 * 60 * 60 * 1000
-            : undefined;
-        return {
-          customerFeedback: [
-            ...state.customerFeedback.filter((entry) => entry.insightId !== insightId),
-            { insightId, disposition, recordedAt, suppressUntil },
-          ].slice(-80),
-        };
-      }),
-    }),
-    {
-      name: "pwayment:pace:v1",
-      version: 4,
-      migrate: (persisted) => {
-        const state = persisted as Partial<PaceState>;
-        if (state.preferences) {
-          state.preferences = {
-            ...DEFAULT_PACE_PREFERENCES,
-            ...state.preferences,
-          };
-        }
-        state.customerFeedback ??= [];
-        return state as PaceState;
+const emptyStoredState = (): PaceStoredState => ({
+  preferences: { ...DEFAULT_PACE_PREFERENCES },
+  dismissedSignals: [],
+  customerFeedback: [],
+});
+
+const storageKey = (scopeKey: string) => `pwayment:pace:v2:${scopeKey}`;
+const normalizeStored = (raw?: Partial<PaceStoredState> | null): PaceStoredState => ({
+  preferences: { ...DEFAULT_PACE_PREFERENCES, ...(raw?.preferences ?? {}) },
+  dismissedSignals: Array.isArray(raw?.dismissedSignals) ? raw.dismissedSignals.slice(-40) : [],
+  customerFeedback: Array.isArray(raw?.customerFeedback) ? raw.customerFeedback.slice(-80) : [],
+});
+
+const readLocal = (scopeKey: string): PaceStoredState | null => {
+  try {
+    const raw = localStorage.getItem(storageKey(scopeKey));
+    return raw ? normalizeStored(JSON.parse(raw) as Partial<PaceStoredState>) : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeLocal = (scopeKey: string, state: PaceStoredState) => {
+  try { localStorage.setItem(storageKey(scopeKey), JSON.stringify(state)); } catch { /* Memory state remains usable. */ }
+};
+
+let saveTimer: number | undefined;
+const queueRemoteSave = (scopeKey: string) => {
+  window.clearTimeout(saveTimer);
+  saveTimer = window.setTimeout(async () => {
+    const separator = scopeKey.lastIndexOf(":");
+    const storeId = scopeKey.slice(0, separator);
+    const userId = scopeKey.slice(separator + 1);
+    const snapshot = usePace.getState();
+    if (snapshot.scopeKey !== scopeKey || !storeId || !userId) return;
+    const { preferences } = snapshot;
+    const { error } = await supabase.from("pace_user_preferences").upsert({
+      store_id: storeId,
+      user_id: userId,
+      enabled: preferences.enabled,
+      ai_enabled: preferences.aiEnabled,
+      live_store_context: preferences.liveStoreContext,
+      proactivity: preferences.proactivity,
+      motion: preferences.motion,
+      tone: preferences.tone,
+      operational_signals: preferences.operationalSignals,
+      setup_guidance: preferences.setupGuidance,
+      insight_guidance: preferences.insightGuidance,
+      customer_guidance: preferences.customerGuidance,
+      expressive_morphs: preferences.expressiveMorphs,
+      dismissed_signals: snapshot.dismissedSignals,
+      customer_feedback: snapshot.customerFeedback as unknown as Json,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "store_id,user_id" });
+    usePace.setState((current) => current.scopeKey === scopeKey ? { syncState: error ? "error" : "saved" } : {});
+  }, 450);
+};
+
+const persistCurrent = (state: PaceState) => {
+  if (!state.scopeKey) return;
+  writeLocal(state.scopeKey, { preferences: state.preferences, dismissedSignals: state.dismissedSignals, customerFeedback: state.customerFeedback });
+  usePace.setState({ syncState: navigator.onLine ? "idle" : "local" });
+  if (navigator.onLine) queueRemoteSave(state.scopeKey);
+};
+
+export const usePace = create<PaceState>((set, get) => ({
+  ...emptyStoredState(),
+  open: false,
+  scopeKey: null,
+  syncState: "idle",
+  setOpen: (open) => set({ open }),
+  toggle: () => set((state) => ({ open: !state.open })),
+  hydrateScope: async (storeId, userId) => {
+    const scopeKey = storeId && userId ? `${storeId}:${userId}` : null;
+    if (!scopeKey) {
+      set({ ...emptyStoredState(), scopeKey: null, syncState: "local" });
+      return;
+    }
+    if (get().scopeKey === scopeKey) return;
+    const local = readLocal(scopeKey) ?? emptyStoredState();
+    set({ ...local, scopeKey, syncState: navigator.onLine ? "loading" : "local" });
+    if (!navigator.onLine) return;
+    const { data, error } = await supabase.from("pace_user_preferences").select("*").eq("store_id", storeId).eq("user_id", userId).maybeSingle();
+    if (get().scopeKey !== scopeKey) return;
+    if (error) { set({ syncState: "local" }); return; }
+    if (!data) { set({ syncState: "saved" }); queueRemoteSave(scopeKey); return; }
+    const remote = normalizeStored({
+      preferences: {
+        enabled: data.enabled,
+        aiEnabled: data.ai_enabled,
+        liveStoreContext: data.live_store_context,
+        proactivity: data.proactivity as PaceProactivity,
+        motion: data.motion as PaceMotion,
+        tone: data.tone as PaceTone,
+        operationalSignals: data.operational_signals,
+        setupGuidance: data.setup_guidance,
+        insightGuidance: data.insight_guidance,
+        customerGuidance: data.customer_guidance,
+        expressiveMorphs: data.expressive_morphs,
       },
-      partialize: (state) => ({
-        preferences: state.preferences,
-        dismissedSignals: state.dismissedSignals,
-        customerFeedback: state.customerFeedback,
-      }),
-    },
-  ),
-);
+      dismissedSignals: data.dismissed_signals,
+      customerFeedback: data.customer_feedback as unknown as PaceCustomerFeedback[],
+    });
+    writeLocal(scopeKey, remote);
+    set({ ...remote, syncState: "saved" });
+  },
+  updatePreferences: (patch) => {
+    set((state) => ({ preferences: { ...state.preferences, ...patch }, ...("enabled" in patch && patch.enabled === false ? { open: false } : {}) }));
+    persistCurrent(get());
+  },
+  dismissSignal: (id) => {
+    set((state) => ({ dismissedSignals: state.dismissedSignals.includes(id) ? state.dismissedSignals : [...state.dismissedSignals, id].slice(-40) }));
+    persistCurrent(get());
+  },
+  resetDismissedSignals: () => { set({ dismissedSignals: [], customerFeedback: [] }); persistCurrent(get()); },
+  recordCustomerFeedback: (insightId, disposition) => {
+    set((state) => {
+      const recordedAt = Date.now();
+      const suppressUntil = disposition === "later" ? recordedAt + 4 * 60 * 60 * 1000 : disposition === "used" ? recordedAt + 24 * 60 * 60 * 1000 : undefined;
+      return { customerFeedback: [...state.customerFeedback.filter((entry) => entry.insightId !== insightId), { insightId, disposition, recordedAt, suppressUntil }].slice(-80) };
+    });
+    persistCurrent(get());
+  },
+}));

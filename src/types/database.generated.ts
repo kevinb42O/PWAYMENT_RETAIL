@@ -1660,6 +1660,74 @@ export type Database = {
           },
         ]
       }
+      pace_user_preferences: {
+        Row: {
+          ai_enabled: boolean
+          created_at: string
+          customer_feedback: Json
+          customer_guidance: boolean
+          dismissed_signals: string[]
+          enabled: boolean
+          expressive_morphs: boolean
+          insight_guidance: boolean
+          live_store_context: boolean
+          motion: string
+          operational_signals: boolean
+          proactivity: string
+          setup_guidance: boolean
+          store_id: string
+          tone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_enabled?: boolean
+          created_at?: string
+          customer_feedback?: Json
+          customer_guidance?: boolean
+          dismissed_signals?: string[]
+          enabled?: boolean
+          expressive_morphs?: boolean
+          insight_guidance?: boolean
+          live_store_context?: boolean
+          motion?: string
+          operational_signals?: boolean
+          proactivity?: string
+          setup_guidance?: boolean
+          store_id: string
+          tone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_enabled?: boolean
+          created_at?: string
+          customer_feedback?: Json
+          customer_guidance?: boolean
+          dismissed_signals?: string[]
+          enabled?: boolean
+          expressive_morphs?: boolean
+          insight_guidance?: boolean
+          live_store_context?: boolean
+          motion?: string
+          operational_signals?: boolean
+          proactivity?: string
+          setup_guidance?: boolean
+          store_id?: string
+          tone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pace_user_preferences_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_families: {
         Row: {
           brand: string | null
