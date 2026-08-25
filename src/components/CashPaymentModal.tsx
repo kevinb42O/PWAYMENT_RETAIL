@@ -10,7 +10,6 @@ import {
   formatCashEntry,
   sanitizeCashEntry,
 } from "../utils/cashPaymentInput";
-import { playRegisterSound } from "../sound/registerSounds";
 
 interface Props {
   open: boolean;
@@ -62,7 +61,6 @@ export const CashPaymentModal: React.FC<Props> = ({
   const chooseAmount = (cents: number) => {
     setEntry(formatCashEntry(cents));
     setReplaceOnNextInput(true);
-    void playRegisterSound("key-press");
     focusAndSelect();
   };
 
@@ -76,21 +74,18 @@ export const CashPaymentModal: React.FC<Props> = ({
       return sanitizeCashEntry(`${base}${key}`);
     });
     setReplaceOnNextInput(false);
-    void playRegisterSound("key-press");
     requestAnimationFrame(() => inputRef.current?.focus());
   };
 
   const backspace = () => {
     setEntry((current) => replaceOnNextInput ? "" : current.slice(0, -1));
     setReplaceOnNextInput(false);
-    void playRegisterSound("key-delete");
     requestAnimationFrame(() => inputRef.current?.focus());
   };
 
   const clear = () => {
     setEntry("");
     setReplaceOnNextInput(false);
-    void playRegisterSound("key-delete");
     requestAnimationFrame(() => inputRef.current?.focus());
   };
 
@@ -103,7 +98,6 @@ export const CashPaymentModal: React.FC<Props> = ({
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const next = sanitizeCashEntry(event.target.value);
     if (next === entry) return;
-    void playRegisterSound(next.length < entry.length ? "key-delete" : "key-press");
     setEntry(next);
     setReplaceOnNextInput(false);
   };

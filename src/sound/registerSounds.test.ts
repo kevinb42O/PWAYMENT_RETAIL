@@ -6,10 +6,8 @@ import {
 
 describe("register sound policy", () => {
   it("keeps real terminal confirmations quiet by default", () => {
-    expect(canPlayRegisterSound("payment-complete", DEFAULT_REGISTER_SOUND_SETTINGS)).toBe(true);
-    expect(canPlayRegisterSound("payment-complete", DEFAULT_REGISTER_SOUND_SETTINGS, {
-      externalTerminal: true,
-    })).toBe(false);
+    expect(canPlayRegisterSound("payment-complete", DEFAULT_REGISTER_SOUND_SETTINGS)).toBe(false);
+    expect(canPlayRegisterSound("terminal-payment-complete", DEFAULT_REGISTER_SOUND_SETTINGS)).toBe(false);
   });
 
   it("honours the master switch and category switches", () => {
@@ -20,12 +18,11 @@ describe("register sound policy", () => {
     })).toBe(false);
   });
 
-  it("keeps cash-entry feedback under its own local category", () => {
-    expect(canPlayRegisterSound("key-press", DEFAULT_REGISTER_SOUND_SETTINGS)).toBe(true);
-    expect(canPlayRegisterSound("key-delete", {
+  it("requires explicit consent before sale-completion sound plays", () => {
+    expect(canPlayRegisterSound("payment-complete", {
       ...DEFAULT_REGISTER_SOUND_SETTINGS,
-      keypad: false,
-    })).toBe(false);
+      paymentComplete: true,
+    })).toBe(true);
   });
 
   it("allows a category preview while preserving master mute", () => {
