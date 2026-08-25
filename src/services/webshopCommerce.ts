@@ -126,11 +126,14 @@ const assertCheckoutInput = (input: PlaceWebshopOrderInput) => {
   }
 };
 
-const notifyOrderChange = () => {
+const notifyOrderChange = (kind: 'created' | 'updated') => {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event('pwayment:webshop-orders-changed'));
+  if (kind === 'created' && typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('pwayment:webshop-order-created'));
+  }
   if (typeof BroadcastChannel !== 'undefined') {
     const channel = new BroadcastChannel('pwayment-webshop-orders');
-    channel.postMessage({ type: 'changed' });
+    channel.postMessage({ type: 'changed', kind });
     channel.close();
   }
 };
@@ -235,7 +238,7 @@ const placeLocalOrder = async (input: PlaceWebshopOrderInput): Promise<PlaceWebs
       return { order, duplicate: false, updatedProducts };
     },
   );
-  notifyOrderChange();
+  notifyOrderChange('created');
   return result;
 };
 
@@ -295,7 +298,7 @@ const updateLocalOrder = async (id: string, update: UpdateWebshopOrderInput) => 
       return { order: next, updatedProducts };
     },
   );
-  notifyOrderChange();
+  notifyOrderChange('updated');
   return result;
 };
 
@@ -410,7 +413,7 @@ const placeRemoteOrder = async (input: PlaceWebshopOrderInput): Promise<PlaceWeb
   if (error) throw new Error(`De bestelling kon niet centraal worden opgeslagen: ${error.message}`);
   const response = jsonRecord(data);
   const order = mapRemotePayload(data);
-  notifyOrderChange();
+  if (response.duplicate !== true) notifyOrderChange('created');
   return { order, duplicate: response.duplicate === true, updatedProducts: [] };
 };
 
@@ -434,7 +437,7 @@ const updateRemoteOrder = async (storeId: string, id: string, update: UpdateWebs
   });
   if (error) throw error;
   const order = mapRemotePayload(data);
-  notifyOrderChange();
+  notifyOrderChange('updated');
   return { order, updatedProducts: [] };
 };
 

@@ -16,6 +16,7 @@ import { WebshopSettings } from './WebshopSettings';
 import { CustomerDisplaySettings } from './CustomerDisplaySettings';
 import { ModuleSettings } from './ModuleSettings';
 import { WorkforceSettings } from './WorkforceSettings';
+import { SoundSettings } from './SoundSettings';
 import { LeaveApprovalCenter } from './LeaveApprovalCenter';
 import { FeatureGate } from '../billing/FeatureGate';
 import { FEATURE_KEYS } from '../billing/entitlements';
@@ -26,6 +27,7 @@ import { setServerManagerApprovalPin } from '../services/discountApprovals';
 import { useWorkforce } from '../store/useWorkforce';
 import { useMerchantProfile } from '../store/useMerchantProfile';
 import type { User, Role } from '../types';
+import { playRegisterSound, useRegisterSoundSettings } from '../sound/registerSounds';
 import {
   WorldlineLogo,
   CCVLogo,
@@ -117,6 +119,7 @@ type WorkspaceTab =
   | 'hardware-terminal'
   | 'hardware-scale'
   | 'hardware-display'
+  | 'hardware-sound'
   | 'security'
   | 'team';
 
@@ -271,7 +274,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [autoSubmitScan, setAutoSubmitScan] = useState(true);
   const [autoOpenDrawer, setAutoOpenDrawer] = useState(true);
   const [paperWidth, setPaperWidth] = useState<'80mm' | '58mm'>('80mm');
-  const [scanSoundActive, setScanSoundActive] = useState(true);
+  const scanSoundActive = useRegisterSoundSettings((state) => state.scanner);
+  const updateSoundSettings = useRegisterSoundSettings((state) => state.update);
   // Payment Terminal state
   const [selectedTerminalProvider, setSelectedTerminalProvider] = useState<'worldline' | 'ccv' | 'sumup' | 'mollie' | 'viva' | 'verifone'>('worldline');
   const [terminalIp, setTerminalIp] = useState('192.168.1.185');
@@ -655,6 +659,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   { id: 'hardware-drawer', label: 'Kassalade', icon: <Zap size={13} /> },
                   { id: 'hardware-terminal', label: 'Betaalterminal', icon: <CreditCard size={13} /> },
                   { id: 'hardware-display', label: 'Klantenscherm', icon: <Monitor size={13} /> },
+                  { id: 'hardware-sound', label: 'Geluid', icon: <Volume2 size={13} /> },
                 ].map((sub) => {
                   const isSubActive = activeTab === sub.id || (activeTab === 'hardware' && sub.id === 'hardware-printer');
                   return (
@@ -1126,16 +1131,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       value={scannerTestCode}
                       onChange={(e) => {
                         setScannerTestCode(e.target.value);
-                        if (e.target.value && scanSoundActive) {
-                          // Play a brief positive beep sound on scan test
-                          const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-                          const osc = ctx.createOscillator();
-                          osc.type = 'sine';
-                          osc.frequency.setValueAtTime(1200, ctx.currentTime);
-                          osc.connect(ctx.destination);
-                          osc.start();
-                          osc.stop(ctx.currentTime + 0.08);
-                        }
+                        if (e.target.value && scanSoundActive) void playRegisterSound('scan-success');
                       }}
                       placeholder="Scan hier om te testen..."
                       className="w-full sm:w-64 bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
@@ -1176,7 +1172,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       <input
                         type="checkbox"
                         checked={scanSoundActive}
-                        onChange={(e) => setScanSoundActive(e.target.checked)}
+                        onChange={(e) => updateSoundSettings({ scanner: e.target.checked })}
                         id="scan-sound-chk"
                         className="mt-0.5 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer shrink-0"
                       />
@@ -1356,6 +1352,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               >
                 <CustomerDisplaySettings />
               </FeatureGate>
+            )}
+
+            {activeTab === 'hardware-sound' && (
+              <SoundSettings />
             )}
 
             {activeTab === 'hardware-scale' && (

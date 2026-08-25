@@ -22,6 +22,7 @@ import { useMerchantProfile } from "../store/useMerchantProfile";
 import { useCategories } from "../store/useCategories";
 import { derivePaceSetupMilestones } from "../pace/setupMilestones";
 import { getPrimaryPaceOutboxIssue } from "../pace/outboxIssue";
+import { playRegisterSound, unlockRegisterSounds } from "../sound/registerSounds";
 import {
   AlertCircle,
   CheckCircle2,
@@ -299,6 +300,16 @@ export const Layout: React.FC = () => {
     navigationItems.find(isNavigationItemActive) ?? navigationItems[0];
   const ActiveNavigationIcon = activeNavigationItem.Icon;
 
+  useEffect(() => {
+    const unlock = () => void unlockRegisterSounds();
+    window.addEventListener("pointerdown", unlock, { once: true, capture: true });
+    window.addEventListener("keydown", unlock, { once: true, capture: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock, true);
+      window.removeEventListener("keydown", unlock, true);
+    };
+  }, []);
+
   const openNavigationItem = (item: NavigationItem) => {
     if (item.view === "audit-log") {
       setOpenAuditLogAtReturnSearch(false);
@@ -328,6 +339,38 @@ export const Layout: React.FC = () => {
       void supabase.removeChannel(channel);
     };
   }, [currentStoreId, refreshEntitlements]);
+
+  useEffect(() => {
+    if (!currentStoreId) return;
+    const channel = supabase
+      .channel(`webshop-sound:${currentStoreId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "webshop_orders",
+          filter: `store_id=eq.${currentStoreId}`,
+        },
+        () => void playRegisterSound("webshop-order"),
+      )
+      .subscribe();
+    const localOrderCreated = () => void playRegisterSound("webshop-order");
+    const localChannel = typeof BroadcastChannel === "undefined"
+      ? null
+      : new BroadcastChannel("pwayment-webshop-orders");
+    if (localChannel) {
+      localChannel.onmessage = (event: MessageEvent<{ kind?: string }>) => {
+        if (event.data?.kind === "created") void playRegisterSound("webshop-order");
+      };
+    }
+    window.addEventListener("pwayment:webshop-order-created", localOrderCreated);
+    return () => {
+      window.removeEventListener("pwayment:webshop-order-created", localOrderCreated);
+      localChannel?.close();
+      void supabase.removeChannel(channel);
+    };
+  }, [currentStoreId]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -398,6 +441,7 @@ export const Layout: React.FC = () => {
     const result = scanCodeToCart(value);
 
     if (result.status === "matched" && result.product) {
+      void playRegisterSound("scan-success");
       setProductQuery("");
       setScanFeedback({
         tone: "success",
@@ -409,6 +453,7 @@ export const Layout: React.FC = () => {
     }
 
     if (result.status === "out-of-stock" && result.product) {
+      void playRegisterSound("scan-rejected");
       setProductQuery(value);
       setScanFeedback({
         tone: "warning",
@@ -422,6 +467,7 @@ export const Layout: React.FC = () => {
     const hasBrowseMatches = products.some((product) =>
       matchesCatalogQuery(product, value),
     );
+    if (!hasBrowseMatches) void playRegisterSound("scan-rejected");
     setProductQuery(value);
     setScanFeedback(
       hasBrowseMatches

@@ -83,6 +83,7 @@ import {
   MollieTerminalError,
   type MollieTerminalPayment,
 } from "../services/mollieTerminal";
+import { playRegisterSound } from "../sound/registerSounds";
 
 type CardCheckoutExtras = {
   tenderedCents?: number;
@@ -278,6 +279,7 @@ export const Cart: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [mollieFlow, setMollieFlow] = useState<MollieFlow | null>(() => restoredMollieFlow(auth.currentStoreId));
   const ignoredMolliePayments = useRef(new Set<string>());
+  const lastMollieAttentionKey = useRef("");
   const [receipt, setReceipt] = useState<Transaction | null>(null);
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
   const [discountOpen, setDiscountOpen] = useState(false);
@@ -323,6 +325,16 @@ export const Cart: React.FC = () => {
       // The active in-memory flow remains safe when storage is unavailable.
     }
   }, [auth.currentStoreId, mollieFlow]);
+
+  useEffect(() => {
+    if (!mollieFlow || (mollieFlow.phase !== "status-error" && mollieFlow.phase !== "booking-error")) {
+      return;
+    }
+    const key = `${mollieFlow.phase}:${mollieFlow.payment?.id ?? "new"}:${mollieFlow.error ?? ""}`;
+    if (lastMollieAttentionKey.current === key) return;
+    lastMollieAttentionKey.current = key;
+    void playRegisterSound("attention");
+  }, [mollieFlow]);
 
   useEffect(() => {
     if (!cartActionsOpen) return;
@@ -605,6 +617,9 @@ export const Cart: React.FC = () => {
         .completePayment(result.transaction);
       clearCart();
       setReceipt(result.transaction);
+      void playRegisterSound("payment-complete", {
+        externalTerminal: Boolean(extras.paymentProviderReference),
+      });
 
       // Printing happens only after the commit, so a printer failure can never
       // leave a half-booked sale behind.
@@ -619,6 +634,7 @@ export const Cart: React.FC = () => {
       return true;
     } catch (error) {
       useCustomerDisplayRuntime.getState().failPayment(displayMethod);
+      void playRegisterSound("attention");
       console.error("Checkout failed:", error);
       alert(
         error instanceof CheckoutError
