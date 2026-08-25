@@ -17,6 +17,7 @@ interface StoredTransaction {
   kind?: string;
   originalTransactionId?: number;
   isFinalized: number;
+  tenderedCents?: number;
 }
 
 interface StoredProduct {
@@ -61,6 +62,35 @@ test("card sale is atomic, exact and visible in Historiek", async ({
   ).toBeVisible();
   await expect(appPage.getByText("€ 5,95").first()).toBeVisible();
   await expect(appPage.getByText("Kaart").first()).toBeVisible();
+});
+
+test("cash entry accepts a hardware keyboard and confirms with Enter", async ({
+  appPage,
+}) => {
+  await openApp(appPage);
+  await addProduct(appPage, /Allen Hardware Bolts 1 inch/);
+  await appPage.getByRole("button", { name: "Cash", exact: true }).click();
+
+  const dialog = appPage.getByRole("dialog", { name: "Contante betaling" });
+  const amount = dialog.getByLabel("Ontvangen bedrag");
+  const confirm = dialog.getByRole("button", { name: "Betaling bevestigen" });
+
+  await expect(amount).toBeFocused();
+  await amount.pressSequentially("10");
+  await expect(amount).toHaveValue("10");
+  await expect(dialog.getByText("€ 4,05")).toBeVisible();
+  await amount.press("Backspace");
+  await expect(amount).toHaveValue("1");
+  await expect(confirm).toBeDisabled();
+  await amount.press("0");
+  await amount.press("Enter");
+
+  await expect(appPage.getByText("Betaling gelukt")).toBeVisible();
+  const transactions = await readStore<StoredTransaction>(appPage, "transactions");
+  expect(transactions[0]).toMatchObject({
+    paymentMethod: "Cash",
+    tenderedCents: 1_000,
+  });
 });
 
 test("POS return shortcut opens the manual transaction lookup directly", async ({

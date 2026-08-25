@@ -12,7 +12,9 @@ interface ModalProps {
   size?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "5xl";
   variant?: "light" | "dark";
   className?: string;
+  bodyClassName?: string;
   closeOnBackdrop?: boolean;
+  initialFocusRef?: React.RefObject<HTMLElement | null>;
 }
 
 const sizeClass: Record<NonNullable<ModalProps["size"]>, string> = {
@@ -37,7 +39,9 @@ export const Modal: React.FC<ModalProps> = ({
   size = "md",
   variant = "light",
   className = "",
+  bodyClassName,
   closeOnBackdrop = false,
+  initialFocusRef,
 }) => {
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -48,7 +52,7 @@ export const Modal: React.FC<ModalProps> = ({
     if (!open) return;
     const previous = document.activeElement as HTMLElement | null;
     const dialog = dialogRef.current;
-    const focusable = dialog?.querySelector<HTMLElement>(
+    const focusable = initialFocusRef?.current ?? dialog?.querySelector<HTMLElement>(
       'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
     );
     requestAnimationFrame(() => {
@@ -87,7 +91,7 @@ export const Modal: React.FC<ModalProps> = ({
       document.removeEventListener("keydown", onKeyDown);
       previous?.focus();
     };
-  }, [open]);
+  }, [open, initialFocusRef]);
 
   if (!open) return null;
   const isLight = variant === "light";
@@ -163,7 +167,7 @@ export const Modal: React.FC<ModalProps> = ({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+        <div className={`flex-1 overflow-y-auto custom-scrollbar ${bodyClassName ?? "p-6 space-y-6"}`}>
           {children}
         </div>
 

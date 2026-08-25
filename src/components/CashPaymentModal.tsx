@@ -1,21 +1,27 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Banknote, Check, Delete, Undo2 } from "lucide-react";
 import { Modal } from "./Modal";
+import { Button } from "./ui/Button";
 import { formatEUR } from "../utils/money";
 import { MAX_CASH_PAYMENT_CENTS } from "../utils/cashRounding";
+import {
+  cashEntryToCents,
+  cashQuickAmounts,
+  formatCashEntry,
+  sanitizeCashEntry,
+} from "../utils/cashPaymentInput";
+import { playRegisterSound } from "../sound/registerSounds";
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  /** Amount actually due in cash after statutory five-cent rounding. */
   totalCents: number;
-  /** Exact commercial cash share before rounding, shown for transparency. */
   commercialTotalCents?: number;
-  /** Settlement total minus commercial amount; zero for an exact multiple of €0,05. */
   roundingAdjustmentCents?: number;
   onConfirm: (tenderedCents: number) => void;
 }
 
-const QUICK_NOTES_CENTS = [500, 1000, 2000, 5000, 10000];
+const keypadRows = [["7", "8", "9"], ["4", "5", "6"], ["1", "2", "3"]];
 
 export const CashPaymentModal: React.FC<Props> = ({
   open,
@@ -25,49 +31,81 @@ export const CashPaymentModal: React.FC<Props> = ({
   roundingAdjustmentCents = totalCents - commercialTotalCents,
   onConfirm,
 }) => {
-  const [tenderedCents, setTenderedCents] = useState<number>(totalCents);
-  const [manualEntryStarted, setManualEntryStarted] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [entry, setEntry] = useState(() => formatCashEntry(totalCents));
+  const [replaceOnNextInput, setReplaceOnNextInput] = useState(true);
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
-    if (open) {
-      setTenderedCents(totalCents);
-      setManualEntryStarted(false);
-    }
+    if (!open) return;
+    setEntry(formatCashEntry(totalCents));
+    setReplaceOnNextInput(true);
+    setConfirming(false);
+    const frame = requestAnimationFrame(() => inputRef.current?.select());
+    return () => cancelAnimationFrame(frame);
   }, [open, totalCents]);
 
-  const change = tenderedCents - totalCents;
+  const tenderedCents = cashEntryToCents(entry);
+  const changeCents = tenderedCents - totalCents;
   const insufficient = tenderedCents < totalCents;
-  const exceedsCashLimit =
-    totalCents > MAX_CASH_PAYMENT_CENTS ||
-    tenderedCents > MAX_CASH_PAYMENT_CENTS;
-  const cannotConfirm = insufficient || exceedsCashLimit;
+  const exceedsCashLimit = totalCents > MAX_CASH_PAYMENT_CENTS || tenderedCents > MAX_CASH_PAYMENT_CENTS;
+  const cannotConfirm = insufficient || exceedsCashLimit || confirming;
+  const quickAmounts = useMemo(() => cashQuickAmounts(totalCents), [totalCents]);
 
-  const setNearestNote = (note: number) => {
-    // Take ceiling: smallest multiple of `note` >= total.
-    const ceil = Math.ceil(totalCents / note) * note;
-    setTenderedCents(ceil);
-    setManualEntryStarted(false);
-  };
-
-  const press = (digit: string) => {
-    setTenderedCents((cur) => {
-      // Treat as cents shifted: x*10 + d
-      const next = manualEntryStarted
-        ? cur * 10 + Number(digit)
-        : Number(digit);
-      if (next > 99_999_900) return cur;
-      return next;
+  const focusAndSelect = () => {
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
     });
-    setManualEntryStarted(true);
   };
 
-  const back = () => {
-    setTenderedCents((cur) => (manualEntryStarted ? Math.floor(cur / 10) : 0));
-    setManualEntryStarted(true);
+  const chooseAmount = (cents: number) => {
+    setEntry(formatCashEntry(cents));
+    setReplaceOnNextInput(true);
+    void playRegisterSound("key-press");
+    focusAndSelect();
   };
+
+  const appendKey = (key: string) => {
+    setEntry((current) => {
+      const base = replaceOnNextInput ? "" : current;
+      if (key === ",") {
+        if (base.includes(",")) return base;
+        return `${base || "0"},`;
+      }
+      return sanitizeCashEntry(`${base}${key}`);
+    });
+    setReplaceOnNextInput(false);
+    void playRegisterSound("key-press");
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
+  const backspace = () => {
+    setEntry((current) => replaceOnNextInput ? "" : current.slice(0, -1));
+    setReplaceOnNextInput(false);
+    void playRegisterSound("key-delete");
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
   const clear = () => {
-    setTenderedCents(0);
-    setManualEntryStarted(true);
+    setEntry("");
+    setReplaceOnNextInput(false);
+    void playRegisterSound("key-delete");
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
+  const confirm = useCallback(() => {
+    if (cannotConfirm) return;
+    setConfirming(true);
+    onConfirm(tenderedCents);
+  }, [cannotConfirm, onConfirm, tenderedCents]);
+
+  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const next = sanitizeCashEntry(event.target.value);
+    if (next === entry) return;
+    void playRegisterSound(next.length < entry.length ? "key-delete" : "key-press");
+    setEntry(next);
+    setReplaceOnNextInput(false);
   };
 
   return (
@@ -75,155 +113,126 @@ export const CashPaymentModal: React.FC<Props> = ({
       open={open}
       onClose={onClose}
       title="Contante betaling"
-      size="lg"
+      subtitle="Voer in wat de klant u geeft"
+      icon={<Banknote size={19} />}
+      size="2xl"
+      initialFocusRef={inputRef}
+      className="max-h-[92dvh]"
+      bodyClassName="p-4 sm:p-6"
       footer={
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700"
-          >
-            Annuleren
-          </button>
-          <button
-            disabled={cannotConfirm}
-            onClick={() => onConfirm(tenderedCents)}
-            className={`px-4 py-2 rounded-lg font-bold ${
-              cannotConfirm
-                ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
-                : "bg-emerald-600 hover:bg-emerald-500 text-white"
-            }`}
-          >
-            Betaling bevestigen
-          </button>
+        <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <span className="hidden text-[11px] font-medium text-slate-500 sm:block">
+            <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 font-sans">Esc</kbd> annuleren
+            <span className="mx-2 text-slate-300">·</span>
+            <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 font-sans">Enter</kbd> bevestigen
+          </span>
+          <div className="grid grid-cols-2 gap-2 sm:flex">
+            <Button variant="secondary" onClick={onClose} className="h-11 px-5 text-sm">Annuleren</Button>
+            <Button aria-label="Betaling bevestigen" variant="primary" disabled={cannotConfirm} onClick={confirm} className="h-11 px-3 text-xs font-extrabold sm:px-5 sm:text-sm">
+              <Check size={17} /> {confirming ? "Bezig…" : <><span className="sm:hidden">Bevestigen</span><span className="hidden sm:inline">Betaling bevestigen</span></>}
+            </Button>
+          </div>
         </div>
       }
     >
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-3">
-            <div className="text-zinc-500 text-xs uppercase tracking-wider">
-              Totaal
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-[minmax(0,0.9fr)_minmax(280px,1.1fr)] md:gap-6">
+        <div className="min-w-0 space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5">
+              <div className="text-[10px] font-extrabold uppercase tracking-[0.13em] text-slate-500">Te betalen</div>
+              <div className="mt-1 text-xl font-black tabular-nums text-slate-950">{formatEUR(totalCents)}</div>
             </div>
-            <div className="text-2xl font-bold tabular-nums">
-              {formatEUR(totalCents)}
-            </div>
-          </div>
-          <div
-            className={`rounded-xl p-3 border ${
-              insufficient
-                ? "bg-red-950/40 border-red-800"
-                : change === 0
-                  ? "bg-emerald-950/40 border-emerald-800"
-                  : "bg-amber-950/40 border-amber-700"
-            }`}
-          >
-            <div className="text-zinc-400 text-xs uppercase tracking-wider">
-              {insufficient ? "Tekort" : exceedsCashLimit ? "Cashlimiet" : "Wisselgeld"}
-            </div>
-            <div
-              className={`text-2xl font-bold tabular-nums ${
-                insufficient
-                  ? "text-red-300"
-                  : change === 0
-                    ? "text-emerald-300"
-                    : "text-amber-300"
-              }`}
-            >
-              {formatEUR(Math.abs(change))}
+            <div className={`rounded-2xl border p-3.5 ${insufficient ? "border-amber-200 bg-amber-50" : exceedsCashLimit ? "border-rose-200 bg-rose-50" : "border-emerald-200 bg-emerald-50"}`}>
+              <div className={`text-[10px] font-extrabold uppercase tracking-[0.13em] ${insufficient ? "text-amber-700" : exceedsCashLimit ? "text-rose-700" : "text-emerald-700"}`}>
+                {exceedsCashLimit ? "Cashlimiet" : insufficient ? "Nog nodig" : changeCents === 0 ? "Wisselgeld" : "Terug te geven"}
+              </div>
+              <div aria-live="polite" className={`mt-1 text-xl font-black tabular-nums ${insufficient ? "text-amber-900" : exceedsCashLimit ? "text-rose-900" : "text-emerald-900"}`}>
+                {formatEUR(Math.abs(changeCents))}
+              </div>
             </div>
           </div>
-        </div>
 
-        {roundingAdjustmentCents !== 0 && (
-          <div className="rounded-xl border border-amber-700/70 bg-amber-950/30 p-3 text-sm">
-            <div className="flex justify-between gap-3 text-amber-100">
-              <span>Commercieel cashbedrag</span>
-              <span className="tabular-nums">{formatEUR(commercialTotalCents)}</span>
-            </div>
-            <div className="mt-1 flex justify-between gap-3 font-bold text-amber-200">
-              <span>Wettelijke cashafronding</span>
-              <span className="tabular-nums">
-                {roundingAdjustmentCents > 0 ? "+" : ""}
-                {formatEUR(roundingAdjustmentCents)}
-              </span>
-            </div>
-          </div>
-        )}
-
-        <div>
-          <label className="block text-xs uppercase tracking-wider text-zinc-500 mb-2">
-            Ontvangen
-          </label>
-          <div className="px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-3xl font-bold text-right tabular-nums">
-            {formatEUR(tenderedCents)}
-          </div>
-        </div>
-
-        <div>
-          <div className="text-xs uppercase tracking-wider text-zinc-500 mb-2">
-            Snelkeuze
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              onClick={() => {
-                setTenderedCents(totalCents);
-                setManualEntryStarted(false);
-              }}
-              className="py-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-bold"
-            >
-              Exact
-            </button>
-            {QUICK_NOTES_CENTS.map((n) => (
-              <button
-                key={n}
-                onClick={() => setNearestNote(n)}
-                className="py-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 font-bold tabular-nums"
-              >
-                €{n / 100}
+          <div>
+            <span className="mb-2 flex items-center justify-between gap-3">
+              <label htmlFor="cash-tendered-amount" className="text-[11px] font-extrabold uppercase tracking-[0.13em] text-slate-600">Ontvangen</label>
+              <button type="button" onClick={clear} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#38bdf8]">
+                <Delete size={13} /> Wissen
               </button>
-            ))}
+            </span>
+            <span className="flex min-h-16 items-center rounded-2xl border-2 border-[#0e7490] bg-white px-4 shadow-[0_0_0_4px_rgba(56,189,248,0.12)] transition focus-within:shadow-[0_0_0_4px_rgba(56,189,248,0.22)]">
+              <span className="mr-2 text-2xl font-black text-slate-400">€</span>
+              <input
+                id="cash-tendered-amount"
+                ref={inputRef}
+                aria-label="Ontvangen bedrag"
+                value={entry}
+                onChange={handleInputChange}
+                onFocus={(event) => { if (replaceOnNextInput) event.currentTarget.select(); }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    if (!cannotConfirm) confirm();
+                  }
+                }}
+                inputMode="decimal"
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="0,00"
+                className="min-w-0 flex-1 bg-transparent text-right text-3xl font-black tabular-nums text-slate-950 outline-none placeholder:text-slate-300"
+              />
+            </span>
           </div>
-        </div>
 
-        <div>
-          <div className="grid grid-cols-3 gap-2">
-            {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
-              <button
-                key={d}
-                onClick={() => press(d)}
-                className="py-4 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-2xl font-bold"
-              >
-                {d}
-              </button>
-            ))}
-            <button
-              onClick={clear}
-              className="py-4 rounded-lg bg-zinc-900 hover:bg-zinc-800 font-bold text-zinc-400"
-            >
-              C
-            </button>
-            <button
-              onClick={() => press("0")}
-              className="py-4 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-2xl font-bold"
-            >
-              0
-            </button>
-            <button
-              onClick={back}
-              className="py-4 rounded-lg bg-zinc-900 hover:bg-zinc-800 font-bold text-zinc-400"
-            >
-              ⌫
-            </button>
-          </div>
-          <p className="text-[11px] text-zinc-500 mt-2">
-            De eerste cijfertoets vervangt het vooringevulde bedrag. Typ "2000"
-            voor €20,00.
-          </p>
+          {roundingAdjustmentCents !== 0 && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-[11px] text-amber-950">
+              <div className="flex justify-between gap-3"><span>Commercieel cashbedrag</span><span className="font-bold tabular-nums">{formatEUR(commercialTotalCents)}</span></div>
+              <div className="mt-1 flex justify-between gap-3 font-bold"><span>Wettelijke cashafronding</span><span className="tabular-nums">{roundingAdjustmentCents > 0 ? "+" : ""}{formatEUR(roundingAdjustmentCents)}</span></div>
+            </div>
+          )}
+
           {exceedsCashLimit && (
-            <p role="alert" className="mt-2 text-xs font-medium text-amber-300">
+            <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-3 text-xs font-semibold leading-5 text-rose-800">
               Cashbetalingen zijn beperkt tot {formatEUR(MAX_CASH_PAYMENT_CENTS)}. Laat het restant elektronisch betalen.
             </p>
           )}
+          {!exceedsCashLimit && insufficient && (
+            <p className="text-xs font-medium text-amber-800">Er ontbreekt nog {formatEUR(totalCents - tenderedCents)} om deze betaling te bevestigen.</p>
+          )}
+        </div>
+
+        <div className="min-w-0 space-y-3">
+          <div>
+            <div className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.13em] text-slate-600">Snel ontvangen</div>
+            <div className="grid grid-cols-3 gap-2">
+              <Button variant="primary" onClick={() => chooseAmount(totalCents)} className="h-11 px-2 text-sm font-extrabold">Exact</Button>
+              {quickAmounts.slice(0, 2).map((amount) => (
+                <Button key={amount} variant="secondary" onClick={() => chooseAmount(amount)} className="h-11 px-2 text-sm font-extrabold tabular-nums">
+                  {formatEUR(amount).replace(",00", "")}
+                </Button>
+              ))}
+            </div>
+            {quickAmounts.length > 2 && (
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {quickAmounts.slice(2).map((amount) => (
+                  <Button key={amount} variant="secondary" onClick={() => chooseAmount(amount)} className="h-9 px-2 text-xs font-bold tabular-nums">
+                    {formatEUR(amount).replace(",00", "")}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-3 gap-2" aria-label="Numeriek toetsenblok">
+            {keypadRows.flat().map((digit) => (
+              <Button key={digit} variant="secondary" onClick={() => appendKey(digit)} aria-label={`Cijfer ${digit}`} className="h-12 px-2 text-xl font-black active:translate-y-px active:bg-slate-100 sm:h-14">
+                {digit}
+              </Button>
+            ))}
+            <Button variant="secondary" onClick={() => appendKey(",")} aria-label="Decimale komma" className="h-12 px-2 text-xl font-black active:translate-y-px sm:h-14">,</Button>
+            <Button variant="secondary" onClick={() => appendKey("0")} aria-label="Cijfer 0" className="h-12 px-2 text-xl font-black active:translate-y-px sm:h-14">0</Button>
+            <Button variant="secondary" onClick={backspace} aria-label="Laatste cijfer verwijderen" className="h-12 px-2 active:translate-y-px sm:h-14"><Undo2 size={20} /></Button>
+          </div>
+          <p className="text-center text-[10px] font-medium text-slate-400">Typ rechtstreeks met uw toetsenbord of externe numerieke keypad.</p>
         </div>
       </div>
     </Modal>

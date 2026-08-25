@@ -115,7 +115,7 @@ const AUDIO_ASSETS: Record<RegisterSoundKind, string> = {
   "scan-rejected": "/sounds/uisfx-studio/blocked.mp3",
   "webshop-order": "/sounds/uisfx-studio/notification.mp3",
   "key-press": "/sounds/uisfx-studio/select.mp3",
-  "key-delete": "/sounds/uisfx-studio/blocked.mp3",
+  "key-delete": "/sounds/uisfx-studio/select.mp3",
 };
 
 const CUE_VOLUME: Record<RegisterSoundKind, number> = {
