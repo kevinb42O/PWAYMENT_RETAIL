@@ -243,8 +243,7 @@
 
 .pace-overview-window {
   min-height: 0;
-  max-height: 39%;
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   overflow-y: auto;
   border: 1px solid #dbe7ed;
   border-radius: 1.15rem;
@@ -253,6 +252,7 @@
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.045);
   scrollbar-width: thin;
 }
+.pace-live-layout.has-conversation .pace-overview-window { max-height: 36%; flex: 0 1 auto; }
 
 .pace-overview-heading,
 .pace-conversation-heading {
@@ -276,8 +276,6 @@
 .pace-overview-heading small,
 .pace-conversation-heading small { color: #64748b; font-size: 0.56rem; font-weight: 750; }
 
-.pace-overview-window .pace-context-rail { margin-bottom: 0.6rem; }
-.pace-overview-window .pace-context-rail span { padding: 0.22rem 0.4rem; font-size: 0.52rem; }
 .pace-overview-window .pace-live-brief { border-radius: 0.9rem; padding: 0.75rem; box-shadow: none; }
 .pace-overview-window .pace-live-brief h3 { margin-top: 0.4rem; font-size: 0.9rem; }
 .pace-overview-window .pace-live-brief p { margin-top: 0.3rem; font-size: 0.66rem; line-height: 1.45; }
@@ -293,46 +291,30 @@
 .pace-conversation-window {
   display: flex;
   min-height: 0;
-  flex: 1 1 61%;
+  flex: 0 0 auto;
   flex-direction: column;
-  overflow-y: auto;
+  overflow: hidden;
   border: 1px solid #cfe1e9;
   border-radius: 1.15rem;
   background: #fff;
-  padding: 0.9rem;
+  padding: 0.75rem;
   box-shadow: 0 15px 35px rgba(15, 23, 42, 0.065);
   scrollbar-width: thin;
+  transition: flex-basis 240ms cubic-bezier(.22,1,.36,1), padding 180ms ease;
 }
+.pace-conversation-window.is-expanded { flex: 1 1 64%; padding: 0.9rem; }
+.pace-conversation-body { min-height: 0; flex: 1; overflow-y: auto; padding-right: 0.1rem; scrollbar-width: thin; }
 .pace-conversation-window .pace-command-zone { margin-top: 0; }
+.pace-conversation-window.is-expanded .pace-command-zone { border-top: 1px solid #edf2f5; padding-top: 0.75rem; }
 .pace-conversation-window .pace-command-zone form { border-color: #a9cfdd; border-radius: 1rem; padding: 0.42rem; box-shadow: 0 8px 24px rgba(8, 51, 68, 0.08); }
 .pace-conversation-window .pace-command-zone input { min-height: 2.35rem; font-size: 0.82rem; }
 .pace-conversation-window .pace-command-zone form button { width: 2.45rem; height: 2.45rem; border-radius: 0.78rem; }
 .pace-conversation-window .pace-query-hints { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 0.15rem; scrollbar-width: none; }
 .pace-conversation-window .pace-query-hints button { flex: none; }
-.pace-conversation-window .pace-response { margin-top: 0.9rem; border-color: #bae6fd; background: linear-gradient(145deg, #f8fdff, #fff); padding: 1rem; }
+.pace-conversation-window .pace-response { margin: 0 0 0.75rem; border-color: #bae6fd; background: linear-gradient(145deg, #f8fdff, #fff); padding: 1rem; }
 .pace-conversation-window .pace-response h3 { font-size: 0.98rem; }
 .pace-conversation-window .pace-response p { font-size: 0.75rem; line-height: 1.6; }
-.pace-conversation-empty { display: grid; min-height: 10rem; flex: 1; grid-template-columns: auto minmax(0, 1fr); align-items: center; justify-content: center; gap: 0.75rem; padding: 1rem; }
-.pace-conversation-empty > div { display: flex; flex-direction: column; }
-.pace-conversation-empty strong { color: #172033; font-size: 0.85rem; font-weight: 900; }
-.pace-conversation-empty span { max-width: 13rem; margin-top: 0.25rem; color: #64748b; font-size: 0.68rem; font-weight: 600; line-height: 1.5; }
-.pace-conversation-window .pace-trust-line { margin-top: auto; padding-top: 0.75rem; }
-
-.pace-context-rail { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.85rem; }
-.pace-context-rail span {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.28rem;
-  border: 1px solid #d9e5eb;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.72);
-  padding: 0.3rem 0.52rem;
-  color: #64748b;
-  font-size: 0.58rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
+.pace-conversation-window .pace-trust-line { margin: 0; padding-top: 0.65rem; }
 
 .pace-live-brief {
   position: relative;
@@ -457,7 +439,7 @@
   .pace-customer-edge { display: none; }
   .pace-scroll { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
   .pace-live-layout { padding: 0.65rem; }
-  .pace-overview-window { max-height: 34%; }
+  .pace-live-layout.has-conversation .pace-overview-window { max-height: 31%; }
 }
 
 @media (prefers-reduced-motion: reduce) {

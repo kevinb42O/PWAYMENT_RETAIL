@@ -2,9 +2,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   ArrowRight,
   Check,
-  CircleDot,
   Command,
-  Eye,
   Gauge,
   Send,
   Settings2,
@@ -110,6 +108,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   const unavailable = Boolean(props.suppressed || externalDialogOpen);
   const customerSignal = signals.find((signal) => signal.source === "Klantcontext");
   const queryHints = useMemo(() => getPaceQueryHints(context), [context]);
+  const conversationExpanded = thinking || response !== null;
 
   useEffect(() => {
     setSessionDismissedSignals([]);
@@ -282,15 +281,9 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                 </div>
               </header>
 
-              <motion.div className="pace-scroll pace-live-layout" key="live" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}>
+              <motion.div className={`pace-scroll pace-live-layout${conversationExpanded ? " has-conversation" : ""}`} key="live" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}>
                     <div className="pace-overview-window">
                       <div className="pace-overview-heading"><span>Nu belangrijk</span><small>{signals.length} {signals.length === 1 ? "aandachtspunt" : "aandachtspunten"}</small></div>
-                    <div className="pace-context-rail" aria-label="Actieve Pace-context">
-                      <span><CircleDot size={12} /> {props.online ? "Online" : "Offline-ready"}</span>
-                      <span><Eye size={12} /> {props.view}</span>
-                      <span><ShieldCheck size={12} /> {props.role ?? "gebruiker"}</span>
-                      {props.customerName && <span><Eye size={12} /> Klant · {props.customerName}</span>}
-                    </div>
 
                     <section className={`pace-live-brief is-${primary.tone}`}>
                       <div className="pace-brief-top"><span>{primary.source}</span><Gauge size={15} /></div>
@@ -339,47 +332,57 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                     )}
                     </div>
 
-                    <section className="pace-conversation-window">
-                    <section className="pace-command-zone">
-                      <div className="pace-conversation-heading"><span><Command size={14} /> Vraag Pace</span><small>{preferences.aiEnabled ? preferences.liveStoreContext ? "AI + actuele winkelgegevens" : "AI zonder winkelgegevens" : "Lokale hulp"}</small></div>
-                      <form onSubmit={submit}>
-                        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Stel je vraag…" aria-label="Vraag Pace" />
-                        <button type="submit" disabled={!query.trim() || thinking} aria-label="Stuur vraag"><Send size={16} /></button>
-                      </form>
-                      <div className="pace-query-hints">
-                        {queryHints.map((hint) => <button key={hint} type="button" onClick={() => void runQuery(hint)}>{hint}</button>)}
-                      </div>
-                    </section>
+                    <section className={`pace-conversation-window${conversationExpanded ? " is-expanded" : " is-collapsed"}`}>
+                      {conversationExpanded && <div className="pace-conversation-body">
+                        <AnimatePresence mode="wait">
+                          {(thinking || response) && (
+                            <motion.section className="pace-response" key={thinking ? "thinking" : response?.title} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}>
+                              {thinking ? <div className="pace-thinking-performance">
+                                <PaceMark size={76} active thinking tone={primary.tone} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
+                                <div className="pace-thinking-copy">
+                                  <strong>Pace denkt met je mee</strong>
+                                  <span className="pace-thinking-steps" aria-live="polite">
+                                    <i>Je vraag begrijpen</i>
+                                    <i>Je winkelcontext erbij nemen</i>
+                                    <i>Een helder antwoord maken</i>
+                                  </span>
+                                </div>
+                              </div> : response && <>
+                                <div><Check size={14} /> PACE · {responseSource === "gemini" ? "GEMINI" : responseSource === "openai" ? "OPENAI" : "LOKALE KENNIS"}</div>
+                                <h3>{response.title}</h3>
+                                <p>{response.answer}</p>
+                                {response.steps && response.steps.length > 0 && <ol className="pace-response-steps">{response.steps.map((step) => <li key={step}>{step}</li>)}</ol>}
+                                {response.limitation && <p className="pace-response-limit"><ShieldCheck size={13} /> {response.limitation}</p>}
+                                {response.actionLabel && <button type="button" onClick={() => runAction(response.action)}>{response.actionLabel}<ArrowRight size={14} /></button>}
+                                {response.followUps && response.followUps.length > 0 && <div className="pace-response-followups">{response.followUps.slice(0, 3).map((followUp) => <button key={followUp} type="button" onClick={() => void runQuery(followUp)}>{followUp}</button>)}</div>}
+                              </>}
+                            </motion.section>
+                          )}
+                        </AnimatePresence>
+                      </div>}
 
-                    <AnimatePresence mode="wait">
-                      {(thinking || response) && (
-                        <motion.section className="pace-response" key={thinking ? "thinking" : response?.title} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}>
-                          {thinking ? <div className="pace-thinking-performance">
-                            <PaceMark size={76} active thinking tone={primary.tone} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
-                            <div className="pace-thinking-copy">
-                              <strong>Pace denkt met je mee</strong>
-                              <span className="pace-thinking-steps" aria-live="polite">
-                                <i>Je vraag begrijpen</i>
-                                <i>Je winkelcontext erbij nemen</i>
-                                <i>Een helder antwoord maken</i>
-                              </span>
-                            </div>
-                          </div> : response && <>
-                            <div><Check size={14} /> PACE · {responseSource === "gemini" ? "GEMINI" : responseSource === "openai" ? "OPENAI" : "LOKALE KENNIS"}</div>
-                            <h3>{response.title}</h3>
-                            <p>{response.answer}</p>
-                            {response.steps && response.steps.length > 0 && <ol className="pace-response-steps">{response.steps.map((step) => <li key={step}>{step}</li>)}</ol>}
-                            {response.limitation && <p className="pace-response-limit"><ShieldCheck size={13} /> {response.limitation}</p>}
-                            {response.actionLabel && <button type="button" onClick={() => runAction(response.action)}>{response.actionLabel}<ArrowRight size={14} /></button>}
-                            {response.followUps && response.followUps.length > 0 && <div className="pace-response-followups">{response.followUps.slice(0, 3).map((followUp) => <button key={followUp} type="button" onClick={() => void runQuery(followUp)}>{followUp}</button>)}</div>}
-                          </>}
-                        </motion.section>
-                      )}
-                    </AnimatePresence>
+                      <section className="pace-command-zone">
+                        <div className="pace-conversation-heading"><span><Command size={14} /> Vraag Pace</span><small>{preferences.aiEnabled ? preferences.liveStoreContext ? "AI + winkelgegevens" : "AI zonder winkelgegevens" : "Lokale hulp"}</small></div>
+                        <form onSubmit={submit}>
+                          <input
+                            value={query}
+                            onChange={(event) => setQuery(event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+                              event.preventDefault();
+                              void runQuery(query);
+                            }}
+                            placeholder="Stel je vraag…"
+                            aria-label="Vraag Pace"
+                          />
+                          <button type="submit" disabled={!query.trim() || thinking} aria-label="Stuur vraag"><Send size={16} /></button>
+                        </form>
+                        {conversationExpanded && <div className="pace-query-hints">
+                          {queryHints.map((hint) => <button key={hint} type="button" onClick={() => void runQuery(hint)}>{hint}</button>)}
+                        </div>}
+                      </section>
 
-                    {!thinking && !response && <div className="pace-conversation-empty"><PaceMark size={72} active emotion="attentive" motionMode={preferences.motion} expressive={preferences.expressiveMorphs} /><div><strong>Waar kan ik mee helpen?</strong><span>Vraag iets over PWAYMENT of over wat er nu in je winkel gebeurt.</span></div></div>}
-
-                    <footer className="pace-trust-line"><ShieldCheck size={14} /> Pace voert geen financiële of gevoelige actie zelfstandig uit.</footer>
+                      {conversationExpanded && <footer className="pace-trust-line"><ShieldCheck size={14} /> Pace voert geen financiële of gevoelige actie zelfstandig uit.</footer>}
                     </section>
               </motion.div>
             </motion.aside>
