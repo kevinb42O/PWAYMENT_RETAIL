@@ -1,840 +1,179 @@
 import React, { useEffect, useState } from "react";
+import { ArrowLeft, ArrowRight, Crown, Eye, EyeOff, KeyRound, LoaderCircle, LockKeyhole, ShieldCheck, User as UserIcon } from "lucide-react";
 import { useAuth } from "./useAuth";
 import { db } from "../db/db";
-import { User, Role } from "../types";
+import type { Role, User } from "../types";
 import { supabase } from "../lib/supabase";
-import { SiteHeader } from "../public/PublicSite";
 import { OnboardingWizard } from "../onboarding/OnboardingWizard";
-import { PaceMark } from "../pace/PaceMark";
-import {
-  getLoadingProgress,
-  reportLoadingProgress,
-  subscribeLoadingProgress,
-} from "../services/loadingProgress";
-import {
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  Crown,
-  Eye,
-  EyeOff,
-  KeyRound,
-  LoaderCircle,
-  ShieldCheck,
-  User as UserIcon,
-} from "lucide-react";
+import { LoadingExperience } from "../components/LoadingExperience";
+import { getLoadingProgress, reportLoadingProgress, subscribeLoadingProgress } from "../services/loadingProgress";
 
-const roleLabel: Record<Role, string> = {
-  owner: "Eigenaar",
-  manager: "Manager",
-  cashier: "Kassamedewerker",
+const roleLabel: Record<Role, string> = { owner: "Eigenaar", manager: "Manager", cashier: "Kassamedewerker" };
+
+const RoleIcon = ({ role }: { role: Role }) => {
+  if (role === "owner") return <Crown size={15} className="text-amber-600" />;
+  if (role === "manager") return <ShieldCheck size={15} className="text-indigo-600" />;
+  return <UserIcon size={15} className="text-slate-500" />;
 };
 
-const RoleIcon: React.FC<{ role: Role }> = ({ role }) => {
-  if (role === "owner") return <Crown size={14} className="text-amber-600" />;
-  if (role === "manager")
-    return <ShieldCheck size={14} className="text-indigo-600" />;
-  return <UserIcon size={14} className="text-zinc-500" />;
-};
+const BrandLockup = () => (
+  <a href="/" className="inline-flex items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-4" aria-label="PWAYMENT website">
+    <span className="pace-boot-mark h-9 w-9" aria-hidden="true" />
+    <span className="text-lg font-black tracking-[-0.045em] text-slate-950">PWAYMENT</span>
+  </a>
+);
 
 export const LoginScreen: React.FC = () => {
   const { loginWithEmail, login: loginWithPin } = useAuth();
-
-  const [mode, setMode] = useState<"login" | "register">(() =>
-    window.location.pathname.startsWith("/register") ? "register" : "login",
-  );
+  const [mode, setMode] = useState<"login" | "register">(() => window.location.pathname.startsWith("/register") ? "register" : "login");
   const [showPinDrawer, setShowPinDrawer] = useState(false);
-  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
-
-  // Form states
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  // Registration states
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [storeName, setStoreName] = useState("");
-  const [pinCode, setPinCode] = useState("");
-
-  // Staff PIN Quick Login states
   const [staffUsers, setStaffUsers] = useState<User[]>([]);
   const [selectedStaff, setSelectedStaff] = useState<User | null>(null);
   const [enteredPin, setEnteredPin] = useState("");
-
-  // UI status
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(getLoadingProgress);
-  const pinLoginEnabled =
-    import.meta.env.DEV ||
-    import.meta.env.VITE_PRESENTATION_BUILD === "true" ||
-    import.meta.env.VITE_E2E_BUILD === "true";
+  const pinLoginEnabled = import.meta.env.DEV || import.meta.env.VITE_PRESENTATION_BUILD === "true" || import.meta.env.VITE_E2E_BUILD === "true";
 
   useEffect(() => {
-    void db.users.toArray().then(setStaffUsers);
-  }, []);
-
+    if (pinLoginEnabled) void db.users.toArray().then(setStaffUsers);
+  }, [pinLoginEnabled]);
   useEffect(() => subscribeLoadingProgress(setLoadingProgress), []);
 
-  const beginLoading = () => {
-    reportLoadingProgress("session");
-    setIsLoading(true);
-  };
+  const beginLoading = () => { reportLoadingProgress("session"); setIsLoading(true); };
 
-  const stopLoading = () => {
-    setIsLoading(false);
-  };
-
-  const handleLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setNotice(null);
-    beginLoading();
-    const res = await loginWithEmail(email, password);
-    if (!res.success) {
-      reportLoadingProgress("error");
-      stopLoading();
-      setError(res.message || "Aanmelden mislukt");
+  const handleLoginSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError(null); setNotice(null); beginLoading();
+    const result = await loginWithEmail(email, password);
+    if (!result.success) {
+      reportLoadingProgress("error"); setIsLoading(false);
+      setError(result.message === "Ongeldige inloggegevens" ? "E-mailadres of wachtwoord is niet correct. Controleer je gegevens en probeer opnieuw." : result.message || "Aanmelden lukt momenteel niet. Probeer het opnieuw.");
       return;
     }
     reportLoadingProgress("ready");
     window.history.replaceState(window.history.state, "", "/app");
   };
 
-  // The normal registration screen is the retail onboarding wizard. Keep this
-  // defensive handler because the legacy form can be revealed from the local
-  // PIN drawer in development builds: it must never create a profile before
-  // the merchant has explicitly selected their retail type.
-  const handleRegisterSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setNotice(null);
-    setShowPinDrawer(false);
-    setMode("register");
-    window.history.replaceState({}, "", "/register");
+  const handlePasswordReset = async () => {
+    setError(null); setNotice(null);
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail) { setError("Vul eerst je e-mailadres in. Daarna sturen we je een beveiligde herstellink."); return; }
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(cleanEmail, { redirectTo: `${window.location.origin}/auth/set-password?type=recovery` });
+    if (resetError) { setError("De herstellink kon niet worden verstuurd. Probeer het later opnieuw."); return; }
+    setNotice("Als er een account bestaat voor dit e-mailadres, ontvang je binnen enkele minuten een beveiligde herstellink.");
   };
 
-  const handlePinSubmit = async (uId: string, candidatePin: string) => {
-    setError(null);
-    beginLoading();
-    const ok = await loginWithPin(uId, candidatePin);
-    if (!ok) {
-      reportLoadingProgress("error");
-      stopLoading();
-      setError("Ongeldige PIN code");
-      setEnteredPin("");
-    }
+  const handlePinSubmit = async (userId: string, pin: string) => {
+    setError(null); beginLoading();
+    const valid = await loginWithPin(userId, pin);
+    if (!valid) { reportLoadingProgress("error"); setIsLoading(false); setError("De medewerkerscode is niet correct. Probeer het opnieuw."); setEnteredPin(""); }
+  };
+
+  const resetLoading = () => {
+    setIsLoading(false); reportLoadingProgress("starting");
+    window.setTimeout(() => document.getElementById("login-password")?.focus(), 0);
   };
 
   if (mode === "register" && !showPinDrawer) {
-    return (
-      <OnboardingWizard
-        mode="registration"
-        pinLoginEnabled={pinLoginEnabled}
-        onExit={(registrationNotice) => {
-          setMode("login");
-          setError(null);
-          setNotice(registrationNotice ?? null);
-          window.history.replaceState(window.history.state, "", "/login");
-        }}
-      />
-    );
+    return <OnboardingWizard mode="registration" pinLoginEnabled={pinLoginEnabled} onExit={(registrationNotice) => {
+      setMode("login"); setError(null); setNotice(registrationNotice ?? null);
+      window.history.replaceState(window.history.state, "", "/login");
+    }} />;
   }
 
+  const choosePinDigit = (digit: string) => {
+    if (!selectedStaff || enteredPin.length >= 6 || isLoading) return;
+    const next = enteredPin + digit; setEnteredPin(next);
+    if (next.length === 6) void handlePinSubmit(selectedStaff.id, next);
+  };
+
   return (
-    <div className="min-h-screen bg-[#FBFBFD] text-zinc-950 flex flex-col justify-between selection:bg-zinc-950 selection:text-white font-sans antialiased relative overflow-x-hidden">
-      {/* Background Image with Subtle Blur */}
-      <div
-        className="absolute inset-0 pointer-events-none bg-cover bg-center bg-no-repeat blur-[4px] scale-[1.02] opacity-95 transition-all duration-500"
-        style={{ backgroundImage: 'url("/login_bg.png")' }}
-      />
-
-      <div className="relative z-20">
-        <SiteHeader mobileOpen={mobileNavigationOpen} setMobileOpen={setMobileNavigationOpen} />
-      </div>
-
-      {/* Legacy login header is deliberately hidden: the shared public header above is the only navigation. */}
-      <header className="hidden">
-        <div className="hidden items-center gap-3">
-          {/* P Monogram Icon */}
-          <svg
-            viewBox="0 0 60 60"
-            className="h-10 sm:h-11 w-auto flex-shrink-0"
-            shapeRendering="geometricPrecision"
-          >
-            <defs>
-              <linearGradient
-                id="pway-brand-grad-hdr"
-                x1="0%"
-                y1="0%"
-                x2="100%"
-                y2="100%"
-              >
-                <stop offset="0%" stopColor="#00F0FF" />
-                <stop offset="50%" stopColor="#0088FF" />
-                <stop offset="100%" stopColor="#0055FF" />
-              </linearGradient>
-              <linearGradient
-                id="pway-accent-grad-hdr"
-                x1="0%"
-                y1="0%"
-                x2="100%"
-                y2="100%"
-              >
-                <stop offset="0%" stopColor="#BEF264" />
-                <stop offset="100%" stopColor="#84CC16" />
-              </linearGradient>
-              <filter
-                id="mark-glow-hdr"
-                x="-10%"
-                y="-10%"
-                width="120%"
-                height="120%"
-              >
-                <feDropShadow
-                  dx="0"
-                  dy="1.5"
-                  stdDeviation="1.5"
-                  floodColor="#0077FF"
-                  floodOpacity="0.3"
-                />
-              </filter>
-            </defs>
-            <g transform="translate(4, 2)" filter="url(#mark-glow-hdr)">
-              <path
-                d="M 16 56 V 8 H 32 C 43 8 50 15.5 50 23 C 50 30.5 43 38 32 38 H 16"
-                fill="none"
-                stroke="url(#pway-brand-grad-hdr)"
-                strokeWidth="6.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <circle
-                cx="49"
-                cy="40"
-                r="4.5"
-                fill="url(#pway-accent-grad-hdr)"
-              />
-            </g>
-          </svg>
-
-          {/* Text Block: pwayment + retail intelligence */}
-          <div className="flex flex-col justify-center">
-            <span className="text-xl sm:text-[22px] font-black tracking-[-0.05em] text-zinc-950 leading-none">
-              pwayment
-            </span>
-            <span className="text-[8.5px] sm:text-[9px] font-mono font-bold tracking-[0.2em] uppercase text-zinc-400 mt-1 leading-none">
-              retail intelligence
-            </span>
-          </div>
-        </div>
-
-        <a href="/" className="group flex shrink-0 items-center gap-2" aria-label="Naar de Pwayment-website">
-          <img src="/branding/PWAYMENTLOGOFINAL.png" alt="PWAYMENT" className="h-7 w-auto transition-transform duration-300 group-hover:scale-[1.03]" />
-          <span className="hidden border-l border-zinc-300 pl-3 text-xs font-semibold text-zinc-500 sm:inline">Retail intelligence</span>
-        </a>
-
-        <nav className="hidden items-center gap-6 text-sm font-semibold text-zinc-600 lg:flex" aria-label="Website navigatie">
-          <a href="/product" className="transition-colors hover:text-zinc-950">Product</a>
-          <a href="/pricing" className="transition-colors hover:text-zinc-950">Prijzen</a>
-          <a href="/resources" className="transition-colors hover:text-zinc-950">Resources</a>
+    <div className="auth-shell min-h-dvh bg-[#f5f7f8] text-slate-950">
+      <div className="auth-ambient" aria-hidden="true" />
+      <header className="relative z-20 mx-auto flex w-full max-w-[1440px] items-center justify-between px-5 py-5 sm:px-8 lg:px-12 lg:py-7">
+        <BrandLockup />
+        <nav className="flex items-center gap-2 sm:gap-4" aria-label="Accountnavigatie">
+          <a href="/contact" className="hidden min-h-11 items-center rounded-xl px-3 text-sm font-bold text-slate-600 transition hover:bg-white/70 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 sm:inline-flex">Hulp nodig?</a>
+          <a href="/" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200/90 bg-white/75 px-3.5 text-xs font-extrabold text-slate-700 shadow-sm backdrop-blur transition hover:border-slate-300 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 sm:px-4 sm:text-sm">
+            <ArrowLeft size={15} /><span className="hidden sm:inline">Naar website</span><span className="sm:hidden">Website</span>
+          </a>
         </nav>
-
-        <a href="/" className="ml-auto inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold text-zinc-600 transition-all hover:bg-zinc-950 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 sm:px-4">
-          <ArrowLeft size={14} />
-          <span className="hidden sm:inline">Website</span>
-        </a>
-
-        {pinLoginEnabled && (
-          <button
-            onClick={() => {
-              setShowPinDrawer(!showPinDrawer);
-              setError(null);
-            }}
-            className="text-xs font-semibold text-zinc-800 hover:text-zinc-950 bg-white/80 backdrop-blur-md border border-zinc-200/80 hover:border-zinc-300 rounded-full px-5 py-2.5 transition-all shadow-2xs hover:shadow-xs flex items-center gap-2"
-          >
-            <KeyRound size={14} className="text-zinc-600" />
-            {showPinDrawer ? "E-mail Inloggen" : "Medewerker Snel-PIN"}
-          </button>
-        )}
       </header>
 
-      {/* Main Container - Alive High-Fashion Editorial Layout */}
-      <main className="relative z-10 w-full max-w-6xl mx-auto px-6 sm:px-8 py-4 flex-1 flex items-center">
-        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
-          {/* Left Editorial Section */}
-          <div className="lg:col-span-6 space-y-8">
-            <div>
-              <div className="text-[11px] font-mono font-bold uppercase tracking-[0.22em] text-zinc-400 mb-4 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                RETAIL INTELLIGENCE PLATFORM
-              </div>
-              <h1 className="text-4xl sm:text-5xl lg:text-[54px] font-black tracking-[-0.04em] text-zinc-950 leading-[1.05]">
-                Van kassa naar helder winkelinzicht.
-              </h1>
-              <p className="text-zinc-600 text-base sm:text-lg leading-relaxed font-normal max-w-lg mt-5">
-                Je winkel altijd bij de hand — verkopen, beheren en bijsturen
-                vanaf elk toestel.
-              </p>
-            </div>
-
-            {/* Dynamic Editorial Pillar Flow (No cards, no hairlines, smooth hover rhythm) */}
-            <div className="space-y-6 pt-2">
-              <div className="group pl-4 border-l-2 border-zinc-200 hover:border-zinc-950 transition-all duration-300">
-                <div className="text-[11px] font-mono font-bold text-zinc-400 tracking-[0.18em] uppercase mb-1 group-hover:text-zinc-950 transition-colors">
-                  01 / DE BASIS DIE STAAT
-                </div>
-                <h3 className="text-base font-bold text-zinc-950 mb-1 group-hover:translate-x-0.5 transition-transform duration-300">
-                  Kassa waarop je kunt rekenen
-                </h3>
-                <p className="text-xs sm:text-sm text-zinc-500 leading-relaxed max-w-md">
-                  Verkoop zonder omwegen. Product, korting, kassaticket en
-                  betaling in één korte, intuïtieve flow.
-                </p>
-              </div>
-
-              <div className="group pl-4 border-l-2 border-zinc-200 hover:border-zinc-950 transition-all duration-300">
-                <div className="text-[11px] font-mono font-bold text-zinc-400 tracking-[0.18em] uppercase mb-1 group-hover:text-zinc-950 transition-colors">
-                  02 / VAN KASSA NAAR INZICHT
-                </div>
-                <h3 className="text-base font-bold text-zinc-950 mb-1 group-hover:translate-x-0.5 transition-transform duration-300">
-                  Pwayment toont wat beter kan
-                </h3>
-                <p className="text-xs sm:text-sm text-zinc-500 leading-relaxed max-w-md">
-                  Zet transactiedata om in actie. Zie waar marge weglekt, welke
-                  voorraad cash vasthoudt en welke klantpatronen zichtbaar
-                  worden.
-                </p>
-              </div>
-
-              <div className="group pl-4 border-l-2 border-zinc-200 hover:border-zinc-950 transition-all duration-300">
-                <div className="text-[11px] font-mono font-bold text-zinc-400 tracking-[0.18em] uppercase mb-1 group-hover:text-zinc-950 transition-colors">
-                  03 / OVERAL INZETBAAR
-                </div>
-                <h3 className="text-base font-bold text-zinc-950 mb-1 group-hover:translate-x-0.5 transition-transform duration-300">
-                  Progressive Web App
-                </h3>
-                <p className="text-xs sm:text-sm text-zinc-500 leading-relaxed max-w-md">
-                  Vloeiend op laptop, tablet en smartphone. Offline-first op dit
-                  toestel; synchronisatie werkt zodra een backendkoppeling is
-                  geconfigureerd.
-                </p>
-              </div>
-            </div>
+      <main className="relative z-10 mx-auto grid w-full max-w-[1440px] items-center gap-10 px-5 py-8 sm:px-8 lg:min-h-[calc(100dvh-176px)] lg:grid-cols-[minmax(0,0.92fr)_minmax(440px,0.68fr)] lg:gap-20 lg:px-12 lg:py-10 xl:gap-28">
+        <section className="mx-auto w-full max-w-2xl lg:mx-0 lg:pl-[clamp(0rem,4vw,3.5rem)]">
+          <p className="inline-flex items-center gap-2.5 text-[11px] font-extrabold uppercase tracking-[0.2em] text-cyan-800"><span className="h-2 w-2 rounded-full bg-cyan-500 shadow-[0_0_0_5px_rgba(6,182,212,0.1)]" />Retail management platform</p>
+          <h1 className="mt-6 max-w-[680px] text-[clamp(2.65rem,5vw,5.25rem)] font-black leading-[0.96] tracking-[-0.06em] text-slate-950">Eén omgeving voor je volledige winkel.</h1>
+          <p className="mt-7 max-w-xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">Verkoop, voorraad, klanten en inzichten — veilig beschikbaar voor jou en je team.</p>
+          <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-3 text-xs font-bold text-slate-500 sm:text-sm">
+            <span className="inline-flex items-center gap-2"><ShieldCheck size={17} className="text-cyan-700" /> Beveiligde toegang</span>
+            <span className="inline-flex items-center gap-2"><LockKeyhole size={17} className="text-cyan-700" /> Ontworpen voor Belgische retail</span>
           </div>
+        </section>
 
-          {/* Right Form Card Panel */}
-          <div className="lg:col-span-6 w-full max-w-[440px] mx-auto lg:ml-auto">
+        <section className="mx-auto w-full max-w-[480px] lg:mx-0 lg:justify-self-end">
+          <div className="auth-card rounded-[2rem] border border-white/90 bg-white/88 p-6 shadow-[0_38px_100px_-48px_rgba(15,23,42,0.42)] backdrop-blur-xl sm:p-9 lg:p-10">
             {showPinDrawer && pinLoginEnabled ? (
-              /* Medewerker Snel-PIN Terminal Drawer */
-              <div className="bg-white/90 backdrop-blur-xl rounded-3xl border border-zinc-200/80 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.08)] p-8 sm:p-10 transition-all">
-                <div className="text-center mb-8">
-                  <h2 className="text-xl font-bold tracking-tight text-zinc-950">
-                    Kassa Snel-PIN
-                  </h2>
-                  <p className="text-xs text-zinc-500 mt-1">
-                    Selecteer een medewerker om aan te melden op deze kassa
-                  </p>
-                </div>
-
-                {error && (
-                  <div className="mb-6 p-3.5 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 text-xs font-medium text-center">
-                    {error}
-                  </div>
-                )}
-                {!selectedStaff ? (
-                  <div className="grid grid-cols-2 gap-3">
-                    {staffUsers.map((u) => (
-                      <button
-                        key={u.id}
-                        onClick={() => {
-                          setSelectedStaff(u);
-                          setEnteredPin("");
-                          setError(null);
-                        }}
-                        className="flex flex-col items-center justify-center p-4 bg-zinc-50/70 hover:bg-zinc-100/90 border border-zinc-200/70 rounded-2xl transition-all text-center group"
-                      >
-                        <div className="w-10 h-10 rounded-full bg-white border border-zinc-200 flex items-center justify-center mb-2 shadow-2xs group-hover:scale-105 transition-transform">
-                          <RoleIcon role={u.role} />
-                        </div>
-                        <span className="font-bold text-sm text-zinc-950 line-clamp-1">
-                          {u.name}
-                        </span>
-                        <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider mt-0.5">
-                          {roleLabel[u.role]}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center">
-                    <div className="flex items-center gap-2 mb-6">
-                      <span className="font-bold text-base text-zinc-950">
-                        {selectedStaff.name}
-                      </span>
-                      <span className="text-xs text-zinc-500 font-medium px-2 py-0.5 bg-zinc-100 rounded-md">
-                        {roleLabel[selectedStaff.role]}
-                      </span>
-                    </div>
-
-                    {/* 6 PIN Dots */}
-                    <div className="flex gap-4 mb-8">
-                      {Array.from({ length: 6 }).map((_, i) => (
-                        <div
-                          key={i}
-                          className={`w-3.5 h-3.5 rounded-full border transition-all ${
-                            i < enteredPin.length
-                              ? "bg-zinc-950 border-zinc-950 scale-110"
-                              : "bg-zinc-100 border-zinc-300"
-                          }`}
-                        />
-                      ))}
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2.5 w-60 mb-4">
-                      {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map(
-                        (digit) => (
-                          <button
-                            key={digit}
-                            onClick={() => {
-                              if (enteredPin.length < 6) {
-                                const next = enteredPin + digit;
-                                setEnteredPin(next);
-                                if (next.length === 6) {
-                                  void handlePinSubmit(selectedStaff.id, next);
-                                }
-                              }
-                            }}
-                            disabled={isLoading}
-                            className="h-12 text-lg font-bold bg-white hover:bg-zinc-50 border border-zinc-200 rounded-2xl active:bg-zinc-100 transition-all text-zinc-950 shadow-2xs"
-                          >
-                            {digit}
-                          </button>
-                        ),
-                      )}
-                      <button
-                        onClick={() => setEnteredPin((p) => p.slice(0, -1))}
-                        className="h-12 text-xs font-semibold bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 rounded-2xl text-zinc-600 transition-all"
-                      >
-                        Wis
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (enteredPin.length < 6) {
-                            const next = enteredPin + "0";
-                            setEnteredPin(next);
-                            if (next.length === 6) {
-                              void handlePinSubmit(selectedStaff.id, next);
-                            }
-                          }
-                        }}
-                        className="h-12 text-lg font-bold bg-white hover:bg-zinc-50 border border-zinc-200 rounded-2xl active:bg-zinc-100 transition-all text-zinc-950 shadow-2xs"
-                      >
-                        0
-                      </button>
-                      <button
-                        onClick={() => setSelectedStaff(null)}
-                        className="h-12 text-xs font-semibold bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 rounded-2xl text-zinc-500 transition-all"
-                      >
-                        Terug
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <PinLogin staffUsers={staffUsers} selectedStaff={selectedStaff} enteredPin={enteredPin} error={error} isLoading={isLoading} onBack={() => { setShowPinDrawer(false); setSelectedStaff(null); setEnteredPin(""); setError(null); }} onSelect={(user) => { setSelectedStaff(user); setEnteredPin(""); setError(null); }} onDigit={choosePinDigit} onErase={() => setEnteredPin((value) => value.slice(0, -1))} onChangeUser={() => { setSelectedStaff(null); setEnteredPin(""); setError(null); }} />
             ) : (
-              /* Main Auth Card */
-              <div
-                className="bg-white/90 backdrop-blur-xl rounded-3xl border border-zinc-200/90 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.08)] p-8 sm:p-10 transition-all"
-                aria-busy={isLoading}
-              >
-                {/* Tab Switcher */}
-                <div className="grid grid-cols-2 p-1 bg-zinc-100/80 border border-zinc-200/60 rounded-2xl mb-8">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode("login");
-                      setError(null);
-                    }}
-                    className={`py-2.5 text-xs font-bold rounded-xl transition-all ${
-                      mode === "login"
-                        ? "bg-white text-zinc-950 shadow-2xs"
-                        : "text-zinc-500 hover:text-zinc-950 font-semibold"
-                    }`}
-                  >
-                    Inloggen
+              <div>
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-cyan-700">PWAYMENT account</p>
+                <h2 className="mt-2 text-3xl font-black tracking-[-0.04em] text-slate-950">Welkom terug</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-500">Meld je aan om verder te gaan naar je winkelomgeving.</p>
+                {error && <div className="mt-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold leading-5 text-rose-800" role="alert">{error}</div>}
+                {notice && <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold leading-5 text-emerald-800" role="status">{notice}</div>}
+                <form onSubmit={handleLoginSubmit} className="mt-7 space-y-5">
+                  <label htmlFor="login-email" className="block text-xs font-extrabold text-slate-700">E-mailadres
+                    <input id="login-email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="naam@bedrijf.be" className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-950 outline-none transition placeholder:font-normal placeholder:text-slate-400 hover:border-slate-300 focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" />
+                  </label>
+                  <div>
+                    <div className="flex items-center justify-between gap-4"><label htmlFor="login-password" className="block text-xs font-extrabold text-slate-700">Wachtwoord</label><button type="button" onClick={() => void handlePasswordReset()} className="min-h-8 rounded-md px-1 text-xs font-bold text-cyan-800 transition hover:text-cyan-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">Wachtwoord vergeten?</button></div>
+                    <div className="relative mt-2">
+                      <input id="login-password" type={showPassword ? "text" : "password"} autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 pr-12 text-sm font-semibold text-slate-950 outline-none transition hover:border-slate-300 focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" />
+                      <button type="button" onClick={() => setShowPassword((visible) => !visible)} className="absolute inset-y-0 right-0 flex w-12 items-center justify-center rounded-r-xl text-slate-400 transition hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-500" aria-label={showPassword ? "Wachtwoord verbergen" : "Wachtwoord tonen"}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
+                    </div>
+                  </div>
+                  <button type="submit" disabled={isLoading} className="group flex h-13 w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 text-sm font-extrabold text-white shadow-[0_14px_32px_-16px_rgba(15,23,42,0.8)] transition hover:-translate-y-0.5 hover:bg-cyan-800 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 disabled:cursor-wait disabled:translate-y-0 disabled:opacity-65">
+                    {isLoading ? <><LoaderCircle size={17} className="animate-spin" /> Aanmelden…</> : <>Aanmelden <ArrowRight size={17} className="transition-transform group-hover:translate-x-0.5" /></>}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowPinDrawer(false);
-                      setMode("register");
-                      setError(null);
-                      window.history.replaceState({}, "", "/register");
-                    }}
-                    className={`py-2.5 text-xs font-bold rounded-xl transition-all ${
-                      mode === "register"
-                        ? "bg-white text-zinc-950 shadow-2xs"
-                        : "text-zinc-500 hover:text-zinc-950 font-semibold"
-                    }`}
-                  >
-                    Account Aanmaken
-                  </button>
+                </form>
+                <div className="mt-6 border-t border-slate-100 pt-5 text-center">
+                  <p className="text-sm text-slate-500">Nog geen PWAYMENT-account? <button type="button" onClick={() => { setMode("register"); window.history.replaceState({}, "", "/register"); }} className="min-h-8 rounded-md px-1 font-extrabold text-cyan-800 hover:text-cyan-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">Start gratis</button></p>
+                  {pinLoginEnabled && <button type="button" onClick={() => { setShowPinDrawer(true); setError(null); setNotice(null); }} className="mt-3 inline-flex min-h-9 items-center gap-2 rounded-lg px-2 text-xs font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"><KeyRound size={14} /> Aanmelden met medewerkerscode</button>}
                 </div>
-
-                {/* Title */}
-                <div className="mb-6">
-                  <h2 className="text-xl font-extrabold tracking-tight text-zinc-950">
-                    {mode === "login"
-                      ? "Inloggen bij PWAyment"
-                      : "Nieuw account aanmaken"}
-                  </h2>
-                  <p className="text-xs text-zinc-500 mt-1 font-normal">
-                    {mode === "login"
-                      ? "Voer uw e-mailadres en wachtwoord in om aan te melden"
-                      : "Vul onderstaande gegevens in om uw account in te stellen"}
-                  </p>
-                </div>
-
-                {error && (
-                  <div className="mb-5 p-3.5 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 text-xs font-medium">
-                    {error}
-                  </div>
-                )}
-                {notice && (
-                  <div className="mb-5 p-3.5 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-medium">
-                    {notice}
-                  </div>
-                )}
-
-                {mode === "login" ? (
-                  /* LOGIN FORM */
-                  <div className="space-y-4">
-                    <form onSubmit={handleLoginSubmit} className="space-y-4">
-                    <div>
-                      <label htmlFor="login-email" className="block text-xs font-semibold text-zinc-800 mb-1.5">
-                        E-mailadres
-                      </label>
-                      <input
-                        type="email"
-                        id="login-email"
-                        autoComplete="email"
-                        required
-                        placeholder="E-mailadres"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full h-11 px-3.5 bg-white border border-zinc-200 rounded-xl text-sm font-medium text-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-950 focus:border-transparent transition-all shadow-2xs placeholder:text-zinc-400 placeholder:font-normal"
-                      />
-                    </div>
-
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <label htmlFor="login-password" className="block text-xs font-semibold text-zinc-800">
-                          Wachtwoord
-                        </label>
-                        <a
-                          href="#forgot"
-                          onClick={async (e) => {
-                            e.preventDefault();
-                            setError(null);
-                            setNotice(null);
-                            const cleanEmail = email.trim().toLowerCase();
-                            if (!cleanEmail) {
-                              setError("Vul eerst je e-mailadres in.");
-                              return;
-                            }
-                            const { error: resetError } =
-                              await supabase.auth.resetPasswordForEmail(
-                                cleanEmail,
-                                {
-                                  redirectTo: `${window.location.origin}/auth/set-password?type=recovery`,
-                                },
-                              );
-                            if (resetError) {
-                              setError(
-                                "De herstellink kon niet worden verstuurd. Probeer later opnieuw.",
-                              );
-                              return;
-                            }
-                            setNotice(
-                              "Als dit account bestaat, ontvang je een beveiligde herstellink per e-mail.",
-                            );
-                          }}
-                          className="text-xs font-medium text-zinc-500 hover:text-zinc-950 transition-colors"
-                        >
-                          Wachtwoord vergeten?
-                        </a>
-                      </div>
-                      <div className="relative">
-                        <input
-                          type={showPassword ? "text" : "password"}
-                          id="login-password"
-                          autoComplete="current-password"
-                          required
-                          placeholder="Wachtwoord"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          className="w-full h-11 pl-3.5 pr-10 bg-white border border-zinc-200 rounded-xl text-sm font-medium text-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-950 focus:border-transparent transition-all shadow-2xs placeholder:text-zinc-400 placeholder:font-normal"
-                        />
-                        <button
-                          type="button"
-                          aria-label={
-                            showPassword
-                              ? "Wachtwoord verbergen"
-                              : "Wachtwoord tonen"
-                          }
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3.5 top-3.5 text-zinc-400 hover:text-zinc-700 transition-colors"
-                        >
-                          {showPassword ? (
-                            <EyeOff size={16} />
-                          ) : (
-                            <Eye size={16} />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    <p className="pt-1 text-xs leading-5 text-zinc-500">
-                      Je sessie wordt veilig beheerd via Supabase en herstelt
-                      alleen op dit vertrouwde toestel.
-                    </p>
-
-                    <button
-                      type="submit"
-                      disabled={isLoading}
-                      className="group relative mt-3 flex h-13 w-full items-center justify-center gap-2 overflow-hidden rounded-2xl border border-zinc-300 bg-white text-sm font-extrabold text-zinc-950 shadow-[0_10px_24px_-14px_rgba(15,23,42,0.35)] transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-0 before:-left-1/2 before:w-1/3 before:-skew-x-12 before:bg-zinc-950/[0.045] before:transition-transform before:duration-700 hover:-translate-y-0.5 hover:border-zinc-950 hover:bg-zinc-50 hover:shadow-[0_18px_32px_-16px_rgba(15,23,42,0.48)] hover:before:translate-x-[420%] active:translate-y-0 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:cursor-wait disabled:translate-y-0 disabled:opacity-70 disabled:shadow-none"
-                    >
-                      {isLoading ? (
-                        <span className="relative z-10 flex items-center gap-2">
-                          <LoaderCircle size={16} className="animate-spin" />
-                          Aanmelden…
-                        </span>
-                      ) : (
-                        <span className="relative z-10 flex items-center gap-2">Inloggen <ArrowRight size={16} className="transition-transform duration-300 group-hover:translate-x-1" /></span>
-                      )}
-                    </button>
-                    </form>
-                  </div>
-                ) : (
-                  /* REGISTER FORM */
-                  <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
-                    {/* 2-Column Name Grid */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-semibold text-zinc-800 mb-1.5">
-                          Voornaam
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="Voornaam"
-                          value={firstName}
-                          onChange={(e) => setFirstName(e.target.value)}
-                          className="w-full h-11 px-3.5 bg-white border border-zinc-200 rounded-xl text-sm font-medium text-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-950 focus:border-transparent transition-all shadow-2xs placeholder:text-zinc-400 placeholder:font-normal"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-zinc-800 mb-1.5">
-                          Familienaam
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="Familienaam"
-                          value={lastName}
-                          onChange={(e) => setLastName(e.target.value)}
-                          className="w-full h-11 px-3.5 bg-white border border-zinc-200 rounded-xl text-sm font-medium text-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-950 focus:border-transparent transition-all shadow-2xs placeholder:text-zinc-400 placeholder:font-normal"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-zinc-800 mb-1.5">
-                        Winkel / Bedrijfsnaam
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="Winkel / Bedrijfsnaam"
-                        value={storeName}
-                        onChange={(e) => setStoreName(e.target.value)}
-                        className="w-full h-11 px-3.5 bg-white border border-zinc-200 rounded-xl text-sm font-medium text-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-950 focus:border-transparent transition-all shadow-2xs placeholder:text-zinc-400 placeholder:font-normal"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-zinc-800 mb-1.5">
-                        E-mailadres
-                      </label>
-                      <input
-                        type="email"
-                        required
-                        placeholder="E-mailadres"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full h-11 px-3.5 bg-white border border-zinc-200 rounded-xl text-sm font-medium text-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-950 focus:border-transparent transition-all shadow-2xs placeholder:text-zinc-400 placeholder:font-normal"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-zinc-800 mb-1.5">
-                        Wachtwoord
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showPassword ? "text" : "password"}
-                          required
-                          placeholder="Wachtwoord"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          className="w-full h-11 pl-3.5 pr-10 bg-white border border-zinc-200 rounded-xl text-sm font-medium text-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-950 focus:border-transparent transition-all shadow-2xs placeholder:text-zinc-400 placeholder:font-normal"
-                        />
-                        <button
-                          type="button"
-                          aria-label={
-                            showPassword
-                              ? "Wachtwoord verbergen"
-                              : "Wachtwoord tonen"
-                          }
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3.5 top-3.5 text-zinc-400 hover:text-zinc-700 transition-colors"
-                        >
-                          {showPassword ? (
-                            <EyeOff size={16} />
-                          ) : (
-                            <Eye size={16} />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-zinc-800 mb-1.5">
-                        Wachtwoord herhalen
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showConfirmPassword ? "text" : "password"}
-                          required
-                          placeholder="Wachtwoord herhalen"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          className="w-full h-11 pl-3.5 pr-10 bg-white border border-zinc-200 rounded-xl text-sm font-medium text-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-950 focus:border-transparent transition-all shadow-2xs placeholder:text-zinc-400 placeholder:font-normal"
-                        />
-                        <button
-                          type="button"
-                          aria-label={
-                            showConfirmPassword
-                              ? "Herhaald wachtwoord verbergen"
-                              : "Herhaald wachtwoord tonen"
-                          }
-                          onClick={() =>
-                            setShowConfirmPassword(!showConfirmPassword)
-                          }
-                          className="absolute right-3.5 top-3.5 text-zinc-400 hover:text-zinc-700 transition-colors"
-                        >
-                          {showConfirmPassword ? (
-                            <EyeOff size={16} />
-                          ) : (
-                            <Eye size={16} />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    {pinLoginEnabled && (
-                    <div>
-                      <label className="block text-xs font-semibold text-zinc-800 mb-1.5">
-                        Kassa Snel-PIN (6 cijfers)
-                      </label>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="password"
-                          maxLength={6}
-                          inputMode="numeric"
-                          autoComplete="new-password"
-                          aria-label="Kassa Snel-PIN (6 cijfers)"
-                          required
-                          placeholder="••••••"
-                          value={pinCode}
-                          onChange={(e) =>
-                            setPinCode(
-                              e.target.value.replace(/\D/g, "").slice(0, 6),
-                            )
-                          }
-                          className="w-full h-11 px-3.5 bg-white border border-zinc-200 rounded-xl text-lg tracking-[0.4em] font-mono text-zinc-950 focus:outline-none focus:ring-2 focus:ring-zinc-950 focus:border-transparent transition-all shadow-2xs placeholder:text-zinc-300 placeholder:tracking-normal text-center font-bold"
-                        />
-                        <div className="flex items-center gap-1.5 px-2">
-                          {Array.from({ length: 6 }).map((_, i) => (
-                            <div
-                              key={i}
-                              className={`w-3.5 h-3.5 rounded-full border transition-all ${
-                                i < pinCode.length
-                                  ? "bg-zinc-950 border-zinc-950 scale-105"
-                                  : "bg-zinc-100 border-zinc-300"
-                              }`}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                    )}
-
-                    <button
-                      type="submit"
-                      disabled={isLoading}
-                      className="group relative mt-3 flex h-13 w-full items-center justify-center gap-2 overflow-hidden rounded-2xl border border-zinc-300 bg-white text-sm font-extrabold text-zinc-950 shadow-[0_10px_24px_-14px_rgba(15,23,42,0.35)] transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-0 before:-left-1/2 before:w-1/3 before:-skew-x-12 before:bg-zinc-950/[0.045] before:transition-transform before:duration-700 hover:-translate-y-0.5 hover:border-zinc-950 hover:bg-zinc-50 hover:shadow-[0_18px_32px_-16px_rgba(15,23,42,0.48)] hover:before:translate-x-[420%] active:translate-y-0 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:cursor-wait disabled:translate-y-0 disabled:opacity-70 disabled:shadow-none"
-                    >
-                      {isLoading ? (
-                        <span className="relative z-10 flex items-center gap-2">
-                          <LoaderCircle size={16} className="animate-spin" />
-                          Account maken…
-                        </span>
-                      ) : (
-                        <span className="relative z-10 flex items-center gap-2">Account aanmaken <Check size={16} className="transition-transform duration-300 group-hover:scale-110" /></span>
-                      )}
-                    </button>
-                  </form>
-                )}
               </div>
             )}
           </div>
-        </div>
+          <p className="mt-5 flex items-center justify-center gap-2 text-center text-xs leading-5 text-slate-500"><LockKeyhole size={14} className="shrink-0 text-cyan-700" /> Je verbinding is versleuteld en je sessie wordt veilig beheerd.</p>
+        </section>
       </main>
 
-      {/* Footer */}
-      <footer className="relative z-10 w-full max-w-6xl mx-auto px-6 sm:px-8 py-6 text-center text-xs font-medium text-zinc-400 flex flex-col items-center gap-1">
-        <div>&copy; {new Date().getFullYear()} PWAyment Retail</div>
-        <div className="text-[11px] font-mono text-zinc-500 tracking-wider">
-          WebaanZee
-        </div>
+      <footer className="relative z-10 mx-auto flex w-full max-w-[1440px] flex-col items-center justify-between gap-3 px-5 py-5 text-xs font-semibold text-slate-500 sm:flex-row sm:px-8 lg:px-12">
+        <span>© {new Date().getFullYear()} PWAYMENT</span><div className="flex items-center gap-5"><a href="/legal/privacy" className="hover:text-slate-950">Privacy</a><a href="/legal/terms" className="hover:text-slate-950">Voorwaarden</a><a href="/contact" className="hover:text-slate-950">Support</a></div>
       </footer>
-
-      {isLoading && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/28 px-6 backdrop-blur-sm"
-          role="status"
-          aria-live="polite"
-          aria-label={loadingProgress.detail}
-        >
-          <div className="w-full max-w-sm rounded-3xl border border-white/70 bg-white/95 p-7 text-center shadow-[0_32px_100px_-30px_rgba(15,23,42,0.55)]">
-            <div className="mx-auto mb-5 flex min-h-24 items-center justify-center">
-              <PaceMark size={92} active thinking tone="flow" motionMode="full" />
-            </div>
-            <p className="text-base font-extrabold tracking-tight text-slate-950">{loadingProgress.title}</p>
-            <p className="mt-1.5 text-sm leading-6 text-slate-500">{loadingProgress.detail}</p>
-            <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-slate-100">
-              <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 transition-[width] duration-500" style={{ width: `${Math.max(8, loadingProgress.progress)}%` }} />
-            </div>
-            <p className="mt-2 text-xs font-semibold tabular-nums text-slate-400">{loadingProgress.progress}% klaar</p>
-          </div>
-        </div>
-      )}
+      {isLoading && <LoadingExperience progress={loadingProgress} mode="overlay" onRetry={loadingProgress.id === "error" ? resetLoading : undefined} onCancel={loadingProgress.id === "error" ? resetLoading : undefined} />}
     </div>
   );
 };
+
+type PinLoginProps = {
+  staffUsers: User[]; selectedStaff: User | null; enteredPin: string; error: string | null; isLoading: boolean;
+  onBack: () => void; onSelect: (user: User) => void; onDigit: (digit: string) => void; onErase: () => void; onChangeUser: () => void;
+};
+
+const PinLogin = ({ staffUsers, selectedStaff, enteredPin, error, isLoading, onBack, onSelect, onDigit, onErase, onChangeUser }: PinLoginProps) => (
+  <div>
+    <button type="button" onClick={onBack} className="inline-flex min-h-10 items-center gap-2 rounded-lg pr-3 text-xs font-extrabold text-slate-500 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"><ArrowLeft size={15} /> Aanmelden met e-mail</button>
+    <div className="mt-6"><p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-cyan-700">Gekoppelde kassa</p><h2 className="mt-2 text-2xl font-black tracking-[-0.035em]">Aanmelden met medewerkerscode</h2><p className="mt-2 text-sm leading-6 text-slate-500">{selectedStaff ? `Voer de zescijferige code van ${selectedStaff.name} in.` : "Kies je profiel om deze kassa te openen."}</p></div>
+    {error && <div className="mt-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold leading-5 text-rose-800" role="alert">{error}</div>}
+    {!selectedStaff ? <div className="mt-7 grid grid-cols-2 gap-3">{staffUsers.map((user) => <button key={user.id} type="button" onClick={() => onSelect(user)} className="flex min-h-24 flex-col items-start justify-between rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-left transition hover:border-cyan-300 hover:bg-cyan-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"><span className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white"><RoleIcon role={user.role} /></span><span><strong className="block text-sm text-slate-950">{user.name}</strong><small className="mt-0.5 block text-[10px] font-bold uppercase tracking-wide text-slate-500">{roleLabel[user.role]}</small></span></button>)}</div> : <div className="mt-7">
+      <div className="mb-6 flex justify-center gap-3" aria-label={`${enteredPin.length} van 6 cijfers ingevoerd`}>{Array.from({ length: 6 }).map((_, index) => <span key={index} className={`h-3 w-3 rounded-full border transition ${index < enteredPin.length ? "border-cyan-700 bg-cyan-700" : "border-slate-300 bg-slate-100"}`} />)}</div>
+      <div className="mx-auto grid max-w-[280px] grid-cols-3 gap-2.5">{["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((digit) => <button key={digit} type="button" onClick={() => onDigit(digit)} disabled={isLoading} className="h-13 rounded-xl border border-slate-200 bg-white text-lg font-black transition hover:border-cyan-300 hover:bg-cyan-50 disabled:opacity-50">{digit}</button>)}<button type="button" onClick={onErase} className="h-13 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-600">Wis</button><button type="button" onClick={() => onDigit("0")} className="h-13 rounded-xl border border-slate-200 bg-white text-lg font-black">0</button><button type="button" onClick={onChangeUser} className="h-13 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-600">Terug</button></div>
+    </div>}
+  </div>
+);

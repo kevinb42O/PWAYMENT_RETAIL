@@ -15,15 +15,30 @@ export type LoadingProgress = {
   detail: string;
 };
 
+export const loadingJourney = [
+  { id: "account", label: "Account" },
+  { id: "workspace", label: "Winkel" },
+  { id: "data", label: "Gegevens" },
+  { id: "ready", label: "Gereed" },
+] as const;
+
+export const loadingJourneyStep = (stage: LoadingStageId): number => {
+  if (stage === "starting" || stage === "session") return 0;
+  if (stage === "membership") return 1;
+  if (stage === "store-data" || stage === "local-cache") return 2;
+  if (stage === "error") return 0;
+  return 3;
+};
+
 const stages: Record<LoadingStageId, LoadingProgress> = {
-  starting: { id: "starting", progress: 8, title: "We zetten de deur open", detail: "Even de veilige verbinding klaarzetten…" },
-  session: { id: "session", progress: 20, title: "Je sleutel wordt gecontroleerd", detail: "We kijken of je sessie nog netjes op zak zit." },
-  membership: { id: "membership", progress: 35, title: "Je winkel wordt gevonden", detail: "We zoeken de juiste kassa, niet de bezemkast." },
-  "store-data": { id: "store-data", progress: 56, title: "De winkel wordt gevuld", detail: "Verkopen, voorraad, klanten en instellingen komen eraan." },
-  "local-cache": { id: "local-cache", progress: 78, title: "Alles krijgt een plek", detail: "We maken je snelle lokale werkruimte klaar." },
-  finishing: { id: "finishing", progress: 91, title: "Laatste details", detail: "Nog even de losse eindjes vastknopen." },
-  ready: { id: "ready", progress: 100, title: "Klaar voor verkoop", detail: "Je winkel staat scherp." },
-  error: { id: "error", progress: 0, title: "Dat liep even scheef", detail: "We konden je winkel nog niet volledig openen." },
+  starting: { id: "starting", progress: 8, title: "PWAYMENT wordt gestart", detail: "De beveiligde omgeving wordt voorbereid." },
+  session: { id: "session", progress: 20, title: "Account verifiëren", detail: "Je aanmeldgegevens en sessie worden gecontroleerd." },
+  membership: { id: "membership", progress: 38, title: "Winkelomgeving ophalen", detail: "We laden je winkel en toegangsrechten." },
+  "store-data": { id: "store-data", progress: 62, title: "Winkelgegevens synchroniseren", detail: "Producten, voorraad, klanten en instellingen worden bijgewerkt." },
+  "local-cache": { id: "local-cache", progress: 82, title: "Lokale werkruimte voorbereiden", detail: "Je gegevens worden klaargezet voor snel en betrouwbaar gebruik." },
+  finishing: { id: "finishing", progress: 94, title: "Omgeving afronden", detail: "De laatste instellingen worden toegepast." },
+  ready: { id: "ready", progress: 100, title: "Klaar om te starten", detail: "Je winkelomgeving is gereed." },
+  error: { id: "error", progress: 0, title: "Laden onderbroken", detail: "Je winkelomgeving kon niet volledig worden geopend." },
 };
 
 let current = stages.starting;

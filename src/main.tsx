@@ -7,6 +7,7 @@ import {
   subscribeLoadingProgress,
 } from "./services/loadingProgress";
 import { installPreloadRecovery } from "./services/preloadRecovery";
+import { LoadingExperience } from "./components/LoadingExperience";
 
 installPreloadRecovery();
 
@@ -118,10 +119,6 @@ const configureServiceWorker = async () => {
 
 const root = createRoot(document.getElementById("root")!);
 
-const PaceBootMark = () => (
-  <span className="pace-boot-mark h-24 w-24" role="img" aria-label="Pace" />
-);
-
 const StartupScreen = () => {
   const [loadingProgress, setLoadingProgress] = useState(getLoadingProgress);
 
@@ -130,31 +127,7 @@ const StartupScreen = () => {
     [],
   );
 
-  return (
-  <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-[#f6f5f1] px-6 text-slate-950 animate-in fade-in duration-500">
-    <div className="z-10 flex w-full max-w-sm flex-col items-center rounded-[2rem] border border-white/80 bg-white/70 px-8 py-10 text-center shadow-[0_32px_90px_-42px_rgba(15,23,42,0.45)] backdrop-blur-xl sm:px-10">
-      <div className="flex min-h-24 items-center justify-center">
-        <PaceBootMark />
-      </div>
-      
-      <div className="mt-9 flex w-full flex-col items-center gap-4">
-        <div className="text-[10px] uppercase tracking-[0.24em] font-bold text-slate-400">
-          {storefrontRoute
-            ? "Webshop wordt klaargezet"
-            : loadingProgress.title}
-        </div>
-        <p className="text-sm font-semibold text-slate-800">{loadingProgress.detail}</p>
-        <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
-          <div
-            className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 transition-[width] duration-500 ease-out"
-            style={{ width: `${storefrontRoute ? 38 : loadingProgress.progress}%` }}
-          />
-        </div>
-      </div>
-      <p className="mt-5 text-xs leading-5 text-slate-500">{storefrontRoute ? "Even de etalage netjes zetten." : `${loadingProgress.progress}% · beveiligde sessie en lokale gegevens`}</p>
-    </div>
-  </div>
-  );
+  return <LoadingExperience progress={loadingProgress} storefront={storefrontRoute} />;
 };
 
 root.render(<StartupScreen />);

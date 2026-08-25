@@ -5,6 +5,106 @@
   100% { transform: translateX(200%); }
 }
 
+@keyframes pwayment-flow-pulse {
+  0%, 100% { opacity: .48; transform: scale(.82); }
+  50% { opacity: 1; transform: scale(1.14); }
+}
+
+.auth-shell,
+.pwayment-loading-shell {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.auth-ambient,
+.pwayment-loading-ambient {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(34, 211, 238, .14), transparent 27%),
+    radial-gradient(circle at 88% 88%, rgba(59, 130, 246, .11), transparent 30%),
+    linear-gradient(135deg, rgba(255, 255, 255, .86), rgba(241, 245, 249, .38));
+}
+
+.auth-ambient::after,
+.pwayment-loading-ambient::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: .4;
+  background-image: linear-gradient(rgba(148, 163, 184, .1) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, .1) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(circle at center, black, transparent 72%);
+}
+
+.auth-card {
+  box-shadow: 0 38px 100px -48px rgba(15, 23, 42, .42), inset 0 1px 0 rgba(255, 255, 255, .9);
+}
+
+.pwayment-loading-shell {
+  display: flex;
+  min-height: 100dvh;
+  align-items: center;
+  justify-content: center;
+  background: #f5f7f8;
+}
+
+.pwayment-loading-shell.is-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(245, 247, 248, .94);
+  backdrop-filter: blur(18px);
+}
+
+.pwayment-flow-rail {
+  position: relative;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, .08);
+}
+
+.pwayment-flow-fill {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  min-width: 8%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #06b6d4, #0284c7 58%, #2563eb);
+  transition: width 650ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.pwayment-flow-pulse {
+  position: absolute;
+  right: -3px;
+  top: 50%;
+  width: 11px;
+  height: 11px;
+  margin-top: -5.5px;
+  border: 2px solid white;
+  border-radius: 999px;
+  background: #2563eb;
+  box-shadow: 0 0 0 5px rgba(37, 99, 235, .15), 0 0 18px rgba(6, 182, 212, .55);
+  animation: pwayment-flow-pulse 1.8s ease-in-out infinite;
+}
+
+@media (max-width: 1023px) {
+  .auth-shell main > section:first-child { text-align: center; }
+  .auth-shell main > section:first-child > p,
+  .auth-shell main > section:first-child > h1,
+  .auth-shell main > section:first-child > div { margin-inline: auto; justify-content: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pwayment-flow-fill { transition-duration: 0ms; }
+  .pwayment-flow-pulse { animation: none; }
+}
+
 .pwayment-recording-cursor {
   position: fixed;
   top: 0;

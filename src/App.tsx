@@ -7,6 +7,8 @@ import { useAuth } from "./auth/useAuth";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useTheme } from "./store/useTheme";
 import { applyThemeMode } from "./utils/theme";
+import { LoadingExperience } from "./components/LoadingExperience";
+import { getLoadingProgress } from "./services/loadingProgress";
 
 const Layout = lazy(() =>
   import("./components/Layout").then((module) => ({ default: module.Layout })),
@@ -22,15 +24,7 @@ const CustomerDisplayPublisher = lazy(() =>
   })),
 );
 
-const AppLoading = () => (
-  <div
-    className="flex min-h-screen items-center justify-center bg-slate-50 text-sm font-semibold text-slate-500"
-    role="status"
-    aria-live="polite"
-  >
-    PWAYMENT laden…
-  </div>
-);
+const AppLoading = () => <LoadingExperience progress={getLoadingProgress()} />;
 
 const RecordingCursor = () => {
   const [cursor, setCursor] = useState({
