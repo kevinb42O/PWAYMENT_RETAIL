@@ -8,6 +8,7 @@ describe("register sound policy", () => {
   it("limits application sound to software-owned operational events", () => {
     expect(canPlayRegisterSound("attention", DEFAULT_REGISTER_SOUND_SETTINGS)).toBe(true);
     expect(canPlayRegisterSound("webshop-order", DEFAULT_REGISTER_SOUND_SETTINGS)).toBe(true);
+    expect(canPlayRegisterSound("cash-key", DEFAULT_REGISTER_SOUND_SETTINGS)).toBe(true);
   });
 
   it("honours the master switch and category switches", () => {
@@ -21,6 +22,13 @@ describe("register sound policy", () => {
     expect(canPlayRegisterSound("webshop-order", {
       ...DEFAULT_REGISTER_SOUND_SETTINGS,
       webshopOrders: false,
+    })).toBe(false);
+  });
+
+  it("allows merchants to silence only the cash keypad", () => {
+    expect(canPlayRegisterSound("cash-key", {
+      ...DEFAULT_REGISTER_SOUND_SETTINGS,
+      cashKeypad: false,
     })).toBe(false);
   });
 

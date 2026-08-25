@@ -3,13 +3,15 @@ import { createJSONStorage, persist } from "zustand/middleware";
 
 export type RegisterSoundKind =
   | "attention"
-  | "webshop-order";
+  | "webshop-order"
+  | "cash-key";
 
 export interface RegisterSoundSettings {
   enabled: boolean;
   volume: number;
   attention: boolean;
   webshopOrders: boolean;
+  cashKeypad: boolean;
 }
 
 interface RegisterSoundSettingsStore extends RegisterSoundSettings {
@@ -22,6 +24,7 @@ export const DEFAULT_REGISTER_SOUND_SETTINGS: RegisterSoundSettings = {
   volume: 0.32,
   attention: true,
   webshopOrders: true,
+  cashKeypad: true,
 };
 
 const clampVolume = (value: number) => Math.min(1, Math.max(0, value));
@@ -47,11 +50,13 @@ export const useRegisterSoundSettings = create<RegisterSoundSettingsStore>()(
         volume,
         attention,
         webshopOrders,
+        cashKeypad,
       }) => ({
         enabled,
         volume,
         attention,
         webshopOrders,
+        cashKeypad,
       }),
     },
   ),
@@ -70,6 +75,7 @@ export const canPlayRegisterSound = (
   if (!settings.enabled || settings.volume <= 0) return false;
   if (options.preview) return true;
   if (kind === "attention") return settings.attention;
+  if (kind === "cash-key") return settings.cashKeypad;
   return settings.webshopOrders;
 };
 
@@ -80,11 +86,13 @@ const activeAudio = new Set<HTMLAudioElement>();
 const AUDIO_ASSETS: Record<RegisterSoundKind, string> = {
   attention: "/sounds/pos-ui/taptap.ogg",
   "webshop-order": "/sounds/pos-ui/polite.ogg",
+  "cash-key": "/sounds/pos-ui/key-click.mp3",
 };
 
 const CUE_VOLUME: Record<RegisterSoundKind, number> = {
   attention: 0.36,
   "webshop-order": 0.42,
+  "cash-key": 0.18,
 };
 
 const getAudioPrototype = (src: string) => {
@@ -131,7 +139,7 @@ export const playRegisterSound = async (
   if (!canPlayRegisterSound(kind, settings, options)) return false;
 
   const nowMs = Date.now();
-  const cooldown = kind === "attention" ? 800 : 1_200;
+  const cooldown = kind === "cash-key" ? 18 : kind === "attention" ? 800 : 1_200;
   if (!options.preview && nowMs - (lastPlayedAt[kind] ?? 0) < cooldown) return false;
 
   const prototype = getAudioPrototype(AUDIO_ASSETS[kind]);

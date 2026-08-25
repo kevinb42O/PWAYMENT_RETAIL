@@ -1,5 +1,5 @@
 import React from "react";
-import { Play, RotateCcw, ShoppingBag, TriangleAlert, Volume2, VolumeX } from "lucide-react";
+import { Calculator, Play, RotateCcw, ShoppingBag, TriangleAlert, Volume2, VolumeX } from "lucide-react";
 import { playRegisterSound, useRegisterSoundSettings, type RegisterSoundKind, type RegisterSoundSettings } from "../sound/registerSounds";
 
 type BooleanSetting = Exclude<keyof RegisterSoundSettings, "volume">;
@@ -75,6 +75,7 @@ export const SoundSettings = () => {
         <div className="space-y-2 border-t border-slate-200/70 pt-4">
           <SoundOption setting="attention" title="Aandacht vereist" detail="Alleen wanneer een verkoop niet kon worden geboekt of een betaalstatus handmatig moet worden gecontroleerd." icon={<TriangleAlert size={15} />} preview="attention" disabled={!settings.enabled} />
           <SoundOption setting="webshopOrders" title="Nieuwe webshopbestelling" detail="Alleen voor een werkelijk nieuwe bestelling; synchronisatie en statuswijzigingen blijven stil." icon={<ShoppingBag size={15} />} preview="webshop-order" disabled={!settings.enabled} />
+          <SoundOption setting="cashKeypad" title="Toetsen bij contante betaling" detail="Een ultrakorte, droge klik bij de snelbedragen, cijfers, komma en wistoets van het contante-betaalvenster." icon={<Calculator size={15} />} preview="cash-key" disabled={!settings.enabled} />
         </div>
 
         <div className="flex items-center justify-between gap-4 border-t border-slate-200/70 pt-3">
