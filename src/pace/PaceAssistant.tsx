@@ -272,8 +272,11 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
         aria-expanded={open}
         aria-controls="pace-assistant-panel"
       >
-        <PaceMark size={46} active={open || shouldBadge} emotion={open ? "thinking" : undefined} tone={primary.tone} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
-        {shouldBadge && !open && <span className={`pace-signal-dot is-${primary.tone}`} aria-label="Pace heeft een relevant signaal" />}
+        <span className="pace-trigger-mark" aria-hidden="true">
+          <PaceMark size={46} active={open || shouldBadge} emotion={open ? "thinking" : undefined} tone={primary.tone} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
+          {shouldBadge && !open && <span className={`pace-signal-dot is-${primary.tone}`} />}
+        </span>
+        <span className="pace-trigger-label">Vraag Pace</span>
       </button>
 
       {customerSignal && props.view === "pos" && !open && !unavailable && preferences.enabled && (
