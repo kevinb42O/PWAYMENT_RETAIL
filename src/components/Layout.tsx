@@ -441,7 +441,6 @@ export const Layout: React.FC = () => {
     const result = scanCodeToCart(value);
 
     if (result.status === "matched" && result.product) {
-      void playRegisterSound("scan-success");
       setProductQuery("");
       setScanFeedback({
         tone: "success",
@@ -453,7 +452,6 @@ export const Layout: React.FC = () => {
     }
 
     if (result.status === "out-of-stock" && result.product) {
-      void playRegisterSound("scan-rejected");
       setProductQuery(value);
       setScanFeedback({
         tone: "warning",
@@ -467,7 +465,6 @@ export const Layout: React.FC = () => {
     const hasBrowseMatches = products.some((product) =>
       matchesCatalogQuery(product, value),
     );
-    if (!hasBrowseMatches) void playRegisterSound("scan-rejected");
     setProductQuery(value);
     setScanFeedback(
       hasBrowseMatches

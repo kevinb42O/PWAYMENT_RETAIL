@@ -27,7 +27,6 @@ import { setServerManagerApprovalPin } from '../services/discountApprovals';
 import { useWorkforce } from '../store/useWorkforce';
 import { useMerchantProfile } from '../store/useMerchantProfile';
 import type { User, Role } from '../types';
-import { playRegisterSound, useRegisterSoundSettings } from '../sound/registerSounds';
 import {
   WorldlineLogo,
   CCVLogo,
@@ -274,8 +273,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [autoSubmitScan, setAutoSubmitScan] = useState(true);
   const [autoOpenDrawer, setAutoOpenDrawer] = useState(true);
   const [paperWidth, setPaperWidth] = useState<'80mm' | '58mm'>('80mm');
-  const scanSoundActive = useRegisterSoundSettings((state) => state.scanner);
-  const updateSoundSettings = useRegisterSoundSettings((state) => state.update);
   // Payment Terminal state
   const [selectedTerminalProvider, setSelectedTerminalProvider] = useState<'worldline' | 'ccv' | 'sumup' | 'mollie' | 'viva' | 'verifone'>('worldline');
   const [terminalIp, setTerminalIp] = useState('192.168.1.185');
@@ -1131,7 +1128,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       value={scannerTestCode}
                       onChange={(e) => {
                         setScannerTestCode(e.target.value);
-                        if (e.target.value && scanSoundActive) void playRegisterSound('scan-success');
                       }}
                       placeholder="Scan hier om te testen..."
                       className="w-full sm:w-64 bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
@@ -1168,19 +1164,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       </label>
                     </div>
 
-                    <div className="flex items-start gap-3 p-3 bg-white rounded-xl border border-slate-200/90 shadow-2xs">
-                      <input
-                        type="checkbox"
-                        checked={scanSoundActive}
-                        onChange={(e) => updateSoundSettings({ scanner: e.target.checked })}
-                        id="scan-sound-chk"
-                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer shrink-0"
-                      />
-                      <label htmlFor="scan-sound-chk" className="cursor-pointer">
-                        <div className="text-xs font-bold text-slate-900">Audio Pieptoon bij Scan</div>
-                        <div className="text-[11px] text-slate-500">Speel een auditieve bevestiging bij het scannen van een product</div>
-                      </label>
-                    </div>
                   </div>
                 </div>
               </div>

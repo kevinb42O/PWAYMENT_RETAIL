@@ -5,31 +5,30 @@ import {
 } from "./registerSounds";
 
 describe("register sound policy", () => {
-  it("keeps real terminal confirmations quiet by default", () => {
-    expect(canPlayRegisterSound("payment-complete", DEFAULT_REGISTER_SOUND_SETTINGS)).toBe(false);
-    expect(canPlayRegisterSound("terminal-payment-complete", DEFAULT_REGISTER_SOUND_SETTINGS)).toBe(false);
+  it("limits application sound to software-owned operational events", () => {
+    expect(canPlayRegisterSound("attention", DEFAULT_REGISTER_SOUND_SETTINGS)).toBe(true);
+    expect(canPlayRegisterSound("webshop-order", DEFAULT_REGISTER_SOUND_SETTINGS)).toBe(true);
   });
 
   it("honours the master switch and category switches", () => {
-    expect(canPlayRegisterSound("scan-success", DEFAULT_REGISTER_SOUND_SETTINGS)).toBe(false);
     expect(canPlayRegisterSound("attention", {
       ...DEFAULT_REGISTER_SOUND_SETTINGS,
       enabled: false,
     })).toBe(false);
   });
 
-  it("requires explicit consent before sale-completion sound plays", () => {
-    expect(canPlayRegisterSound("payment-complete", {
+  it("honours the webshop category switch", () => {
+    expect(canPlayRegisterSound("webshop-order", {
       ...DEFAULT_REGISTER_SOUND_SETTINGS,
-      paymentComplete: true,
-    })).toBe(true);
+      webshopOrders: false,
+    })).toBe(false);
   });
 
   it("allows a category preview while preserving master mute", () => {
-    expect(canPlayRegisterSound("scan-success", DEFAULT_REGISTER_SOUND_SETTINGS, {
+    expect(canPlayRegisterSound("webshop-order", DEFAULT_REGISTER_SOUND_SETTINGS, {
       preview: true,
     })).toBe(true);
-    expect(canPlayRegisterSound("scan-success", {
+    expect(canPlayRegisterSound("webshop-order", {
       ...DEFAULT_REGISTER_SOUND_SETTINGS,
       enabled: false,
     }, { preview: true })).toBe(false);

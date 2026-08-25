@@ -617,10 +617,6 @@ export const Cart: React.FC = () => {
         .completePayment(result.transaction);
       clearCart();
       setReceipt(result.transaction);
-      void playRegisterSound(
-        extras.paymentProviderReference ? "terminal-payment-complete" : "payment-complete",
-      );
-
       // Printing happens only after the commit, so a printer failure can never
       // leave a half-booked sale behind.
       if (printerConnected) {

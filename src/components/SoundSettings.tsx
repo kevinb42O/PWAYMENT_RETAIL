@@ -1,5 +1,5 @@
 import React from "react";
-import { BellRing, CreditCard, Play, RotateCcw, ScanLine, ShoppingBag, TriangleAlert, Volume2, VolumeX } from "lucide-react";
+import { Play, RotateCcw, ShoppingBag, TriangleAlert, Volume2, VolumeX } from "lucide-react";
 import { playRegisterSound, useRegisterSoundSettings, type RegisterSoundKind, type RegisterSoundSettings } from "../sound/registerSounds";
 
 type BooleanSetting = Exclude<keyof RegisterSoundSettings, "volume">;
@@ -67,17 +67,14 @@ export const SoundSettings = () => {
           </div>
           <div className="mt-2 flex items-center gap-3">
             <VolumeX size={14} className="text-slate-400" />
-            <input id="register-sound-volume" type="range" min="0" max="100" step="1" disabled={!settings.enabled} value={volumePercent} onChange={(event) => settings.update({ volume: Number(event.target.value) / 100 })} onPointerUp={() => void playRegisterSound("payment-complete", { preview: true })} className="h-1.5 flex-1 cursor-pointer accent-slate-900 disabled:cursor-not-allowed" />
+            <input id="register-sound-volume" type="range" min="0" max="100" step="1" disabled={!settings.enabled} value={volumePercent} onChange={(event) => settings.update({ volume: Number(event.target.value) / 100 })} onPointerUp={() => void playRegisterSound("attention", { preview: true })} className="h-1.5 flex-1 cursor-pointer accent-slate-900 disabled:cursor-not-allowed" />
             <Volume2 size={15} className="text-slate-600" />
           </div>
         </div>
 
         <div className="space-y-2 border-t border-slate-200/70 pt-4">
-          <SoundOption setting="paymentComplete" title="Verkoop afgerond" detail="Een opgenomen kassalade- en bonprintergeluid. Standaard uit." icon={<CreditCard size={15} />} preview="payment-complete" disabled={!settings.enabled} />
-          <SoundOption setting="terminalPaymentComplete" title="Ook bij terminalbetalingen" detail="Een echte terminalbevestiging. Standaard uit, omdat de betaalterminal dit zelf al doet." icon={<BellRing size={14} />} preview="terminal-payment-complete" disabled={!settings.enabled || !settings.paymentComplete} nested />
-          <SoundOption setting="attention" title="Aandacht vereist" detail="Een korte, functionele toon bij een mislukte boeking of wanneer een betaalstatus gecontroleerd moet worden." icon={<TriangleAlert size={15} />} preview="attention" disabled={!settings.enabled} />
-          <SoundOption setting="scanner" title="Barcodescanner" detail="Een echte scannersignaal. Standaard uit wanneer de fysieke scanner zelf al piept." icon={<ScanLine size={15} />} preview="scan-success" disabled={!settings.enabled} />
-          <SoundOption setting="webshopOrders" title="Nieuwe webshopbestelling" detail="Een discrete operationele melding voor een nieuwe bestelling. Standaard uit." icon={<ShoppingBag size={15} />} preview="webshop-order" disabled={!settings.enabled} />
+          <SoundOption setting="attention" title="Aandacht vereist" detail="Alleen wanneer een verkoop niet kon worden geboekt of een betaalstatus handmatig moet worden gecontroleerd." icon={<TriangleAlert size={15} />} preview="attention" disabled={!settings.enabled} />
+          <SoundOption setting="webshopOrders" title="Nieuwe webshopbestelling" detail="Alleen voor een werkelijk nieuwe bestelling; synchronisatie en statuswijzigingen blijven stil." icon={<ShoppingBag size={15} />} preview="webshop-order" disabled={!settings.enabled} />
         </div>
 
         <div className="flex items-center justify-between gap-4 border-t border-slate-200/70 pt-3">
