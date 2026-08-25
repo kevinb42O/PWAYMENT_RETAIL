@@ -233,7 +233,10 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
           <PaceMark size={46} active={open || shouldBadge} emotion={open ? "thinking" : undefined} tone={primary.tone} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
           {shouldBadge && !open && <span className={`pace-signal-dot is-${primary.tone}`} />}
         </span>
-        <span className="pace-trigger-label">Vraag Pace</span>
+        <span className="pace-trigger-label" aria-hidden="true">
+          <span className="pace-trigger-brand">PWAYMENT</span>
+          <span className="pace-trigger-action">Vraag Pace</span>
+        </span>
       </button>
 
       {customerSignal && props.view === "pos" && !open && !unavailable && preferences.enabled && (
