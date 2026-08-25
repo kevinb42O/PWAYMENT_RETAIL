@@ -20,7 +20,13 @@ import { getOutboxHealthMetadata } from "../services/platformTelemetry";
 import { liveQuery } from "dexie";
 import { useMerchantProfile } from "../store/useMerchantProfile";
 import { useCategories } from "../store/useCategories";
-import { derivePaceSetupMilestones } from "../pace/setupMilestones";
+import {
+  derivePaceSetupMilestones,
+  hasEstablishedCatalog,
+  paceSetupProgress,
+  type PaceMilestoneId,
+  type PaceSetupMilestone,
+} from "../pace/setupMilestones";
 import { getPrimaryPaceOutboxIssue } from "../pace/outboxIssue";
 import { playRegisterSound, unlockRegisterSounds } from "../sound/registerSounds";
 import {
@@ -164,12 +170,13 @@ export const Layout: React.FC = () => {
     useState(false);
   const [returnReceiptBarcode, setReturnReceiptBarcode] = useState<string | null>(null);
   const [profileInitialTarget, setProfileInitialTarget] = useState<{
-    tab: "billing" | "webshop-general" | "modules" | "pace" | "workforce" | "leave-approvals" | "catalog-products" | "catalog-categories" | "labels" | "integrations";
+    tab: "billing" | "webshop-general" | "modules" | "pace" | "workforce" | "leave-approvals" | "catalog-products" | "catalog-categories" | "labels" | "integrations" | "general" | "merchant";
     requestKey: number;
     openNewProductRequestKey?: number;
     catalogFilter?: { requestKey: number; productIds: string[]; label: string };
   }>({ tab: "billing", requestKey: 0 });
   const [storeSetupOpen, setStoreSetupOpen] = useState(false);
+  const [storeSetupStartAt, setStoreSetupStartAt] = useState<PaceMilestoneId | "welcome">("welcome");
   const [storeSetupTarget, setStoreSetupTarget] = useState<SetupGuideTarget | null>(null);
   const [firstProductTourName, setFirstProductTourName] = useState<string | null>(null);
   const [leaveApprovalGateOpen, setLeaveApprovalGateOpen] = useState(false);
@@ -205,6 +212,11 @@ export const Layout: React.FC = () => {
     () => derivePaceSetupMilestones({ configuration: storeConfiguration, profile: merchantProfile, categories, products }),
     [categories, merchantProfile, products, storeConfiguration],
   );
+  const setupProgress = React.useMemo(() => paceSetupProgress(paceSetupMilestones), [paceSetupMilestones]);
+  const establishedCatalog = React.useMemo(
+    () => hasEstablishedCatalog({ categories, products }),
+    [categories, products],
+  );
 
   useEffect(() => {
     void hydrateCategories();
@@ -218,7 +230,7 @@ export const Layout: React.FC = () => {
     && isFeatureEnabledForSnapshot(entitlementSnapshot, FEATURE_KEYS.workforce);
 
   const openProfile = (
-    tab: "billing" | "webshop-general" | "modules" | "pace" | "workforce" | "leave-approvals" | "catalog-products" | "catalog-categories" | "labels" | "integrations" = "billing",
+    tab: "billing" | "webshop-general" | "modules" | "pace" | "workforce" | "leave-approvals" | "catalog-products" | "catalog-categories" | "labels" | "integrations" | "general" | "merchant" = "billing",
   ) => {
     setProfileInitialTarget((current) => ({
       tab,
@@ -226,7 +238,7 @@ export const Layout: React.FC = () => {
     }));
     setMainView("profile");
   };
-  const openProductSetup = () => {
+  const startGuidedProductSetup = () => {
     setProfileInitialTarget((current) => ({
       tab: "catalog-products",
       requestKey: current.requestKey + 1,
@@ -234,6 +246,7 @@ export const Layout: React.FC = () => {
     }));
     setMainView("profile");
   };
+  const openProductAdmin = () => openProfile("catalog-products");
   const openPaceCatalogFilter = (filter: { productIds: string[]; label: string }) => {
     setProfileInitialTarget((current) => {
       const requestKey = current.requestKey + 1;
@@ -254,6 +267,24 @@ export const Layout: React.FC = () => {
   };
   const openBarcodeLabelSetup = () => openProfile("labels");
   const openImportSetup = () => setMainView("integration-hub");
+  const openMilestoneDirectly = (milestone: PaceSetupMilestone) => {
+    if (milestone.id === "profile") openProfile("general");
+    else if (milestone.id === "identity") openProfile("merchant");
+    else if (milestone.action === "categories") openCategorySetup();
+    else if (milestone.action === "products") openProductAdmin();
+    else if (milestone.action === "labels") openBarcodeLabelSetup();
+  };
+  const openGuidedSetup = (startAt: PaceMilestoneId | "welcome" = "welcome") => {
+    setStoreSetupStartAt(startAt);
+    setStoreSetupOpen(true);
+  };
+  const openSetupForCurrentStore = () => {
+    if (establishedCatalog) {
+      if (setupProgress.next) openMilestoneDirectly(setupProgress.next);
+      return;
+    }
+    openGuidedSetup(setupProgress.next?.id ?? "welcome");
+  };
   const approvalStoreId = currentStoreId ?? (import.meta.env.VITE_E2E_BUILD === "true" ? "fixture-store" : null);
   const openLeaveApprovalGate = () => {
     setIsUserMenuOpen(false);
@@ -727,7 +758,7 @@ export const Layout: React.FC = () => {
             userId={currentUserId}
             productCount={products.length}
             cartCount={cartCount}
-            firstRunCompleted={firstRunCompleted}
+            firstRunCompleted={firstRunCompleted || setupProgress.ready}
             online={paceConnection.online}
             pendingSync={paceConnection.pendingSync}
             retryingSync={paceConnection.retryingSync}
@@ -752,14 +783,18 @@ export const Layout: React.FC = () => {
             setupMilestones={paceSetupMilestones}
             suppressed={storeSetupOpen || Boolean(firstProductTourName) || leaveApprovalGateOpen}
             onNavigate={(view) => setMainView(view)}
-            onOpenSetup={() => setStoreSetupOpen(true)}
+            onOpenSetup={openSetupForCurrentStore}
             onOpenProfile={(tab) => openProfile(tab)}
             onOpenCatalog={openPaceCatalogFilter}
             onOpenMilestone={(milestone) => {
-              if (milestone.action === "setup") setStoreSetupOpen(true);
-              if (milestone.action === "categories") openCategorySetup();
-              if (milestone.action === "products") openProductSetup();
-              if (milestone.action === "labels") openBarcodeLabelSetup();
+              if (establishedCatalog) {
+                openMilestoneDirectly(milestone);
+                return;
+              }
+              if (milestone.action === "setup") openGuidedSetup(milestone.id);
+              if (milestone.action === "categories") openGuidedSetup("categories");
+              if (milestone.action === "products") openGuidedSetup("products");
+              if (milestone.action === "labels") openGuidedSetup("barcodes");
             }}
           />
         </div>
@@ -1168,7 +1203,7 @@ export const Layout: React.FC = () => {
                       <Menu
                         query={productQuery}
                         onQueryChange={setProductQuery}
-                        onStartStoreSetup={() => setStoreSetupOpen(true)}
+                        onStartStoreSetup={() => openGuidedSetup("welcome")}
                         onAddCategory={openCategorySetup}
                         onImportProducts={openImportSetup}
                       />
@@ -1216,7 +1251,7 @@ export const Layout: React.FC = () => {
                     <Menu
                       query={productQuery}
                       onQueryChange={setProductQuery}
-                      onStartStoreSetup={() => setStoreSetupOpen(true)}
+                      onStartStoreSetup={() => openGuidedSetup("welcome")}
                       onAddCategory={openCategorySetup}
                       onImportProducts={openImportSetup}
                     />
@@ -1234,9 +1269,10 @@ export const Layout: React.FC = () => {
       {(currentRole === "owner" || currentRole === "manager") && (
         <StoreSetupGuide
           open={storeSetupOpen}
+          startAt={storeSetupStartAt}
           onClose={() => setStoreSetupOpen(false)}
           onAddCategories={openCategorySetup}
-          onAddProduct={openProductSetup}
+          onAddProduct={startGuidedProductSetup}
           onImportProducts={openImportSetup}
           onOpenBarcodeLabels={openBarcodeLabelSetup}
           onTargetChange={setStoreSetupTarget}

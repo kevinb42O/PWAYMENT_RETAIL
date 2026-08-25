@@ -20,12 +20,14 @@ import { useStoreConfiguration } from "../store/useStoreConfiguration";
 import { useCategories } from "../store/useCategories";
 import { useProducts } from "../store/useProducts";
 import { PaceMark } from "../pace/PaceMark";
+import { derivePaceSetupMilestones, paceSetupProgress, type PaceMilestoneId } from "../pace/setupMilestones";
 
 type GuideStep = "welcome" | "identity" | "categories" | "catalog" | "labels";
 export type SetupGuideTarget = "catalog-categories" | "catalog-products" | "labels";
 
 interface StoreSetupGuideProps {
   open: boolean;
+  startAt?: PaceMilestoneId | "welcome";
   onClose: () => void;
   onAddCategories: () => void;
   onAddProduct: () => void;
@@ -35,6 +37,14 @@ interface StoreSetupGuideProps {
 }
 
 const STEPS: GuideStep[] = ["welcome", "identity", "categories", "catalog", "labels"];
+
+const guideStepForMilestone = (milestone: PaceMilestoneId | "welcome"): GuideStep => {
+  if (milestone === "identity") return "identity";
+  if (milestone === "categories") return "categories";
+  if (milestone === "products") return "catalog";
+  if (milestone === "barcodes") return "labels";
+  return "welcome";
+};
 
 const STEP_LABELS: Record<GuideStep, string> = {
   welcome: "Welkom",
@@ -57,6 +67,7 @@ const sourceLabel = (source: string): string => {
 
 export const StoreSetupGuide: React.FC<StoreSetupGuideProps> = ({
   open,
+  startAt = "welcome",
   onClose,
   onAddCategories,
   onAddProduct,
@@ -86,6 +97,8 @@ export const StoreSetupGuide: React.FC<StoreSetupGuideProps> = ({
 
   useEffect(() => {
     if (!open) return;
+    setStep(guideStepForMilestone(startAt));
+    setCompact(false);
     setForm({
       name: profile.name === "PWAYMENT" && currentStoreName ? currentStoreName : profile.name,
       legalName: profile.legalName === "PWAYMENT" && currentStoreName ? currentStoreName : profile.legalName ?? "",
@@ -96,7 +109,7 @@ export const StoreSetupGuide: React.FC<StoreSetupGuideProps> = ({
       email: profile.email ?? "",
       website: profile.website ?? "",
     });
-  }, [currentStoreName, open, profile]);
+  }, [currentStoreName, open, profile, startAt]);
 
   const stepIndex = STEPS.indexOf(step);
   const hasExistingCatalog = configuration.catalogSource !== "none";
@@ -125,7 +138,13 @@ export const StoreSetupGuide: React.FC<StoreSetupGuideProps> = ({
       website: form.website.trim() || undefined,
     });
     setSavedIdentity(true);
-    setStep("categories");
+    const categoryReady = categories.some((category) => category.isActive !== false);
+    const productReady = products.some((product) =>
+      product.isActive !== false && product.name.trim() && product.category && product.priceCents >= 0,
+    );
+    if (!categoryReady) setStep("categories");
+    else if (!productReady) setStep("catalog");
+    else close();
   };
 
   const launch = (action: "product" | "import") => {
@@ -140,6 +159,12 @@ export const StoreSetupGuide: React.FC<StoreSetupGuideProps> = ({
   };
 
   const continueToCatalog = () => {
+    if (products.some((product) =>
+      product.isActive !== false && product.name.trim() && product.category && product.priceCents >= 0,
+    )) {
+      close();
+      return;
+    }
     setStep("catalog");
     setCompact(false);
   };
@@ -158,6 +183,12 @@ export const StoreSetupGuide: React.FC<StoreSetupGuideProps> = ({
     email: form.email || undefined,
     website: form.website || undefined,
   };
+  const setupCompletion = paceSetupProgress(derivePaceSetupMilestones({
+    configuration,
+    profile: previewMerchant,
+    categories,
+    products,
+  }));
 
   useEffect(() => {
     if (!open || !compact) {
@@ -198,6 +229,7 @@ export const StoreSetupGuide: React.FC<StoreSetupGuideProps> = ({
       closeOnBackdrop
       size="4xl"
       icon={<PaceMark size={30} active emotion={step === "welcome" ? "attentive" : step === "labels" ? "celebrating" : "guiding"} tone={step === "labels" ? "success" : "flow"} motionMode="subtle" />}
+      iconVariant="bare"
       title="Je winkel starten"
       subtitle="Een paar heldere stappen, daarna ben je klaar om te verkopen."
       className="store-setup-guide"
@@ -212,6 +244,7 @@ export const StoreSetupGuide: React.FC<StoreSetupGuideProps> = ({
           </button>
           <div className="flex items-center gap-3">
             {step === "identity" && <button type="button" onClick={saveIdentity} disabled={!canSaveIdentity} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#0e7490] px-4 text-xs font-extrabold text-white shadow-sm shadow-cyan-900/15 transition hover:bg-[#155e75] disabled:cursor-not-allowed disabled:opacity-40"><Check size={15} /> Gegevens bewaren</button>}
+            <SetupCompletion percent={setupCompletion.percent} completed={setupCompletion.completedRequired} total={setupCompletion.requiredCount} />
             <SetupProgress step={step} />
           </div>
         </div>
@@ -324,6 +357,28 @@ export const StoreSetupGuide: React.FC<StoreSetupGuideProps> = ({
     </Modal>
   );
 };
+
+const SetupCompletion = ({ percent, completed, total }: { percent: number; completed: number; total: number }) => (
+  <div
+    className="w-24 sm:w-28"
+    role="progressbar"
+    aria-label={`Winkelsetup ${percent}% compleet, ${completed} van ${total} vereiste onderdelen klaar`}
+    aria-valuemin={0}
+    aria-valuemax={100}
+    aria-valuenow={percent}
+  >
+    <div className="mb-1 flex items-center justify-between gap-2 text-[10px] font-extrabold leading-none">
+      <span className="text-slate-500">Setup</span>
+      <span className={percent === 100 ? "text-emerald-700" : "text-[#0e7490]"}>{percent}%</span>
+    </div>
+    <div className="h-1.5 overflow-hidden rounded-full bg-slate-200" aria-hidden="true">
+      <span
+        className={`block h-full rounded-full transition-[width] duration-300 ${percent === 100 ? "bg-emerald-500" : "bg-gradient-to-r from-cyan-600 to-cyan-400"}`}
+        style={{ width: `${percent}%` }}
+      />
+    </div>
+  </div>
+);
 
 const SetupProgress = ({ step, compact = false }: { step: GuideStep; compact?: boolean }) => {
   const activeIndex = STEPS.indexOf(step);

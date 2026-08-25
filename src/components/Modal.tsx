@@ -7,6 +7,7 @@ interface ModalProps {
   title: string;
   subtitle?: React.ReactNode;
   icon?: React.ReactNode;
+  iconVariant?: "filled" | "bare";
   children: React.ReactNode;
   footer?: React.ReactNode;
   size?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "5xl";
@@ -34,6 +35,7 @@ export const Modal: React.FC<ModalProps> = ({
   title,
   subtitle,
   icon,
+  iconVariant = "filled",
   children,
   footer,
   size = "md",
@@ -127,11 +129,13 @@ export const Modal: React.FC<ModalProps> = ({
           <div className="flex items-center gap-3 min-w-0 pr-4">
             {icon && (
               <div
-                className={`p-2.5 rounded-2xl shrink-0 ${
-                  isLight
-                  ? "bg-[#0e7490] text-white shadow-[0_1px_2px_rgba(15,23,42,0.08)]"
-                    : "bg-slate-800 text-slate-100"
-                }`}
+                className={iconVariant === "bare"
+                  ? "shrink-0"
+                  : `p-2.5 rounded-2xl shrink-0 ${
+                    isLight
+                      ? "bg-[#0e7490] text-white shadow-[0_1px_2px_rgba(15,23,42,0.08)]"
+                      : "bg-slate-800 text-slate-100"
+                  }`}
               >
                 {icon}
               </div>

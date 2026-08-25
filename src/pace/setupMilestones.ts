@@ -20,9 +20,20 @@ export interface PaceSetupMilestone {
 
 const PLACEHOLDER_NAMES = new Set(["pwayment", "pwayment retail", "pwayment store"]);
 
+export const isValidBelgianVatNumber = (value: string): boolean => {
+  const normalized = value.trim().toUpperCase();
+  if (!normalized.startsWith("BE")) return false;
+
+  // Belgian enterprise/VAT numbers contain ten digits. Users commonly group
+  // those digits in several equally valid-looking ways, so punctuation and
+  // whitespace must not determine whether setup is considered complete.
+  const digits = normalized.slice(2).replace(/\D/g, "");
+  return /^[01]\d{9}$/.test(digits);
+};
+
 export const hasConfiguredMerchantIdentity = (profile: MerchantInfo): boolean => {
   const name = profile.name.trim().toLocaleLowerCase("nl-BE");
-  const validVat = /^BE\s?0?\d{3}[.\s]?\d{3}[.\s]?\d{3}$/i.test(profile.vatNumber.trim());
+  const validVat = isValidBelgianVatNumber(profile.vatNumber);
   const placeholderAddress = /voorbeeldstraat/i.test(profile.addressLine1);
   return Boolean(
     name &&
@@ -38,6 +49,27 @@ const hasScannableIdentifier = (product: Product) => Boolean(
   product.barcode?.trim() ||
   product.identifiers?.some((identifier) => identifier.isScannable && identifier.value.trim()),
 );
+
+export const hasEstablishedCatalog = ({
+  categories,
+  products,
+}: {
+  categories: ProductCategory[];
+  products: Product[];
+}): boolean => {
+  const activeCategoryIds = new Set(
+    categories
+      .filter((category) => category.isActive !== false)
+      .map((category) => category.id),
+  );
+  return activeCategoryIds.size > 0 && products.some((product) =>
+    product.isActive !== false &&
+    product.name.trim() &&
+    activeCategoryIds.has(product.category) &&
+    product.priceCents >= 0 &&
+    [0, 6, 12, 21].includes(product.vatRate),
+  );
+};
 
 export const derivePaceSetupMilestones = ({
   configuration,
@@ -56,13 +88,16 @@ export const derivePaceSetupMilestones = ({
     product.name.trim() && product.category && product.priceCents >= 0 && [0, 6, 12, 21].includes(product.vatRate),
   );
   const barcodeReady = activeProducts.length > 0 && activeProducts.some(hasScannableIdentifier);
+  const establishedCatalog = hasEstablishedCatalog({ categories, products });
 
   return [
     {
       id: "profile",
       label: "Winkelprofiel",
       detail: "Sector, verkoopmodel en werkstromen gekozen",
-      complete: Boolean(configuration.completedAt),
+      // Legacy stores predate completedAt. A real sellable catalog is stronger
+      // evidence that they are established and must not enter beginner setup.
+      complete: Boolean(configuration.completedAt) || establishedCatalog,
       optional: false,
       action: "setup",
     },
@@ -104,9 +139,9 @@ export const derivePaceSetupMilestones = ({
 export const paceSetupProgress = (milestones: PaceSetupMilestone[]) => {
   const required = milestones.filter((milestone) => !milestone.optional);
   const completedRequired = required.filter((milestone) => milestone.complete).length;
-  const next = milestones.find((milestone) => !milestone.complete && !milestone.optional)
-    ?? milestones.find((milestone) => !milestone.complete)
-    ?? null;
+  // Optional recommendations may surface elsewhere, but must never keep an
+  // established shop inside (or send it back into) the required setup flow.
+  const next = milestones.find((milestone) => !milestone.complete && !milestone.optional) ?? null;
   return {
     completedRequired,
     requiredCount: required.length,
