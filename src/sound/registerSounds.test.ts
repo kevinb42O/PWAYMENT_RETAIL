@@ -20,6 +20,14 @@ describe("register sound policy", () => {
     })).toBe(false);
   });
 
+  it("keeps cash-entry feedback under its own local category", () => {
+    expect(canPlayRegisterSound("key-press", DEFAULT_REGISTER_SOUND_SETTINGS)).toBe(true);
+    expect(canPlayRegisterSound("key-delete", {
+      ...DEFAULT_REGISTER_SOUND_SETTINGS,
+      keypad: false,
+    })).toBe(false);
+  });
+
   it("allows a category preview while preserving master mute", () => {
     expect(canPlayRegisterSound("scan-success", DEFAULT_REGISTER_SOUND_SETTINGS, {
       preview: true,

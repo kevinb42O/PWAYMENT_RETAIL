@@ -1,79 +1,34 @@
 import React from "react";
-import {
-  BellRing,
-  Check,
-  CreditCard,
-  RotateCcw,
-  ScanLine,
-  ShoppingBag,
-  TriangleAlert,
-  Volume2,
-  VolumeX,
-} from "lucide-react";
-import {
-  playRegisterSound,
-  useRegisterSoundSettings,
-  type RegisterSoundKind,
-  type RegisterSoundSettings,
-} from "../sound/registerSounds";
+import { BellRing, CreditCard, Keyboard, Play, RotateCcw, ScanLine, ShoppingBag, TriangleAlert, Volume2, VolumeX } from "lucide-react";
+import { playRegisterSound, useRegisterSoundSettings, type RegisterSoundKind, type RegisterSoundSettings } from "../sound/registerSounds";
 
 type BooleanSetting = Exclude<keyof RegisterSoundSettings, "volume">;
 
-const SoundSwitch = ({
-  setting,
-  title,
-  detail,
-  icon,
-  preview,
-  disabled = false,
-  nested = false,
-}: {
+const SoundOption = ({ setting, title, detail, icon, preview, disabled = false, nested = false }: {
   setting: BooleanSetting;
   title: string;
   detail: string;
   icon: React.ReactNode;
-  preview?: RegisterSoundKind;
+  preview: RegisterSoundKind;
   disabled?: boolean;
   nested?: boolean;
 }) => {
   const checked = useRegisterSoundSettings((state) => state[setting]);
   const update = useRegisterSoundSettings((state) => state.update);
+  const id = `register-sound-${setting}`;
 
   return (
-    <div className={`flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center ${nested ? "ml-5 border-dashed bg-slate-50/70" : ""} ${disabled ? "opacity-50" : ""}`}>
-      <div className="flex min-w-0 flex-1 items-start gap-3">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600">
-          {icon}
-        </span>
-        <div>
-          <div className="text-xs font-black text-slate-900">{title}</div>
-          <p className="mt-1 max-w-2xl text-[11px] font-medium leading-5 text-slate-500">{detail}</p>
-        </div>
-      </div>
-      <div className="flex items-center justify-end gap-2 pl-12 sm:pl-0">
-        {preview && (
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={() => void playRegisterSound(preview, { preview: true })}
-            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-black text-slate-600 hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed"
-          >
-            Beluister
-          </button>
-        )}
-        <button
-          type="button"
-          role="switch"
-          aria-checked={checked}
-          aria-label={title}
-          disabled={disabled}
-          onClick={() => update({ [setting]: !checked })}
-          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed ${checked ? "bg-slate-950" : "bg-slate-300"}`}
-        >
-          <span className={`absolute top-0.5 grid h-5 w-5 place-items-center rounded-full bg-white shadow-sm transition-transform ${checked ? "translate-x-[22px]" : "translate-x-0.5"}`}>
-            {checked && <Check size={11} strokeWidth={3} className="text-slate-950" />}
-          </span>
+    <div className={nested ? "ml-7 border-l-2 border-slate-200 pl-3" : ""}>
+      <div className={`flex items-start gap-3 rounded-xl border border-slate-200/90 bg-white p-3 shadow-2xs ${disabled ? "opacity-50" : ""}`}>
+        <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-600">{icon}</span>
+        <label htmlFor={id} className={`min-w-0 flex-1 ${disabled ? "cursor-default" : "cursor-pointer"}`}>
+          <span className="block text-xs font-bold text-slate-900">{title}</span>
+          <span className="mt-0.5 block text-[11px] font-medium leading-4 text-slate-500">{detail}</span>
+        </label>
+        <button type="button" disabled={disabled} onClick={() => void playRegisterSound(preview, { preview: true })} className="mt-0.5 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-[10px] font-bold text-slate-600 hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed">
+          <Play size={11} fill="currentColor" /> Test
         </button>
+        <input id={id} type="checkbox" checked={checked} disabled={disabled} onChange={(event) => update({ [setting]: event.target.checked })} className="mt-2 h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300 text-slate-900 focus:ring-slate-900 disabled:cursor-not-allowed" />
       </div>
     </div>
   );
@@ -84,113 +39,52 @@ export const SoundSettings = () => {
   const volumePercent = Math.round(settings.volume * 100);
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-col gap-4 rounded-2xl bg-slate-950 p-5 text-white sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-start gap-3">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/10 text-sky-200">
-            {settings.enabled ? <Volume2 size={21} /> : <VolumeX size={21} />}
-          </span>
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h4 className="text-sm font-black">Kassageluid</h4>
-              <span className="rounded-full border border-white/10 bg-white/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-slate-300">Dit apparaat</span>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-xs font-black uppercase tracking-wider text-slate-400">6. Kassageluid & meldingen</div>
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-bold text-slate-500">Alleen dit apparaat</span>
+      </div>
+
+      <div className="space-y-4 rounded-2xl border border-slate-200/80 bg-slate-50 p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-200 bg-white text-slate-800 shadow-2xs">{settings.enabled ? <Volume2 size={18} /> : <VolumeX size={18} />}</span>
+            <div>
+              <label htmlFor="register-sound-enabled" className="cursor-pointer text-xs font-bold text-slate-900">Appgeluiden op deze kassa</label>
+              <p className="mt-0.5 max-w-xl text-[11px] font-medium leading-4 text-slate-500">Korte audiofeedback voor belangrijke kassamomenten. Deze instelling wordt niet gedeeld met andere toestellen.</p>
             </div>
-            <p className="mt-1 max-w-xl text-[11px] font-medium leading-5 text-slate-400">
-              Subtiele feedback voor deze kassa. De voorkeuren blijven lokaal en veranderen geen geluid op andere toestellen.
-            </p>
+          </div>
+          <label htmlFor="register-sound-enabled" className="flex cursor-pointer items-center gap-2 self-end text-xs font-bold text-slate-700 sm:self-auto">
+            <span>{settings.enabled ? "Ingeschakeld" : "Uitgeschakeld"}</span>
+            <input id="register-sound-enabled" type="checkbox" checked={settings.enabled} onChange={(event) => settings.update({ enabled: event.target.checked })} className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900" />
+          </label>
+        </div>
+
+        <div className={`border-t border-slate-200/70 pt-4 ${settings.enabled ? "" : "opacity-50"}`}>
+          <div className="flex items-center justify-between gap-3">
+            <label htmlFor="register-sound-volume" className="text-xs font-bold text-slate-900">Volume</label>
+            <span className="text-xs font-black tabular-nums text-slate-700">{volumePercent}%</span>
+          </div>
+          <div className="mt-2 flex items-center gap-3">
+            <VolumeX size={14} className="text-slate-400" />
+            <input id="register-sound-volume" type="range" min="0" max="100" step="1" disabled={!settings.enabled} value={volumePercent} onChange={(event) => settings.update({ volume: Number(event.target.value) / 100 })} onPointerUp={() => void playRegisterSound("payment-complete", { preview: true })} className="h-1.5 flex-1 cursor-pointer accent-slate-900 disabled:cursor-not-allowed" />
+            <Volume2 size={15} className="text-slate-600" />
           </div>
         </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={settings.enabled}
-          onClick={() => settings.update({ enabled: !settings.enabled })}
-          className={`flex min-w-28 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-black transition ${settings.enabled ? "bg-white text-slate-950" : "border border-white/15 bg-white/5 text-slate-300"}`}
-        >
-          {settings.enabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
-          {settings.enabled ? "Geluid aan" : "Geluid uit"}
-        </button>
-      </div>
 
-      <div className={`rounded-2xl border border-slate-200 bg-slate-50 p-5 ${settings.enabled ? "" : "opacity-50"}`}>
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <label htmlFor="register-sound-volume" className="text-xs font-black text-slate-900">Volume</label>
-            <p className="mt-1 text-[11px] font-medium text-slate-500">Afgestemd voor korte feedback, niet voor systeemmeldingen op luidsprekerniveau.</p>
-          </div>
-          <span className="min-w-12 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-center text-xs font-black tabular-nums text-slate-800">{volumePercent}%</span>
+        <div className="space-y-2 border-t border-slate-200/70 pt-4">
+          <SoundOption setting="paymentComplete" title="Verkoop afgerond" detail="Na een veilig geboekte cash-, cadeaukaart- of andere betaling in de app." icon={<CreditCard size={15} />} preview="payment-complete" disabled={!settings.enabled} />
+          <SoundOption setting="terminalPaymentComplete" title="Ook bij terminalbetalingen" detail="Standaard uit, omdat de betaalterminal zelf al geluid maakt." icon={<BellRing size={14} />} preview="payment-complete" disabled={!settings.enabled || !settings.paymentComplete} nested />
+          <SoundOption setting="attention" title="Aandacht vereist" detail="Bij een mislukte boeking of wanneer een betaalstatus gecontroleerd moet worden." icon={<TriangleAlert size={15} />} preview="attention" disabled={!settings.enabled} />
+          <SoundOption setting="keypad" title="Toetsgeluiden" detail="Zachte feedback bij bedragen invoeren via scherm, toetsenbord of numerieke keypad." icon={<Keyboard size={15} />} preview="key-press" disabled={!settings.enabled} />
+          <SoundOption setting="scanner" title="Barcodescanner" detail="Standaard uit wanneer de fysieke scanner zelf al een pieptoon geeft." icon={<ScanLine size={15} />} preview="scan-success" disabled={!settings.enabled} />
+          <SoundOption setting="webshopOrders" title="Nieuwe webshopbestelling" detail="Alleen voor een nieuwe bestelling; statuswijzigingen en synchronisaties blijven stil." icon={<ShoppingBag size={15} />} preview="webshop-order" disabled={!settings.enabled} />
         </div>
-        <div className="mt-4 flex items-center gap-3">
-          <VolumeX size={15} className="text-slate-400" />
-          <input
-            id="register-sound-volume"
-            type="range"
-            min="0"
-            max="100"
-            step="1"
-            disabled={!settings.enabled}
-            value={volumePercent}
-            onChange={(event) => settings.update({ volume: Number(event.target.value) / 100 })}
-            onPointerUp={() => void playRegisterSound("payment-complete", { preview: true })}
-            className="h-2 flex-1 cursor-pointer accent-slate-950 disabled:cursor-not-allowed"
-          />
-          <Volume2 size={17} className="text-slate-700" />
+
+        <div className="flex items-center justify-between gap-4 border-t border-slate-200/70 pt-3">
+          <p className="text-[10px] font-medium text-slate-400">Geluid ondersteunt de visuele status en vervangt die nooit.</p>
+          <button type="button" onClick={() => settings.reset()} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[10px] font-bold text-slate-500 hover:bg-white hover:text-slate-900"><RotateCcw size={12} /> Herstel standaard</button>
         </div>
-      </div>
-
-      <div className="space-y-3">
-        <SoundSwitch
-          setting="paymentComplete"
-          title="Verkoop afgerond"
-          detail="Een warme, korte bevestiging nadat de verkoop veilig is geboekt. Cash, cadeaubon en andere betalingen in de app gebruiken dit geluid."
-          icon={<CreditCard size={17} />}
-          preview="payment-complete"
-          disabled={!settings.enabled}
-        />
-        <SoundSwitch
-          setting="terminalPaymentComplete"
-          title="Ook bij echte terminalbetalingen"
-          detail="Standaard uit: de betaalterminal geeft zelf al een bevestiging. Schakel dit alleen in als de kassa verder van de terminal staat."
-          icon={<BellRing size={16} />}
-          preview="payment-complete"
-          disabled={!settings.enabled || !settings.paymentComplete}
-          nested
-        />
-        <SoundSwitch
-          setting="attention"
-          title="Aandacht vereist"
-          detail="Een rustige dubbele toon bij een mislukte boeking of onderbroken statuscontrole. Het geluid herhaalt niet en vervangt nooit de melding op het scherm."
-          icon={<TriangleAlert size={17} />}
-          preview="attention"
-          disabled={!settings.enabled}
-        />
-        <SoundSwitch
-          setting="scanner"
-          title="Barcodescanner"
-          detail="Een ultrakorte tik bij een geldige scan en een lage dubbele tik wanneer een code niet kan worden toegevoegd. Laat dit uit als uw scanner zelf piept."
-          icon={<ScanLine size={17} />}
-          preview="scan-success"
-          disabled={!settings.enabled}
-        />
-        <SoundSwitch
-          setting="webshopOrders"
-          title="Nieuwe webshopbestelling"
-          detail="Een heldere maar compacte melding bij een nieuw binnenkomende bestelling. Statuswijzigingen en synchronisaties blijven stil."
-          icon={<ShoppingBag size={17} />}
-          preview="webshop-order"
-          disabled={!settings.enabled}
-        />
-      </div>
-
-      <div className="flex items-center justify-between gap-4 border-t border-slate-100 pt-4">
-        <p className="text-[10px] font-medium leading-4 text-slate-400">Geluid is aanvullende feedback. Alle acties blijven ook visueel herkenbaar.</p>
-        <button
-          type="button"
-          onClick={() => settings.reset()}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-2 text-[10px] font-black text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-        >
-          <RotateCcw size={13} /> Herstel standaard
-        </button>
       </div>
     </div>
   );
