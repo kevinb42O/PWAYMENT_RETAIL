@@ -8,6 +8,7 @@ import {
 } from "./services/loadingProgress";
 import { installPreloadRecovery } from "./services/preloadRecovery";
 import { LoadingExperience } from "./components/LoadingExperience";
+import { withBootTimeout } from "./services/bootTimeout";
 
 installPreloadRecovery();
 
@@ -52,6 +53,7 @@ const publicWebsiteRoute =
   !presentationMode &&
   !presentationBuild;
 const serviceWorkerCleanupKey = "pwayment-service-worker-cleanup-v1";
+const productionCacheRefreshKey = "pwayment-production-cache-login-v2";
 
 const removeServiceWorkers = async () => {
   if (!("serviceWorker" in navigator)) return false;
@@ -110,6 +112,29 @@ const configureServiceWorker = async () => {
   }
 
   if ("serviceWorker" in navigator && import.meta.env.PROD) {
+    // A previous app shell can otherwise keep serving an old login chunk next
+    // to a newly deployed startup bundle. Refresh production caches once for
+    // this release before installing the current worker.
+    try {
+      if (window.localStorage.getItem(productionCacheRefreshKey) !== "done") {
+        const hadController = Boolean(navigator.serviceWorker.controller);
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map((registration) => registration.unregister()));
+        if ("caches" in window) {
+          const cacheNames = await window.caches.keys();
+          await Promise.all(cacheNames.map((cacheName) => window.caches.delete(cacheName)));
+        }
+        window.localStorage.setItem(productionCacheRefreshKey, "done");
+        if (hadController) {
+          window.location.reload();
+          return true;
+        }
+      }
+    } catch (error) {
+      // Cache cleanup is best-effort; a hardened browser must still be able to
+      // start and register the current worker.
+      console.warn("Productiecache vernieuwen mislukt:", error);
+    }
     const { registerSW } = await import("virtual:pwa-register");
     registerSW({ immediate: true });
   }
@@ -246,7 +271,7 @@ const start = async () => {
 
   // One-time copy from the old shared 'POSDatabase' before anything reads/seeds.
   try {
-    await migrateLegacyDatabase();
+    await withBootTimeout("Lokale database migreren", migrateLegacyDatabase(), 8_000);
   } catch (err) {
     console.error("Legacy database migratie mislukt:", err);
   }
@@ -254,7 +279,13 @@ const start = async () => {
   // Awaiting avoids a first-load race where the login form becomes interactive
   // before development/presentation fixture accounts exist. Production is a
   // no-op unless an explicitly gated fixture build is requested.
-  await ensureSeedUsers();
+  try {
+    await withBootTimeout("Lokale gebruikers voorbereiden", ensureSeedUsers(), 8_000);
+  } catch (error) {
+    // Production does not need fixture users. A blocked local database must not
+    // prevent the real account screen from becoming available.
+    console.warn("Lokale gebruikers voorbereiden overgeslagen:", error);
+  }
   if (e2eCatalogFixtureRequested) {
     // The real product intentionally starts a newly provisioned tenant empty.
     // E2E is a separate, build-time-only fixture that needs a deterministic
@@ -262,7 +293,7 @@ const start = async () => {
     useAuth.setState({ currentStoreIsDemo: true });
   }
   try {
-    await useAuth.getState().initialize();
+    await withBootTimeout("Winkelomgeving initialiseren", useAuth.getState().initialize(), 20_000);
   } catch (error) {
     reportLoadingProgress("error");
     console.error("Sessie initialiseren mislukt:", error);
@@ -287,4 +318,7 @@ const start = async () => {
   );
 };
 
-void start();
+void start().catch((error) => {
+  reportLoadingProgress("error");
+  console.error("PWAYMENT kon niet worden gestart:", error);
+});
