@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { expandPaceAnalyticsComparisons, planPaceAnalyticsQuestion, planPaceAnalyticsQuestions } from "../../src/pace/paceAnalyticsPlan";
+import { expandPaceAnalyticsComparisons, planPaceAnalyticsQuestion, planPaceAnalyticsQuestions } from "../../pace/paceAnalyticsPlan";
 
 describe("PACE selective analytics planner", () => {
   it.each([

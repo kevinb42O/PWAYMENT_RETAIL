@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import handler from "./respond";
+import handler from "../../../api/pace/respond";
 
 const originalEnv = { ...process.env };
 

@@ -1,4 +1,4 @@
-import type { PaceConversationDetail, PaceConversationSummary } from "../../src/pace/conversation/types.js";
+import type { PaceConversationDetail, PaceConversationSummary } from "../../pace/conversation/types.js";
 
 export interface PaceRpcConfig {
   authorization: string;

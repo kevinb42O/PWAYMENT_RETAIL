@@ -1,4 +1,4 @@
-import type { PaceEntityType } from "../../src/pace/conversation/types.js";
+import type { PaceEntityType } from "../../pace/conversation/types.js";
 import type { PaceRpcConfig } from "./conversationState.js";
 
 export interface EntityCandidate {

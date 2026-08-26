@@ -5,11 +5,11 @@ import { renderPaceAnalyticsAnswer } from "../../src/pace/paceAnalyticsAnswer.js
 import { planPaceRecordLookup, type PaceRecordPlan } from "../../src/pace/paceRecordPlan.js";
 import { renderPaceRecordAnswer } from "../../src/pace/paceRecordAnswer.js";
 import { PACE_PLANNER_INSTRUCTIONS, parsePaceQuestionPlan, planPaceReadTools, type PaceQuestionPlan, type PaceReadToolCall } from "../../src/pace/paceQuestionPlan.js";
-import { beginTurn, completeTurn, failTurn, getConversation, PaceConversationError, startConversation, type BegunTurn, type PaceRpcConfig } from "./conversationState.js";
-import { buildPaceEvidence, publicCitations, redactPaceSummary } from "./evidence.js";
-import { resolutionPersistence, resolveQuestionEntities, type EntityResolution } from "./entityResolution.js";
-import { inheritConversationPlan } from "./conversationMemory.js";
-import { handlePaceConversations } from "./conversations.js";
+import { beginTurn, completeTurn, failTurn, getConversation, PaceConversationError, startConversation, type BegunTurn, type PaceRpcConfig } from "../../src/server/pace/conversationState.js";
+import { buildPaceEvidence, publicCitations, redactPaceSummary } from "../../src/server/pace/evidence.js";
+import { resolutionPersistence, resolveQuestionEntities, type EntityResolution } from "../../src/server/pace/entityResolution.js";
+import { inheritConversationPlan } from "../../src/server/pace/conversationMemory.js";
+import { handlePaceConversations } from "../../src/server/pace/conversations.js";
 
 type PaceRole = "owner" | "manager" | "cashier";
 type PaceView =

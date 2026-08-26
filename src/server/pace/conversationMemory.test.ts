@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inheritConversationPlan } from "./conversationMemory";
+import { inheritConversationPlan } from "./conversationMemory.js";
 
 describe("PACE conversation query-frame inheritance", () => {
   it("keeps the previous metric and replaces only an explicit follow-up period", () => {

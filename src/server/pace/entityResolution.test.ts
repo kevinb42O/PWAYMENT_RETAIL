@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { resolutionPersistence, resolveQuestionEntities } from "./entityResolution";
+import { resolutionPersistence, resolveQuestionEntities } from "./entityResolution.js";
 
 afterEach(() => vi.restoreAllMocks());
 

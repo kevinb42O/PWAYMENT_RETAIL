@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planPaceRecordLookup } from "../../src/pace/paceRecordPlan";
+import { planPaceRecordLookup } from "../../pace/paceRecordPlan";
 
 describe("PACE selective record planner", () => {
   it.each([

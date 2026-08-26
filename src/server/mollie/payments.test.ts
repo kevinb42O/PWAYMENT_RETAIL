@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
-import handler from "./payments";
+import handler from "../../../api/mollie/payments";
 
 const originalEnv = { ...process.env };
 

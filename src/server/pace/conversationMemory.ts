@@ -1,6 +1,6 @@
-import type { PaceAnalyticsPlan } from "../../src/pace/paceAnalyticsPlan.js";
-import type { PaceRecordPlan } from "../../src/pace/paceRecordPlan.js";
-import type { PaceReadToolCall } from "../../src/pace/paceQuestionPlan.js";
+import type { PaceAnalyticsPlan } from "../../pace/paceAnalyticsPlan.js";
+import type { PaceRecordPlan } from "../../pace/paceRecordPlan.js";
+import type { PaceReadToolCall } from "../../pace/paceQuestionPlan.js";
 
 const object = (value: unknown): Record<string, unknown> | null => value && typeof value === "object" && !Array.isArray(value)
   ? value as Record<string, unknown> : null;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPaceEvidence, publicCitations, redactPaceSummary } from "./evidence";
+import { buildPaceEvidence, publicCitations, redactPaceSummary } from "./evidence.js";
 
 describe("PACE evidence normalization", () => {
   it("builds stable, bounded evidence and public citations", () => {

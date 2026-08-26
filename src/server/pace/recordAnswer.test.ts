@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderPaceRecordAnswer } from "../../src/pace/paceRecordAnswer";
+import { renderPaceRecordAnswer } from "../../pace/paceRecordAnswer";
 
 describe("PACE deterministic record answers", () => {
   it("renders bounded order fields as nested bullets", () => {
