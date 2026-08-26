@@ -455,6 +455,11 @@
 .pace-response > div:first-child { display: flex; align-items: center; gap: 0.3rem; color: #0891b2; font-size: 0.55rem; font-weight: 900; letter-spacing: 0.1em; }
 .pace-response h3 { margin: 0.5rem 0 0; color: #1e293b; font-size: 0.82rem; font-weight: 850; }
 .pace-response p { margin: 0.35rem 0 0; color: #64748b; font-size: 0.7rem; font-weight: 600; line-height: 1.5; }
+.pace-response-content { display: grid; gap: 0.55rem; margin-top: 0.55rem; }
+.pace-response-content h4 { margin: 0.2rem 0 -0.1rem; color: #0f172a; font-size: 0.72rem; font-weight: 850; letter-spacing: -0.01em; }
+.pace-response-content p { margin: 0; }
+.pace-response-content ul, .pace-response-content ol { display: grid; gap: 0.38rem; margin: 0; padding-left: 1.1rem; color: #475569; font-size: 0.7rem; font-weight: 620; line-height: 1.5; }
+.pace-response-content li::marker { color: #0891b2; font-weight: 850; }
 .pace-response button { margin-top: 0.65rem; }
 .pace-response-steps { display: grid; gap: 0.3rem; margin: 0.65rem 0 0; padding-left: 1.15rem; color: #475569; font-size: 0.67rem; font-weight: 650; line-height: 1.45; }
 .pace-response .pace-response-limit { display: flex; align-items: flex-start; gap: 0.4rem; border-radius: 0.7rem; background: #f0f9ff; padding: 0.55rem; color: #0c4a6e; }

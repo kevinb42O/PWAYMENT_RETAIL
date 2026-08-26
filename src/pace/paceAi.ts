@@ -17,10 +17,12 @@ export interface PaceConversationTurn {
 let aiUnavailableUntil = 0;
 
 export const normalizePaceAiAnswer = (answer: string) => answer
+  .replace(/\r\n?/g, "\n")
   .replace(/\*\*(.*?)\*\*/g, "$1")
   .replace(/`([^`]+)`/g, "$1")
-  .replace(/^#{1,6}\s+/gm, "")
-  .replace(/\s+/g, " ")
+  .replace(/[^\S\n]+/g, " ")
+  .replace(/ *\n */g, "\n")
+  .replace(/\n{3,}/g, "\n\n")
   .trim();
 
 export const toPaceAiContext = (context: PaceContext, includeLiveStoreContext = true) => ({

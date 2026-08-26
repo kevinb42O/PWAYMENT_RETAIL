@@ -26,6 +26,7 @@ import { getPaceQueryHints } from "./paceKnowledge";
 import { PaceMark } from "./PaceMark";
 import { usePace } from "./usePace";
 import { askPaceAi, type PaceConversationTurn } from "./paceAi";
+import { parsePaceAnswer } from "./paceAnswerFormat";
 import {
   paceSetupProgress,
   type PaceSetupMilestone,
@@ -353,7 +354,14 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                               </div> : response && <>
                                 <div><Check size={14} /> PACE · {responseSource === "gemini" ? "GEMINI" : responseSource === "openai" ? "OPENAI" : "LOKALE KENNIS"}</div>
                                 <h3>{response.title}</h3>
-                                <p>{response.answer}</p>
+                                <div className="pace-response-content">
+                                  {parsePaceAnswer(response.answer).map((block, index) => {
+                                    if (block.kind === "heading") return <h4 key={`${block.kind}-${index}`}>{block.text}</h4>;
+                                    if (block.kind === "unordered-list") return <ul key={`${block.kind}-${index}`}>{block.items.map((item) => <li key={item}>{item}</li>)}</ul>;
+                                    if (block.kind === "ordered-list") return <ol key={`${block.kind}-${index}`}>{block.items.map((item) => <li key={item}>{item}</li>)}</ol>;
+                                    return <p key={`${block.kind}-${index}`}>{block.text}</p>;
+                                  })}
+                                </div>
                                 {response.steps && response.steps.length > 0 && <ol className="pace-response-steps">{response.steps.map((step) => <li key={step}>{step}</li>)}</ol>}
                                 {response.limitation && <p className="pace-response-limit"><ShieldCheck size={13} /> {response.limitation}</p>}
                                 {response.actionLabel && <button type="button" onClick={() => runAction(response.action)}>{response.actionLabel}<ArrowRight size={14} /></button>}
