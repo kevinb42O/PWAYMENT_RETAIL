@@ -193,6 +193,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
   // DEFAULT TAB IS BILLING & ABONNEMENTEN (TOP ITEM)
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(() => {
+    if (window.location.pathname === '/settings/pace') return 'pace';
     const requested = new URLSearchParams(window.location.search).get('settings');
     const directWebshopTabs: WorkspaceTab[] = [
       'webshop',

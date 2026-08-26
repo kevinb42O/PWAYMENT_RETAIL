@@ -9,7 +9,7 @@
   },
   "headers": [
     {
-      "source": "/(app|login|register|auth|admin|customer-display|service|shop/checkout)(.*)",
+      "source": "/(app|login|register|auth|admin|settings|customer-display|service|shop/checkout)(.*)",
       "headers": [
         {
           "key": "X-Robots-Tag",
@@ -82,7 +82,7 @@
   ],
   "rewrites": [
     {
-      "source": "/(app|login|register|auth|admin|customer-display|service)(.*)",
+      "source": "/(app|login|register|auth|admin|settings|customer-display|service)(.*)",
       "destination": "/"
     },
     {

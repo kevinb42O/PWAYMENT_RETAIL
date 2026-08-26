@@ -1,13 +1,20 @@
 import { supabase } from "../lib/supabase";
 import type { PaceContext, PaceQueryAnswer } from "./paceSignals";
+import type { PaceQuotaSnapshot } from "./usePaceBilling";
 
 export interface PaceAiAnswer {
   answer: string;
   model: string;
   source: "gemini" | "openai" | "analytics";
+  quota?: PaceQuotaSnapshot;
 }
 
 export class PaceAiUnavailableError extends Error {}
+export class PaceQuotaExceededError extends PaceAiUnavailableError {
+  constructor(public readonly quota: Partial<PaceQuotaSnapshot>) {
+    super("Je PACE-vragenbundel is opgebruikt.");
+  }
+}
 
 export interface PaceConversationTurn {
   role: "user" | "assistant";
@@ -104,7 +111,10 @@ export const askPaceAi = async (
     throw new PaceAiUnavailableError("Pace AI is tijdelijk niet bereikbaar.");
   }
 
-  const result = await response.json().catch(() => null) as Partial<PaceAiAnswer> & { error?: string } | null;
+  const result = await response.json().catch(() => null) as Partial<PaceAiAnswer> & { error?: string; remaining_credits?: number; reset_in_seconds?: number; reset_at?: string; tier?: PaceQuotaSnapshot["tier"] } | null;
+  if (response.status === 429 && result?.error === "QUOTA_EXCEEDED") {
+    throw new PaceQuotaExceededError({ tier: result.tier, remaining: 0, remaining_credits: result.remaining_credits ?? 0, reset_in_seconds: result.reset_in_seconds, reset_at: result.reset_at });
+  }
   if (!response.ok || (result?.source !== "gemini" && result?.source !== "openai" && result?.source !== "analytics") || typeof result.answer !== "string") {
     aiUnavailableUntil = Date.now() + (response.status === 429 || result?.error === "PACE_AI_QUOTA_EXHAUSTED" ? 60_000 : 15_000);
     throw new PaceAiUnavailableError(result?.error ?? "Pace AI is tijdelijk niet beschikbaar.");
@@ -114,5 +124,6 @@ export const askPaceAi = async (
     answer: normalizePaceAiAnswer(result.answer),
     source: result.source,
     model: typeof result.model === "string" ? result.model : result.source === "gemini" ? "Gemini" : result.source === "analytics" ? "PWAYMENT Analytics" : "OpenAI",
+    quota: result.quota,
   };
 };

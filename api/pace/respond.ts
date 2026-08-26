@@ -90,15 +90,91 @@ const GEMINI_FALLBACK_MODELS = [
 ] as const;
 const rateWindows = new Map<string, { count: number; startedAt: number }>();
 
-const json = (status: number, body: Record<string, unknown>) =>
+const json = (status: number, body: Record<string, unknown>, extraHeaders: Record<string, string> = {}) =>
   Response.json(body, {
     status,
     headers: {
       "Cache-Control": "no-store",
       "Content-Type": "application/json; charset=utf-8",
       "X-Content-Type-Options": "nosniff",
+      ...extraHeaders,
     },
   });
+
+interface PaceQuotaReservation {
+  allowed: boolean;
+  reason?: string;
+  tier?: "basic" | "pro" | "enterprise";
+  source?: "subscription" | "rollover" | "credit";
+  log_id?: string;
+  remaining?: number;
+  remaining_credits?: number;
+  credit_balance?: number;
+  quota?: number;
+  daily_count?: number;
+  monthly_count?: number;
+  rollover_balance?: number;
+  reset_at?: string;
+  reset_in_seconds?: number;
+}
+
+const quotaHeaders = (quota: PaceQuotaReservation) => ({
+  "X-Pace-Tier": quota.tier ?? "basic",
+  "X-RateLimit-Limit": String(quota.quota ?? 0),
+  "X-RateLimit-Remaining": String(Math.max(0, quota.remaining ?? 0)),
+  "X-RateLimit-Reset": quota.reset_at ?? "",
+  "X-Pace-Credit-Balance": String(Math.max(0, quota.credit_balance ?? quota.remaining_credits ?? 0)),
+  ...(quota.source ? { "X-Pace-Quota-Source": quota.source } : {}),
+});
+
+const reservePaceQuota = async (
+  authorization: string,
+  supabaseUrl: string,
+  publishableKey: string,
+  storeId: string,
+  fingerprint: string,
+): Promise<PaceQuotaReservation> => {
+  const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/rpc/check_and_consume_pace_credit`, {
+    method: "POST",
+    headers: { apikey: publishableKey, Authorization: authorization, "Content-Type": "application/json" },
+    body: JSON.stringify({ target_store_id: storeId, request_fingerprint: fingerprint }),
+    signal: AbortSignal.timeout(8_000),
+  });
+  if (response.status === 401 || response.status === 403) throw new TenantAccessError("Geen toegang tot deze winkel.");
+  if (!response.ok) throw new Error(`PACE quota RPC failed (${response.status})`);
+  const result = await response.json() as PaceQuotaReservation;
+  if (typeof result.allowed !== "boolean") throw new Error("PACE quota RPC returned an invalid result");
+  return result;
+};
+
+const finalizePaceLog = async (
+  authorization: string,
+  supabaseUrl: string,
+  publishableKey: string,
+  quota: PaceQuotaReservation | null,
+  values: { status: "completed" | "failed"; inputTokens?: number; outputTokens?: number; cost?: number; elapsedMs: number; model?: string; error?: string },
+) => {
+  if (!quota?.log_id) return;
+  try {
+    await fetch(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/rpc/finalize_pace_log`, {
+      method: "POST",
+      headers: { apikey: publishableKey, Authorization: authorization, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        target_log_id: quota.log_id,
+        final_status: values.status,
+        input_token_count: values.inputTokens,
+        output_token_count: values.outputTokens,
+        estimated_cost: values.cost,
+        elapsed_ms: values.elapsedMs,
+        model_name: values.model,
+        failure_code: values.error,
+      }),
+      signal: AbortSignal.timeout(5_000),
+    });
+  } catch (error) {
+    console.warn("Pace usage log could not be finalized", { error: error instanceof Error ? error.message : "unknown" });
+  }
+};
 
 const boundedInteger = (value: unknown, max = 1_000_000) =>
   typeof value === "number" && Number.isFinite(value)
@@ -536,6 +612,7 @@ const callOpenAi = async (
 
 export default {
   async fetch(request: Request) {
+    const startedAt = Date.now();
     if (request.method !== "POST") return json(405, { error: "METHOD_NOT_ALLOWED" });
 
     const geminiKey = process.env.GEMINI_API_KEY;
@@ -580,6 +657,34 @@ export default {
     const context = allowedContext(body);
     const history = allowedHistory(body);
     const localCandidate = allowedLocalCandidate(body);
+    const enforceQuota = process.env.PACE_QUOTA_ENFORCEMENT === "true" || process.env.NODE_ENV !== "test";
+    let quota: PaceQuotaReservation | null = null;
+    if (enforceQuota) {
+      if (!context.storeId) return json(400, { error: "STORE_REQUIRED", fallback: "local" });
+      try {
+        quota = await reservePaceQuota(
+          authorization,
+          supabaseUrl,
+          publishableKey,
+          context.storeId,
+          createHash("sha256").update(`${userId}:${question}`).digest("hex").slice(0, 128),
+        );
+      } catch (error) {
+        if (error instanceof TenantAccessError) return json(403, { error: "STORE_ACCESS_DENIED", fallback: "local" });
+        console.error("Pace quota reservation failed", { error: error instanceof Error ? error.message : "unknown" });
+        return json(503, { error: "PACE_QUOTA_UNAVAILABLE", fallback: "local" });
+      }
+      if (!quota.allowed) {
+        return json(429, {
+          error: "QUOTA_EXCEEDED",
+          reason: quota.reason ?? "QUOTA_EXCEEDED",
+          remaining_credits: quota.remaining_credits ?? 0,
+          reset_in_seconds: quota.reset_in_seconds ?? 0,
+          reset_at: quota.reset_at,
+          tier: quota.tier,
+        }, { ...quotaHeaders(quota), "Retry-After": String(Math.max(1, quota.reset_in_seconds ?? 60)) });
+      }
+    }
     const inventoryActionRequested = needsInventoryActionContext(question);
     const recordPlan = inventoryActionRequested ? null : planPaceRecordLookup(question);
     const analyticsPlans = inventoryActionRequested || recordPlan ? [] : expandPaceAnalyticsComparisons(planPaceAnalyticsQuestions(question));
@@ -598,7 +703,10 @@ export default {
     const accessDenied = [tenantResult, inventoryResult, analyticsResult, recordResult].some(
       (result) => result.status === "rejected" && result.reason instanceof TenantAccessError,
     );
-    if (accessDenied) return json(403, { error: "STORE_ACCESS_DENIED", fallback: "local" });
+    if (accessDenied) {
+      await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, { status: "failed", elapsedMs: Date.now() - startedAt, error: "STORE_ACCESS_DENIED" });
+      return json(403, { error: "STORE_ACCESS_DENIED", fallback: "local" });
+    }
     tenantContext = tenantResult.status === "fulfilled"
       ? tenantResult.value
       : { unavailable: true, reason: "context-fetch-failed" };
@@ -619,21 +727,25 @@ export default {
     const needsMixedComposition = /\ben\s+(?:wat|hoe|waar|waarom)\b/i.test(question);
     const deterministicAnalyticsAnswer = needsMixedComposition ? null : renderPaceAnalyticsAnswer(analyticsContexts);
     if (deterministicAnalyticsAnswer) {
+      await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, { status: "completed", elapsedMs: Date.now() - startedAt, model: "PWAYMENT Analytics" });
       return json(200, {
         answer: deterministicAnalyticsAnswer,
         source: "analytics",
         model: "PWAYMENT Analytics",
         plans: analyticsPlans.map(({ rationale: _rationale, ...plan }) => plan),
-      });
+        quota,
+      }, quota ? quotaHeaders(quota) : {});
     }
     const deterministicRecordAnswer = renderPaceRecordAnswer(recordContext);
     if (deterministicRecordAnswer) {
+      await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, { status: "completed", elapsedMs: Date.now() - startedAt, model: "PWAYMENT Records" });
       return json(200, {
         answer: deterministicRecordAnswer,
         source: "analytics",
         model: "PWAYMENT Records",
         record: recordPlan ? { version: recordPlan.version, entity: recordPlan.entity, limit: recordPlan.limit } : null,
-      });
+        quota,
+      }, quota ? quotaHeaders(quota) : {});
     }
 
     let upstreamResult: Awaited<ReturnType<typeof callGeminiWithFallback>> | Awaited<ReturnType<typeof callOpenAi>>;
@@ -642,11 +754,13 @@ export default {
         ? await callGeminiWithFallback(geminiKey!, model, question, context, tenantContext, inventoryActionContext, analyticsContexts, recordContext, history, localCandidate)
         : await callOpenAi(openAiKey!, model, question, context, tenantContext, inventoryActionContext, analyticsContexts, recordContext, history, localCandidate, safetyIdentifier);
     } catch {
+      await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, { status: "failed", elapsedMs: Date.now() - startedAt, model, error: "PACE_AI_UNAVAILABLE" });
       return json(503, { error: "PACE_AI_UNAVAILABLE", fallback: "local" });
     }
 
     if (!upstreamResult.ok) {
       console.error("Pace AI request failed", { provider, status: upstreamResult.status });
+      await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, { status: "failed", elapsedMs: Date.now() - startedAt, model, error: upstreamResult.quota ? "PACE_AI_QUOTA_EXHAUSTED" : "PACE_AI_UPSTREAM_ERROR" });
       return json(upstreamResult.quota ? 429 : 502, {
         error: upstreamResult.quota ? "PACE_AI_QUOTA_EXHAUSTED" : "PACE_AI_UPSTREAM_ERROR",
         fallback: "local",
@@ -654,7 +768,20 @@ export default {
       });
     }
     const answer = upstreamResult.answer;
-    if (!answer) return json(502, { error: "PACE_AI_EMPTY_RESPONSE", fallback: "local" });
+    if (!answer) {
+      await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, { status: "failed", elapsedMs: Date.now() - startedAt, model, error: "PACE_AI_EMPTY_RESPONSE" });
+      return json(502, { error: "PACE_AI_EMPTY_RESPONSE", fallback: "local" });
+    }
+
+    const inputTokens = upstreamResult.inputTokens;
+    const outputTokens = upstreamResult.outputTokens;
+    const inputPrice = Number(process.env.PACE_INPUT_EUR_PER_MILLION ?? "0");
+    const outputPrice = Number(process.env.PACE_OUTPUT_EUR_PER_MILLION ?? "0");
+    const cost = ((inputTokens ?? 0) * inputPrice + (outputTokens ?? 0) * outputPrice) / 1_000_000;
+    await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, {
+      status: "completed", inputTokens, outputTokens, cost, elapsedMs: Date.now() - startedAt,
+      model: "model" in upstreamResult && typeof upstreamResult.model === "string" ? upstreamResult.model : model,
+    });
 
     return json(200, {
       answer,
@@ -665,6 +792,7 @@ export default {
         inputTokens: upstreamResult.inputTokens,
         outputTokens: upstreamResult.outputTokens,
       },
-    });
+      quota,
+    }, quota ? quotaHeaders(quota) : {});
   },
 };

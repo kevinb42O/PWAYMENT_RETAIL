@@ -35,7 +35,7 @@ const serviceTrackingRoute = window.location.pathname.startsWith("/service/");
 const customerDisplayRoute =
   window.location.pathname === "/customer-display" ||
   window.location.pathname.startsWith("/customer-display/");
-const accountRoute = ["/app", "/login", "/register"].some(
+const accountRoute = ["/app", "/login", "/register", "/settings"].some(
   (route) =>
     window.location.pathname === route ||
     window.location.pathname.startsWith(`${route}/`),

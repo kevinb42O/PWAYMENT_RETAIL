@@ -592,6 +592,10 @@ export const Layout: React.FC = () => {
   // Presentation links can open a specific live screen directly, without
   // changing the normal in-app navigation for everyday use.
   useEffect(() => {
+    if (window.location.pathname === "/settings/pace") {
+      setMainView("profile");
+      return;
+    }
     const requestedView = new URLSearchParams(window.location.search).get(
       "view",
     );

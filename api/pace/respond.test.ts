@@ -39,6 +39,32 @@ describe("Pace OpenAI endpoint", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
+  it("atomically rejects an exhausted tenant before any model call", async () => {
+    process.env.PACE_QUOTA_ENFORCEMENT = "true";
+    const storeId = "11111111-1111-4111-8111-111111111111";
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({ id: "user-quota-test" }))
+      .mockResolvedValueOnce(Response.json({
+        allowed: false,
+        reason: "QUOTA_EXCEEDED",
+        tier: "basic",
+        quota: 5,
+        remaining: 0,
+        remaining_credits: 0,
+        reset_at: "2026-08-27T00:00:00Z",
+        reset_in_seconds: 43200,
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handler.fetch(request({ question: "Help", context: { storeId } }));
+    expect(response.status).toBe(429);
+    await expect(response.json()).resolves.toMatchObject({ error: "QUOTA_EXCEEDED", remaining_credits: 0, reset_in_seconds: 43200 });
+    expect(response.headers.get("X-RateLimit-Remaining")).toBe("0");
+    expect(response.headers.get("Retry-After")).toBe("43200");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[1][0])).toContain("check_and_consume_pace_credit");
+  });
+
   it("sends only bounded operational context and returns OpenAI text", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(Response.json({ id: "user-pace-test" }))

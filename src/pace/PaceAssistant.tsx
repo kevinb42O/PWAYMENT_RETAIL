@@ -1,5 +1,6 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
+  ArrowLeft,
   ArrowRight,
   Check,
   Command,
@@ -25,7 +26,8 @@ import {
 import { getPaceQueryHints } from "./paceKnowledge";
 import { PaceMark } from "./PaceMark";
 import { usePace } from "./usePace";
-import { askPaceAi, type PaceConversationTurn } from "./paceAi";
+import { askPaceAi, PaceQuotaExceededError, type PaceConversationTurn } from "./paceAi";
+import { paceQuotaLabel, usePaceBilling } from "./usePaceBilling";
 import { parsePaceAnswer } from "./paceAnswerFormat";
 import {
   paceSetupProgress,
@@ -70,13 +72,16 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   } = usePace();
   const prefersReducedMotion = useReducedMotion();
   const [query, setQuery] = useState("");
+  const [activeQuestion, setActiveQuestion] = useState<string | null>(null);
   const [response, setResponse] = useState<PaceQueryAnswer | null>(null);
   const [responseSource, setResponseSource] = useState<"gemini" | "openai" | "analytics" | "local">("local");
   const [thinking, setThinking] = useState(false);
   const [externalDialogOpen, setExternalDialogOpen] = useState(false);
   const [sessionDismissedSignals, setSessionDismissedSignals] = useState<string[]>([]);
   const [conversation, setConversation] = useState<PaceConversationTurn[]>([]);
+  const { quota, hardLimited, load: loadBilling, recordQuota, markExceeded } = usePaceBilling();
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const queryRunRef = useRef(0);
   const context: PaceContext = useMemo(() => ({
     storeId: props.storeId,
     view: props.view,
@@ -109,7 +114,8 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   const unavailable = Boolean(props.suppressed || externalDialogOpen);
   const customerSignal = signals.find((signal) => signal.source === "Klantcontext");
   const queryHints = useMemo(() => getPaceQueryHints(context), [context]);
-  const conversationExpanded = thinking || response !== null;
+  const conversationActive = activeQuestion !== null;
+  const usagePercent = quota ? (quota.tier === "basic" ? quota.daily_count / quota.quota : quota.monthly_count / quota.quota) * 100 : 0;
 
   useEffect(() => {
     setSessionDismissedSignals([]);
@@ -117,11 +123,16 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
 
   useEffect(() => {
     setConversation([]);
+    setActiveQuestion(null);
+    setResponse(null);
+    setQuery("");
+    queryRunRef.current += 1;
   }, [props.storeId]);
 
   useEffect(() => {
     void hydrateScope(props.storeId ?? null, props.userId);
-  }, [hydrateScope, props.storeId, props.userId]);
+    void loadBilling(props.storeId ?? null);
+  }, [hydrateScope, loadBilling, props.storeId, props.userId]);
 
   useEffect(() => {
     const detectDialogs = () => {
@@ -153,12 +164,19 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
 
   useEffect(() => {
     setResponse(null);
+    setActiveQuestion(null);
+    setQuery("");
+    queryRunRef.current += 1;
   }, [props.view]);
 
   const runQuery = async (rawQuestion: string) => {
     const question = rawQuestion.trim();
-    if (!question || thinking) return;
-    setQuery(question);
+    if (!question || thinking || (preferences.aiEnabled && hardLimited)) return;
+    const runId = queryRunRef.current + 1;
+    queryRunRef.current = runId;
+    setActiveQuestion(question);
+    setQuery("");
+    setResponse(null);
     const local = answerPaceQuery(question, context);
     const remember = (answer: string) => setConversation((current) => [
       ...current,
@@ -183,16 +201,32 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
         enabled: preferences.aiEnabled,
         includeLiveStoreContext: preferences.liveStoreContext,
       });
+      if (queryRunRef.current !== runId) return;
       setResponse({ ...local, title: local.matched ? local.title : "Dit heb ik voor je gevonden", answer: ai.answer });
       setResponseSource(ai.source);
+      if (ai.quota) recordQuota(ai.quota);
       remember(ai.answer);
-    } catch {
+    } catch (error) {
+      if (queryRunRef.current !== runId) return;
+      if (error instanceof PaceQuotaExceededError) {
+        markExceeded(error.quota);
+        setActiveQuestion(null);
+        return;
+      }
       setResponse(local);
       setResponseSource("local");
       remember(local.answer);
     } finally {
-      setThinking(false);
+      if (queryRunRef.current === runId) setThinking(false);
     }
+  };
+
+  const returnToOverview = () => {
+    queryRunRef.current += 1;
+    setThinking(false);
+    setActiveQuestion(null);
+    setResponse(null);
+    setQuery("");
   };
 
   const submit = (event: React.FormEvent) => {
@@ -275,9 +309,12 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
               transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
             >
               <header className="pace-panel-header">
-                <div className="pace-identity">
+                <div className="pace-header-leading">
+                  {conversationActive && <button type="button" className="pace-header-back" onClick={returnToOverview} aria-label="Terug naar Nu belangrijk" title="Terug naar Nu belangrijk"><ArrowLeft size={18} /></button>}
+                  <div className="pace-identity">
                   <PaceMark size={52} active thinking={thinking} tone={primary.tone} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
                   <div><span>PWAYMENT · LIVE CONTEXT</span><h2>Pace</h2></div>
+                  </div>
                 </div>
                 <div className="pace-header-actions">
                   <button type="button" onClick={() => { props.onOpenProfile("pace"); setOpen(false); }} aria-label="Open volledige Pace-instellingen" title="Pace-instellingen"><Settings2 size={17} /></button>
@@ -285,7 +322,8 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                 </div>
               </header>
 
-              <motion.div className={`pace-scroll pace-live-layout${conversationExpanded ? " has-conversation" : ""}`} key="live" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}>
+              <AnimatePresence mode="wait" initial={false}>
+                {!conversationActive ? <motion.div className="pace-scroll pace-live-layout" key="overview" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}>
                     <div className="pace-overview-window">
                       <div className="pace-overview-heading"><span>Nu belangrijk</span><small>{signals.length} {signals.length === 1 ? "aandachtspunt" : "aandachtspunten"}</small></div>
 
@@ -336,42 +374,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                     )}
                     </div>
 
-                    <section className={`pace-conversation-window${conversationExpanded ? " is-expanded" : " is-collapsed"}`}>
-                      {conversationExpanded && <div className="pace-conversation-body">
-                        <AnimatePresence mode="wait">
-                          {(thinking || response) && (
-                            <motion.section className="pace-response" key={thinking ? "thinking" : response?.title} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}>
-                              {thinking ? <div className="pace-thinking-performance">
-                                <PaceMark size={76} active thinking tone={primary.tone} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
-                                <div className="pace-thinking-copy">
-                                  <strong>Pace denkt met je mee</strong>
-                                  <span className="pace-thinking-steps" aria-live="polite">
-                                    <i>Je vraag begrijpen</i>
-                                    <i>Je winkelcontext erbij nemen</i>
-                                    <i>Een helder antwoord maken</i>
-                                  </span>
-                                </div>
-                              </div> : response && <>
-                                <div><Check size={14} /> PACE · {responseSource === "gemini" ? "GEMINI" : responseSource === "openai" ? "OPENAI" : responseSource === "analytics" ? "LIVE GEGEVENS" : "LOKALE KENNIS"}</div>
-                                <h3>{response.title}</h3>
-                                <div className="pace-response-content">
-                                  {parsePaceAnswer(response.answer).map((block, index) => {
-                                    if (block.kind === "heading") return <h4 key={`${block.kind}-${index}`}>{block.text}</h4>;
-                                    if (block.kind === "unordered-list") return <ul key={`${block.kind}-${index}`}>{block.items.map((item) => <li key={item.text}><span>{item.text}</span>{item.details.length > 0 && <ul>{item.details.map((detail) => <li key={detail}>{detail}</li>)}</ul>}</li>)}</ul>;
-                                    if (block.kind === "ordered-list") return <ol key={`${block.kind}-${index}`}>{block.items.map((item) => <li key={item}>{item}</li>)}</ol>;
-                                    return <p key={`${block.kind}-${index}`}>{block.text}</p>;
-                                  })}
-                                </div>
-                                {response.steps && response.steps.length > 0 && <ol className="pace-response-steps">{response.steps.map((step) => <li key={step}>{step}</li>)}</ol>}
-                                {response.limitation && <p className="pace-response-limit"><ShieldCheck size={13} /> {response.limitation}</p>}
-                                {response.actionLabel && <button type="button" onClick={() => runAction(response.action)}>{response.actionLabel}<ArrowRight size={14} /></button>}
-                                {response.followUps && response.followUps.length > 0 && <div className="pace-response-followups">{response.followUps.slice(0, 3).map((followUp) => <button key={followUp} type="button" onClick={() => void runQuery(followUp)}>{followUp}</button>)}</div>}
-                              </>}
-                            </motion.section>
-                          )}
-                        </AnimatePresence>
-                      </div>}
-
+                    <section className="pace-conversation-window is-collapsed">
                       <section className="pace-command-zone">
                         <div className="pace-conversation-heading"><span><Command size={14} /> Vraag Pace</span><small>{preferences.aiEnabled ? preferences.liveStoreContext ? "AI + winkelgegevens" : "AI zonder winkelgegevens" : "Lokale hulp"}</small></div>
                         <form onSubmit={submit}>
@@ -386,16 +389,78 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                             placeholder="Stel je vraag…"
                             aria-label="Vraag Pace"
                           />
-                          <button type="submit" disabled={!query.trim() || thinking} aria-label="Stuur vraag"><Send size={16} /></button>
+                          <button type="submit" disabled={!query.trim() || thinking || (preferences.aiEnabled && hardLimited)} aria-label="Stuur vraag"><Send size={16} /></button>
                         </form>
-                        {conversationExpanded && <div className="pace-query-hints">
-                          {queryHints.map((hint) => <button key={hint} type="button" onClick={() => void runQuery(hint)}>{hint}</button>)}
-                        </div>}
+                        {preferences.aiEnabled && <div className={`pace-quota-badge${usagePercent >= 80 ? " is-warning" : ""}`} aria-live="polite">{usagePercent >= 80 && !hardLimited ? "Bijna op · " : ""}{paceQuotaLabel(quota)}</div>}
+                        {preferences.aiEnabled && hardLimited && <div className="pace-quota-wall" role="alert"><strong>Je bent door je vragen heen.</strong><span>Upgrade naar Pro of koop 50 losse credits voor €5.</span><button type="button" onClick={() => { props.onOpenProfile("pace"); setOpen(false); }}>Bekijk opties <ArrowRight size={14} /></button></div>}
                       </section>
-
-                      {conversationExpanded && <footer className="pace-trust-line"><ShieldCheck size={14} /> Pace voert geen financiële of gevoelige actie zelfstandig uit.</footer>}
                     </section>
-              </motion.div>
+                </motion.div> : <motion.div className="pace-conversation-layout" key="conversation" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }} transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}>
+                  <section className="pace-question-card" aria-label="Jouw vraag">
+                    <span>Jouw vraag</span>
+                    <h3>{activeQuestion}</h3>
+                  </section>
+
+                  <div className="pace-conversation-body" aria-live="polite" aria-busy={thinking}>
+                    <AnimatePresence mode="wait">
+                      {(thinking || response) && (
+                        <motion.section className="pace-response" key={thinking ? `thinking-${activeQuestion}` : `${activeQuestion}-${response?.title}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}>
+                          {thinking ? <div className="pace-thinking-performance">
+                            <PaceMark size={76} active thinking tone={primary.tone} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
+                            <div className="pace-thinking-copy">
+                              <strong>Pace denkt met je mee</strong>
+                              <span className="pace-thinking-steps">
+                                <i>Je vraag begrijpen</i>
+                                <i>Je winkelcontext erbij nemen</i>
+                                <i>Een helder antwoord maken</i>
+                              </span>
+                            </div>
+                          </div> : response && <>
+                            <div><Check size={14} /> PACE · {responseSource === "gemini" ? "GEMINI" : responseSource === "openai" ? "OPENAI" : responseSource === "analytics" ? "LIVE GEGEVENS" : "LOKALE KENNIS"}</div>
+                            <h3>{response.title}</h3>
+                            <div className="pace-response-content">
+                              {parsePaceAnswer(response.answer).map((block, index) => {
+                                if (block.kind === "heading") return <h4 key={`${block.kind}-${index}`}>{block.text}</h4>;
+                                if (block.kind === "unordered-list") return <ul key={`${block.kind}-${index}`}>{block.items.map((item) => <li key={item.text}><span>{item.text}</span>{item.details.length > 0 && <ul>{item.details.map((detail) => <li key={detail}>{detail}</li>)}</ul>}</li>)}</ul>;
+                                if (block.kind === "ordered-list") return <ol key={`${block.kind}-${index}`}>{block.items.map((item) => <li key={item}>{item}</li>)}</ol>;
+                                return <p key={`${block.kind}-${index}`}>{block.text}</p>;
+                              })}
+                            </div>
+                            {response.steps && response.steps.length > 0 && <ol className="pace-response-steps">{response.steps.map((step) => <li key={step}>{step}</li>)}</ol>}
+                            {response.limitation && <p className="pace-response-limit"><ShieldCheck size={13} /> {response.limitation}</p>}
+                            {response.actionLabel && <button type="button" onClick={() => runAction(response.action)}>{response.actionLabel}<ArrowRight size={14} /></button>}
+                            {response.followUps && response.followUps.length > 0 && <div className="pace-response-followups">{response.followUps.slice(0, 3).map((followUp) => <button key={followUp} type="button" onClick={() => void runQuery(followUp)}>{followUp}</button>)}</div>}
+                          </>}
+                        </motion.section>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  <section className="pace-command-zone pace-conversation-composer">
+                    <div className="pace-conversation-heading"><span><Command size={14} /> Vervolgvraag</span><small>{preferences.aiEnabled ? preferences.liveStoreContext ? "AI + winkelgegevens" : "AI zonder winkelgegevens" : "Lokale hulp"}</small></div>
+                    <form onSubmit={submit}>
+                      <input
+                        value={query}
+                        onChange={(event) => setQuery(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+                          event.preventDefault();
+                          void runQuery(query);
+                        }}
+                        placeholder="Stel een vervolgvraag…"
+                        aria-label="Vervolgvraag aan Pace"
+                      />
+                      <button type="submit" disabled={!query.trim() || thinking || (preferences.aiEnabled && hardLimited)} aria-label="Stuur vervolgvraag"><Send size={16} /></button>
+                    </form>
+                    {preferences.aiEnabled && <div className={`pace-quota-badge${usagePercent >= 80 ? " is-warning" : ""}`} aria-live="polite">{usagePercent >= 80 && !hardLimited ? "Bijna op · " : ""}{paceQuotaLabel(quota)}</div>}
+                    {preferences.aiEnabled && hardLimited && <div className="pace-quota-wall" role="alert"><strong>Je bent door je vragen heen.</strong><span>Upgrade naar Pro of koop 50 losse credits voor €5.</span><button type="button" onClick={() => { props.onOpenProfile("pace"); setOpen(false); }}>Bekijk opties <ArrowRight size={14} /></button></div>}
+                    <div className="pace-query-hints">
+                      {queryHints.map((hint) => <button key={hint} type="button" onClick={() => void runQuery(hint)}>{hint}</button>)}
+                    </div>
+                    <footer className="pace-trust-line"><ShieldCheck size={14} /> Pace voert geen financiële of gevoelige actie zelfstandig uit.</footer>
+                  </section>
+                </motion.div>}
+              </AnimatePresence>
             </motion.aside>
           </>
         )}

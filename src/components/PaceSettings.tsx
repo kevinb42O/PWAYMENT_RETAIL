@@ -1,12 +1,14 @@
 import { useEffect, useState, type ReactNode } from "react";
 import {
-  BellRing, Bot, BrainCircuit, Check, Cloud, Database, Eye, Gauge,
+  BarChart3, BellRing, Bot, BrainCircuit, Check, Cloud, Coins, Database, Eye, Gauge,
   HeartHandshake, Palette, ReceiptText, RotateCcw, ShieldCheck, Sparkles, Store, UserRound,
 } from "lucide-react";
 import { useAuth } from "../auth/useAuth";
 import { PaceMark, type PacePerformance } from "../pace/PaceMark";
 import { usePace, type PaceMotion, type PaceProactivity, type PaceTone } from "../pace/usePace";
+import { paceQuotaLabel, usePaceBilling } from "../pace/usePaceBilling";
 import { useMerchantProfile } from "../store/useMerchantProfile";
+import { supabase } from "../lib/supabase";
 
 const Switch = ({ label, detail, checked, onChange, icon, disabled = false, badge }: {
   label: string; detail: string; checked: boolean; onChange: (checked: boolean) => void;
@@ -59,8 +61,24 @@ export const PaceSettings = () => {
   const returnPolicy = profile.commercialReturnPolicy!;
   const owner = currentRole === "owner";
   const [preview, setPreview] = useState<PacePerformance | null>(null);
+  const { overview, quota, loading: billingLoading, error: billingError, load: loadBilling, saveRolePolicy, setRollover } = usePaceBilling();
+  const [buyingCredits, setBuyingCredits] = useState(false);
 
   useEffect(() => { void hydrateScope(currentStoreId, currentUserId); }, [currentStoreId, currentUserId, hydrateScope]);
+  useEffect(() => { void loadBilling(currentStoreId); }, [currentStoreId, loadBilling]);
+  useEffect(() => {
+    const purchaseId = new URLSearchParams(window.location.search).get("pacePurchaseId");
+    if (!purchaseId || !currentStoreId) return;
+    void (async () => {
+      const { data } = await supabase.auth.getSession();
+      const response = await fetch(`/api/pace/credit-packs?purchaseId=${encodeURIComponent(purchaseId)}`, { headers: { Authorization: `Bearer ${data.session?.access_token ?? ""}` } });
+      const result = await response.json().catch(() => ({})) as { status?: string; error?: string };
+      if (response.ok && result.status === "paid") {
+        await loadBilling(currentStoreId);
+        const url = new URL(window.location.href); url.searchParams.delete("pacePurchaseId"); window.history.replaceState({}, "", url);
+      } else if (!response.ok) usePaceBilling.setState({ error: result.error ?? "De creditbetaling kon niet worden bevestigd." });
+    })();
+  }, [currentStoreId, loadBilling]);
   useEffect(() => {
     if (!preview) return;
     const timer = window.setTimeout(() => setPreview(null), 3_100);
@@ -70,6 +88,21 @@ export const PaceSettings = () => {
   const updateCustomerSettings = (patch: Partial<typeof customerSettings>) => updateProfile({ customerInsightSettings: { ...customerSettings, ...patch } });
   const playPreview = (performance: PacePerformance) => setPreview(performance);
   const syncLabel = syncState === "loading" ? "Voorkeuren laden" : syncState === "saved" ? "Bewaard voor jou" : syncState === "error" ? "Lokaal bewaard" : syncState === "local" ? "Beschikbaar op dit toestel" : "Wijzigingen worden automatisch bewaard";
+  const maxHistory = Math.max(1, ...(overview?.history.map((day) => day.questions) ?? [1]));
+  const buyCredits = async () => {
+    if (!currentStoreId || buyingCredits) return;
+    setBuyingCredits(true);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const response = await fetch("/api/pace/credit-packs", { method: "POST", headers: { Authorization: `Bearer ${data.session?.access_token ?? ""}`, "Content-Type": "application/json" }, body: JSON.stringify({ storeId: currentStoreId, packCode: "pace-50", idempotencyKey: crypto.randomUUID() }) });
+      const result = await response.json() as { checkoutUrl?: string; message?: string };
+      if (!response.ok || !result.checkoutUrl) throw new Error(result.message ?? "Aankoop kon niet worden gestart.");
+      window.location.assign(result.checkoutUrl);
+    } catch (error) {
+      usePaceBilling.setState({ error: error instanceof Error ? error.message : "Aankoop kon niet worden gestart." });
+      setBuyingCredits(false);
+    }
+  };
 
   return <div className="mx-auto max-w-6xl space-y-5 pb-10">
     <section className="overflow-hidden rounded-3xl border border-sky-200 bg-gradient-to-br from-white via-sky-50/60 to-cyan-50/40 p-5 shadow-sm md:p-7">
@@ -86,6 +119,28 @@ export const PaceSettings = () => {
         </div>
       </div>
     </section>
+
+    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6" aria-label="PACE verbruik en credits">
+      <div className="flex flex-col gap-4 border-b border-slate-100 pb-5 sm:flex-row sm:items-center sm:justify-between">
+        <div><span className="text-[10px] font-black uppercase tracking-[0.15em] text-sky-700">Verbruik & facturatie</span><h3 className="mt-1 text-lg font-black text-slate-950">Je PACE-bundel</h3><p className="mt-1 text-xs font-medium text-slate-500">{billingLoading ? "Actueel verbruik laden…" : paceQuotaLabel(quota)}</p></div>
+        <div className="flex flex-wrap gap-2"><span className="rounded-full bg-sky-50 px-3 py-2 text-xs font-black uppercase text-sky-800">{overview?.tier ?? "basic"}</span><span className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-extrabold text-emerald-700"><Coins size={13} className="mr-1 inline" /> {overview?.credit_balance ?? 0} losse credits</span></div>
+      </div>
+      {billingError && <p className="mt-4 rounded-xl bg-rose-50 p-3 text-xs font-bold text-rose-700">{billingError}</p>}
+      <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <div>
+          <div className="mb-3 flex items-center gap-2 text-xs font-black text-slate-700"><BarChart3 size={16} className="text-sky-600" /> Laatste 30 dagen</div>
+          <div className="flex h-36 items-end gap-1 rounded-2xl bg-slate-50 p-3" aria-label="Dagelijks aantal PACE-vragen">
+            {(overview?.history.length ? overview.history : Array.from({ length: 14 }, (_, index) => ({ day: String(index), questions: 0 }))).map((day) => <div key={day.day} className="group relative flex h-full min-w-0 flex-1 items-end"><span className="w-full rounded-t bg-sky-400 transition group-hover:bg-sky-600" style={{ height: `${Math.max(3, (day.questions / maxHistory) * 100)}%` }} /><span className="pointer-events-none absolute bottom-full left-1/2 hidden -translate-x-1/2 rounded bg-slate-900 px-2 py-1 text-[9px] text-white group-hover:block">{day.questions}</span></div>)}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-sky-100 bg-sky-50/60 p-4"><Coins size={20} className="text-sky-700" /><strong className="mt-3 block text-sm font-black text-slate-950">50 extra vragen</strong><p className="mt-1 text-xs leading-5 text-slate-600">€ 5,00 · vervallen niet · pas gebruikt nadat je bundel op is.</p><button type="button" disabled={!owner || buyingCredits} onClick={() => void buyCredits()} className="mt-4 w-full rounded-xl bg-sky-700 px-3 py-2.5 text-xs font-black text-white hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-50">{buyingCredits ? "Aankoop openen…" : "Koop 50 credits voor €5"}</button>{!owner && <small className="mt-2 block text-[10px] text-slate-500">Alleen de winkeleigenaar kan credits kopen.</small>}</div>
+      </div>
+      {owner && overview?.tier === "pro" && <label className="mt-4 flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-slate-200 p-4"><span><strong className="block text-sm text-slate-900">Ongebruikte vragen meenemen</strong><small className="mt-1 block text-xs text-slate-500">Voeg het ongebruikte deel van de maandbundel toe aan je rollover-saldo.</small></span><input type="checkbox" checked={overview.rollover_enabled} onChange={(event) => void setRollover(currentStoreId!, event.target.checked)} className="h-5 w-5 accent-sky-700" /></label>}
+    </section>
+
+    {owner && overview && <Section icon={<ShieldCheck size={19} />} eyebrow="Teambeheer" title="PACE-toegang per rol" description="Beperk wie PACE mag vragen. Een optionele maandlimiet geldt bovenop de winkelbundel.">
+      {overview.role_policies.map((policy) => <div key={policy.role} className="grid items-center gap-3 rounded-2xl border border-slate-200 p-4 sm:grid-cols-[1fr_150px_auto]"><div><strong className="block text-sm capitalize text-slate-900">{policy.role}</strong><span className="text-xs text-slate-500">{policy.enabled ? "PACE-vragen toegestaan" : "PACE voor deze rol geblokkeerd"}</span></div><input type="number" min="0" placeholder="Geen rollimiet" defaultValue={policy.monthly_limit ?? ""} onBlur={(event) => void saveRolePolicy(currentStoreId!, policy.role, policy.enabled, event.target.value === "" ? null : Number(event.target.value))} className="rounded-xl border border-slate-200 px-3 py-2 text-xs" aria-label={`Maandlimiet ${policy.role}`} /><button type="button" onClick={() => void saveRolePolicy(currentStoreId!, policy.role, !policy.enabled, policy.monthly_limit)} className={`rounded-xl px-3 py-2 text-xs font-black ${policy.enabled ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>{policy.enabled ? "Toegestaan" : "Geblokkeerd"}</button></div>)}
+    </Section>}
 
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="space-y-5">
