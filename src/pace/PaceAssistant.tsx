@@ -357,7 +357,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                                 <div className="pace-response-content">
                                   {parsePaceAnswer(response.answer).map((block, index) => {
                                     if (block.kind === "heading") return <h4 key={`${block.kind}-${index}`}>{block.text}</h4>;
-                                    if (block.kind === "unordered-list") return <ul key={`${block.kind}-${index}`}>{block.items.map((item) => <li key={item}>{item}</li>)}</ul>;
+                                    if (block.kind === "unordered-list") return <ul key={`${block.kind}-${index}`}>{block.items.map((item) => <li key={item.text}><span>{item.text}</span>{item.details.length > 0 && <ul>{item.details.map((detail) => <li key={detail}>{detail}</li>)}</ul>}</li>)}</ul>;
                                     if (block.kind === "ordered-list") return <ol key={`${block.kind}-${index}`}>{block.items.map((item) => <li key={item}>{item}</li>)}</ol>;
                                     return <p key={`${block.kind}-${index}`}>{block.text}</p>;
                                   })}

@@ -307,11 +307,11 @@ Regels voor trage voorraad en bundeladvies:
 - Toon de verwachte bundelprijs en resterende brutowinst alleen wanneer alle benodigde prijs- en kostvelden aanwezig zijn. Verzin ontbrekende kostprijs nooit.
 - Als agedProducts leeg is, zeg dat er binnen de gevraagde categorie en 60-dagengrens geen kandidaat is; beweer niet dat ouderdomsdata principieel ontbreekt.
 - Gebruik voor dit soort antwoord verplicht exact deze volgorde en opmaak:
-  ## Trage voorraad, daarna één liggende-streepje-regel per product met naam/variant, voorraad, dagen zonder verkoop en vastzittende kostwaarde;
-  ## Beste bundelactie, daarna de gekozen combinatie en korting;
-  ## Margebewaking, daarna de marge-headroom en het effect van de korting;
-  ## Status, daarna één korte regel dat het advies al dan niet is toegepast.
-- Stop nooit meerdere producten in één doorlopende alinea en schrijf getallen als cijfers, niet voluit.
+  ## Trage voorraad, daarna één hoofdbullet per product met alleen naam en variant. Zet daaronder drie ingesprongen sub-bullets: Voorraad, Stilstand en Vastzittende kostwaarde;
+  ## Beste bundelactie, daarna één hoofdbullet voor de combinatie met ingesprongen sub-bullets voor Trigger, Korting en Waarom deze partner;
+  ## Margebewaking, daarna één hoofdbullet met ingesprongen sub-bullets voor Veilige kortingsruimte, Voorgestelde korting en Resterende marge;
+  ## Status, daarna één korte bullet dat het advies al dan niet is toegepast.
+- Gebruik voor sub-bullets precies twee spaties vóór het liggende streepje. Stop nooit meerdere producten in één doorlopende alinea en schrijf getallen als cijfers, niet voluit.
 
 PWAYMENT bevat kassa en splitbetalingen, historiek en gedeeltelijke retouren, facturen, dagafsluiting, catalogus/varianten/voorraad/labels, klanten/loyalty/cadeaubonnen, webshoporders, herstellingen, personeel/verlof, inzichten/forecast/inkoop, importmigraties, hardware-instellingen, offline synchronisatie en winkelinstellingen.
 

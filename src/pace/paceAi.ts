@@ -21,7 +21,7 @@ export const normalizePaceAiAnswer = (answer: string) => answer
   .replace(/\*\*(.*?)\*\*/g, "$1")
   .replace(/`([^`]+)`/g, "$1")
   .replace(/[^\S\n]+/g, " ")
-  .replace(/ *\n */g, "\n")
+  .replace(/ +\n/g, "\n")
   .replace(/\n{3,}/g, "\n\n")
   .trim();
 

@@ -4,8 +4,8 @@ import type { PaceContext } from "./paceSignals";
 
 describe("Pace AI privacy boundary", () => {
   it("removes model markdown before plain-text UI rendering", () => {
-    expect(normalizePaceAiAnswer("## Resultaat\nOp basis van **data** is `An` de beste.\n\n- Eerste feit\n- Tweede feit")).toBe(
-      "## Resultaat\nOp basis van data is An de beste.\n\n- Eerste feit\n- Tweede feit",
+    expect(normalizePaceAiAnswer("## Resultaat\n- **Product A**\n  - Voorraad: `2`\n  - Stilstand: 80 dagen")).toBe(
+      "## Resultaat\n- Product A\n - Voorraad: 2\n - Stilstand: 80 dagen",
     );
   });
 

@@ -3,14 +3,21 @@ import { parsePaceAnswer } from "./paceAnswerFormat";
 
 describe("parsePaceAnswer", () => {
   it("turns Pace headings, bullets and paragraphs into safe display blocks", () => {
-    expect(parsePaceAnswer(`## Trage voorraad
-- Schoen A — 2 stuks · 239 dagen
-- Hoodie B — 4 stuks · 67 dagen
+    expect(parsePaceAnswer(`#### Trage voorraad
+- Schoen A
+  - Voorraad: 2 stuks
+  - Stilstand: 239 dagen
+- Hoodie B
+  - Voorraad: 4 stuks
+  - Stilstand: 67 dagen
 
 ## Beste bundelactie
 Bundel Schoen A met Product C.`)).toEqual([
       { kind: "heading", text: "Trage voorraad" },
-      { kind: "unordered-list", items: ["Schoen A — 2 stuks · 239 dagen", "Hoodie B — 4 stuks · 67 dagen"] },
+      { kind: "unordered-list", items: [
+        { text: "Schoen A", details: ["Voorraad: 2 stuks", "Stilstand: 239 dagen"] },
+        { text: "Hoodie B", details: ["Voorraad: 4 stuks", "Stilstand: 67 dagen"] },
+      ] },
       { kind: "heading", text: "Beste bundelactie" },
       { kind: "paragraph", text: "Bundel Schoen A met Product C." },
     ]);
