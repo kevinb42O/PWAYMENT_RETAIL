@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderPaceRecordAnswer } from "./recordAnswer";
+import { renderPaceRecordAnswer } from "../../src/pace/paceRecordAnswer";
 
 describe("PACE deterministic record answers", () => {
   it("renders bounded order fields as nested bullets", () => {
@@ -18,4 +18,3 @@ describe("PACE deterministic record answers", () => {
     expect(renderPaceRecordAnswer({ entity: "product", rows: [] })).toContain("Geen overeenkomende records gevonden");
   });
 });
-

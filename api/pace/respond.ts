@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
 import { formatPaceKnowledgeForPrompt, retrievePaceKnowledge } from "../../src/pace/paceProductKnowledge.js";
-import { expandPaceAnalyticsComparisons, planPaceAnalyticsQuestions, type PaceAnalyticsPlan } from "./analyticsPlan.js";
-import { renderPaceAnalyticsAnswer } from "./analyticsAnswer.js";
-import { planPaceRecordLookup, type PaceRecordPlan } from "./recordPlan.js";
-import { renderPaceRecordAnswer } from "./recordAnswer.js";
+import { expandPaceAnalyticsComparisons, planPaceAnalyticsQuestions, type PaceAnalyticsPlan } from "../../src/pace/paceAnalyticsPlan.js";
+import { renderPaceAnalyticsAnswer } from "../../src/pace/paceAnalyticsAnswer.js";
+import { planPaceRecordLookup, type PaceRecordPlan } from "../../src/pace/paceRecordPlan.js";
+import { renderPaceRecordAnswer } from "../../src/pace/paceRecordAnswer.js";
 
 type PaceRole = "owner" | "manager" | "cashier";
 type PaceView =

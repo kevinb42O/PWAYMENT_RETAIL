@@ -1,4 +1,4 @@
-import type { PaceAnalyticsMeasure, PaceAnalyticsPlan } from "./analyticsPlan.js";
+import type { PaceAnalyticsMeasure, PaceAnalyticsPlan } from "./paceAnalyticsPlan.js";
 
 interface AnalyticsRow {
   label?: unknown;

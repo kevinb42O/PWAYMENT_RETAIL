@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderPaceAnalyticsAnswer } from "./analyticsAnswer";
+import { renderPaceAnalyticsAnswer } from "../../src/pace/paceAnalyticsAnswer";
 
 describe("PACE deterministic analytics answer", () => {
   it("renders ranked facts as visible nested bullets", () => {
