@@ -8,7 +8,7 @@ const token = async () => {
 };
 
 export const listPaceConversations = async (storeId: string): Promise<PaceConversationSummary[]> => {
-  const response = await fetch(`/api/pace/conversations?storeId=${encodeURIComponent(storeId)}`, {
+  const response = await fetch(`/api/pace/respond?storeId=${encodeURIComponent(storeId)}`, {
     headers: { Authorization: `Bearer ${await token()}` },
     signal: AbortSignal.timeout(10_000),
   });
@@ -18,7 +18,7 @@ export const listPaceConversations = async (storeId: string): Promise<PaceConver
 };
 
 export const getPaceConversation = async (conversationId: string): Promise<PaceConversationDetail> => {
-  const response = await fetch(`/api/pace/conversations?conversationId=${encodeURIComponent(conversationId)}`, {
+  const response = await fetch(`/api/pace/respond?conversationId=${encodeURIComponent(conversationId)}`, {
     headers: { Authorization: `Bearer ${await token()}` },
     signal: AbortSignal.timeout(10_000),
   });
@@ -28,7 +28,7 @@ export const getPaceConversation = async (conversationId: string): Promise<PaceC
 };
 
 const mutateConversation = async (conversationId: string, method: "PATCH" | "DELETE") => {
-  const response = await fetch("/api/pace/conversations", {
+  const response = await fetch("/api/pace/respond", {
     method,
     headers: { Authorization: `Bearer ${await token()}`, "Content-Type": "application/json" },
     body: JSON.stringify({ conversationId }),

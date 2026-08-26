@@ -280,7 +280,13 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
         setActiveQuestion(null);
         return;
       }
-      setResponse(local);
+      setResponse(error instanceof Error ? {
+        ...local,
+        title: preferences.aiEnabled ? "PACE AI kon deze vraag niet verwerken" : local.title,
+        limitation: preferences.aiEnabled
+          ? `${error.message} Je vraag is daarom alleen met lokale productkennis beantwoord.`
+          : local.limitation,
+      } : local);
       setResponseSource("local");
       setCitations([]);
       remember(local.answer);

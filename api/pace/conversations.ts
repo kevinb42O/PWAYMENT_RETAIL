@@ -10,7 +10,7 @@ const authenticatedUser = async (authorization: string, config: Omit<PaceRpcConf
   return response.ok;
 };
 
-export default {
+export const handlePaceConversations = {
   async fetch(request: Request) {
     if (!new Set(["GET", "POST", "PATCH", "DELETE"]).has(request.method)) return json(405, { error: "METHOD_NOT_ALLOWED" });
     const authorization = request.headers.get("authorization");

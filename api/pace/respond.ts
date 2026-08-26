@@ -9,6 +9,7 @@ import { beginTurn, completeTurn, failTurn, getConversation, PaceConversationErr
 import { buildPaceEvidence, publicCitations, redactPaceSummary } from "./evidence.js";
 import { resolutionPersistence, resolveQuestionEntities, type EntityResolution } from "./entityResolution.js";
 import { inheritConversationPlan } from "./conversationMemory.js";
+import { handlePaceConversations } from "./conversations.js";
 
 type PaceRole = "owner" | "manager" | "cashier";
 type PaceView =
@@ -713,7 +714,7 @@ const callOpenAi = async (
 export default {
   async fetch(request: Request) {
     const startedAt = Date.now();
-    if (request.method !== "POST") return json(405, { error: "METHOD_NOT_ALLOWED" });
+    if (request.method !== "POST") return handlePaceConversations.fetch(request);
 
     const geminiKey = process.env.GEMINI_API_KEY;
     const openAiKey = process.env.OPENAI_API_KEY;
