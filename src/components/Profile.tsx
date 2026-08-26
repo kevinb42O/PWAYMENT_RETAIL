@@ -631,13 +631,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <Webhook size={16} className={activeTab === 'integrations' ? 'text-sky-600' : 'text-slate-500'} />
               <span>Koppelingen & API</span>
             </div>
-            <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
-              activeTab === 'integrations'
-                ? 'bg-sky-100 text-sky-700 border border-sky-200'
-                : 'bg-slate-100 text-slate-700 border border-slate-200'
-            }`}>
-              Pro
-            </span>
           </button>
 
           {/* 7. BTW & FISCALE REGELS */}
