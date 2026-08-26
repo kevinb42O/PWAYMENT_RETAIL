@@ -20,7 +20,6 @@ export interface PaceBillingOverview {
   rollover_enabled: boolean;
   credit_balance: number;
   usage: { daily_count: number; monthly_count: number; rollover_balance: number; period_end?: string };
-  history: Array<{ day: string; questions: number }>;
   role_policies: Array<{ role: "owner" | "manager" | "cashier"; enabled: boolean; monthly_limit: number | null }>;
 }
 

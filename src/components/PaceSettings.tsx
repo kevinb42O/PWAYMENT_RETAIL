@@ -1,12 +1,12 @@
 import { useEffect, useState, type ReactNode } from "react";
 import {
-  BarChart3, BellRing, Bot, BrainCircuit, Check, Cloud, Coins, Database, Eye, Gauge,
+  BellRing, Bot, BrainCircuit, Check, Cloud, Coins, Database, Eye, Gauge,
   HeartHandshake, Palette, ReceiptText, RotateCcw, ShieldCheck, Sparkles, Store, UserRound,
 } from "lucide-react";
 import { useAuth } from "../auth/useAuth";
 import { PaceMark, type PacePerformance } from "../pace/PaceMark";
 import { usePace, type PaceMotion, type PaceProactivity, type PaceTone } from "../pace/usePace";
-import { paceQuotaLabel, usePaceBilling } from "../pace/usePaceBilling";
+import { usePaceBilling } from "../pace/usePaceBilling";
 import { useMerchantProfile } from "../store/useMerchantProfile";
 import { supabase } from "../lib/supabase";
 
@@ -88,7 +88,15 @@ export const PaceSettings = () => {
   const updateCustomerSettings = (patch: Partial<typeof customerSettings>) => updateProfile({ customerInsightSettings: { ...customerSettings, ...patch } });
   const playPreview = (performance: PacePerformance) => setPreview(performance);
   const syncLabel = syncState === "loading" ? "Voorkeuren laden" : syncState === "saved" ? "Bewaard voor jou" : syncState === "error" ? "Lokaal bewaard" : syncState === "local" ? "Beschikbaar op dit toestel" : "Wijzigingen worden automatisch bewaard";
-  const maxHistory = Math.max(1, ...(overview?.history.map((day) => day.questions) ?? [1]));
+  const quotaLimit = quota?.quota ?? (overview?.tier === "pro" ? 250 : overview?.tier === "enterprise" ? 2_500 : 5);
+  const quotaUsed = quota ? (quota.tier === "basic" ? quota.daily_count : quota.monthly_count) : 0;
+  const quotaRemaining = Math.max(0, quotaLimit - quotaUsed);
+  const quotaPercent = quotaLimit > 0 ? Math.min(100, Math.round((quotaUsed / quotaLimit) * 100)) : 0;
+  const quotaTone = quotaPercent >= 100 ? "from-rose-500 to-orange-500" : quotaPercent >= 80 ? "from-amber-400 to-orange-500" : "from-sky-500 to-cyan-400";
+  const quotaPeriod = overview?.tier === "basic" ? "vandaag" : "deze maand";
+  const resetLabel = quota?.reset_at
+    ? new Intl.DateTimeFormat("nl-BE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(quota.reset_at))
+    : overview?.tier === "basic" ? "vannacht om 00:00 UTC" : "bij de volgende facturatieperiode";
   const buyCredits = async () => {
     if (!currentStoreId || buyingCredits) return;
     setBuyingCredits(true);
@@ -122,18 +130,26 @@ export const PaceSettings = () => {
 
     <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6" aria-label="PACE verbruik en credits">
       <div className="flex flex-col gap-4 border-b border-slate-100 pb-5 sm:flex-row sm:items-center sm:justify-between">
-        <div><span className="text-[10px] font-black uppercase tracking-[0.15em] text-sky-700">Verbruik & facturatie</span><h3 className="mt-1 text-lg font-black text-slate-950">Je PACE-bundel</h3><p className="mt-1 text-xs font-medium text-slate-500">{billingLoading ? "Actueel verbruik laden…" : paceQuotaLabel(quota)}</p></div>
+        <div><span className="text-[10px] font-black uppercase tracking-[0.15em] text-sky-700">Verbruik & facturatie</span><h3 className="mt-1 text-lg font-black text-slate-950">Je PACE-bundel</h3><p className="mt-1 text-xs font-medium text-slate-500">In één oogopslag hoeveel vragen je nog kunt stellen.</p></div>
         <div className="flex flex-wrap gap-2"><span className="rounded-full bg-sky-50 px-3 py-2 text-xs font-black uppercase text-sky-800">{overview?.tier ?? "basic"}</span><span className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-extrabold text-emerald-700"><Coins size={13} className="mr-1 inline" /> {overview?.credit_balance ?? 0} losse credits</span></div>
       </div>
       {billingError && <p className="mt-4 rounded-xl bg-rose-50 p-3 text-xs font-bold text-rose-700">{billingError}</p>}
       <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px]">
-        <div>
-          <div className="mb-3 flex items-center gap-2 text-xs font-black text-slate-700"><BarChart3 size={16} className="text-sky-600" /> Laatste 30 dagen</div>
-          <div className="flex h-36 items-end gap-1 rounded-2xl bg-slate-50 p-3" aria-label="Dagelijks aantal PACE-vragen">
-            {(overview?.history.length ? overview.history : Array.from({ length: 14 }, (_, index) => ({ day: String(index), questions: 0 }))).map((day) => <div key={day.day} className="group relative flex h-full min-w-0 flex-1 items-end"><span className="w-full rounded-t bg-sky-400 transition group-hover:bg-sky-600" style={{ height: `${Math.max(3, (day.questions / maxHistory) * 100)}%` }} /><span className="pointer-events-none absolute bottom-full left-1/2 hidden -translate-x-1/2 rounded bg-slate-900 px-2 py-1 text-[9px] text-white group-hover:block">{day.questions}</span></div>)}
+        <div className="relative overflow-hidden rounded-3xl border border-sky-100 bg-gradient-to-br from-slate-950 via-sky-950 to-cyan-900 p-5 text-white shadow-lg shadow-sky-900/10 md:p-6">
+          <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-cyan-400/20 blur-3xl" />
+          <div className="relative">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div><span className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Resterend {quotaPeriod}</span><div className="mt-2 flex items-end gap-2"><strong className="text-5xl font-black tracking-[-0.06em]">{billingLoading ? "—" : quotaRemaining}</strong><span className="pb-1.5 text-sm font-bold text-sky-200">van {quotaLimit} vragen</span></div></div>
+              <div className="rounded-2xl border border-white/15 bg-white/10 px-3 py-2 text-right backdrop-blur"><strong className="block text-sm font-black">{quotaPercent}%</strong><span className="text-[10px] font-bold text-sky-200">gebruikt</span></div>
+            </div>
+            <div className="mt-7 h-4 overflow-hidden rounded-full border border-white/10 bg-black/25 p-0.5" role="progressbar" aria-label="PACE quotaverbruik" aria-valuemin={0} aria-valuemax={quotaLimit} aria-valuenow={quotaUsed}>
+              <span className={`block h-full rounded-full bg-gradient-to-r ${quotaTone} shadow-[0_0_18px_rgba(34,211,238,0.45)] transition-[width] duration-500`} style={{ width: `${quotaPercent}%` }} />
+            </div>
+            <div className="mt-3 flex flex-wrap justify-between gap-2 text-[11px] font-bold text-sky-100"><span>{quotaUsed} gebruikt</span><span>Reset {resetLabel}</span></div>
+            {(overview?.usage.rollover_balance ?? 0) > 0 && <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-[10px] font-black text-cyan-100"><Sparkles size={12} /> +{overview!.usage.rollover_balance} rollovervragen beschikbaar</div>}
           </div>
         </div>
-        <div className="rounded-2xl border border-sky-100 bg-sky-50/60 p-4"><Coins size={20} className="text-sky-700" /><strong className="mt-3 block text-sm font-black text-slate-950">50 extra vragen</strong><p className="mt-1 text-xs leading-5 text-slate-600">€ 5,00 · vervallen niet · pas gebruikt nadat je bundel op is.</p><button type="button" disabled={!owner || buyingCredits} onClick={() => void buyCredits()} className="mt-4 w-full rounded-xl bg-sky-700 px-3 py-2.5 text-xs font-black text-white hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-50">{buyingCredits ? "Aankoop openen…" : "Koop 50 credits voor €5"}</button>{!owner && <small className="mt-2 block text-[10px] text-slate-500">Alleen de winkeleigenaar kan credits kopen.</small>}</div>
+        <div className="flex flex-col rounded-3xl border border-sky-100 bg-gradient-to-br from-sky-50 to-cyan-50/60 p-5"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-sky-700 shadow-sm"><Coins size={22} /></div><strong className="mt-4 block text-base font-black text-slate-950">Extra speelruimte</strong><p className="mt-1 text-xs leading-5 text-slate-600">50 extra vragen voor € 5,00. Ze vervallen nooit en starten pas als je bundel leeg is.</p><div className="mt-4 flex items-center justify-between rounded-xl bg-white/80 px-3 py-2 text-xs"><span className="font-bold text-slate-500">Huidig saldo</span><strong className="text-emerald-700">{overview?.credit_balance ?? 0} credits</strong></div><button type="button" disabled={!owner || buyingCredits} onClick={() => void buyCredits()} className="mt-auto w-full rounded-xl bg-sky-700 px-3 py-2.5 text-xs font-black text-white shadow-sm hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-50">{buyingCredits ? "Aankoop openen…" : "Koop 50 credits voor €5"}</button>{!owner && <small className="mt-2 block text-[10px] text-slate-500">Alleen de winkeleigenaar kan credits kopen.</small>}</div>
       </div>
       {owner && overview?.tier === "pro" && <label className="mt-4 flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-slate-200 p-4"><span><strong className="block text-sm text-slate-900">Ongebruikte vragen meenemen</strong><small className="mt-1 block text-xs text-slate-500">Voeg het ongebruikte deel van de maandbundel toe aan je rollover-saldo.</small></span><input type="checkbox" checked={overview.rollover_enabled} onChange={(event) => void setRollover(currentStoreId!, event.target.checked)} className="h-5 w-5 accent-sky-700" /></label>}
     </section>
