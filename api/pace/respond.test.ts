@@ -252,6 +252,67 @@ describe("Pace OpenAI endpoint", () => {
     expect(geminiBody.generationConfig.maxOutputTokens).toBe(480);
   });
 
+  it("loads all-time weekday sales aggregates for the best sales day question", async () => {
+    process.env.GEMINI_API_KEY = "test-gemini-key";
+    const storeId = "55555555-5555-4555-8555-555555555555";
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({ id: "user-weekday-sales" }))
+      .mockResolvedValueOnce(Response.json({
+        version: 1,
+        store: { id: storeId, name: "Weekwinkel", role: "owner" },
+      }))
+      .mockResolvedValueOnce(Response.json({
+        basis: "all finalized sale transactions grouped in the store timezone; refunds excluded",
+        timezone: "Europe/Brussels",
+        firstSaleAt: "2025-01-01T09:00:00Z",
+        lastSaleAt: "2026-08-25T16:00:00Z",
+        transactionCount: 420,
+        bestByAverageRevenuePerTradingDay: {
+          weekday_iso: 6,
+          weekday: "zaterdag",
+          trading_days: 72,
+          transaction_count: 110,
+          revenue_cents: 485000,
+          average_revenue_per_trading_day_cents: 6736,
+          average_transaction_cents: 4409,
+        },
+        bestByTotalRevenue: {
+          weekday_iso: 5,
+          weekday: "vrijdag",
+          trading_days: 86,
+          transaction_count: 125,
+          revenue_cents: 501000,
+          average_revenue_per_trading_day_cents: 5826,
+          average_transaction_cents: 4008,
+        },
+        weekdays: [],
+      }))
+      .mockResolvedValueOnce(Response.json({
+        candidates: [{ content: { parts: [{ text: "## Beste weekdag\n- Zaterdag\n  - Gemiddelde dagomzet: € 67,36" }] } }],
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handler.fetch(request({
+      question: "Welke dag van de week is historisch gezien de alltime beste verkoopsdag?",
+      context: { storeId, view: "workforce", role: "owner" },
+      localCandidate: { intentId: "insights.best-sales-weekday", title: "Historisch beste verkoopsdag" },
+    }));
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    const [weekdayUrl, weekdayInit] = fetchMock.mock.calls[2] as [string, RequestInit];
+    expect(weekdayUrl).toContain("/rest/v1/rpc/get_pace_sales_weekday_context");
+    expect(JSON.parse(String(weekdayInit.body))).toEqual({ target_store_id: storeId });
+    const geminiBody = JSON.parse(String((fetchMock.mock.calls[3][1] as RequestInit).body)) as {
+      contents: Array<{ parts: Array<{ text: string }> }>;
+    };
+    const prompt = geminiBody.contents.at(-1)?.parts[0]?.text ?? "";
+    expect(prompt).toContain("All-time verkoopaggregatie per lokale weekdag");
+    expect(prompt).toContain('"weekday":"zaterdag"');
+    expect(prompt).toContain('"average_revenue_per_trading_day_cents":6736');
+    expect(prompt).toContain("insights.best-sales-weekday");
+  });
+
   it("retries a transient PostgREST schema-cache 404 before calling Gemini", async () => {
     process.env.GEMINI_API_KEY = "test-gemini-key";
     const storeId = "22222222-2222-4222-8222-222222222222";

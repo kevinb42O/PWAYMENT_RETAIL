@@ -254,6 +254,36 @@ const fetchInventoryActionContext = async (
   return await response.json().catch(() => ({ unavailable: true }));
 };
 
+const needsSalesWeekdayContext = (question: string) =>
+  /(?:beste|sterkste|hoogste|meeste).*(?:verkoop|omzet).*(?:dag|weekdag)|(?:dag|weekdag).*(?:beste|sterkste|hoogste|meeste).*(?:verkoop|omzet)/i.test(question);
+
+const fetchSalesWeekdayContext = async (
+  authorization: string,
+  supabaseUrl: string,
+  publishableKey: string,
+  storeId: string | undefined,
+  question: string,
+) => {
+  if (!storeId || !needsSalesWeekdayContext(question)) return null;
+  const endpoint = `${supabaseUrl.replace(/\/$/, "")}/rest/v1/rpc/get_pace_sales_weekday_context`;
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      apikey: publishableKey,
+      Authorization: authorization,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ target_store_id: storeId }),
+    signal: AbortSignal.timeout(8_000),
+  });
+  if (response.status === 401 || response.status === 403) throw new TenantAccessError("Geen toegang tot deze winkel.");
+  if (!response.ok) {
+    console.warn("Pace sales weekday context unavailable", { status: response.status });
+    return { unavailable: true };
+  }
+  return await response.json().catch(() => ({ unavailable: true }));
+};
+
 const extractOutputText = (response: OpenAIResponse) =>
   response.output
     ?.filter((item) => item.type === "message")
@@ -313,6 +343,12 @@ Regels voor trage voorraad en bundeladvies:
   ## Status, daarna één korte bullet dat het advies al dan niet is toegepast.
 - Gebruik voor sub-bullets precies twee spaties vóór het liggende streepje. Stop nooit meerdere producten in één doorlopende alinea en schrijf getallen als cijfers, niet voluit.
 
+Regels voor historische verkoop per weekdag:
+- Gebruik uitsluitend salesWeekdayContext. "Beste verkoopsdag" betekent standaard de hoogste gemiddelde omzet per actieve verkoopdag; noem ook totaalomzet, aantal transacties en analyseperiode.
+- Als bestByTotalRevenue een andere weekdag aanwijst, vermeld dat kort als nuance. Presenteer alle geldbedragen in euro en gebruik de winkeltijdzone.
+- Antwoord direct met de naam van de weekdag. Verwijs niet naar Historiek of Inzichten wanneer deze context aanwezig is.
+- Gebruik ## Beste weekdag, gevolgd door bullets voor Gemiddelde dagomzet, Totaalomzet, Transacties en Periode. Voeg daarna ## Vergelijking toe met maximaal twee relevante andere weekdagen.
+
 PWAYMENT bevat kassa en splitbetalingen, historiek en gedeeltelijke retouren, facturen, dagafsluiting, catalogus/varianten/voorraad/labels, klanten/loyalty/cadeaubonnen, webshoporders, herstellingen, personeel/verlof, inzichten/forecast/inkoop, importmigraties, hardware-instellingen, offline synchronisatie en winkelinstellingen.
 
 Productgrenzen die je eerlijk bewaakt:
@@ -328,6 +364,7 @@ const buildPrompt = (
   context: ReturnType<typeof allowedContext>,
   tenantContext: unknown,
   inventoryActionContext: unknown,
+  salesWeekdayContext: unknown,
   localCandidate: PaceLocalCandidate | undefined,
 ) => {
   const knowledge = formatPaceKnowledgeForPrompt(retrievePaceKnowledge(question));
@@ -335,6 +372,7 @@ const buildPrompt = (
     `Actieve browsercontext (allow-listed):\n${JSON.stringify(context)}\n\n` +
     `Actuele Supabase-winkelcontext onder de sessierechten van deze gebruiker:\n${JSON.stringify(tenantContext ?? { unavailable: true, reason: "no-store-context" })}\n\n` +
     `Beslisklare trage-voorraadcontext (alleen aanwezig voor relevante vragen):\n${JSON.stringify(inventoryActionContext)}\n\n` +
+    `All-time verkoopaggregatie per lokale weekdag (alleen aanwezig voor relevante vragen):\n${JSON.stringify(salesWeekdayContext)}\n\n` +
     `Deterministische lokale kennis-match, indien aanwezig:\n${JSON.stringify(localCandidate ?? null)}\n\n` +
     `Vraag van de gebruiker:\n${question}`;
 };
@@ -346,10 +384,11 @@ const callGemini = async (
   context: ReturnType<typeof allowedContext>,
   tenantContext: unknown,
   inventoryActionContext: unknown,
+  salesWeekdayContext: unknown,
   history: PaceHistoryTurn[],
   localCandidate: PaceLocalCandidate | undefined,
 ) => {
-  const prompt = buildPrompt(question, context, tenantContext, inventoryActionContext, localCandidate);
+  const prompt = buildPrompt(question, context, tenantContext, inventoryActionContext, salesWeekdayContext, localCandidate);
   const upstream = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: "POST",
     headers: {
@@ -393,13 +432,14 @@ const callGeminiWithFallback = async (
   context: ReturnType<typeof allowedContext>,
   tenantContext: unknown,
   inventoryActionContext: unknown,
+  salesWeekdayContext: unknown,
   history: PaceHistoryTurn[],
   localCandidate: PaceLocalCandidate | undefined,
 ) => {
   const models = [...new Set([preferredModel, ...GEMINI_FALLBACK_MODELS])];
   let lastFailure: Awaited<ReturnType<typeof callGemini>> | undefined;
   for (const candidateModel of models) {
-    const result = await callGemini(apiKey, candidateModel, question, context, tenantContext, inventoryActionContext, history, localCandidate);
+    const result = await callGemini(apiKey, candidateModel, question, context, tenantContext, inventoryActionContext, salesWeekdayContext, history, localCandidate);
     if (result.ok) {
       if (result.answer) return { ...result, model: candidateModel };
       lastFailure = result;
@@ -418,6 +458,7 @@ const callOpenAi = async (
   context: ReturnType<typeof allowedContext>,
   tenantContext: unknown,
   inventoryActionContext: unknown,
+  salesWeekdayContext: unknown,
   history: PaceHistoryTurn[],
   localCandidate: PaceLocalCandidate | undefined,
   safetyIdentifier: string,
@@ -433,7 +474,7 @@ const callOpenAi = async (
       model,
       store: false,
       instructions,
-      input: `${transcript ? `Recente conversatie:\n${transcript}\n\n` : ""}${buildPrompt(question, context, tenantContext, inventoryActionContext, localCandidate)}`,
+      input: `${transcript ? `Recente conversatie:\n${transcript}\n\n` : ""}${buildPrompt(question, context, tenantContext, inventoryActionContext, salesWeekdayContext, localCandidate)}`,
       reasoning: { effort: "low" },
       text: { verbosity: "low" },
       max_output_tokens: 480,
@@ -502,11 +543,13 @@ export default {
     const safetyIdentifier = createHash("sha256").update(`pace:${userId}`).digest("hex").slice(0, 48);
     let tenantContext: unknown = null;
     let inventoryActionContext: unknown = null;
-    const [tenantResult, inventoryResult] = await Promise.allSettled([
+    let salesWeekdayContext: unknown = null;
+    const [tenantResult, inventoryResult, salesWeekdayResult] = await Promise.allSettled([
       fetchTenantContext(authorization, supabaseUrl, publishableKey, context.storeId, question),
       fetchInventoryActionContext(authorization, supabaseUrl, publishableKey, context.storeId, question),
+      fetchSalesWeekdayContext(authorization, supabaseUrl, publishableKey, context.storeId, question),
     ]);
-    const accessDenied = [tenantResult, inventoryResult].some(
+    const accessDenied = [tenantResult, inventoryResult, salesWeekdayResult].some(
       (result) => result.status === "rejected" && result.reason instanceof TenantAccessError,
     );
     if (accessDenied) return json(403, { error: "STORE_ACCESS_DENIED", fallback: "local" });
@@ -516,12 +559,15 @@ export default {
     inventoryActionContext = inventoryResult.status === "fulfilled"
       ? inventoryResult.value
       : { unavailable: true };
+    salesWeekdayContext = salesWeekdayResult.status === "fulfilled"
+      ? salesWeekdayResult.value
+      : { unavailable: true };
 
     let upstreamResult: Awaited<ReturnType<typeof callGeminiWithFallback>> | Awaited<ReturnType<typeof callOpenAi>>;
     try {
       upstreamResult = provider === "gemini"
-        ? await callGeminiWithFallback(geminiKey!, model, question, context, tenantContext, inventoryActionContext, history, localCandidate)
-        : await callOpenAi(openAiKey!, model, question, context, tenantContext, inventoryActionContext, history, localCandidate, safetyIdentifier);
+        ? await callGeminiWithFallback(geminiKey!, model, question, context, tenantContext, inventoryActionContext, salesWeekdayContext, history, localCandidate)
+        : await callOpenAi(openAiKey!, model, question, context, tenantContext, inventoryActionContext, salesWeekdayContext, history, localCandidate, safetyIdentifier);
     } catch {
       return json(503, { error: "PACE_AI_UNAVAILABLE", fallback: "local" });
     }

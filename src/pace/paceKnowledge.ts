@@ -240,6 +240,15 @@ const KNOWLEDGE: PaceKnowledgeEntry[] = [
     actionLabel: "Open Inzichten",
   }),
   entry({
+    id: "insights.best-sales-weekday",
+    views: ["insights", "audit-log", "z-report"],
+    patterns: [/(beste|sterkste|hoogste).*(verkoop|omzet).*(dag|weekdag)/i, /(welke|wat).*(dag|weekdag).*(beste|meeste|hoogste).*(verkoop|omzet)/i],
+    title: "Historisch beste verkoopsdag",
+    answer: "Pace vergelijkt hiervoor alle afgeronde verkopen per lokale weekdag en gebruikt de gemiddelde omzet per actieve verkoopdag, met totaalomzet en transactieaantal als controle.",
+    action: { kind: "navigate", view: "insights" },
+    actionLabel: "Open Inzichten",
+  }),
+  entry({
     id: "insights.forecast-po",
     views: ["insights"],
     patterns: [/(forecast|prognose|days of cover|stockout|confidence|seizoen|besteladvies|purchase order|bestelling|leverancier).*(bereken|maak|ontvang|waarom|beteken)/i, /days of cover|stockoutdatum|besteladvies/i],
@@ -326,7 +335,7 @@ const KNOWLEDGE: PaceKnowledgeEntry[] = [
   entry({
     id: "workforce.roster",
     views: ["workforce"],
-    patterns: [/(rooster|shift|werkpatroon|week kopie|publiceer|heropen|dag|week|maand|jaar).*(maak|wijzig|verwijder|zie|wissel|hoe)/i],
+    patterns: [/\b(rooster|shift|werkpatroon|week kopie|publiceer|heropen|dag|week|maand|jaar)\b.*\b(maak|wijzig|verwijder|zie|wissel|hoe)\b/i],
     title: "Rooster beheren",
     answer: "Gebruik dag, week, maand of jaar en filter indien nodig op medewerker. Bevoegde gebruikers kunnen shifts en patronen beheren. Publiceren maakt het rooster zichtbaar volgens de bestaande workforce-regels; heropenen is een expliciete beheeractie.",
     action: { kind: "navigate", view: "workforce" },

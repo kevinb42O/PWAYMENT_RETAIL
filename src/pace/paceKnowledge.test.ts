@@ -47,6 +47,7 @@ describe("Pace product knowledge", () => {
     ["Waarom is er een kasverschil?", "close.cash-difference"],
     ["Hoe voeg ik maten en kleuren toe?", "catalog.variants-identifiers"],
     ["Wat betekent days of cover?", "insights.forecast-po"],
+    ["Welke dag van de week is historisch gezien de alltime beste verkoopsdag?", "insights.best-sales-weekday"],
     ["Hoe waardeer ik een cadeaubon op?", "customers.giftcards"],
     ["Wie is mijn beste klant?", "customers.best"],
     ["Wanneer wordt webshopvoorraad gereserveerd?", "webshop.orders"],
@@ -57,6 +58,17 @@ describe("Pace product knowledge", () => {
     ["Welke gegevens gebruikt Pace voor AI?", "pace.preferences-privacy"],
   ])("routes %s to %s", (question, intentId) => {
     expect(answerFromPaceKnowledge(question, context()).intentId).toBe(intentId);
+  });
+
+  it("never mistakes a sales weekday question for workforce scheduling", () => {
+    const answer = answerFromPaceKnowledge(
+      "Welke dag van de week is historisch gezien de alltime beste verkoopsdag?",
+      context({ view: "workforce" }),
+    );
+    expect(answer).toMatchObject({
+      intentId: "insights.best-sales-weekday",
+      title: "Historisch beste verkoopsdag",
+    });
   });
 
   it("uses live delivery state without sending the question to a model", () => {
