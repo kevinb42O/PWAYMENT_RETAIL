@@ -5,7 +5,7 @@ import { useAuth } from '../auth/useAuth';
 import { useStore } from '../store/useStore';
 import { ProductAdmin } from './ProductAdmin';
 import { MerchantSettings } from './MerchantSettings';
-import { PaceSettings } from './PaceSettings';
+import { PaceSettings, type PaceSettingsSubTab } from './PaceSettings';
 import { BarcodeLabelPrint } from './BarcodeLabelPrint';
 import { ThermalPrinterPanel } from './ThermalPrinterPanel';
 import { IntegrationsSettings } from './IntegrationsSettings';
@@ -81,6 +81,9 @@ import {
   Trash2,
   UserPlus,
   KeyRound,
+  Gauge,
+  BellRing,
+  UserRound,
 } from 'lucide-react';
 
 type WorkspaceTab =
@@ -91,6 +94,10 @@ type WorkspaceTab =
   | 'billing-addons'
   | 'modules'
   | 'pace'
+  | 'pace-overview'
+  | 'pace-personal'
+  | 'pace-guidance'
+  | 'pace-team'
   | 'workforce'
   | 'leave-approvals'
   | 'catalog'
@@ -208,7 +215,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     ];
     if (requested === 'integrations') return 'integrations';
     if (requested === 'modules') return 'modules';
-    if (requested === 'pace') return 'pace';
+    if (requested === 'pace' || requested?.startsWith('pace-')) return requested as WorkspaceTab;
     if (requested === 'workforce') return 'workforce';
     if (directWebshopTabs.includes(requested as WorkspaceTab)) return requested as WorkspaceTab;
     return 'billing';
@@ -239,6 +246,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [pinForDrawer, setPinForDrawer] = useState(true);
   // Accordion expansion states
   const [billingExpanded, setBillingExpanded] = useState(activeTab.startsWith('billing'));
+  const [paceExpanded, setPaceExpanded] = useState(activeTab.startsWith('pace'));
   const [catalogExpanded, setCatalogExpanded] = useState(false);
   const [webshopExpanded, setWebshopExpanded] = useState(activeTab.startsWith('webshop'));
   const [hardwareExpanded, setHardwareExpanded] = useState(false);
@@ -248,6 +256,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     appliedInitialTabRequestRef.current = initialTabRequestKey;
     setActiveTab(initialTab);
     setBillingExpanded(initialTab.startsWith('billing'));
+    setPaceExpanded(initialTab.startsWith('pace'));
     setCatalogExpanded(initialTab.startsWith('catalog'));
     setWebshopExpanded(initialTab.startsWith('webshop'));
     setHardwareExpanded(initialTab.startsWith('hardware'));
@@ -269,6 +278,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     if (tab === 'billing-payment') return 'payment';
     if (tab === 'billing-addons') return 'addons';
     return 'plan';
+  };
+  const getPaceSubTab = (tab: WorkspaceTab): PaceSettingsSubTab => {
+    if (tab === 'pace-personal') return 'personal';
+    if (tab === 'pace-guidance') return 'guidance';
+    if (tab === 'pace-team') return 'team';
+    return 'overview';
   };
   const [scannerTestCode, setScannerTestCode] = useState('');
   const [autoSubmitScan, setAutoSubmitScan] = useState(true);
@@ -342,18 +357,48 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           )}
 
           <button
-            onClick={() => setActiveTab('pace')}
+            onClick={() => {
+              setPaceExpanded(!paceExpanded);
+              if (!activeTab.startsWith('pace')) {
+                setActiveTab('pace-overview');
+              }
+            }}
             className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'pace'
+              activeTab.startsWith('pace')
                 ? 'border border-cyan-200 bg-cyan-50 text-cyan-900 shadow-xs'
                 : 'border border-transparent text-slate-600 hover:border-cyan-100 hover:bg-cyan-50 hover:text-cyan-900'
             }`}
           >
             <div className="flex items-center gap-2.5">
-              <Sparkles size={16} className={activeTab === 'pace' ? 'text-cyan-700' : 'text-slate-500'} />
+              <Sparkles size={16} className={activeTab.startsWith('pace') ? 'text-cyan-700' : 'text-slate-500'} />
               <span>PACE</span>
             </div>
+            {paceExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </button>
+
+          {paceExpanded && (
+            <div className="pl-4 space-y-1 border-l-2 border-slate-200 ml-4 py-1">
+              {([
+                { id: 'pace-overview', label: 'Overzicht', icon: <Gauge size={13} className="shrink-0" /> },
+                { id: 'pace-personal', label: 'Mijn Pace', icon: <UserRound size={13} className="shrink-0" /> },
+                { id: 'pace-guidance', label: 'Begeleiding', icon: <BellRing size={13} className="shrink-0" /> },
+                { id: 'pace-team', label: 'Winkel & team', icon: <Store size={13} className="shrink-0" /> },
+              ] as Array<{ id: WorkspaceTab; label: string; icon: React.ReactNode }>).map((sub) => {
+                const isSubActive = activeTab === sub.id || (activeTab === 'pace' && sub.id === 'pace-overview');
+                return (
+                <button
+                  key={sub.id}
+                  type="button"
+                  onClick={() => setActiveTab(sub.id)}
+                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all ${isSubActive ? 'bg-cyan-100 text-cyan-900 font-extrabold' : 'text-slate-500 hover:bg-cyan-50 hover:text-cyan-800'}`}
+                >
+                  {sub.icon}
+                  {sub.label}
+                </button>
+                );
+              })}
+            </div>
+          )}
 
           <button
             onClick={() => setActiveTab('workforce')}
@@ -729,7 +774,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <h1 className="text-xl font-black text-slate-900 tracking-tight">
               {activeTab === 'billing-plan' && 'Licentieplan & Upgrades'}
               {activeTab === 'modules' && 'Modules & navigatie'}
-              {activeTab === 'pace' && 'Pace-instellingen'}
+              {activeTab.startsWith('pace') && 'Pace-instellingen'}
               {activeTab === 'workforce' && 'Personeel, verlof & bezetting'}
               {activeTab === 'leave-approvals' && 'Verlof goedkeuren'}
               {activeTab === 'billing-invoices' && "Facturen & Creditnota's"}
@@ -754,7 +799,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 ? 'Transparante tarieven per winkelpunt. Onbeperkte kassa-omzet zonder verborgen transactiekosten.'
                 : activeTab === 'modules'
                 ? 'Zet werkmodules rechtstreeks aan of uit. Uw navigatie volgt onmiddellijk en bewaren gebeurt automatisch.'
-                : activeTab === 'pace'
+                : activeTab.startsWith('pace')
                 ? 'Beheer je persoonlijke Pace-ervaring, AI-antwoorden, winkelcontext, animaties en winkelbrede begeleiding.'
                 : activeTab === 'workforce'
                 ? 'Beheer medewerkers, verlofsaldi en de regels waarmee PWAYMENT de winkelbezetting controleert.'
@@ -786,7 +831,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         )}
 
         {activeTab === 'modules' && <ModuleSettings />}
-        {activeTab === 'pace' && <PaceSettings />}
+        {activeTab.startsWith('pace') && (
+          <PaceSettings
+            subTab={getPaceSubTab(activeTab)}
+          />
+        )}
         {activeTab === 'workforce' && (
           <FeatureGate
             feature={FEATURE_KEYS.workforce}

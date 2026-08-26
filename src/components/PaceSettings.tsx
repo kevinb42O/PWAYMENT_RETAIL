@@ -10,7 +10,11 @@ import { usePaceBilling } from "../pace/usePaceBilling";
 import { useMerchantProfile } from "../store/useMerchantProfile";
 import { supabase } from "../lib/supabase";
 
-type PaceSettingsTab = "overview" | "personal" | "guidance" | "team";
+export type PaceSettingsSubTab = "overview" | "personal" | "guidance" | "team";
+
+export interface PaceSettingsProps {
+  subTab?: PaceSettingsSubTab;
+}
 
 const Switch = ({ label, detail, checked, onChange, icon, disabled = false, badge }: {
   label: string; detail: string; checked: boolean; onChange: (checked: boolean) => void;
@@ -51,14 +55,8 @@ const Section = ({ icon, eyebrow, title, description, children }: { icon: ReactN
   </section>
 );
 
-const PACE_SETTINGS_TABS: Array<{ id: PaceSettingsTab; label: string; detail: string; icon: ReactNode }> = [
-  { id: "overview", label: "Overzicht", detail: "Bundel en status", icon: <Gauge size={16} /> },
-  { id: "personal", label: "Mijn Pace", detail: "AI, stijl en beleving", icon: <UserRound size={16} /> },
-  { id: "guidance", label: "Begeleiding", detail: "Signalen en meldingen", icon: <BellRing size={16} /> },
-  { id: "team", label: "Winkel & team", detail: "Klanthulp en rechten", icon: <Store size={16} /> },
-];
-
-export const PaceSettings = () => {
+export const PaceSettings = ({ subTab = "overview" }: PaceSettingsProps) => {
+  const activeTab = subTab;
   const currentStoreId = useAuth((state) => state.currentStoreId);
   const currentUserId = useAuth((state) => state.currentUserId);
   const currentRole = useAuth((state) => state.currentRole);
@@ -72,7 +70,6 @@ export const PaceSettings = () => {
   const [preview, setPreview] = useState<PacePerformance | null>(null);
   const { overview, quota, loading: billingLoading, error: billingError, load: loadBilling, saveRolePolicy, setRollover } = usePaceBilling();
   const [buyingCredits, setBuyingCredits] = useState(false);
-  const [activeTab, setActiveTab] = useState<PaceSettingsTab>("overview");
 
   useEffect(() => { void hydrateScope(currentStoreId, currentUserId); }, [currentStoreId, currentUserId, hydrateScope]);
   useEffect(() => { void loadBilling(currentStoreId); }, [currentStoreId, loadBilling]);
@@ -137,10 +134,6 @@ export const PaceSettings = () => {
         </div>
       </div>
     </section>
-
-    <nav className="flex gap-2 overflow-x-auto rounded-3xl border border-slate-200 bg-white p-2 shadow-sm sm:grid sm:grid-cols-2 lg:grid-cols-4" aria-label="PACE-instellingen">
-      {PACE_SETTINGS_TABS.map((tab) => <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} aria-current={activeTab === tab.id ? "page" : undefined} className={`flex min-w-[190px] items-center gap-3 rounded-2xl border px-4 py-3 text-left transition sm:min-w-0 ${activeTab === tab.id ? "border-sky-200 bg-sky-50 text-sky-900 shadow-xs" : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50"}`}><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${activeTab === tab.id ? "bg-white text-sky-700" : "bg-slate-100 text-slate-500"}`}>{tab.icon}</span><span className="min-w-0"><strong className="block text-xs font-black">{tab.label}</strong><small className="mt-0.5 block truncate text-[10px] font-semibold text-slate-500">{tab.detail}</small></span></button>)}
-    </nav>
 
     {activeTab === "overview" && <>
       <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6" aria-label="PACE verbruik en credits">
