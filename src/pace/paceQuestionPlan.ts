@@ -1,5 +1,5 @@
-import { pacePeriodFromQuestion, type PaceAnalyticsDimension, type PaceAnalyticsDomain, type PaceAnalyticsMeasure, type PaceAnalyticsPeriodPreset, type PaceAnalyticsPlan } from "./paceAnalyticsPlan";
-import type { PaceRecordEntity, PaceRecordPlan } from "./paceRecordPlan";
+import { pacePeriodFromQuestion, type PaceAnalyticsDimension, type PaceAnalyticsDomain, type PaceAnalyticsMeasure, type PaceAnalyticsPeriodPreset, type PaceAnalyticsPlan } from "./paceAnalyticsPlan.js";
+import type { PaceRecordEntity, PaceRecordPlan } from "./paceRecordPlan.js";
 
 export type PaceReadToolName =
   | "sales.vat_breakdown"
