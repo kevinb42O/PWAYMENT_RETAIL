@@ -9,8 +9,8 @@ create table public.pace_usage (
   monthly_count integer not null default 0 check (monthly_count >= 0),
   rollover_balance integer not null default 0 check (rollover_balance >= 0),
   daily_period_start date not null default (now() at time zone 'UTC')::date,
-  monthly_period_start timestamptz not null default date_trunc('month', now() at time zone 'UTC') at time zone 'UTC',
-  monthly_period_end timestamptz not null default (date_trunc('month', now() at time zone 'UTC') + interval '1 month') at time zone 'UTC',
+  monthly_period_start timestamptz not null default (date_trunc('month', now() at time zone 'UTC') at time zone 'UTC'),
+  monthly_period_end timestamptz not null default ((date_trunc('month', now() at time zone 'UTC') + interval '1 month') at time zone 'UTC'),
   last_reset_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   check (monthly_period_end > monthly_period_start)
