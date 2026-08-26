@@ -353,7 +353,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <Sparkles size={16} className={activeTab === 'pace' ? 'text-cyan-700' : 'text-slate-500'} />
               <span>PACE</span>
             </div>
-            <span className="rounded-md bg-cyan-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-cyan-800">Auto</span>
           </button>
 
           <button
