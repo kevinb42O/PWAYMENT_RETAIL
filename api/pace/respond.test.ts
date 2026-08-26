@@ -188,6 +188,70 @@ describe("Pace OpenAI endpoint", () => {
     expect(geminiBody.contents.slice(0, 2).map((item) => item.role)).toEqual(["user", "model"]);
   });
 
+  it("loads decision-ready aged inventory for a concrete bundle question", async () => {
+    process.env.GEMINI_API_KEY = "test-gemini-key";
+    const storeId = "44444444-4444-4444-8444-444444444444";
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({ id: "user-inventory-advice" }))
+      .mockResolvedValueOnce(Response.json({
+        version: 1,
+        store: { id: storeId, name: "Modezaak", role: "owner" },
+      }))
+      .mockResolvedValueOnce(Response.json({
+        basis: "daysWithoutSale",
+        thresholdDays: 60,
+        requestedCategories: ["Kledij", "Schoenen"],
+        agedProducts: [{
+          id: "aged-1",
+          name: "Linnen broek",
+          sku: "KL-101",
+          category: "Kledij",
+          stockQty: 8,
+          daysWithoutSale: 84,
+          priceCents: 8995,
+          costPriceCents: 3600,
+          maxDiscountPercentAt25Margin: 35,
+        }],
+        bundlePartners: [{
+          id: "partner-1",
+          name: "Witte sneaker",
+          sku: "SC-202",
+          category: "Schoenen",
+          stockQty: 12,
+          unitsSold30Days: 9,
+          priceCents: 10995,
+        }],
+      }))
+      .mockResolvedValueOnce(Response.json({
+        candidates: [{ content: { parts: [{ text: "Bundel de linnen broek met de witte sneaker en geef 15% korting op de broek." }] } }],
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handler.fetch(request({
+      question: "Welke producten in Kledij of Schoenen liggen meer dan 60 dagen en met welke bundel raak ik ze kwijt zonder mijn marge te verbranden?",
+      context: { storeId, view: "insights", role: "owner" },
+    }));
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    const [inventoryUrl, inventoryInit] = fetchMock.mock.calls[2] as [string, RequestInit];
+    expect(inventoryUrl).toContain("/rest/v1/rpc/get_pace_inventory_action_context");
+    expect(JSON.parse(String(inventoryInit.body))).toEqual({
+      target_store_id: storeId,
+      user_query: "Welke producten in Kledij of Schoenen liggen meer dan 60 dagen en met welke bundel raak ik ze kwijt zonder mijn marge te verbranden?",
+    });
+    const geminiBody = JSON.parse(String((fetchMock.mock.calls[3][1] as RequestInit).body)) as {
+      contents: Array<{ parts: Array<{ text: string }> }>;
+      generationConfig: { maxOutputTokens: number };
+    };
+    const prompt = geminiBody.contents.at(-1)?.parts[0]?.text ?? "";
+    expect(prompt).toContain("Beslisklare trage-voorraadcontext");
+    expect(prompt).toContain("Linnen broek");
+    expect(prompt).toContain('"maxDiscountPercentAt25Margin":35');
+    expect(prompt).toContain("Witte sneaker");
+    expect(geminiBody.generationConfig.maxOutputTokens).toBe(480);
+  });
+
   it("retries a transient PostgREST schema-cache 404 before calling Gemini", async () => {
     process.env.GEMINI_API_KEY = "test-gemini-key";
     const storeId = "22222222-2222-4222-8222-222222222222";
