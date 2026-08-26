@@ -3,12 +3,15 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  Clock3,
   Command,
   Gauge,
+  Plus,
   Send,
   Settings2,
   ShieldCheck,
   Sparkles,
+  Trash2,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -29,6 +32,8 @@ import { usePace } from "./usePace";
 import { askPaceAi, PaceQuotaExceededError, type PaceConversationTurn } from "./paceAi";
 import { paceQuotaLabel, usePaceBilling } from "./usePaceBilling";
 import { parsePaceAnswer } from "./paceAnswerFormat";
+import { deletePaceConversation, getPaceConversation, listPaceConversations } from "./conversation/api";
+import type { PaceCitation, PaceConversationSummary } from "./conversation/types";
 import {
   paceSetupProgress,
   type PaceSetupMilestone,
@@ -74,11 +79,14 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   const [query, setQuery] = useState("");
   const [activeQuestion, setActiveQuestion] = useState<string | null>(null);
   const [response, setResponse] = useState<PaceQueryAnswer | null>(null);
-  const [responseSource, setResponseSource] = useState<"gemini" | "openai" | "analytics" | "local">("local");
+  const [responseSource, setResponseSource] = useState<"gemini" | "openai" | "analytics" | "records" | "local">("local");
   const [thinking, setThinking] = useState(false);
   const [externalDialogOpen, setExternalDialogOpen] = useState(false);
   const [sessionDismissedSignals, setSessionDismissedSignals] = useState<string[]>([]);
   const [conversation, setConversation] = useState<PaceConversationTurn[]>([]);
+  const [serverConversation, setServerConversation] = useState<PaceConversationSummary | null>(null);
+  const [recentConversations, setRecentConversations] = useState<PaceConversationSummary[]>([]);
+  const [citations, setCitations] = useState<PaceCitation[]>([]);
   const { quota, hardLimited, load: loadBilling, recordQuota, markExceeded } = usePaceBilling();
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const queryRunRef = useRef(0);
@@ -123,11 +131,60 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
 
   useEffect(() => {
     setConversation([]);
+    setServerConversation(null);
+    setRecentConversations([]);
+    setCitations([]);
     setActiveQuestion(null);
     setResponse(null);
     setQuery("");
     queryRunRef.current += 1;
   }, [props.storeId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!props.storeId || !props.userId || !preferences.aiEnabled) return;
+    void listPaceConversations(props.storeId).then(async (items) => {
+      setRecentConversations(items);
+      const latest = items.find((item) => item.status === "active");
+      if (!latest || cancelled) return;
+      const detail = await getPaceConversation(latest.id);
+      if (cancelled) return;
+      setServerConversation(latest);
+      setConversation(detail.turns.filter((turn) => turn.status === "completed" || turn.status === "clarification").flatMap((turn) => [
+        { role: "user" as const, text: turn.question },
+        ...(turn.answer ? [{ role: "assistant" as const, text: turn.answer }] : []),
+      ]).slice(-6));
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [preferences.aiEnabled, props.storeId, props.userId]);
+
+  const openConversation = async (item: PaceConversationSummary) => {
+    const detail = await getPaceConversation(item.id);
+    setServerConversation(item);
+    setCitations([]);
+    setConversation(detail.turns.filter((turn) => turn.status === "completed" || turn.status === "clarification").flatMap((turn) => [
+      { role: "user" as const, text: turn.question },
+      ...(turn.answer ? [{ role: "assistant" as const, text: turn.answer }] : []),
+    ]).slice(-6));
+    const last = [...detail.turns].reverse().find((turn) => turn.answer && (turn.status === "completed" || turn.status === "clarification"));
+    if (last?.answer) {
+      setActiveQuestion(last.question);
+      setResponse(answerPaceQuery(last.question, context));
+      setResponse((current) => current ? { ...current, title: item.title, answer: last.answer! } : current);
+      setResponseSource("local");
+    }
+  };
+
+  const removeConversation = async (item: PaceConversationSummary) => {
+    await deletePaceConversation(item.id);
+    setRecentConversations((current) => current.filter((candidate) => candidate.id !== item.id));
+    if (serverConversation?.id === item.id) {
+      setServerConversation(null);
+      setConversation([]);
+      setActiveQuestion(null);
+      setResponse(null);
+    }
+  };
 
   useEffect(() => {
     void hydrateScope(props.storeId ?? null, props.userId);
@@ -200,10 +257,20 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
       const ai = await askPaceAi(question, context, conversation, local, {
         enabled: preferences.aiEnabled,
         includeLiveStoreContext: preferences.liveStoreContext,
+        conversation: {
+          id: serverConversation?.id,
+          revision: serverConversation?.revision,
+          clientTurnId: crypto.randomUUID(),
+        },
       });
       if (queryRunRef.current !== runId) return;
       setResponse({ ...local, title: local.matched ? local.title : "Dit heb ik voor je gevonden", answer: ai.answer });
       setResponseSource(ai.source);
+      if (ai.conversation) {
+        setServerConversation(ai.conversation);
+        setRecentConversations((current) => [ai.conversation!, ...current.filter((item) => item.id !== ai.conversation!.id)].slice(0, 20));
+      }
+      setCitations(ai.citations ?? []);
       if (ai.quota) recordQuota(ai.quota);
       remember(ai.answer);
     } catch (error) {
@@ -215,6 +282,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
       }
       setResponse(local);
       setResponseSource("local");
+      setCitations([]);
       remember(local.answer);
     } finally {
       if (queryRunRef.current === runId) setThinking(false);
@@ -317,6 +385,14 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                   </div>
                 </div>
                 <div className="pace-header-actions">
+                  {conversationActive && <button type="button" onClick={() => {
+                    setServerConversation(null);
+                    setConversation([]);
+                    setCitations([]);
+                    setActiveQuestion(null);
+                    setResponse(null);
+                    setQuery("");
+                  }} aria-label="Start nieuw PACE-onderzoek" title="Nieuw onderzoek"><Plus size={17} /></button>}
                   <button type="button" onClick={() => { props.onOpenProfile("pace"); setOpen(false); }} aria-label="Open volledige Pace-instellingen" title="Pace-instellingen"><Settings2 size={17} /></button>
                   <button ref={closeButtonRef} type="button" onClick={() => setOpen(false)} aria-label="Sluit Pace"><X size={18} /></button>
                 </div>
@@ -372,6 +448,15 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                         ))}
                       </section>
                     )}
+                    {recentConversations.length > 0 && <section className="pace-recent-conversations" aria-label="Recente PACE-onderzoeken">
+                      <div className="pace-stack-label"><Clock3 size={14} /> Recente onderzoeken</div>
+                      {recentConversations.slice(0, 4).map((item) => <div key={item.id} className="pace-recent-row">
+                        <button type="button" onClick={() => void openConversation(item)}>
+                          <strong>{item.title}</strong><small>{new Date(item.lastTurnAt).toLocaleDateString("nl-BE")}</small>
+                        </button>
+                        <button type="button" className="is-delete" onClick={() => void removeConversation(item)} aria-label={`Verwijder ${item.title}`}><Trash2 size={13} /></button>
+                      </div>)}
+                    </section>}
                     </div>
 
                     <section className="pace-conversation-window is-collapsed">
@@ -416,7 +501,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                               </span>
                             </div>
                           </div> : response && <>
-                            <div><Check size={14} /> PACE · {responseSource === "gemini" ? "GEMINI" : responseSource === "openai" ? "OPENAI" : responseSource === "analytics" ? "LIVE GEGEVENS" : "LOKALE KENNIS"}</div>
+                            <div><Check size={14} /> PACE · {responseSource === "gemini" ? "GEMINI" : responseSource === "openai" ? "OPENAI" : responseSource === "analytics" || responseSource === "records" ? "LIVE GEGEVENS" : "LOKALE KENNIS"}</div>
                             <h3>{response.title}</h3>
                             <div className="pace-response-content">
                               {parsePaceAnswer(response.answer).map((block, index) => {
@@ -426,6 +511,11 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                                 return <p key={`${block.kind}-${index}`}>{block.text}</p>;
                               })}
                             </div>
+                            {citations.length > 0 && <div className="pace-response-citations" aria-label="Bronnen voor dit antwoord">
+                              {citations.map((citation) => <span key={citation.key} title={`${citation.label} · ${new Date(citation.observedAt).toLocaleString("nl-BE")}`}>
+                                <ShieldCheck size={12} /> {citation.label} · {citation.freshness === "live" ? "actueel" : citation.freshness === "period" ? "periode" : "algemeen"}
+                              </span>)}
+                            </div>}
                             {response.steps && response.steps.length > 0 && <ol className="pace-response-steps">{response.steps.map((step) => <li key={step}>{step}</li>)}</ol>}
                             {response.limitation && <p className="pace-response-limit"><ShieldCheck size={13} /> {response.limitation}</p>}
                             {response.actionLabel && <button type="button" onClick={() => runAction(response.action)}>{response.actionLabel}<ArrowRight size={14} /></button>}

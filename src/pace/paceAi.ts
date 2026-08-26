@@ -1,12 +1,17 @@
 import { supabase } from "../lib/supabase";
 import type { PaceContext, PaceQueryAnswer } from "./paceSignals";
 import type { PaceQuotaSnapshot } from "./usePaceBilling";
+import type { PaceCitation, PaceConversationResponse, PaceResolvedEntity } from "./conversation/types";
 
 export interface PaceAiAnswer {
   answer: string;
   model: string;
-  source: "gemini" | "openai" | "analytics";
+  source: "gemini" | "openai" | "analytics" | "records" | "local";
   quota?: PaceQuotaSnapshot;
+  conversation?: PaceConversationResponse["conversation"];
+  citations?: PaceCitation[];
+  entities?: PaceResolvedEntity[];
+  clarification?: PaceConversationResponse["clarification"];
 }
 
 export class PaceAiUnavailableError extends Error {}
@@ -68,7 +73,11 @@ export const askPaceAi = async (
   context: PaceContext,
   history: PaceConversationTurn[] = [],
   localCandidate?: PaceQueryAnswer,
-  options: { enabled?: boolean; includeLiveStoreContext?: boolean } = {},
+  options: {
+    enabled?: boolean;
+    includeLiveStoreContext?: boolean;
+    conversation?: { id?: string; revision?: number; clientTurnId?: string };
+  } = {},
 ): Promise<PaceAiAnswer> => {
   if (options.enabled === false) {
     throw new PaceAiUnavailableError("AI-antwoorden staan uit in je Pace-instellingen.");
@@ -97,11 +106,17 @@ export const askPaceAi = async (
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        ...(options.conversation ? {
+          version: 2,
+          conversationId: options.conversation.id,
+          expectedRevision: options.conversation.revision,
+          clientTurnId: options.conversation.clientTurnId ?? crypto.randomUUID(),
+        } : {}),
         question,
         context: safeContext,
         // Earlier turns and deterministic local answers may themselves contain
         // store facts. Do not replay them after the user disables live context.
-        history: includeLiveStoreContext ? history.slice(-6).map((turn) => ({ role: turn.role, text: turn.text.slice(0, 800) })) : [],
+        history: options.conversation ? undefined : includeLiveStoreContext ? history.slice(-6).map((turn) => ({ role: turn.role, text: turn.text.slice(0, 800) })) : [],
         localCandidate: includeLiveStoreContext && localCandidate ? {
           intentId: localCandidate.intentId,
           title: localCandidate.title,
@@ -117,11 +132,11 @@ export const askPaceAi = async (
     throw new PaceAiUnavailableError("Pace AI is tijdelijk niet bereikbaar.");
   }
 
-  const result = await response.json().catch(() => null) as Partial<PaceAiAnswer> & { error?: string; remaining_credits?: number; reset_in_seconds?: number; reset_at?: string; tier?: PaceQuotaSnapshot["tier"] } | null;
+  const result = await response.json().catch(() => null) as Partial<PaceConversationResponse & PaceAiAnswer> & { error?: string; remaining_credits?: number; reset_in_seconds?: number; reset_at?: string; tier?: PaceQuotaSnapshot["tier"] } | null;
   if (response.status === 429 && result?.error === "QUOTA_EXCEEDED") {
     throw new PaceQuotaExceededError({ tier: result.tier, remaining: 0, remaining_credits: result.remaining_credits ?? 0, reset_in_seconds: result.reset_in_seconds, reset_at: result.reset_at });
   }
-  if (!response.ok || (result?.source !== "gemini" && result?.source !== "openai" && result?.source !== "analytics") || typeof result.answer !== "string") {
+  if (!response.ok || (result?.source !== "gemini" && result?.source !== "openai" && result?.source !== "analytics" && result?.source !== "records" && result?.source !== "local") || typeof result.answer !== "string") {
     aiUnavailableUntil = Date.now() + (response.status === 429 || result?.error === "PACE_AI_QUOTA_EXHAUSTED" ? 60_000 : 15_000);
     throw new PaceAiUnavailableError(result?.error ?? "Pace AI is tijdelijk niet beschikbaar.");
   }
@@ -131,5 +146,9 @@ export const askPaceAi = async (
     source: result.source,
     model: typeof result.model === "string" ? result.model : result.source === "gemini" ? "Gemini" : result.source === "analytics" ? "PWAYMENT Analytics" : "OpenAI",
     quota: result.quota,
+    conversation: result.conversation,
+    citations: result.citations ?? [],
+    entities: result.entities ?? [],
+    clarification: result.clarification,
   };
 };

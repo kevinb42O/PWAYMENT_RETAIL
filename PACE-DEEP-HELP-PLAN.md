@@ -1,5 +1,7 @@
 # Pace — diep plan voor contextuele hulp
 
+> **Architectuurnoot (26 augustus 2026):** sectie 4.6 beschrijft de oorspronkelijke lokale gesprekshistoriek. Voor de volgende fase is die vervangen door het ontwerp in [PACE-CONVERSATION-STATE-PLAN.md](./PACE-CONVERSATION-STATE-PLAN.md): servergebonden threads, tenantveilige entity resolution en evidence tracking.
+
 ## 1. Doel
 
 Pace moet op elke hoofdwerkruimte bruikbare hulp geven over wat de gebruiker daar werkelijk kan doen. Niet alleen drie vaste snelvragen, en ook geen algemene AI-tekst die plausibel klinkt maar niet op PWAYMENT is gebaseerd.

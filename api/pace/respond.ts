@@ -5,6 +5,10 @@ import { renderPaceAnalyticsAnswer } from "../../src/pace/paceAnalyticsAnswer.js
 import { planPaceRecordLookup, type PaceRecordPlan } from "../../src/pace/paceRecordPlan.js";
 import { renderPaceRecordAnswer } from "../../src/pace/paceRecordAnswer.js";
 import { PACE_PLANNER_INSTRUCTIONS, parsePaceQuestionPlan, planPaceReadTools, type PaceQuestionPlan, type PaceReadToolCall } from "../../src/pace/paceQuestionPlan.js";
+import { beginTurn, completeTurn, failTurn, getConversation, PaceConversationError, startConversation, type BegunTurn, type PaceRpcConfig } from "./conversationState.js";
+import { buildPaceEvidence, publicCitations, redactPaceSummary } from "./evidence.js";
+import { resolutionPersistence, resolveQuestionEntities, type EntityResolution } from "./entityResolution.js";
+import { inheritConversationPlan } from "./conversationMemory.js";
 
 type PaceRole = "owner" | "manager" | "cashier";
 type PaceView =
@@ -20,6 +24,10 @@ type PaceView =
   | "profile";
 
 interface PaceRequestBody {
+  version?: unknown;
+  conversationId?: unknown;
+  clientTurnId?: unknown;
+  expectedRevision?: unknown;
   question?: unknown;
   history?: unknown;
   localCandidate?: unknown;
@@ -83,6 +91,7 @@ const VIEWS = new Set<PaceView>([
 const ROLES = new Set<PaceRole>(["owner", "manager", "cashier"]);
 const MAX_BODY_BYTES = 40_000;
 const MAX_QUESTION_LENGTH = 800;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const WINDOW_MS = 60_000;
 const REQUESTS_PER_WINDOW = 20;
 const GEMINI_FALLBACK_MODELS = [
@@ -746,11 +755,95 @@ export default {
       return json(400, { error: "INVALID_QUESTION" });
     }
     const context = allowedContext(body);
-    const history = allowedHistory(body);
+    let history = allowedHistory(body);
     const localCandidate = allowedLocalCandidate(body);
+    const usesServerConversation = body.version === 2;
+    const rpcConfig: PaceRpcConfig = { authorization, supabaseUrl, publishableKey };
+    let conversation: { id: string; revision: number; title: string } | null = null;
+    let begunTurn: BegunTurn | null = null;
+    let entityResolutions: EntityResolution[] = [];
+    let serverConversationState: Record<string, unknown> | null = null;
+    if (usesServerConversation) {
+      if (!context.storeId) return json(400, { error: "STORE_REQUIRED", fallback: "local" });
+      if (typeof body.clientTurnId !== "string" || !UUID.test(body.clientTurnId)) {
+        return json(400, { error: "INVALID_CLIENT_TURN_ID" });
+      }
+      try {
+        const requestedId = typeof body.conversationId === "string" && UUID.test(body.conversationId) ? body.conversationId : null;
+        const conversationId = requestedId
+          ? requestedId
+          : (await startConversation(rpcConfig, context.storeId, context.view)).id;
+        const detail = await getConversation(rpcConfig, conversationId);
+        if (detail.storeId !== context.storeId) return json(403, { error: "STORE_ACCESS_DENIED", fallback: "local" });
+        conversation = { id: detail.id, revision: detail.revision, title: detail.title };
+        serverConversationState = detail.state;
+        history = detail.turns.filter((turn) => turn.status === "completed" || turn.status === "clarification")
+          .slice(-4).flatMap((turn) => [
+            { role: "user" as const, text: turn.question.slice(0, 800) },
+            ...(turn.answer ? [{ role: "assistant" as const, text: turn.answer.slice(0, 800) }] : []),
+          ]).slice(-6);
+        if (!context.liveStoreContext) {
+          history = [];
+          serverConversationState = null;
+        }
+        const expectedRevision = typeof body.expectedRevision === "number" && Number.isInteger(body.expectedRevision)
+          ? body.expectedRevision : detail.revision;
+        begunTurn = await beginTurn(rpcConfig, {
+          conversationId: detail.id, clientTurnId: body.clientTurnId, revision: expectedRevision,
+          question, view: context.view,
+        });
+        if (begunTurn.quota && !begunTurn.quota.allowed) {
+          return json(429, {
+            error: "QUOTA_EXCEEDED",
+            reason: begunTurn.quota.reason ?? "QUOTA_EXCEEDED",
+            remaining_credits: begunTurn.quota.remaining_credits ?? 0,
+            reset_in_seconds: begunTurn.quota.reset_in_seconds ?? 0,
+            reset_at: begunTurn.quota.reset_at,
+            tier: begunTurn.quota.tier,
+          }, { ...quotaHeaders(begunTurn.quota), "Retry-After": String(Math.max(1, begunTurn.quota.reset_in_seconds ?? 60)) });
+        }
+        if (!begunTurn.created) {
+          if ((begunTurn.status === "completed" || begunTurn.status === "clarification") && begunTurn.answer) {
+            return json(200, {
+              version: 2,
+              conversation: { id: detail.id, revision: begunTurn.revision, title: detail.title, turnSequence: begunTurn.sequence },
+              answer: begunTurn.answer, source: "local", model: "PACE Server", entities: [], citations: [],
+            });
+          }
+          return json(409, { error: "TURN_IN_PROGRESS", conversationId: detail.id, turnId: begunTurn.turnId });
+        }
+        entityResolutions = context.liveStoreContext
+          ? await resolveQuestionEntities(rpcConfig, context.storeId, question)
+          : [];
+        const ambiguous = entityResolutions.find((item) => item.status === "ambiguous");
+        if (ambiguous) {
+          const persistence = resolutionPersistence(entityResolutions);
+          const clarification = `Welke ${ambiguous.type === "customer" ? "klant" : ambiguous.type === "product" ? "productvariant" : "bedoel je precies"}?`;
+          const completed = await completeTurn(rpcConfig, {
+            turnId: begunTurn.turnId, revision: begunTurn.revision, answer: clarification, status: "clarification",
+            state: { version: 1, unresolvedMention: { type: ambiguous.type, search: ambiguous.search } },
+            summary: detail.summary, title: detail.title, plan: {}, entities: persistence.entities, mentions: persistence.mentions,
+          });
+          return json(200, {
+            version: 2,
+            conversation: { id: detail.id, revision: completed.revision, title: completed.title, turnSequence: completed.sequence },
+            answer: clarification, source: "local", model: "PACE Resolver", entities: completed.entities, citations: [],
+            clarification: { prompt: clarification, candidates: ambiguous.candidates.map((candidate) => ({ entityId: candidate.canonicalId, label: candidate.label })) },
+          });
+        }
+      } catch (error) {
+        if (error instanceof PaceConversationError) {
+          const status = error.code === "forbidden" ? 403 : error.code === "closed" ? 410 : error.code === "conflict" || error.code === "in_progress" ? 409 : 503;
+          const code = error.code === "conflict" ? "CONVERSATION_REVISION_CONFLICT" : error.code === "in_progress" ? "TURN_IN_PROGRESS"
+            : error.code === "closed" ? "CONVERSATION_CLOSED" : error.code === "forbidden" ? "STORE_ACCESS_DENIED" : "PACE_CONVERSATION_UNAVAILABLE";
+          return json(status, { error: code, fallback: status >= 500 ? "local" : undefined });
+        }
+        return json(503, { error: "PACE_CONVERSATION_UNAVAILABLE", fallback: "local" });
+      }
+    }
     const enforceQuota = process.env.PACE_QUOTA_ENFORCEMENT === "true" || process.env.NODE_ENV !== "test";
-    let quota: PaceQuotaReservation | null = null;
-    if (enforceQuota) {
+    let quota: PaceQuotaReservation | null = begunTurn?.quota ?? null;
+    if (enforceQuota && !usesServerConversation) {
       if (!context.storeId) return json(400, { error: "STORE_REQUIRED", fallback: "local" });
       try {
         quota = await reservePaceQuota(
@@ -761,11 +854,13 @@ export default {
           createHash("sha256").update(`${userId}:${question}`).digest("hex").slice(0, 128),
         );
       } catch (error) {
+        if (begunTurn) await failTurn(rpcConfig, begunTurn.turnId, error instanceof TenantAccessError ? "STORE_ACCESS_DENIED" : "PACE_QUOTA_UNAVAILABLE");
         if (error instanceof TenantAccessError) return json(403, { error: "STORE_ACCESS_DENIED", fallback: "local" });
         console.error("Pace quota reservation failed", { error: error instanceof Error ? error.message : "unknown" });
         return json(503, { error: "PACE_QUOTA_UNAVAILABLE", fallback: "local" });
       }
       if (!quota.allowed) {
+        if (begunTurn) await failTurn(rpcConfig, begunTurn.turnId, quota.reason ?? "QUOTA_EXCEEDED");
         return json(429, {
           error: "QUOTA_EXCEEDED",
           reason: quota.reason ?? "QUOTA_EXCEEDED",
@@ -786,6 +881,21 @@ export default {
     }
     if (questionPlan?.intent === "clarify" && questionPlan.clarification) {
       await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, { status: "completed", elapsedMs: Date.now() - startedAt, model: `${model} · planner` });
+      if (conversation && begunTurn) {
+        const completed = await completeTurn(rpcConfig, {
+          turnId: begunTurn.turnId, revision: begunTurn.revision, answer: questionPlan.clarification, status: "clarification",
+          state: { version: 1, lastIntent: "clarify", unresolvedMention: { prompt: questionPlan.clarification } },
+          summary: redactPaceSummary(history.map((turn) => `${turn.role}: ${turn.text}`).join("\n")),
+          title: conversation.title, plan: questionPlan as unknown as Record<string, unknown>,
+          modelMetadata: { provider, model, elapsedMs: Date.now() - startedAt },
+        });
+        return json(200, {
+          version: 2,
+          conversation: { id: conversation.id, revision: completed.revision, title: completed.title, turnSequence: completed.sequence },
+          answer: questionPlan.clarification, source: "gemini", model, entities: completed.entities, citations: [], quota,
+          planner: { intent: questionPlan.intent, confidence: questionPlan.confidence },
+        }, quota ? quotaHeaders(quota) : {});
+      }
       return json(200, {
         answer: questionPlan.clarification,
         source: "gemini",
@@ -800,9 +910,15 @@ export default {
     const fallbackAnalyticsPlans = fallbackInventoryAction || fallbackRecordPlan ? [] : planPaceAnalyticsQuestions(question);
     const fallbackReadToolCalls = planPaceReadTools(question);
     const inventoryActionRequested = context.liveStoreContext && (questionPlan ? questionPlan.inventoryAction : fallbackInventoryAction);
-    const recordPlan = context.liveStoreContext ? (questionPlan ? questionPlan.record : fallbackRecordPlan) : null;
-    const rawAnalyticsPlans = context.liveStoreContext ? (questionPlan ? questionPlan.analytics : fallbackAnalyticsPlans) : [];
-    const readToolCalls = context.liveStoreContext ? (questionPlan ? questionPlan.tools : fallbackReadToolCalls) : [];
+    const initialRecordPlan = context.liveStoreContext ? (questionPlan ? questionPlan.record : fallbackRecordPlan) : null;
+    const initialAnalyticsPlans = context.liveStoreContext ? (questionPlan ? questionPlan.analytics : fallbackAnalyticsPlans) : [];
+    const initialReadToolCalls = context.liveStoreContext ? (questionPlan ? questionPlan.tools : fallbackReadToolCalls) : [];
+    const inherited = inheritConversationPlan(question, serverConversationState, {
+      analytics: initialAnalyticsPlans, record: initialRecordPlan, tools: initialReadToolCalls,
+    });
+    const recordPlan = inherited.record;
+    const rawAnalyticsPlans = inherited.analytics;
+    const readToolCalls = inherited.tools;
     const analyticsPlans = expandPaceAnalyticsComparisons(rawAnalyticsPlans);
     const needsBroadContext = context.liveStoreContext && (questionPlan
       ? questionPlan.broadContext
@@ -825,6 +941,7 @@ export default {
     );
     if (accessDenied) {
       await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, { status: "failed", elapsedMs: Date.now() - startedAt, error: "STORE_ACCESS_DENIED" });
+      if (begunTurn) await failTurn(rpcConfig, begunTurn.turnId, "STORE_ACCESS_DENIED");
       return json(403, { error: "STORE_ACCESS_DENIED", fallback: "local" });
     }
     tenantContext = tenantResult.status === "fulfilled"
@@ -843,6 +960,42 @@ export default {
       ? toolsResult.value
       : readToolCalls.map((tool) => ({ unavailable: true, tool }));
 
+    const evidence = buildPaceEvidence([
+      { sourceKind: "aggregate", sourceName: "tenant.context", label: "Winkelcontext", context: tenantContext },
+      { sourceKind: "aggregate", sourceName: "inventory.action", label: "Voorraadanalyse", context: inventoryActionContext },
+      ...analyticsContexts.map((item) => ({ sourceKind: "aggregate" as const, sourceName: "analytics.query", label: "Retailanalyse", context: item, freshness: "period" as const })),
+      { sourceKind: "record", sourceName: "records.lookup", label: "Winkelrecords", context: recordContext },
+      ...toolContexts.map((item, index) => {
+        const toolName = readToolCalls[index]?.name ?? "tenant.context";
+        return { sourceKind: "aggregate" as const, sourceName: toolName, label: "Gespecialiseerde winkelgegevens", context: item };
+      }),
+    ]);
+    const finishServerTurn = async (answerText: string, answerSource: string, answerModel: string) => {
+      if (!conversation || !begunTurn) return null;
+      const persistence = resolutionPersistence(entityResolutions);
+      const state = {
+        version: 1,
+        lastIntent: questionPlan?.intent ?? (recordPlan ? "record" : analyticsPlans.length ? "analytics" : "knowledge"),
+        lastQueryFrame: { analytics: analyticsPlans, record: recordPlan, tools: readToolCalls },
+        focusEntityIds: [],
+        lastResultSet: [],
+        unresolvedMention: null,
+        lastEvidenceIds: evidence.map((item) => item.key),
+      };
+      const title = conversation.title === "Nieuw onderzoek"
+        ? question.replace(/[?!.]+$/g, "").slice(0, 80) || "PACE-onderzoek"
+        : conversation.title;
+      return await completeTurn(rpcConfig, {
+        turnId: begunTurn.turnId, revision: begunTurn.revision, answer: answerText, state,
+        summary: redactPaceSummary([...history, { role: "user" as const, text: question }, { role: "assistant" as const, text: answerText }]
+          .map((turn) => `${turn.role}: ${turn.text}`).join("\n")),
+        title,
+        plan: (questionPlan ?? { version: 1, analytics: analyticsPlans, record: recordPlan, tools: readToolCalls }) as unknown as Record<string, unknown>,
+        entities: persistence.entities, mentions: persistence.mentions, evidence,
+        modelMetadata: { provider: answerSource, model: answerModel, elapsedMs: Date.now() - startedAt },
+      });
+    };
+
     // Known analytical questions are answered from server-calculated facts.
     // This skips a model round-trip and prevents prose generation from changing
     // values, ranking or formatting. Free help and advisory questions continue
@@ -851,6 +1004,14 @@ export default {
     const deterministicAnalyticsAnswer = needsMixedComposition ? null : renderPaceAnalyticsAnswer(analyticsContexts);
     if (deterministicAnalyticsAnswer) {
       await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, { status: "completed", elapsedMs: Date.now() - startedAt, model: "PWAYMENT Analytics" });
+      const completed = await finishServerTurn(deterministicAnalyticsAnswer, "analytics", "PWAYMENT Analytics");
+      if (completed && conversation) return json(200, {
+        version: 2,
+        conversation: { id: conversation.id, revision: completed.revision, title: completed.title, turnSequence: completed.sequence },
+        answer: deterministicAnalyticsAnswer, source: "analytics", model: "PWAYMENT Analytics",
+        entities: completed.entities, citations: publicCitations(evidence), quota,
+        plans: analyticsPlans.map(({ rationale: _rationale, ...plan }) => plan),
+      }, quota ? quotaHeaders(quota) : {});
       return json(200, {
         answer: deterministicAnalyticsAnswer,
         source: "analytics",
@@ -862,6 +1023,14 @@ export default {
     const deterministicRecordAnswer = needsMixedComposition ? null : renderPaceRecordAnswer(recordContext);
     if (deterministicRecordAnswer) {
       await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, { status: "completed", elapsedMs: Date.now() - startedAt, model: "PWAYMENT Records" });
+      const completed = await finishServerTurn(deterministicRecordAnswer, "records", "PWAYMENT Records");
+      if (completed && conversation) return json(200, {
+        version: 2,
+        conversation: { id: conversation.id, revision: completed.revision, title: completed.title, turnSequence: completed.sequence },
+        answer: deterministicRecordAnswer, source: "records", model: "PWAYMENT Records",
+        entities: completed.entities, citations: publicCitations(evidence), quota,
+        record: recordPlan ? { version: recordPlan.version, entity: recordPlan.entity, limit: recordPlan.limit } : null,
+      }, quota ? quotaHeaders(quota) : {});
       return json(200, {
         answer: deterministicRecordAnswer,
         source: "analytics",
@@ -878,12 +1047,14 @@ export default {
         : await callOpenAi(openAiKey!, model, question, context, tenantContext, inventoryActionContext, analyticsContexts, recordContext, toolContexts, history, localCandidate, safetyIdentifier);
     } catch {
       await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, { status: "failed", elapsedMs: Date.now() - startedAt, model, error: "PACE_AI_UNAVAILABLE" });
+      if (begunTurn) await failTurn(rpcConfig, begunTurn.turnId, "PACE_AI_UNAVAILABLE");
       return json(503, { error: "PACE_AI_UNAVAILABLE", fallback: "local" });
     }
 
     if (!upstreamResult.ok) {
       console.error("Pace AI request failed", { provider, status: upstreamResult.status });
       await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, { status: "failed", elapsedMs: Date.now() - startedAt, model, error: upstreamResult.quota ? "PACE_AI_QUOTA_EXHAUSTED" : "PACE_AI_UPSTREAM_ERROR" });
+      if (begunTurn) await failTurn(rpcConfig, begunTurn.turnId, upstreamResult.quota ? "PACE_AI_QUOTA_EXHAUSTED" : "PACE_AI_UPSTREAM_ERROR");
       return json(upstreamResult.quota ? 429 : 502, {
         error: upstreamResult.quota ? "PACE_AI_QUOTA_EXHAUSTED" : "PACE_AI_UPSTREAM_ERROR",
         fallback: "local",
@@ -893,6 +1064,7 @@ export default {
     const answer = upstreamResult.answer;
     if (!answer) {
       await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, { status: "failed", elapsedMs: Date.now() - startedAt, model, error: "PACE_AI_EMPTY_RESPONSE" });
+      if (begunTurn) await failTurn(rpcConfig, begunTurn.turnId, "PACE_AI_EMPTY_RESPONSE");
       return json(502, { error: "PACE_AI_EMPTY_RESPONSE", fallback: "local" });
     }
 
@@ -905,6 +1077,21 @@ export default {
       status: "completed", inputTokens, outputTokens, cost, elapsedMs: Date.now() - startedAt,
       model: "model" in upstreamResult && typeof upstreamResult.model === "string" ? upstreamResult.model : model,
     });
+
+    const finalModel = "model" in upstreamResult && typeof upstreamResult.model === "string" ? upstreamResult.model : model;
+    const completed = await finishServerTurn(answer, provider, finalModel);
+    if (completed && conversation) return json(200, {
+      version: 2,
+      conversation: { id: conversation.id, revision: completed.revision, title: completed.title, turnSequence: completed.sequence },
+      answer,
+      source: provider,
+      model: finalModel,
+      responseId: upstreamResult.responseId,
+      usage: { inputTokens: upstreamResult.inputTokens, outputTokens: upstreamResult.outputTokens },
+      entities: completed.entities,
+      citations: publicCitations(evidence),
+      quota,
+    }, quota ? quotaHeaders(quota) : {});
 
     return json(200, {
       answer,

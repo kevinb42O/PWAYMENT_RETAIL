@@ -102,6 +102,42 @@ describe("Pace OpenAI endpoint", () => {
     expect(String(upstreamBody.input)).toContain('"productCount":0');
   });
 
+  it("persists a v2 turn server-side and returns conversation metadata", async () => {
+    const storeId = "11111111-1111-4111-8111-111111111111";
+    const conversationId = "22222222-2222-4222-8222-222222222222";
+    const turnId = "33333333-3333-4333-8333-333333333333";
+    const clientTurnId = "44444444-4444-4444-8444-444444444444";
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({ id: "user-v2" }))
+      .mockResolvedValueOnce(Response.json({ id: conversationId, storeId, title: "Nieuw onderzoek", status: "active", revision: 0, activeView: "pos", lastTurnAt: "2026-08-26T12:00:00Z", expiresAt: "2026-09-25T12:00:00Z" }))
+      .mockResolvedValueOnce(Response.json({ id: conversationId, storeId, title: "Nieuw onderzoek", status: "active", revision: 0, activeView: "pos", state: { version: 1 }, summary: "", turns: [], entities: [], lastTurnAt: "2026-08-26T12:00:00Z", expiresAt: "2026-09-25T12:00:00Z" }))
+      .mockResolvedValueOnce(Response.json({ created: true, turnId, sequence: 1, status: "processing", revision: 0, state: { version: 1 }, summary: "" }))
+      .mockResolvedValueOnce(Response.json({ version: 1, generatedAt: "2026-08-26T12:01:00Z", basis: "active store configuration", productCount: 4 }))
+      .mockResolvedValueOnce(Response.json({ id: "resp-v2", output: [{ type: "message", content: [{ type: "output_text", text: "Je winkelcontext is beschikbaar." }] }], usage: { input_tokens: 20, output_tokens: 6 } }))
+      .mockResolvedValueOnce(Response.json({ turnId, sequence: 1, status: "completed", answer: "Je winkelcontext is beschikbaar.", revision: 1, title: "Wat kan PACE hier zien", entities: [], citations: [{ key: "E1" }] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handler.fetch(request({
+      version: 2,
+      clientTurnId,
+      question: "Wat kan PACE hier zien?",
+      context: { storeId, view: "pos", role: "owner", online: true },
+    }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      version: 2,
+      conversation: { id: conversationId, revision: 1, turnSequence: 1 },
+      answer: "Je winkelcontext is beschikbaar.",
+      citations: [expect.objectContaining({ key: "E1", label: "Winkelcontext" })],
+    });
+    expect(String(fetchMock.mock.calls[2][0])).toContain("get_pace_conversation");
+    expect(String(fetchMock.mock.calls[3][0])).toContain("begin_pace_turn");
+    expect(String(fetchMock.mock.calls[6][0])).toContain("complete_pace_turn");
+    const completion = JSON.parse(String((fetchMock.mock.calls[6][1] as RequestInit).body));
+    expect(completion.evidence_items).toEqual([expect.objectContaining({ key: "E1", sourceName: "tenant.context" })]);
+  });
+
   it("prefers Gemini, keeps the key in a server header, and returns Gemini text", async () => {
     process.env.GEMINI_API_KEY = "test-gemini-key";
     process.env.GEMINI_PACE_MODEL = "gemini-2.5-flash-lite";

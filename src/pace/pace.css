@@ -351,6 +351,15 @@
 }
 .pace-conversation-layout .pace-response h3 { font-size: 0.98rem; }
 .pace-conversation-layout .pace-response p { font-size: 0.75rem; line-height: 1.6; }
+.pace-response-citations { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.7rem; }
+.pace-response-citations span { display: inline-flex; align-items: center; gap: 0.25rem; border: 1px solid #d8e8ee; border-radius: 999px; background: #f7fbfc; color: #486674; padding: 0.28rem 0.5rem; font-size: 0.62rem; font-weight: 700; }
+.pace-recent-conversations { display: grid; gap: 0.35rem; }
+.pace-recent-row { display: grid; grid-template-columns: 1fr auto; gap: 0.3rem; align-items: stretch; }
+.pace-recent-row > button:first-child { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; min-width: 0; border: 1px solid #e3edf1; border-radius: 0.72rem; background: #fff; color: #173f50; padding: 0.55rem 0.65rem; text-align: left; }
+.pace-recent-row strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.7rem; }
+.pace-recent-row small { flex: none; color: #78909a; font-size: 0.58rem; }
+.pace-recent-row .is-delete { width: 2rem; border: 0; border-radius: 0.65rem; background: transparent; color: #8ca0a8; }
+.pace-recent-row .is-delete:hover { background: #fff1f2; color: #be123c; }
 
 .pace-conversation-composer {
   flex: none;
