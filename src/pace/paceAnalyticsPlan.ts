@@ -145,7 +145,7 @@ const comparisonFromQuestion = (question: string): PaceAnalyticsPlan["comparison
 
 const isAnalyticalQuestion = (question: string) => has(
   question,
-  /\b(hoeveel|welke|wat|wie|beste|slechtste|hoogste|laagste|meeste|minste|gemiddeld|totaal|omzet|marge|winst|verkoop|transact|korting|retour|voorraad|stock|klant|bezoek|kassier|medewerker|shift|rooster|webshop|service|herstel|bestel|purchase|void|annul|kasverschil|prestatie|analyse|toon|rangschik|vergelijk)\w*/,
+  /\b(hoeveel|welke|wat|wie|beste|slechtste|hoogste|laagste|meeste|minste|gemiddeld|totaal|omzet|marge|winst|verkoop|verkocht|transact|korting|retour|voorraad|stock|klant|bezoek|kassier|medewerker|shift|rooster|webshop|service|herstel|bestel|purchase|void|annul|kasverschil|prestatie|analyse|toon|rangschik|vergelijk)\w*/,
 );
 
 /**
@@ -198,7 +198,7 @@ export const planPaceAnalyticsQuestion = (rawQuestion: string): PaceAnalyticsPla
     return { version: 1, domain: "inventory", measure, dimension, period, filters: { search: rawQuestion.slice(0, 240) }, sort: measure === "days_of_cover" && has(question, /raakt.*op|stockout/) ? "asc" : sort, limit, comparison, rationale: "voorraadpositie en verkoopsnelheid" };
   }
 
-  if (!has(question, /\b(omzet|marge|winst|verkoop|verkop|transact|ticket|mand|stuks|aantal|korting|retour|betaal|categorie|product|artikel|merk|bron|kanaal|dag|week|maand|jaar|uur)\w*/)) return null;
+  if (!has(question, /\b(omzet|marge|winst|verkoop|verkop|verkocht|transact|ticket|mand|stuks|aantal|korting|retour|betaal|categorie|product|artikel|merk|bron|kanaal|dag|week|maand|jaar|uur)\w*/)) return null;
 
   const measure: PaceAnalyticsMeasure = has(question, /\b(brutowinst|gross profit|winst)\b/) ? "gross_profit"
     : has(question, /\b(marge|margin)\b/) ? "margin"

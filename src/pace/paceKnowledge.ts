@@ -249,6 +249,18 @@ const KNOWLEDGE: PaceKnowledgeEntry[] = [
     actionLabel: "Open Inzichten",
   }),
   entry({
+    id: "insights.best-sales-date",
+    views: ["insights", "audit-log", "z-report"],
+    patterns: [
+      /(welke|wat|op welke).*(datum|dag).*(best|meest|hoogst).*(verkocht|omzet)/i,
+      /(best|meest|hoogst).*(verkocht|omzet).*(datum|dag)/i,
+    ],
+    title: "Historisch beste verkoopdatum",
+    answer: "Pace haalt hiervoor alle afgeronde verkopen en retouren uit de toegestane winkelhistoriek op en rangschikt kalenderdatums op netto-omzet. Als live winkelgegevens tijdelijk niet beschikbaar zijn, verzin ik geen datum of bedrag.",
+    action: { kind: "navigate", view: "insights" },
+    actionLabel: "Open Inzichten",
+  }),
+  entry({
     id: "insights.forecast-po",
     views: ["insights"],
     patterns: [/(forecast|prognose|days of cover|stockout|confidence|seizoen|besteladvies|purchase order|bestelling|leverancier).*(bereken|maak|ontvang|waarom|beteken)/i, /days of cover|stockoutdatum|besteladvies/i],

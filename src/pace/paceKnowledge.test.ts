@@ -48,6 +48,7 @@ describe("Pace product knowledge", () => {
     ["Hoe voeg ik maten en kleuren toe?", "catalog.variants-identifiers"],
     ["Wat betekent days of cover?", "insights.forecast-po"],
     ["Welke dag van de week is historisch gezien de alltime beste verkoopsdag?", "insights.best-sales-weekday"],
+    ["welke datum heb ik het best verkocht alltime?", "insights.best-sales-date"],
     ["Hoe waardeer ik een cadeaubon op?", "customers.giftcards"],
     ["Wie is mijn beste klant?", "customers.best"],
     ["Wanneer wordt webshopvoorraad gereserveerd?", "webshop.orders"],

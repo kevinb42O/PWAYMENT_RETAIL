@@ -105,6 +105,9 @@ const formatMetric = (measure: PaceAnalyticsMeasure, value: number) => {
   return number(value);
 };
 
+const rowLabel = (plan: PaceAnalyticsPlan, value: string) =>
+  plan.dimension === "day" ? date(value) : value;
+
 const periodLabel = (period: unknown) => {
   if (!period || typeof period !== "object") return "gekozen periode";
   const value = period as Record<string, unknown>;
@@ -180,7 +183,7 @@ export const renderPaceAnalyticsAnswer = (rawContexts: unknown[]): string | null
       continue;
     }
     const best = rows[0];
-    const bestLabel = textValue(best.label) ?? "Eerste resultaat";
+    const bestLabel = rowLabel(plan, textValue(best.label) ?? "Eerste resultaat");
     const bestMetric = numberValue(best.metricValue);
     const direction = plan.sort === "asc" ? "laagste" : "hoogste";
     const intro = bestMetric == null
@@ -188,7 +191,7 @@ export const renderPaceAnalyticsAnswer = (rawContexts: unknown[]): string | null
       : `${bestLabel} heeft de ${direction} ${selectedMetricLabel.toLocaleLowerCase("nl-BE")}: ${formatMetric(plan.measure, bestMetric)}.`;
     const lines = [heading, "", `- ${intro}`, "", "## Rangschikking", ""];
     for (const row of rows) {
-      const label = textValue(row.label) ?? "Onbekend";
+      const label = rowLabel(plan, textValue(row.label) ?? "Onbekend");
       const metric = numberValue(row.metricValue);
       lines.push(`- ${label}`);
       if (metric != null) lines.push(`  - ${selectedMetricLabel}: ${formatMetric(plan.measure, metric)}`);

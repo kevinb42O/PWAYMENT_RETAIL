@@ -29,6 +29,19 @@ describe("PACE deterministic analytics answer", () => {
     }])).toContain("Geen resultaten voor vorige maand binnen de gekozen filters.");
   });
 
+  it("renders a best-selling calendar date in merchant language", () => {
+    const answer = renderPaceAnalyticsAnswer([{
+      query: { version: 1, domain: "sales", measure: "revenue", dimension: "day", period: { preset: "all_time" }, filters: {}, sort: "desc", limit: 12, comparison: "none", rationale: "test" },
+      period: { preset: "all_time" },
+      basis: "finalized sales and refunds in the store timezone",
+      rows: [{ label: "2026-08-23", metricValue: 245900, revenueCents: 245900, transactionCount: 17 }],
+    }]);
+
+    expect(answer).toContain("23 augustus 2026 heeft de hoogste netto-omzet: € 2.459,00");
+    expect(answer).toContain("- 23 augustus 2026");
+    expect(answer).not.toContain("2026-08-23");
+  });
+
   it("falls back to AI when analytics are unavailable", () => {
     expect(renderPaceAnalyticsAnswer([{ unavailable: true }])).toBeNull();
   });

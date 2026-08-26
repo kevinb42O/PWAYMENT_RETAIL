@@ -4,6 +4,7 @@ import { expandPaceAnalyticsComparisons, planPaceAnalyticsQuestion, planPaceAnal
 describe("PACE selective analytics planner", () => {
   it.each([
     ["Welke dag van de week is historisch gezien de alltime beste verkoopsdag?", "sales", "revenue", "weekday", "all_time"],
+    ["welke datum heb ik het best verkocht alltime?", "sales", "revenue", "day", "all_time"],
     ["Op welk uur is mijn gemiddelde ticket deze maand het hoogst?", "sales", "average_ticket", "hour", "this_month"],
     ["Welke categorie leverde vorige maand de meeste brutowinst?", "sales", "gross_profit", "category", "last_month"],
     ["Toon de top 10 producten op omzet in 2025", "sales", "revenue", "product", "custom"],
