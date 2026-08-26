@@ -149,16 +149,16 @@ describe("Pace OpenAI endpoint", () => {
     expect(String(fetchMock.mock.calls[2][0])).toContain("gemini-3.5-flash-lite");
   });
 
-  it("loads tenant context with the caller session and grounds Gemini in product knowledge", async () => {
+  it("combines selective analytics with product knowledge for a mixed question", async () => {
     process.env.GEMINI_API_KEY = "test-gemini-key";
     const storeId = "11111111-1111-4111-8111-111111111111";
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(Response.json({ id: "user-tenant-context" }))
       .mockResolvedValueOnce(Response.json({
-        version: 1,
-        store: { id: storeId, name: "Testwinkel", role: "owner" },
-        catalog: { activeProducts: 42, lowStockProducts: 3 },
-        sales: { today: { transactionCount: 7, netTotalCents: 12345 } },
+        version: 1, timezone: "Europe/Brussels",
+        query: { version: 1, domain: "sales", measure: "transactions", dimension: "total", period: { preset: "today" }, filters: {}, sort: "desc", limit: 12, comparison: "none", rationale: "verkoopanalyse" },
+        period: { preset: "today", start: "2026-08-26T00:00:00Z", endExclusive: "2026-08-27T00:00:00Z" },
+        rows: [{ label: "Totaal", metricValue: 7, transactionCount: 7, revenueCents: 12345 }],
       }))
       .mockResolvedValueOnce(Response.json({
         candidates: [{ content: { parts: [{ text: "Vandaag zijn 7 verkopen gesynchroniseerd." }] } }],
@@ -174,15 +174,15 @@ describe("Pace OpenAI endpoint", () => {
 
     expect(response.status).toBe(200);
     const [rpcUrl, rpcInit] = fetchMock.mock.calls[1] as [string, RequestInit];
-    expect(rpcUrl).toContain("/rest/v1/rpc/get_pace_ai_context");
+    expect(rpcUrl).toContain("/rest/v1/rpc/get_pace_analytics_context");
     expect((rpcInit.headers as Record<string, string>).Authorization).toBe("Bearer valid-token");
-    expect(JSON.parse(String(rpcInit.body))).toEqual({ target_store_id: storeId, user_query: "Hoeveel verkopen heb ik vandaag en wat betekent lage voorraad?" });
+    expect(JSON.parse(String(rpcInit.body))).toMatchObject({ target_store_id: storeId, query_plan: { domain: "sales", measure: "transactions", period: { preset: "today" } } });
 
     const geminiInit = fetchMock.mock.calls[2][1] as RequestInit;
     const geminiBody = JSON.parse(String(geminiInit.body)) as { contents: Array<{ role: string; parts: Array<{ text: string }> }> };
     const prompt = geminiBody.contents.at(-1)?.parts[0]?.text ?? "";
     expect(prompt).toContain("PWAYMENT-productkennis");
-    expect(prompt).toContain("Testwinkel");
+    expect(prompt).toContain("Selectieve, server-side gevalideerde analyses");
     expect(prompt).toContain('"transactionCount":7');
     expect(prompt).toContain("insights.explain");
     expect(geminiBody.contents.slice(0, 2).map((item) => item.role)).toEqual(["user", "model"]);
@@ -193,10 +193,6 @@ describe("Pace OpenAI endpoint", () => {
     const storeId = "44444444-4444-4444-8444-444444444444";
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(Response.json({ id: "user-inventory-advice" }))
-      .mockResolvedValueOnce(Response.json({
-        version: 1,
-        store: { id: storeId, name: "Modezaak", role: "owner" },
-      }))
       .mockResolvedValueOnce(Response.json({
         basis: "daysWithoutSale",
         thresholdDays: 60,
@@ -233,14 +229,14 @@ describe("Pace OpenAI endpoint", () => {
     }));
 
     expect(response.status).toBe(200);
-    expect(fetchMock).toHaveBeenCalledTimes(4);
-    const [inventoryUrl, inventoryInit] = fetchMock.mock.calls[2] as [string, RequestInit];
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    const [inventoryUrl, inventoryInit] = fetchMock.mock.calls[1] as [string, RequestInit];
     expect(inventoryUrl).toContain("/rest/v1/rpc/get_pace_inventory_action_context");
     expect(JSON.parse(String(inventoryInit.body))).toEqual({
       target_store_id: storeId,
       user_query: "Welke producten in Kledij of Schoenen liggen meer dan 60 dagen en met welke bundel raak ik ze kwijt zonder mijn marge te verbranden?",
     });
-    const geminiBody = JSON.parse(String((fetchMock.mock.calls[3][1] as RequestInit).body)) as {
+    const geminiBody = JSON.parse(String((fetchMock.mock.calls[2][1] as RequestInit).body)) as {
       contents: Array<{ parts: Array<{ text: string }> }>;
       generationConfig: { maxOutputTokens: number };
     };
@@ -252,43 +248,21 @@ describe("Pace OpenAI endpoint", () => {
     expect(geminiBody.generationConfig.maxOutputTokens).toBe(480);
   });
 
-  it("loads all-time weekday sales aggregates for the best sales day question", async () => {
+  it("answers all-time weekday sales directly from selective analytics", async () => {
     process.env.GEMINI_API_KEY = "test-gemini-key";
     const storeId = "55555555-5555-4555-8555-555555555555";
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(Response.json({ id: "user-weekday-sales" }))
       .mockResolvedValueOnce(Response.json({
         version: 1,
-        store: { id: storeId, name: "Weekwinkel", role: "owner" },
-      }))
-      .mockResolvedValueOnce(Response.json({
-        basis: "all finalized sale transactions grouped in the store timezone; refunds excluded",
         timezone: "Europe/Brussels",
-        firstSaleAt: "2025-01-01T09:00:00Z",
-        lastSaleAt: "2026-08-25T16:00:00Z",
-        transactionCount: 420,
-        bestByAverageRevenuePerTradingDay: {
-          weekday_iso: 6,
-          weekday: "zaterdag",
-          trading_days: 72,
-          transaction_count: 110,
-          revenue_cents: 485000,
-          average_revenue_per_trading_day_cents: 6736,
-          average_transaction_cents: 4409,
-        },
-        bestByTotalRevenue: {
-          weekday_iso: 5,
-          weekday: "vrijdag",
-          trading_days: 86,
-          transaction_count: 125,
-          revenue_cents: 501000,
-          average_revenue_per_trading_day_cents: 5826,
-          average_transaction_cents: 4008,
-        },
-        weekdays: [],
-      }))
-      .mockResolvedValueOnce(Response.json({
-        candidates: [{ content: { parts: [{ text: "## Beste weekdag\n- Zaterdag\n  - Gemiddelde dagomzet: € 67,36" }] } }],
+        query: { version: 1, domain: "sales", measure: "revenue", dimension: "weekday", period: { preset: "all_time" }, filters: {}, sort: "desc", limit: 5, comparison: "none", rationale: "verkoopanalyse" },
+        period: { preset: "all_time", start: null, endExclusive: null },
+        basis: "finalized sales and refunds in the store timezone; weekday ranking uses average net revenue per active trading day",
+        rows: [
+          { key: "6", label: "zaterdag", metricValue: 6736, revenueCents: 485000, transactionCount: 110, tradingDays: 72, averageTicketCents: 4409 },
+          { key: "5", label: "vrijdag", metricValue: 5826, revenueCents: 501000, transactionCount: 125, tradingDays: 86, averageTicketCents: 4008 },
+        ],
       }));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -299,18 +273,50 @@ describe("Pace OpenAI endpoint", () => {
     }));
 
     expect(response.status).toBe(200);
-    expect(fetchMock).toHaveBeenCalledTimes(4);
-    const [weekdayUrl, weekdayInit] = fetchMock.mock.calls[2] as [string, RequestInit];
-    expect(weekdayUrl).toContain("/rest/v1/rpc/get_pace_sales_weekday_context");
-    expect(JSON.parse(String(weekdayInit.body))).toEqual({ target_store_id: storeId });
-    const geminiBody = JSON.parse(String((fetchMock.mock.calls[3][1] as RequestInit).body)) as {
-      contents: Array<{ parts: Array<{ text: string }> }>;
-    };
-    const prompt = geminiBody.contents.at(-1)?.parts[0]?.text ?? "";
-    expect(prompt).toContain("All-time verkoopaggregatie per lokale weekdag");
-    expect(prompt).toContain('"weekday":"zaterdag"');
-    expect(prompt).toContain('"average_revenue_per_trading_day_cents":6736');
-    expect(prompt).toContain("insights.best-sales-weekday");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const [analyticsUrl, analyticsInit] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(analyticsUrl).toContain("/rest/v1/rpc/get_pace_analytics_context");
+    expect(JSON.parse(String(analyticsInit.body))).toMatchObject({ target_store_id: storeId, query_plan: { domain: "sales", measure: "revenue", dimension: "weekday", period: { preset: "all_time" } } });
+    await expect(response.json()).resolves.toMatchObject({
+      source: "analytics",
+      model: "PWAYMENT Analytics",
+      answer: expect.stringContaining("zaterdag heeft de hoogste gemiddelde dagomzet: € 67,36"),
+    });
+  });
+
+  it("loads only the requested record projection for a concrete lookup", async () => {
+    process.env.GEMINI_API_KEY = "test-gemini-key";
+    const storeId = "66666666-6666-4666-8666-666666666666";
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({ id: "user-record-lookup" }))
+      .mockResolvedValueOnce(Response.json({
+        version: 1,
+        entity: "webshop_order",
+        basis: "webshop order lifecycle; customer and address snapshots excluded",
+        rows: [{ orderNumber: "WEB-88", status: "processing", paymentStatus: "paid", totalCents: 12995 }],
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handler.fetch(request({
+      question: "Wat is de status van webshoporder WEB-88?",
+      context: { storeId, view: "profile", role: "manager" },
+    }));
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const [recordUrl, recordInit] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(recordUrl).toContain("/rest/v1/rpc/get_pace_record_context");
+    expect(recordUrl).not.toContain("get_pace_ai_context");
+    expect(JSON.parse(String(recordInit.body))).toMatchObject({
+      target_store_id: storeId,
+      record_plan: { entity: "webshop_order", limit: 15 },
+    });
+    await expect(response.json()).resolves.toMatchObject({
+      source: "analytics",
+      model: "PWAYMENT Records",
+      answer: expect.stringContaining("WEB-88"),
+      record: { entity: "webshop_order" },
+    });
   });
 
   it("retries a transient PostgREST schema-cache 404 before calling Gemini", async () => {

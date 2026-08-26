@@ -71,7 +71,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   const prefersReducedMotion = useReducedMotion();
   const [query, setQuery] = useState("");
   const [response, setResponse] = useState<PaceQueryAnswer | null>(null);
-  const [responseSource, setResponseSource] = useState<"gemini" | "openai" | "local">("local");
+  const [responseSource, setResponseSource] = useState<"gemini" | "openai" | "analytics" | "local">("local");
   const [thinking, setThinking] = useState(false);
   const [externalDialogOpen, setExternalDialogOpen] = useState(false);
   const [sessionDismissedSignals, setSessionDismissedSignals] = useState<string[]>([]);
@@ -352,7 +352,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                                   </span>
                                 </div>
                               </div> : response && <>
-                                <div><Check size={14} /> PACE · {responseSource === "gemini" ? "GEMINI" : responseSource === "openai" ? "OPENAI" : "LOKALE KENNIS"}</div>
+                                <div><Check size={14} /> PACE · {responseSource === "gemini" ? "GEMINI" : responseSource === "openai" ? "OPENAI" : responseSource === "analytics" ? "LIVE GEGEVENS" : "LOKALE KENNIS"}</div>
                                 <h3>{response.title}</h3>
                                 <div className="pace-response-content">
                                   {parsePaceAnswer(response.answer).map((block, index) => {

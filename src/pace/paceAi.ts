@@ -4,7 +4,7 @@ import type { PaceContext, PaceQueryAnswer } from "./paceSignals";
 export interface PaceAiAnswer {
   answer: string;
   model: string;
-  source: "gemini" | "openai";
+  source: "gemini" | "openai" | "analytics";
 }
 
 export class PaceAiUnavailableError extends Error {}
@@ -105,7 +105,7 @@ export const askPaceAi = async (
   }
 
   const result = await response.json().catch(() => null) as Partial<PaceAiAnswer> & { error?: string } | null;
-  if (!response.ok || (result?.source !== "gemini" && result?.source !== "openai") || typeof result.answer !== "string") {
+  if (!response.ok || (result?.source !== "gemini" && result?.source !== "openai" && result?.source !== "analytics") || typeof result.answer !== "string") {
     aiUnavailableUntil = Date.now() + (response.status === 429 || result?.error === "PACE_AI_QUOTA_EXHAUSTED" ? 60_000 : 15_000);
     throw new PaceAiUnavailableError(result?.error ?? "Pace AI is tijdelijk niet beschikbaar.");
   }
@@ -113,6 +113,6 @@ export const askPaceAi = async (
   return {
     answer: normalizePaceAiAnswer(result.answer),
     source: result.source,
-    model: typeof result.model === "string" ? result.model : result.source === "gemini" ? "Gemini" : "OpenAI",
+    model: typeof result.model === "string" ? result.model : result.source === "gemini" ? "Gemini" : result.source === "analytics" ? "PWAYMENT Analytics" : "OpenAI",
   };
 };

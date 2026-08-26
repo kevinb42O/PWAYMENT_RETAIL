@@ -4183,6 +4183,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_pace_ai_context: {
+        Args: { target_store_id: string; user_query?: string }
+        Returns: Json
+      }
+      get_pace_analytics_context: {
+        Args: { query_plan: Json; target_store_id: string }
+        Returns: Json
+      }
+      get_pace_inventory_action_context: {
+        Args: { target_store_id: string; user_query?: string }
+        Returns: Json
+      }
       get_pace_product_recommendations: {
         Args: {
           target_store_id: string
@@ -4195,6 +4207,14 @@ export type Database = {
           confidence: number
           evidence_label: string
         }[]
+      }
+      get_pace_record_context: {
+        Args: { record_plan: Json; target_store_id: string }
+        Returns: Json
+      }
+      get_pace_sales_weekday_context: {
+        Args: { target_store_id: string }
+        Returns: Json
       }
       adjust_leave_balance: {
         Args: { payload: Json; target_store_id: string }
