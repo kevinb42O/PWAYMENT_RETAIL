@@ -32,6 +32,18 @@ describe("PACE selective analytics planner", () => {
     expect(planPaceAnalyticsQuestion("Waar voeg ik een product toe?")).toBeNull();
   });
 
+  it("extracts an operation status without turning the whole question into search text", () => {
+    expect(planPaceAnalyticsQuestion("Hoeveel open webshoporders zijn er vandaag?")).toMatchObject({
+      domain: "operations",
+      measure: "status_count",
+      filters: { status: "open" },
+    });
+  });
+
+  it("does not use generic analytical wording as a category search filter", () => {
+    expect(planPaceAnalyticsQuestion("Wat is de brutowinst per categorie?")?.filters).toEqual({});
+  });
+
   it("bounds requested result counts", () => {
     expect(planPaceAnalyticsQuestion("Toon top 99 producten op omzet")?.limit).toBe(25);
   });

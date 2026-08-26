@@ -23,6 +23,9 @@ export interface PaceRecordPlan {
 export const planPaceRecordLookup = (rawQuestion: string): PaceRecordPlan | null => {
   const question = rawQuestion.trim().toLocaleLowerCase("nl-BE");
   if (!/\b(zoek|vind|toon|open|status|details?|waar is|wat is er met|historiek|saldo|laatste|recent)\w*/.test(question)) return null;
+  // Counts and rankings belong to analytics even when they contain words such
+  // as "open" or "status". Record lookup is reserved for concrete records.
+  if (/\b(hoeveel|aantal|tel|rangschik|meeste|minste)\w*/.test(question)) return null;
   const entity: PaceRecordEntity | null = /\b(audit|logboek)\w*/.test(question) ? "audit_entry"
     : /\b(verlofaanvraag|leave request)\w*/.test(question) ? "leave_request"
       : /\b(voorraadbeweging|stock movement|voorraadcorrectie)\w*/.test(question) ? "stock_movement"

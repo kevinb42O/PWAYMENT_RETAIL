@@ -4,6 +4,7 @@ import { expandPaceAnalyticsComparisons, planPaceAnalyticsQuestions, type PaceAn
 import { renderPaceAnalyticsAnswer } from "../../src/pace/paceAnalyticsAnswer.js";
 import { planPaceRecordLookup, type PaceRecordPlan } from "../../src/pace/paceRecordPlan.js";
 import { renderPaceRecordAnswer } from "../../src/pace/paceRecordAnswer.js";
+import { PACE_PLANNER_INSTRUCTIONS, parsePaceQuestionPlan, planPaceReadTools, type PaceQuestionPlan, type PaceReadToolCall } from "../../src/pace/paceQuestionPlan.js";
 
 type PaceRole = "owner" | "manager" | "cashier";
 type PaceView =
@@ -24,6 +25,7 @@ interface PaceRequestBody {
   localCandidate?: unknown;
   context?: {
     storeId?: unknown;
+    liveStoreContext?: unknown;
     view?: unknown;
     role?: unknown;
     productCount?: unknown;
@@ -193,6 +195,7 @@ const allowedContext = (body: PaceRequestBody) => {
     storeId: typeof candidate.storeId === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(candidate.storeId)
       ? candidate.storeId
       : undefined,
+    liveStoreContext: candidate.liveStoreContext !== false,
     view,
     role,
     productCount: boundedInteger(candidate.productCount),
@@ -383,6 +386,28 @@ const fetchRecordContext = async (
   return await response.json().catch(() => ({ unavailable: true, query: plan }));
 };
 
+const fetchReadToolContext = async (
+  authorization: string,
+  supabaseUrl: string,
+  publishableKey: string,
+  storeId: string | undefined,
+  toolCall: PaceReadToolCall,
+) => {
+  if (!storeId) return null;
+  const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/rpc/get_pace_read_tool_context`, {
+    method: "POST",
+    headers: { apikey: publishableKey, Authorization: authorization, "Content-Type": "application/json" },
+    body: JSON.stringify({ target_store_id: storeId, tool_call: toolCall }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (response.status === 401 || response.status === 403) throw new TenantAccessError("Geen toegang tot deze gegevens.");
+  if (!response.ok) {
+    console.warn("Pace read tool unavailable", { status: response.status, tool: toolCall.name });
+    return { unavailable: true, tool: toolCall };
+  }
+  return await response.json().catch(() => ({ unavailable: true, tool: toolCall }));
+};
+
 const extractOutputText = (response: OpenAIResponse) =>
   response.output
     ?.filter((item) => item.type === "message")
@@ -398,6 +423,63 @@ const extractGeminiText = (response: GeminiResponse) =>
     .map((part) => typeof part.text === "string" ? part.text.trim() : "")
     .filter(Boolean)
     .join("\n") ?? "";
+
+const parseJsonText = (value: string) => {
+  const cleaned = value.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+  try {
+    return JSON.parse(cleaned) as unknown;
+  } catch {
+    return null;
+  }
+};
+
+const callGeminiPlanner = async (
+  apiKey: string,
+  model: string,
+  question: string,
+  context: ReturnType<typeof allowedContext>,
+  history: PaceHistoryTurn[],
+) => {
+  const upstream = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: PACE_PLANNER_INSTRUCTIONS }] },
+      contents: [{
+        role: "user",
+        parts: [{ text: JSON.stringify({
+          question,
+          recentConversation: history.slice(-6),
+          ui: { view: context.view, online: context.online, cartCount: context.cartCount },
+        }) }],
+      }],
+      generationConfig: { temperature: 0, maxOutputTokens: 900, responseMimeType: "application/json" },
+    }),
+    signal: AbortSignal.timeout(12_000),
+  });
+  const result = await upstream.json().catch(() => ({})) as GeminiResponse;
+  if (!upstream.ok) return null;
+  return parsePaceQuestionPlan(parseJsonText(extractGeminiText(result)));
+};
+
+const callGeminiPlannerWithFallback = async (
+  apiKey: string,
+  preferredModel: string,
+  question: string,
+  context: ReturnType<typeof allowedContext>,
+  history: PaceHistoryTurn[],
+) => {
+  for (const candidateModel of [...new Set([preferredModel, ...GEMINI_FALLBACK_MODELS])]) {
+    try {
+      const plan = await callGeminiPlanner(apiKey, candidateModel, question, context, history);
+      if (plan) return plan;
+    } catch {
+      // Planning is an enhancement. The bounded deterministic router below is
+      // the safe availability fallback when Gemini or JSON planning fails.
+    }
+  }
+  return null;
+};
 
 const instructions = `Je bent Pace, de rustige operationele copiloot in PWAYMENT, een Belgisch retailplatform.
 
@@ -477,15 +559,21 @@ const buildPrompt = (
   inventoryActionContext: unknown,
   analyticsContexts: unknown[],
   recordContext: unknown,
+  toolContexts: unknown[],
   localCandidate: PaceLocalCandidate | undefined,
 ) => {
   const knowledge = formatPaceKnowledgeForPrompt(retrievePaceKnowledge(question));
+  // storeId and role originate in browser state. They are used only as an
+  // authorization target/hint; tenant RPCs independently verify membership
+  // and return the authoritative role where it is relevant.
+  const { storeId: _storeId, role: _browserRole, liveStoreContext: _liveStoreContext, ...browserContext } = context;
   return `Geselecteerde PWAYMENT-productkennis:\n${knowledge}\n\n` +
-    `Actieve browsercontext (allow-listed):\n${JSON.stringify(context)}\n\n` +
+    `Actieve browsercontext (allow-listed, zonder browser-rol of tenant-id):\n${JSON.stringify(browserContext)}\n\n` +
     `Actuele Supabase-winkelcontext onder de sessierechten van deze gebruiker:\n${JSON.stringify(tenantContext ?? { unavailable: true, reason: "no-store-context" })}\n\n` +
     `Beslisklare trage-voorraadcontext (alleen aanwezig voor relevante vragen):\n${JSON.stringify(inventoryActionContext)}\n\n` +
     `Selectieve, server-side gevalideerde analyses voor deze vraag:\n${JSON.stringify(analyticsContexts)}\n\n` +
     `Selectieve, rolgebonden recordcontext voor deze vraag:\n${JSON.stringify(recordContext)}\n\n` +
+    `Resultaten van gespecialiseerde, tenantveilige read-only tools:\n${JSON.stringify(toolContexts)}\n\n` +
     `Deterministische lokale kennis-match, indien aanwezig:\n${JSON.stringify(localCandidate ?? null)}\n\n` +
     `Vraag van de gebruiker:\n${question}`;
 };
@@ -499,10 +587,11 @@ const callGemini = async (
   inventoryActionContext: unknown,
   analyticsContexts: unknown[],
   recordContext: unknown,
+  toolContexts: unknown[],
   history: PaceHistoryTurn[],
   localCandidate: PaceLocalCandidate | undefined,
 ) => {
-  const prompt = buildPrompt(question, context, tenantContext, inventoryActionContext, analyticsContexts, recordContext, localCandidate);
+  const prompt = buildPrompt(question, context, tenantContext, inventoryActionContext, analyticsContexts, recordContext, toolContexts, localCandidate);
   const upstream = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: "POST",
     headers: {
@@ -548,13 +637,14 @@ const callGeminiWithFallback = async (
   inventoryActionContext: unknown,
   analyticsContexts: unknown[],
   recordContext: unknown,
+  toolContexts: unknown[],
   history: PaceHistoryTurn[],
   localCandidate: PaceLocalCandidate | undefined,
 ) => {
   const models = [...new Set([preferredModel, ...GEMINI_FALLBACK_MODELS])];
   let lastFailure: Awaited<ReturnType<typeof callGemini>> | undefined;
   for (const candidateModel of models) {
-    const result = await callGemini(apiKey, candidateModel, question, context, tenantContext, inventoryActionContext, analyticsContexts, recordContext, history, localCandidate);
+    const result = await callGemini(apiKey, candidateModel, question, context, tenantContext, inventoryActionContext, analyticsContexts, recordContext, toolContexts, history, localCandidate);
     if (result.ok) {
       if (result.answer) return { ...result, model: candidateModel };
       lastFailure = result;
@@ -575,6 +665,7 @@ const callOpenAi = async (
   inventoryActionContext: unknown,
   analyticsContexts: unknown[],
   recordContext: unknown,
+  toolContexts: unknown[],
   history: PaceHistoryTurn[],
   localCandidate: PaceLocalCandidate | undefined,
   safetyIdentifier: string,
@@ -590,7 +681,7 @@ const callOpenAi = async (
       model,
       store: false,
       instructions,
-      input: `${transcript ? `Recente conversatie:\n${transcript}\n\n` : ""}${buildPrompt(question, context, tenantContext, inventoryActionContext, analyticsContexts, recordContext, localCandidate)}`,
+      input: `${transcript ? `Recente conversatie:\n${transcript}\n\n` : ""}${buildPrompt(question, context, tenantContext, inventoryActionContext, analyticsContexts, recordContext, toolContexts, localCandidate)}`,
       reasoning: { effort: "low" },
       text: { verbosity: "low" },
       max_output_tokens: 480,
@@ -685,22 +776,51 @@ export default {
         }, { ...quotaHeaders(quota), "Retry-After": String(Math.max(1, quota.reset_in_seconds ?? 60)) });
       }
     }
-    const inventoryActionRequested = needsInventoryActionContext(question);
-    const recordPlan = inventoryActionRequested ? null : planPaceRecordLookup(question);
-    const analyticsPlans = inventoryActionRequested || recordPlan ? [] : expandPaceAnalyticsComparisons(planPaceAnalyticsQuestions(question));
-    const needsBroadContext = analyticsPlans.length === 0 && !inventoryActionRequested && !recordPlan;
+    const plannerEnabled = Boolean(geminiKey) && (
+      process.env.PACE_GEMINI_PLANNER === "true"
+      || (process.env.PACE_GEMINI_PLANNER !== "false" && process.env.NODE_ENV !== "test")
+    );
+    let questionPlan: PaceQuestionPlan | null = null;
+    if (plannerEnabled) {
+      questionPlan = await callGeminiPlannerWithFallback(geminiKey!, model, question, context, history);
+    }
+    if (questionPlan?.intent === "clarify" && questionPlan.clarification) {
+      await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, { status: "completed", elapsedMs: Date.now() - startedAt, model: `${model} · planner` });
+      return json(200, {
+        answer: questionPlan.clarification,
+        source: "gemini",
+        model,
+        quota,
+        planner: { intent: questionPlan.intent, confidence: questionPlan.confidence },
+      }, quota ? quotaHeaders(quota) : {});
+    }
+
+    const fallbackInventoryAction = needsInventoryActionContext(question);
+    const fallbackRecordPlan = fallbackInventoryAction ? null : planPaceRecordLookup(question);
+    const fallbackAnalyticsPlans = fallbackInventoryAction || fallbackRecordPlan ? [] : planPaceAnalyticsQuestions(question);
+    const fallbackReadToolCalls = planPaceReadTools(question);
+    const inventoryActionRequested = context.liveStoreContext && (questionPlan ? questionPlan.inventoryAction : fallbackInventoryAction);
+    const recordPlan = context.liveStoreContext ? (questionPlan ? questionPlan.record : fallbackRecordPlan) : null;
+    const rawAnalyticsPlans = context.liveStoreContext ? (questionPlan ? questionPlan.analytics : fallbackAnalyticsPlans) : [];
+    const readToolCalls = context.liveStoreContext ? (questionPlan ? questionPlan.tools : fallbackReadToolCalls) : [];
+    const analyticsPlans = expandPaceAnalyticsComparisons(rawAnalyticsPlans);
+    const needsBroadContext = context.liveStoreContext && (questionPlan
+      ? questionPlan.broadContext
+      : analyticsPlans.length === 0 && !inventoryActionRequested && !recordPlan && readToolCalls.length === 0);
     const safetyIdentifier = createHash("sha256").update(`pace:${userId}`).digest("hex").slice(0, 48);
     let tenantContext: unknown = null;
     let inventoryActionContext: unknown = null;
     let analyticsContexts: unknown[] = [];
     let recordContext: unknown = null;
-    const [tenantResult, inventoryResult, analyticsResult, recordResult] = await Promise.allSettled([
+    let toolContexts: unknown[] = [];
+    const [tenantResult, inventoryResult, analyticsResult, recordResult, toolsResult] = await Promise.allSettled([
       needsBroadContext ? fetchTenantContext(authorization, supabaseUrl, publishableKey, context.storeId, question) : Promise.resolve(null),
       inventoryActionRequested ? fetchInventoryActionContext(authorization, supabaseUrl, publishableKey, context.storeId, question) : Promise.resolve(null),
       Promise.all(analyticsPlans.map((plan) => fetchAnalyticsContext(authorization, supabaseUrl, publishableKey, context.storeId, plan))),
       fetchRecordContext(authorization, supabaseUrl, publishableKey, context.storeId, recordPlan),
+      Promise.all(readToolCalls.map((toolCall) => fetchReadToolContext(authorization, supabaseUrl, publishableKey, context.storeId, toolCall))),
     ]);
-    const accessDenied = [tenantResult, inventoryResult, analyticsResult, recordResult].some(
+    const accessDenied = [tenantResult, inventoryResult, analyticsResult, recordResult, toolsResult].some(
       (result) => result.status === "rejected" && result.reason instanceof TenantAccessError,
     );
     if (accessDenied) {
@@ -719,12 +839,15 @@ export default {
     recordContext = recordResult.status === "fulfilled"
       ? recordResult.value
       : recordPlan ? { unavailable: true, query: recordPlan } : null;
+    toolContexts = toolsResult.status === "fulfilled"
+      ? toolsResult.value
+      : readToolCalls.map((tool) => ({ unavailable: true, tool }));
 
     // Known analytical questions are answered from server-calculated facts.
     // This skips a model round-trip and prevents prose generation from changing
     // values, ranking or formatting. Free help and advisory questions continue
     // through the model below.
-    const needsMixedComposition = /\ben\s+(?:wat|hoe|waar|waarom)\b/i.test(question);
+    const needsMixedComposition = questionPlan?.needsComposition === true || /\ben\s+(?:wat|hoe|waar|waarom)\b/i.test(question);
     const deterministicAnalyticsAnswer = needsMixedComposition ? null : renderPaceAnalyticsAnswer(analyticsContexts);
     if (deterministicAnalyticsAnswer) {
       await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, { status: "completed", elapsedMs: Date.now() - startedAt, model: "PWAYMENT Analytics" });
@@ -736,7 +859,7 @@ export default {
         quota,
       }, quota ? quotaHeaders(quota) : {});
     }
-    const deterministicRecordAnswer = renderPaceRecordAnswer(recordContext);
+    const deterministicRecordAnswer = needsMixedComposition ? null : renderPaceRecordAnswer(recordContext);
     if (deterministicRecordAnswer) {
       await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, { status: "completed", elapsedMs: Date.now() - startedAt, model: "PWAYMENT Records" });
       return json(200, {
@@ -751,8 +874,8 @@ export default {
     let upstreamResult: Awaited<ReturnType<typeof callGeminiWithFallback>> | Awaited<ReturnType<typeof callOpenAi>>;
     try {
       upstreamResult = provider === "gemini"
-        ? await callGeminiWithFallback(geminiKey!, model, question, context, tenantContext, inventoryActionContext, analyticsContexts, recordContext, history, localCandidate)
-        : await callOpenAi(openAiKey!, model, question, context, tenantContext, inventoryActionContext, analyticsContexts, recordContext, history, localCandidate, safetyIdentifier);
+        ? await callGeminiWithFallback(geminiKey!, model, question, context, tenantContext, inventoryActionContext, analyticsContexts, recordContext, toolContexts, history, localCandidate)
+        : await callOpenAi(openAiKey!, model, question, context, tenantContext, inventoryActionContext, analyticsContexts, recordContext, toolContexts, history, localCandidate, safetyIdentifier);
     } catch {
       await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, { status: "failed", elapsedMs: Date.now() - startedAt, model, error: "PACE_AI_UNAVAILABLE" });
       return json(503, { error: "PACE_AI_UNAVAILABLE", fallback: "local" });

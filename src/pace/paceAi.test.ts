@@ -37,7 +37,7 @@ describe("Pace AI privacy boundary", () => {
     expect(serialized).not.toContain("Secret brand");
   });
 
-  it("removes all live store and cart values when store context is disabled", () => {
+  it("keeps tenant authorization while removing live store and cart values", () => {
     const context: PaceContext = {
       storeId: "store-secret",
       view: "pos",
@@ -58,7 +58,8 @@ describe("Pace AI privacy boundary", () => {
       },
     };
     const serialized = JSON.stringify(toPaceAiContext(context, false));
-    expect(serialized).not.toContain("store-secret");
+    expect(serialized).toContain('"storeId":"store-secret"');
+    expect(serialized).toContain('"liveStoreContext":false');
     expect(serialized).not.toContain("Secret product");
     expect(serialized).not.toContain("Sensitive customer");
     expect(serialized).not.toContain("93");

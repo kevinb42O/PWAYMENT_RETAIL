@@ -26,4 +26,8 @@ describe("PACE selective record planner", () => {
   it("leaves generic rankings to the analytics planner", () => {
     expect(planPaceRecordLookup("Welke klant besteedde het meest?" )).toBeNull();
   });
+
+  it("leaves operation counts to the analytics planner", () => {
+    expect(planPaceRecordLookup("Hoeveel open webshoporders zijn er vandaag?")).toBeNull();
+  });
 });

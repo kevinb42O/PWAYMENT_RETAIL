@@ -214,6 +214,107 @@ describe("Pace OpenAI endpoint", () => {
     expect(geminiBody.contents.slice(0, 2).map((item) => item.role)).toEqual(["user", "model"]);
   });
 
+  it("uses a validated Gemini plan to execute multiple tenant-safe reads", async () => {
+    process.env.GEMINI_API_KEY = "test-gemini-key";
+    process.env.PACE_GEMINI_PLANNER = "true";
+    const storeId = "77777777-7777-4777-8777-777777777777";
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({ id: "user-ai-planner" }))
+      .mockResolvedValueOnce(Response.json({
+        candidates: [{ content: { parts: [{ text: JSON.stringify({
+          version: 1,
+          intent: "mixed",
+          analytics: [{
+            domain: "sales", measure: "revenue", dimension: "product",
+            period: { preset: "this_month" }, filters: { search: "SKU-42" },
+            sort: "desc", limit: 5, comparison: "none", rationale: "Productomzet",
+          }],
+          record: { entity: "product", search: "SKU-42", limit: 1 },
+          inventoryAction: false,
+          broadContext: false,
+          needsComposition: true,
+          clarification: null,
+          confidence: 0.97,
+        }) }] } }],
+      }))
+      .mockResolvedValueOnce(Response.json({
+        version: 1, query: { domain: "sales", measure: "revenue", dimension: "product" },
+        period: { preset: "this_month" }, rows: [{ label: "Sneaker", revenueCents: 42000, metricValue: 42000 }],
+      }))
+      .mockResolvedValueOnce(Response.json({
+        version: 1, entity: "product", rows: [{ name: "Sneaker", sku: "SKU-42", stockQty: 8 }],
+      }))
+      .mockResolvedValueOnce(Response.json({
+        candidates: [{ content: { parts: [{ text: "Sneaker SKU-42 heeft deze maand € 420 omzet en 8 stuks voorraad." }] } }],
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handler.fetch(request({
+      question: "Hoe verkoopt SKU-42 deze maand en hoeveel voorraad is er?",
+      context: { storeId, view: "insights", role: "owner" },
+    }));
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+    const plannerBody = JSON.parse(String((fetchMock.mock.calls[1][1] as RequestInit).body));
+    expect(plannerBody.generationConfig).toMatchObject({ responseMimeType: "application/json", temperature: 0 });
+    expect(String(fetchMock.mock.calls[2][0])).toContain("get_pace_analytics_context");
+    expect(String(fetchMock.mock.calls[3][0])).toContain("get_pace_record_context");
+    expect(JSON.parse(String((fetchMock.mock.calls[2][1] as RequestInit).body))).toMatchObject({ query_plan: { filters: { search: "SKU-42" } } });
+    expect(JSON.parse(String((fetchMock.mock.calls[3][1] as RequestInit).body))).toMatchObject({ record_plan: { search: "SKU-42", limit: 1 } });
+    await expect(response.json()).resolves.toMatchObject({ source: "gemini", answer: expect.stringContaining("SKU-42") });
+  });
+
+  it("executes a Gemini-selected specialized read tool under the user session", async () => {
+    process.env.GEMINI_API_KEY = "test-gemini-key";
+    process.env.PACE_GEMINI_PLANNER = "true";
+    const storeId = "88888888-8888-4888-8888-888888888888";
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({ id: "user-read-tools" }))
+      .mockResolvedValueOnce(Response.json({
+        candidates: [{ content: { parts: [{ text: JSON.stringify({
+          version: 1,
+          intent: "analytics",
+          analytics: [],
+          record: null,
+          tools: [{ name: "sales.vat_breakdown", period: { preset: "this_month" }, search: "", status: "", limit: 12 }],
+          inventoryAction: false,
+          broadContext: false,
+          needsComposition: true,
+          clarification: null,
+          confidence: 0.99,
+        }) }] } }],
+      }))
+      .mockResolvedValueOnce(Response.json({
+        version: 1,
+        tool: "sales.vat_breakdown",
+        period: { preset: "this_month" },
+        rows: [{ rate: 6, grossCents: 10600, exclCents: 10000, vatCents: 600 }],
+      }))
+      .mockResolvedValueOnce(Response.json({
+        candidates: [{ content: { parts: [{ text: "Deze maand is € 6,00 btw aan 6% geregistreerd." }] } }],
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handler.fetch(request({
+      question: "Hoeveel btw heb ik deze maand per tarief?",
+      context: { storeId, view: "z-report", role: "owner" },
+    }));
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    const [toolUrl, toolInit] = fetchMock.mock.calls[2] as [string, RequestInit];
+    expect(toolUrl).toContain("/rest/v1/rpc/get_pace_read_tool_context");
+    expect((toolInit.headers as Record<string, string>).Authorization).toBe("Bearer valid-token");
+    expect(JSON.parse(String(toolInit.body))).toEqual({
+      target_store_id: storeId,
+      tool_call: { name: "sales.vat_breakdown", period: { preset: "this_month" }, search: "", status: "", limit: 12 },
+    });
+    const finalPrompt = JSON.parse(String((fetchMock.mock.calls[3][1] as RequestInit).body)).contents.at(-1).parts[0].text;
+    expect(finalPrompt).toContain("gespecialiseerde, tenantveilige read-only tools");
+    expect(finalPrompt).toContain('"vatCents":600');
+  });
+
   it("loads decision-ready aged inventory for a concrete bundle question", async () => {
     process.env.GEMINI_API_KEY = "test-gemini-key";
     const storeId = "44444444-4444-4444-8444-444444444444";

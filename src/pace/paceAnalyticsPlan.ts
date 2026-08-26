@@ -109,7 +109,7 @@ const explicitDateRange = (question: string): PaceAnalyticsPlan["period"] | null
   return null;
 };
 
-const periodFromQuestion = (question: string): PaceAnalyticsPlan["period"] => {
+export const pacePeriodFromQuestion = (question: string): PaceAnalyticsPlan["period"] => {
   const explicit = explicitDateRange(question);
   if (explicit) return explicit;
   const year = question.match(/\b(20\d{2})\b/);
@@ -162,7 +162,7 @@ export const planPaceAnalyticsQuestion = (rawQuestion: string): PaceAnalyticsPla
     && !has(question, /\b(hoeveel|beste|slechtste|hoogste|laagste|meeste|minste|gemiddeld|totaal|analyse|toon|rangschik|vergelijk|gestegen|gedaald)\w*/)
   ) return null;
 
-  const period = periodFromQuestion(question);
+  const period = pacePeriodFromQuestion(question);
   const comparison = comparisonFromQuestion(question);
   const sort: PaceAnalyticsPlan["sort"] = has(question, /\b(slechtste|laagste|minste)\b/) ? "asc" : "desc";
   const limit = limitFromQuestion(question);
@@ -171,7 +171,8 @@ export const planPaceAnalyticsQuestion = (rawQuestion: string): PaceAnalyticsPla
     const measure: PaceAnalyticsMeasure = has(question, /kasverschil/) ? "cash_difference"
       : has(question, /\b(void|annulering)\w*/) ? "void_value"
         : "status_count";
-    return { version: 1, domain: "operations", measure, dimension: measure === "status_count" ? "status" : has(question, /reden/) ? "reason" : "employee", period, filters: {}, sort, limit, comparison, rationale: "operationele status- of uitzonderingsanalyse" };
+    const status = question.match(/\b(open|pending|processing|ready|completed|cancelled|canceled|betaald|onbetaald|verzonden|afgehaald|afgerond|geannuleerd)\b/)?.[1];
+    return { version: 1, domain: "operations", measure, dimension: measure === "status_count" ? "status" : has(question, /reden/) ? "reason" : "employee", period, filters: status ? { status } : {}, sort, limit, comparison, rationale: "operationele status- of uitzonderingsanalyse" };
   }
 
   if (has(question, /\b(rooster|shift|gepland|planning|personeel|kassier|medewerker|verkoper|team)\w*/)) {
@@ -185,7 +186,7 @@ export const planPaceAnalyticsQuestion = (rawQuestion: string): PaceAnalyticsPla
     const measure: PaceAnalyticsMeasure = has(question, /\b(laatst|recent|afgehaakt|slapend|dagen|langst\s+niet)\w*/) ? "customer_recency"
       : has(question, /\b(bezoek|aankopen|transact)\w*/) ? "customer_visits"
         : "customer_spend";
-    return { version: 1, domain: "customers", measure, dimension: "customer", period, filters: { search: rawQuestion.slice(0, 240) }, sort: measure === "customer_recency" ? "desc" : sort, limit, comparison, rationale: "klantwaarde- en bezoekanalyse" };
+    return { version: 1, domain: "customers", measure, dimension: "customer", period, filters: {}, sort: measure === "customer_recency" ? "desc" : sort, limit, comparison, rationale: "klantwaarde- en bezoekanalyse" };
   }
 
   if (has(question, /\b(voorraad|stock|stockout|dekking|cover|stof happen|stagnant|slow|traag|stil|vastzittend|leverancier)\w*/)) {
@@ -195,7 +196,7 @@ export const planPaceAnalyticsQuestion = (rawQuestion: string): PaceAnalyticsPla
           : has(question, /\b(retailwaarde|verkoopwaarde)\b/) ? "stock_retail_value"
             : "stock_quantity";
     const dimension: PaceAnalyticsDimension = has(question, /leverancier/) ? "supplier" : has(question, /categorie/) ? "category" : "product";
-    return { version: 1, domain: "inventory", measure, dimension, period, filters: { search: rawQuestion.slice(0, 240) }, sort: measure === "days_of_cover" && has(question, /raakt.*op|stockout/) ? "asc" : sort, limit, comparison, rationale: "voorraadpositie en verkoopsnelheid" };
+    return { version: 1, domain: "inventory", measure, dimension, period, filters: {}, sort: measure === "days_of_cover" && has(question, /raakt.*op|stockout/) ? "asc" : sort, limit, comparison, rationale: "voorraadpositie en verkoopsnelheid" };
   }
 
   if (!has(question, /\b(omzet|marge|winst|verkoop|verkop|verkocht|transact|ticket|mand|stuks|aantal|korting|retour|betaal|categorie|product|artikel|merk|bron|kanaal|dag|week|maand|jaar|uur)\w*/)) return null;
@@ -223,7 +224,7 @@ export const planPaceAnalyticsQuestion = (rawQuestion: string): PaceAnalyticsPla
                         : has(question, /\b(bron|kanaal|source)\w*/) ? "source"
                           : "total";
 
-  return { version: 1, domain: "sales", measure, dimension, period, filters: ["product", "category", "brand", "supplier"].includes(dimension) ? { search: rawQuestion.slice(0, 240) } : {}, sort, limit, comparison, rationale: "verkoopanalyse" };
+  return { version: 1, domain: "sales", measure, dimension, period, filters: {}, sort, limit, comparison, rationale: "verkoopanalyse" };
 };
 
 /** Build at most three independent plans for compound questions. */

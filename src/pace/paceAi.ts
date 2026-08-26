@@ -33,7 +33,10 @@ export const normalizePaceAiAnswer = (answer: string) => answer
   .trim();
 
 export const toPaceAiContext = (context: PaceContext, includeLiveStoreContext = true) => ({
-  storeId: includeLiveStoreContext ? context.storeId : undefined,
+  // The store id is still required for tenant authorization and quota when the
+  // user opts out of sending live store facts to the model.
+  storeId: context.storeId,
+  liveStoreContext: includeLiveStoreContext,
   view: context.view,
   role: context.role,
   productCount: includeLiveStoreContext ? context.productCount : undefined,
@@ -82,7 +85,8 @@ export const askPaceAi = async (
 
   // Customer insight records are deliberately local-only. Keep this allow-list
   // on the client as well as on the API boundary so PII never leaves the till.
-  const safeContext = toPaceAiContext(context, options.includeLiveStoreContext !== false);
+  const includeLiveStoreContext = options.includeLiveStoreContext !== false;
+  const safeContext = toPaceAiContext(context, includeLiveStoreContext);
 
   let response: Response;
   try {
@@ -95,8 +99,10 @@ export const askPaceAi = async (
       body: JSON.stringify({
         question,
         context: safeContext,
-        history: history.slice(-6).map((turn) => ({ role: turn.role, text: turn.text.slice(0, 800) })),
-        localCandidate: localCandidate ? {
+        // Earlier turns and deterministic local answers may themselves contain
+        // store facts. Do not replay them after the user disables live context.
+        history: includeLiveStoreContext ? history.slice(-6).map((turn) => ({ role: turn.role, text: turn.text.slice(0, 800) })) : [],
+        localCandidate: includeLiveStoreContext && localCandidate ? {
           intentId: localCandidate.intentId,
           title: localCandidate.title,
           answer: localCandidate.answer,

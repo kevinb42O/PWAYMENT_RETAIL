@@ -163,10 +163,10 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   }, [open, setOpen]);
 
   useEffect(() => {
-    setResponse(null);
-    setActiveQuestion(null);
-    setQuery("");
+    // Navigation changes the available UI context, but it should not erase the
+    // conversation that caused that navigation. Only cancel an in-flight turn.
     queryRunRef.current += 1;
+    setThinking(false);
   }, [props.view]);
 
   const runQuery = async (rawQuestion: string) => {
