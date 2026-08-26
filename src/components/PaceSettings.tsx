@@ -92,7 +92,7 @@ export const PaceSettings = () => {
   const quotaUsed = quota ? (quota.tier === "basic" ? quota.daily_count : quota.monthly_count) : 0;
   const quotaRemaining = Math.max(0, quotaLimit - quotaUsed);
   const quotaPercent = quotaLimit > 0 ? Math.min(100, Math.round((quotaUsed / quotaLimit) * 100)) : 0;
-  const quotaTone = quotaPercent >= 100 ? "from-rose-500 to-orange-500" : quotaPercent >= 80 ? "from-amber-400 to-orange-500" : "from-sky-500 to-cyan-400";
+  const quotaTone = quotaPercent >= 100 ? "bg-rose-500" : quotaPercent >= 80 ? "bg-amber-500" : "bg-sky-600";
   const quotaPeriod = overview?.tier === "basic" ? "vandaag" : "deze maand";
   const resetLabel = quota?.reset_at
     ? new Intl.DateTimeFormat("nl-BE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(quota.reset_at))
@@ -135,21 +135,23 @@ export const PaceSettings = () => {
       </div>
       {billingError && <p className="mt-4 rounded-xl bg-rose-50 p-3 text-xs font-bold text-rose-700">{billingError}</p>}
       <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px]">
-        <div className="relative overflow-hidden rounded-3xl border border-sky-100 bg-gradient-to-br from-slate-950 via-sky-950 to-cyan-900 p-5 text-white shadow-lg shadow-sky-900/10 md:p-6">
-          <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-cyan-400/20 blur-3xl" />
-          <div className="relative">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div><span className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Resterend {quotaPeriod}</span><div className="mt-2 flex items-end gap-2"><strong className="text-5xl font-black tracking-[-0.06em]">{billingLoading ? "—" : quotaRemaining}</strong><span className="pb-1.5 text-sm font-bold text-sky-200">van {quotaLimit} vragen</span></div></div>
-              <div className="rounded-2xl border border-white/15 bg-white/10 px-3 py-2 text-right backdrop-blur"><strong className="block text-sm font-black">{quotaPercent}%</strong><span className="text-[10px] font-bold text-sky-200">gebruikt</span></div>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 md:p-6">
+          <div className="flex items-start gap-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-sky-100 bg-white text-sky-700 shadow-sm"><Gauge size={21} /></div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div><span className="text-[10px] font-black uppercase tracking-[0.15em] text-sky-700">Beschikbaar {quotaPeriod}</span><div className="mt-1 flex flex-wrap items-baseline gap-2"><strong className="text-3xl font-black tracking-tight text-slate-950">{billingLoading ? "—" : quotaRemaining}</strong><span className="text-sm font-extrabold text-slate-600">van {quotaLimit} vragen over</span></div></div>
+                <span className="pt-1 text-xs font-black text-slate-500">{quotaPercent}% gebruikt</span>
+              </div>
+              <div className="mt-5 h-2.5 overflow-hidden rounded-full bg-slate-200" role="progressbar" aria-label="PACE quotaverbruik" aria-valuemin={0} aria-valuemax={quotaLimit} aria-valuenow={quotaUsed}>
+                <span className={`block h-full rounded-full ${quotaTone} transition-[width] duration-500`} style={{ width: `${quotaPercent}%` }} />
+              </div>
+              <div className="mt-3 flex flex-wrap justify-between gap-2 text-[11px] font-bold text-slate-500"><span>{quotaUsed} gebruikt</span><span>Reset {resetLabel}</span></div>
+              {(overview?.usage.rollover_balance ?? 0) > 0 && <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-[10px] font-black text-sky-700"><Sparkles size={12} /> +{overview!.usage.rollover_balance} rollovervragen</div>}
             </div>
-            <div className="mt-7 h-4 overflow-hidden rounded-full border border-white/10 bg-black/25 p-0.5" role="progressbar" aria-label="PACE quotaverbruik" aria-valuemin={0} aria-valuemax={quotaLimit} aria-valuenow={quotaUsed}>
-              <span className={`block h-full rounded-full bg-gradient-to-r ${quotaTone} shadow-[0_0_18px_rgba(34,211,238,0.45)] transition-[width] duration-500`} style={{ width: `${quotaPercent}%` }} />
-            </div>
-            <div className="mt-3 flex flex-wrap justify-between gap-2 text-[11px] font-bold text-sky-100"><span>{quotaUsed} gebruikt</span><span>Reset {resetLabel}</span></div>
-            {(overview?.usage.rollover_balance ?? 0) > 0 && <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-[10px] font-black text-cyan-100"><Sparkles size={12} /> +{overview!.usage.rollover_balance} rollovervragen beschikbaar</div>}
           </div>
         </div>
-        <div className="flex flex-col rounded-3xl border border-sky-100 bg-gradient-to-br from-sky-50 to-cyan-50/60 p-5"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-sky-700 shadow-sm"><Coins size={22} /></div><strong className="mt-4 block text-base font-black text-slate-950">Extra speelruimte</strong><p className="mt-1 text-xs leading-5 text-slate-600">50 extra vragen voor € 5,00. Ze vervallen nooit en starten pas als je bundel leeg is.</p><div className="mt-4 flex items-center justify-between rounded-xl bg-white/80 px-3 py-2 text-xs"><span className="font-bold text-slate-500">Huidig saldo</span><strong className="text-emerald-700">{overview?.credit_balance ?? 0} credits</strong></div><button type="button" disabled={!owner || buyingCredits} onClick={() => void buyCredits()} className="mt-auto w-full rounded-xl bg-sky-700 px-3 py-2.5 text-xs font-black text-white shadow-sm hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-50">{buyingCredits ? "Aankoop openen…" : "Koop 50 credits voor €5"}</button>{!owner && <small className="mt-2 block text-[10px] text-slate-500">Alleen de winkeleigenaar kan credits kopen.</small>}</div>
+        <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-700"><Coins size={19} /></div><div><strong className="block text-sm font-black text-slate-950">Losse credits</strong><span className="text-[11px] font-bold text-emerald-700">{overview?.credit_balance ?? 0} beschikbaar</span></div></div><p className="mt-4 text-xs leading-5 text-slate-500">50 extra vragen voor € 5,00. Vervallen niet en worden pas gebruikt wanneer je bundel leeg is.</p><button type="button" disabled={!owner || buyingCredits} onClick={() => void buyCredits()} className="mt-4 w-full rounded-xl bg-sky-700 px-3 py-2.5 text-xs font-black text-white hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-50">{buyingCredits ? "Aankoop openen…" : "50 credits kopen · €5"}</button>{!owner && <small className="mt-2 block text-[10px] text-slate-500">Alleen de winkeleigenaar kan credits kopen.</small>}</div>
       </div>
       {owner && overview?.tier === "pro" && <label className="mt-4 flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-slate-200 p-4"><span><strong className="block text-sm text-slate-900">Ongebruikte vragen meenemen</strong><small className="mt-1 block text-xs text-slate-500">Voeg het ongebruikte deel van de maandbundel toe aan je rollover-saldo.</small></span><input type="checkbox" checked={overview.rollover_enabled} onChange={(event) => void setRollover(currentStoreId!, event.target.checked)} className="h-5 w-5 accent-sky-700" /></label>}
     </section>
