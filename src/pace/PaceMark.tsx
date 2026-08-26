@@ -80,17 +80,15 @@ export const PaceMark = ({
   const thinkingMorphActive = Boolean(expressive && !performance && state === "thinking" && fullMotion);
   const morphActive = performanceActive || thinkingMorphActive;
   const glyph = resolvePaceGlyph({ state, tone, active, performance, expressive });
-  const bodyD = thinkingMorphActive
+  const bodySequence = thinkingMorphActive
     ? PACE_THINKING_GLYPH_SEQUENCE.map((step) => PACE_MORPH_BODY[step])
-    : performanceActive ? performanceSequence(glyph) : PACE_MORPH_BODY[glyph];
-  const dotD = thinkingMorphActive
+    : performanceActive ? performanceSequence(glyph) : [PACE_MORPH_BODY.pace, PACE_MORPH_BODY[glyph]];
+  const dotSequenceValues = thinkingMorphActive
     ? PACE_THINKING_GLYPH_SEQUENCE.map((step) => PACE_MORPH_DOT[step])
-    : performanceActive ? dotSequence(glyph) : PACE_MORPH_DOT[glyph];
-  const morphTransition = thinkingMorphActive
-    ? { duration: 5.6, times: [0, 0.14, 0.3, 0.48, 0.67, 0.84, 1], repeat: Infinity, ease: [0.65, 0, 0.35, 1] as const }
-    : performanceActive
-    ? { duration: 2.8, times: [0, 0.24, 0.72, 1], ease: [0.65, 0, 0.35, 1] as const }
-    : { duration: canMove ? 0.72 : 0, ease: [0.22, 1, 0.36, 1] as const };
+    : performanceActive ? dotSequence(glyph) : [PACE_MORPH_DOT.pace, PACE_MORPH_DOT[glyph]];
+  const animateGlyph = morphActive || (canMove && glyph !== "pace");
+  const morphDuration = thinkingMorphActive ? 5.6 : performanceActive ? 2.8 : 0.72;
+  const morphTimes = thinkingMorphActive ? "0;0.14;0.3;0.48;0.67;0.84;1" : performanceActive ? "0;0.24;0.72;1" : "0;1";
 
   return (
     <motion.span
@@ -123,8 +121,12 @@ export const PaceMark = ({
                 <stop offset="0.48" stopColor="white" stopOpacity="0.62" />
                 <stop offset="0.7" stopColor="white" stopOpacity="0" />
               </linearGradient>
-              <motion.path id={bodyId} d={PACE_MORPH_BODY.pace} animate={{ d: bodyD }} transition={morphTransition} />
-              <motion.path id={dotId} d={PACE_MORPH_DOT.pace} animate={{ d: dotD }} transition={morphTransition} />
+              <path id={bodyId} d={animateGlyph ? bodySequence[0] : PACE_MORPH_BODY[glyph]}>
+                {animateGlyph && <animate attributeName="d" values={bodySequence.join(";")} keyTimes={morphTimes} dur={`${morphDuration}s`} repeatCount={thinkingMorphActive ? "indefinite" : "1"} fill="freeze" />}
+              </path>
+              <path id={dotId} d={animateGlyph ? dotSequenceValues[0] : PACE_MORPH_DOT[glyph]}>
+                {animateGlyph && <animate attributeName="d" values={dotSequenceValues.join(";")} keyTimes={morphTimes} dur={`${morphDuration}s`} repeatCount={thinkingMorphActive ? "indefinite" : "1"} fill="freeze" />}
+              </path>
             </defs>
             {DEPTH_LAYERS.map((depth) => (
               <use key={depth} className="pace-mark-vector-depth" href={`#${bodyId}`} transform={`translate(${depth * 0.42} ${depth * -0.28})`} />
