@@ -138,6 +138,58 @@ describe("Pace OpenAI endpoint", () => {
     expect(completion.evidence_items).toEqual([expect.objectContaining({ key: "E1", sourceName: "tenant.context" })]);
   });
 
+  it("reports a recovered failed retry as failed instead of still processing", async () => {
+    const storeId = "11111111-1111-4111-8111-111111111111";
+    const conversationId = "22222222-2222-4222-8222-222222222222";
+    const turnId = "33333333-3333-4333-8333-333333333333";
+    const clientTurnId = "44444444-4444-4444-8444-444444444444";
+    const detail = {
+      id: conversationId,
+      storeId,
+      title: "Voorraadonderzoek",
+      status: "active",
+      revision: 2,
+      activeView: "insights",
+      state: { version: 1 },
+      summary: "",
+      turns: [],
+      entities: [],
+      lastTurnAt: "2026-08-27T12:00:00Z",
+      expiresAt: "2026-09-26T12:00:00Z",
+    };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({ id: "user-stale-retry" }))
+      .mockResolvedValueOnce(Response.json(detail))
+      .mockResolvedValueOnce(Response.json({
+        created: false,
+        turnId,
+        sequence: 3,
+        status: "failed",
+        revision: 2,
+        state: { version: 1 },
+        summary: "",
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handler.fetch(request({
+      version: 2,
+      conversationId,
+      clientTurnId,
+      expectedRevision: 2,
+      question: "Probeer dezelfde vraag opnieuw",
+      context: { storeId, view: "insights", role: "owner" },
+    }));
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: "TURN_FAILED",
+      fallback: "local",
+      conversationId,
+      turnId,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
   it("prefers Gemini, keeps the key in a server header, and returns Gemini text", async () => {
     process.env.GEMINI_API_KEY = "test-gemini-key";
     process.env.GEMINI_PACE_MODEL = "gemini-2.5-flash-lite";

@@ -811,6 +811,14 @@ export default {
               answer: begunTurn.answer, source: "local", model: "PACE Server", entities: [], citations: [],
             });
           }
+          if (begunTurn.status === "failed") {
+            return json(409, {
+              error: "TURN_FAILED",
+              fallback: "local",
+              conversationId: detail.id,
+              turnId: begunTurn.turnId,
+            });
+          }
           return json(409, { error: "TURN_IN_PROGRESS", conversationId: detail.id, turnId: begunTurn.turnId });
         }
         entityResolutions = context.liveStoreContext
