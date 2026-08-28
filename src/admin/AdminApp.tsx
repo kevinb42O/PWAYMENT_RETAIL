@@ -28,6 +28,7 @@ import { Button } from "../components/ui/Button";
 import { FeedbackBanner } from "../components/ui/FeedbackBanner";
 import { TenantControls } from "./TenantControls";
 import { DevelopmentLog } from "./DevelopmentLog";
+import { PlatformMfaGate } from "./PlatformMfaGate";
 import {
   getPlatformOverview,
   getPlatformSession,
@@ -303,13 +304,14 @@ const Audit = () => {
 };
 
 export default function AdminApp() {
-  const [session, setSession] = useState<PlatformSession | null>(null); const [checking, setChecking] = useState(true); const [accessError, setAccessError] = useState<string | null>(null); const [route, setRoute] = useState(currentRoute); const [overview, setOverview] = useState<PlatformOverview | null>(null); const [overviewLoading, setOverviewLoading] = useState(false);
+  const [session, setSession] = useState<PlatformSession | null>(null); const [mfaVerified, setMfaVerified] = useState(false); const [checking, setChecking] = useState(true); const [accessError, setAccessError] = useState<string | null>(null); const [route, setRoute] = useState(currentRoute); const [overview, setOverview] = useState<PlatformOverview | null>(null); const [overviewLoading, setOverviewLoading] = useState(false);
   const loadOverview = useCallback(async () => { setOverviewLoading(true); try { await refreshPlatformHealthSnapshots(); setOverview(await getPlatformOverview()); } catch (err) { setAccessError(err instanceof Error ? err.message : "Overzicht kon niet geladen worden."); } finally { setOverviewLoading(false); } }, []);
-  const authenticate = useCallback(async () => { if (!isSupabaseConfigured) throw new Error("Supabase is niet geconfigureerd voor deze omgeving."); const { data } = await supabase.auth.getSession(); if (!data.session) throw new Error("Meld je aan met een platformaccount."); const platformSession = await getPlatformSession(); setSession(platformSession); setAccessError(null); await loadOverview(); }, [loadOverview]);
+  const authenticate = useCallback(async () => { if (!isSupabaseConfigured) throw new Error("Supabase is niet geconfigureerd voor deze omgeving."); const { data } = await supabase.auth.getSession(); if (!data.session) throw new Error("Meld je aan met een platformaccount."); const [platformSession, assurance] = await Promise.all([getPlatformSession(), supabase.auth.mfa.getAuthenticatorAssuranceLevel()]); if (assurance.error) throw assurance.error; setSession(platformSession); setMfaVerified(assurance.data.currentLevel === "aal2"); setAccessError(null); await loadOverview(); }, [loadOverview]);
   useEffect(() => { void authenticate().catch((err) => setAccessError(err instanceof Error ? err.message : "Platformtoegang niet beschikbaar.")).finally(() => setChecking(false)); }, [authenticate]);
   useEffect(() => { const onPop = () => setRoute(currentRoute()); window.addEventListener("popstate", onPop); return () => window.removeEventListener("popstate", onPop); }, []);
   const navigate = (path: string) => routeFor(path);
-  const logout = async () => { await supabase.auth.signOut(); setSession(null); setOverview(null); routeFor("/admin"); };
+  const logout = async () => { await supabase.auth.signOut(); setSession(null); setMfaVerified(false); setOverview(null); routeFor("/admin"); };
+  const refreshMfa = useCallback(async () => { const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel(); if (error) throw error; setMfaVerified(data.currentLevel === "aal2"); }, []);
   const title = useMemo(() => route.view === "overview" ? "Overzicht" : route.view === "stores" ? "Winkels" : route.view === "incidents" ? "Incidenten" : route.view === "development" ? "Ontwikkelupdates" : route.view === "team" ? "Team & toegang" : route.view === "releases" ? "Releases" : route.view === "audit" ? "Platformaudit" : "Winkeldossier", [route.view]);
   if (checking) return <main className="flex min-h-dvh items-center justify-center bg-slate-50 text-sm font-bold text-slate-500">Platformsessie controleren…</main>;
   if (!session) return <PlatformLogin onAuthenticated={authenticate} />;
@@ -317,7 +319,7 @@ export default function AdminApp() {
   return <div className="flex min-h-dvh flex-col bg-slate-50 text-slate-900 lg:flex-row">
     <Sidebar view={route.view} onNavigate={navigate} onLogout={() => void logout()} />
     <main className="min-w-0 flex-1">
-      <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 sm:px-6"><div><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">PWAYMENT · {session.role}</p><p className="mt-0.5 text-sm font-extrabold text-slate-900">{title}</p></div><button type="button" onClick={() => void logout()} className="rounded-lg p-2 text-slate-500 hover:bg-slate-50 lg:hidden" aria-label="Afmelden"><LogOut size={17} /></button></header>
+      <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 sm:px-6"><div><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">PWAYMENT · {session.role}</p><p className="mt-0.5 text-sm font-extrabold text-slate-900">{title}</p></div><div className="flex items-center gap-2">{mfaVerified && <span className="hidden items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-[10px] font-extrabold uppercase text-emerald-700 sm:inline-flex"><ShieldCheck size={13} /> MFA bevestigd</span>}<button type="button" onClick={() => void logout()} className="rounded-lg p-2 text-slate-500 hover:bg-slate-50 lg:hidden" aria-label="Afmelden"><LogOut size={17} /></button></div></header>
       {accessError && <div className="px-4 pt-4 sm:px-6"><FeedbackBanner tone="error" onDismiss={() => setAccessError(null)}>{accessError}</FeedbackBanner></div>}
       <div className="p-4 sm:p-6">
         <AdminRouteBoundary routeKey={routeKey}>
@@ -326,8 +328,8 @@ export default function AdminApp() {
           {route.view === "store" && route.storeId && <StoreDetailWithControls storeId={route.storeId} onBack={() => navigate("/admin/stores")} onDeleted={() => navigate("/admin/stores")} />}
           {route.view === "incidents" && <Incidents />}
           {route.view === "development" && <DevelopmentLog />}
-          {route.view === "team" && <Team session={session} />}
-          {route.view === "releases" && <Releases />}
+          {route.view === "team" && (mfaVerified ? <Team session={session} /> : <PlatformMfaGate onVerified={refreshMfa}><Team session={session} /></PlatformMfaGate>)}
+          {route.view === "releases" && (mfaVerified ? <Releases /> : <PlatformMfaGate onVerified={refreshMfa}><Releases /></PlatformMfaGate>)}
           {route.view === "audit" && <Audit />}
         </AdminRouteBoundary>
       </div>
