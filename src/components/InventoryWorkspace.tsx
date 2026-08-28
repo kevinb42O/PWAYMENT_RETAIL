@@ -21,11 +21,13 @@ import { db } from "../db/db";
 import { recordInventoryBatch, recordInventoryOperation, type InventoryOperationMode } from "../services/inventoryOperations";
 import { loadInventoryProfiles, type InventoryProfileSummary } from "../services/inventoryProfiles";
 import { useProducts } from "../store/useProducts";
+import { useCategories } from "../store/useCategories";
 import type { InventoryAdjustmentReason, Product } from "../types";
 import { findProductByScanCode, matchesCatalogQuery } from "../utils/productLookup";
 import { PurchaseOrderWorkflow } from "./PurchaseOrderWorkflow";
 import { inventoryCsvTemplate, parseInventoryCsv } from "../utils/inventoryCsv";
 import { isSupabaseConfigured } from "../lib/supabase";
+import { inventoryCategoryFilterOptions } from "../inventory/categoryFilters";
 
 type WorkspaceTab = "operations" | "orders";
 
@@ -96,6 +98,8 @@ export const InventoryWorkspace = () => {
   const products = useProducts((state) => state.list);
   const hydrate = useProducts((state) => state.hydrate);
   const refresh = useProducts((state) => state.refresh);
+  const categories = useCategories((state) => state.list);
+  const hydrateCategories = useCategories((state) => state.hydrate);
   const snapshot = useEntitlements((state) => state.snapshot);
   const [tab, setTab] = useState<WorkspaceTab>("operations");
   const [mode, setMode] = useState<InventoryOperationMode>(initialSession.mode);
@@ -123,6 +127,7 @@ export const InventoryWorkspace = () => {
   const canManageOrders = canUseOrders || existingOrderCount > 0;
 
   useEffect(() => { void hydrate(); }, [hydrate]);
+  useEffect(() => { void hydrateCategories(); }, [hydrateCategories]);
   useEffect(() => {
     let active = true;
     setProfilesReady(!currentStoreId || !isSupabaseConfigured);
@@ -150,9 +155,9 @@ export const InventoryWorkspace = () => {
     return query.trim() ? candidates.filter((product) => matchesCatalogQuery(product, query)).slice(0, 20) : lowStockOnly || categoryFilter || supplierFilter ? candidates.slice(0, 20) : [];
   }, [products, query, lowStockOnly, categoryFilter, supplierFilter]);
   const filterOptions = useMemo(() => ({
-    categories: [...new Set(products.map((product) => product.category).filter(Boolean))].sort(),
+    categories: inventoryCategoryFilterOptions(products, categories),
     suppliers: [...new Set(products.map((product) => product.supplier).filter((value): value is string => Boolean(value)))].sort(),
-  }), [products]);
+  }), [categories, products]);
   const allMovements = useLiveQuery(
     async () => selected
       ? db.stock_movements.where("productId").equals(selected.id).reverse().sortBy("timestamp")
@@ -394,7 +399,7 @@ export const InventoryWorkspace = () => {
                   <button type="button" onClick={submitSearch} className="h-12 rounded-xl bg-slate-950 px-4 text-sm font-extrabold text-white">Zoeken</button>
                 </div>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                  <label className="text-xs font-bold text-slate-600">Categorie<select aria-label="Filter voorraad op categorie" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm"><option value="">Alle categorieën</option>{filterOptions.categories.map((category) => <option key={category} value={category}>{category}</option>)}</select></label>
+                  <label className="text-xs font-bold text-slate-600">Categorie<select aria-label="Filter voorraad op categorie" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm"><option value="">Alle categorieën</option>{filterOptions.categories.map((category) => <option key={category.value} value={category.value}>{category.label} · {category.productCount}</option>)}</select></label>
                   <label className="text-xs font-bold text-slate-600">Leverancier<select aria-label="Filter voorraad op leverancier" value={supplierFilter} onChange={(event) => setSupplierFilter(event.target.value)} className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm"><option value="">Alle leveranciers</option>{filterOptions.suppliers.map((supplier) => <option key={supplier} value={supplier}>{supplier}</option>)}</select></label>
                 </div>
                 {lowStockOnly && <div className="mt-2 flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900"><span>Filter: lage of nulvoorraad</span><button type="button" onClick={() => setLowStockOnly(false)} className="underline">Filter wissen</button></div>}
