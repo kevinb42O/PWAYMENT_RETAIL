@@ -27,6 +27,8 @@ import {
   useEntitlements,
 } from "../billing/entitlements";
 import { useEntitlementClock } from "../billing/useEntitlementClock";
+import { usePlatformFeatureFlag } from "../billing/usePlatformFeatureFlag";
+import { inventoryWorkspaceBuildDefault } from "../inventory/access";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -115,6 +117,10 @@ export const ModuleSettings: React.FC = () => {
   const storeError = useStoreConfiguration((state) => state.error);
   const setModuleEnabled = useStoreConfiguration((state) => state.setModuleEnabled);
   const entitlementSnapshot = useEntitlements((state) => state.snapshot);
+  const inventoryWorkspaceEnabled = usePlatformFeatureFlag(
+    "inventory_workspace",
+    inventoryWorkspaceBuildDefault,
+  );
   const { now } = useEntitlementClock();
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [profileOpen, setProfileOpen] = useState(false);
@@ -169,7 +175,11 @@ export const ModuleSettings: React.FC = () => {
                   <Icon size={13} /> {label}
                 </span>
               ))}
-              {MODULE_OPTIONS.filter((option) => modules[option.key]).map(({ key, navigationLabel, Icon }) => (
+              {MODULE_OPTIONS.filter((option) =>
+                modules[option.key]
+                && isFeatureEnabledForSnapshot(entitlementSnapshot, MODULE_ENTITLEMENTS[option.key], now)
+                && (option.key !== "inventory" || inventoryWorkspaceEnabled)
+              ).map(({ key, navigationLabel, Icon }) => (
                 <span key={key} className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1.5 text-xs font-bold text-sky-700">
                   <Icon size={13} /> {navigationLabel}
                 </span>
@@ -192,6 +202,7 @@ export const ModuleSettings: React.FC = () => {
         {MODULE_OPTIONS.map((option) => {
           const enabled = modules[option.key];
           const entitled = isFeatureEnabledForSnapshot(entitlementSnapshot, MODULE_ENTITLEMENTS[option.key], now);
+          const platformAvailable = option.key !== "inventory" || inventoryWorkspaceEnabled;
           const { Icon } = option;
           return (
             <article
@@ -209,7 +220,13 @@ export const ModuleSettings: React.FC = () => {
                     <div>
                       <h3 className="font-extrabold text-slate-950">{option.title}</h3>
                       <p className={`mt-0.5 text-xs font-bold ${enabled ? "text-emerald-700" : "text-slate-400"}`}>
-                        {!entitled ? "Niet inbegrepen in uw plan" : enabled ? "Actief in uw navigatie" : "Verborgen uit uw navigatie"}
+                        {!entitled
+                          ? "Niet inbegrepen in uw plan"
+                          : !platformAvailable
+                            ? "Tijdelijk uitgeschakeld door platformbeheer"
+                            : enabled
+                              ? "Actief in uw navigatie"
+                              : "Verborgen uit uw navigatie"}
                       </p>
                     </div>
                     <button
@@ -232,6 +249,7 @@ export const ModuleSettings: React.FC = () => {
                   </div>
                   <p className="mt-3 text-sm leading-6 text-slate-600">{option.description}</p>
                   {!entitled && <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-extrabold text-slate-500"><Lock size={13} /> Bekijk Plan & Upgrades om deze module te testen.</p>}
+                  {entitled && !platformAvailable && <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-extrabold text-amber-700"><Lock size={13} /> Uw keuze blijft bewaard; de centrale kill-switch pauzeert deze module tijdelijk.</p>}
                 </div>
               </div>
             </article>
