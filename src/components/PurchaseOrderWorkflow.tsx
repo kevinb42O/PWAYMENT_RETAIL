@@ -8,6 +8,7 @@ import {
   ClipboardList,
   PackageCheck,
   Truck,
+  ScanLine,
   X,
 } from 'lucide-react';
 import { audit, useAuth } from '../auth/useAuth';
@@ -15,6 +16,7 @@ import { db } from '../db/db';
 import { saveSupabasePurchaseOrders } from '../services/supabasePurchaseOrders';
 import { PurchaseOrder, PurchaseOrderStatus } from '../types';
 import { formatEUR } from '../utils/money';
+import { findProductByScanCode } from '../utils/productLookup';
 import {
   applyPurchaseOrderReceipt,
   cancelPurchaseOrder,
@@ -57,6 +59,7 @@ export const PurchaseOrderWorkflow = ({ refreshKey, onInventoryChanged }: Purcha
   const [receipts, setReceipts] = useState<Record<string, Record<string, number>>>({});
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [receiptScan, setReceiptScan] = useState('');
 
   const loadOrders = async () => {
     const stored = await db.purchase_orders.orderBy('createdAt').reverse().toArray();
@@ -168,6 +171,36 @@ export const PurchaseOrderWorkflow = ({ refreshKey, onInventoryChanged }: Purcha
     setFeedback(null);
   };
 
+  const receiveAllOutstanding = (order: PurchaseOrder) => {
+    setReceipts((current) => ({
+      ...current,
+      [order.id]: Object.fromEntries(order.items.map((item) => [
+        item.productId,
+        Math.max(0, item.orderedQty - item.receivedQty),
+      ])),
+    }));
+    setFeedback(`Alle openstaande aantallen van ${order.supplier} staan klaar voor controle.`);
+  };
+
+  const scanOpenReceiptLine = async () => {
+    const code = receiptScan.trim();
+    if (!code) return;
+    const products = await db.products.toArray();
+    const product = findProductByScanCode(products, code)?.product;
+    const match = product ? activeOrders.flatMap((order) => order.items.map((item) => ({ order, item })))
+      .find(({ order, item }) => (order.status === 'ordered' || order.status === 'partially-received') && item.productId === product.id && item.receivedQty < item.orderedQty) : undefined;
+    if (!match) {
+      setFeedback(`${code}: geen openstaande inkooporderlijn gevonden.`);
+      return;
+    }
+    const outstanding = match.item.orderedQty - match.item.receivedQty;
+    const current = receipts[match.order.id]?.[match.item.productId] ?? 0;
+    updateReceipt(match.order.id, match.item.productId, current + 1, outstanding);
+    setExpandedOrderId(match.order.id);
+    setReceiptScan('');
+    setFeedback(`${match.item.productName}: één stuk klaargezet voor ontvangst bij ${match.order.supplier}.`);
+  };
+
   const updateReference = (orderId: string, value: string) => {
     setReferences((current) => ({ ...current, [orderId]: value }));
   };
@@ -201,6 +234,8 @@ export const PurchaseOrderWorkflow = ({ refreshKey, onInventoryChanged }: Purcha
       </div>
 
       {feedback && <div role="status" aria-live="polite" className="purchase-feedback-enter mt-4 flex items-start gap-2 rounded-lg border border-sky-400/20 bg-sky-400/[0.06] px-3 py-2.5 text-sm text-sky-100"><Check size={16} className="mt-0.5 shrink-0" />{feedback}</div>}
+
+      {activeOrders.some((order) => order.status === 'ordered' || order.status === 'partially-received') && <div className="mt-4 flex flex-col gap-2 rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 sm:flex-row sm:items-center"><label className="flex min-w-0 flex-1 items-center gap-2 text-xs font-bold text-zinc-300"><ScanLine size={16} className="shrink-0 text-emerald-300" /><input value={receiptScan} onChange={(event) => setReceiptScan(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void scanOpenReceiptLine(); } }} placeholder="Scan barcode of SKU tegen open order" className="h-10 min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 text-sm text-white outline-none focus:border-emerald-400" /></label><button type="button" onClick={() => void scanOpenReceiptLine()} className="h-10 rounded-lg bg-emerald-400 px-4 text-sm font-bold text-zinc-950">Ontvang scan</button></div>}
 
       <div className="mt-4 space-y-3">
         {orders.slice(0, 12).map((order) => {
@@ -301,7 +336,7 @@ export const PurchaseOrderWorkflow = ({ refreshKey, onInventoryChanged }: Purcha
                         <div className="flex items-center gap-2 text-sm font-semibold text-white"><CalendarDays size={15} className="text-emerald-300" />{order.reference || 'Geen bestelreferentie'}</div>
                         <div className="mt-1 text-xs text-zinc-500">Besteld op {formatDate(order.orderedAt)} · verwachte levering {formatDate(order.expectedDeliveryAt)}</div>
                       </div>
-                      <button type="button" disabled={isBusy || Object.values(receipts[order.id] ?? {}).every((quantity) => quantity <= 0)} onClick={() => void receiveOrder(order)} className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-emerald-400 px-4 text-sm font-bold text-zinc-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500"><PackageCheck size={16} />Verwerk ontvangst</button>
+                      <div className="flex flex-col gap-2 sm:flex-row"><button type="button" disabled={isBusy || outstandingQty <= 0} onClick={() => receiveAllOutstanding(order)} className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-emerald-400/30 px-4 text-sm font-bold text-emerald-200 hover:bg-emerald-400/10 disabled:opacity-40"><PackageCheck size={16} />Ontvang alles</button><button type="button" disabled={isBusy || Object.values(receipts[order.id] ?? {}).every((quantity) => quantity <= 0)} onClick={() => void receiveOrder(order)} className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-emerald-400 px-4 text-sm font-bold text-zinc-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500"><PackageCheck size={16} />Verwerk ontvangst</button></div>
                     </div>
                   )}
 

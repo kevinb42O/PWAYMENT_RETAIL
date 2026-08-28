@@ -9,6 +9,8 @@ import { TrialStatus } from "../billing/TrialStatus";
 import { FEATURE_KEYS, isFeatureEnabledForSnapshot, useEntitlements, type FeatureKey } from "../billing/entitlements";
 import { supabase } from "../lib/supabase";
 import { useStoreConfiguration } from "../store/useStoreConfiguration";
+import { usePlatformFeatureFlag } from "../billing/usePlatformFeatureFlag";
+import { canOpenInventoryWorkspace, inventoryWorkspaceBuildDefault } from "../inventory/access";
 import { useWorkforce } from "../store/useWorkforce";
 import { Modal } from "./Modal";
 import { StoreSetupGuide, type SetupGuideTarget } from "./StoreSetupGuide";
@@ -54,6 +56,7 @@ import {
   LockKeyhole,
   ShieldCheck,
   RotateCcw,
+  PackageSearch,
   type LucideIcon,
 } from "lucide-react";
 
@@ -80,6 +83,9 @@ const ServiceDesk = React.lazy(() =>
 );
 const Workforce = React.lazy(() =>
   import("./Workforce").then((module) => ({ default: module.Workforce })),
+);
+const InventoryWorkspace = React.lazy(() =>
+  import("./InventoryWorkspace").then((module) => ({ default: module.InventoryWorkspace })),
 );
 const Menu = React.lazy(() =>
   import("./Menu").then((module) => ({ default: module.Menu })),
@@ -147,6 +153,10 @@ export const Layout: React.FC = () => {
   const hydrateProducts = useProducts((s) => s.hydrate);
   const modulePreferences = useStoreConfiguration(
     (state) => state.configuration.modules,
+  );
+  const inventoryWorkspaceEnabled = usePlatformFeatureFlag(
+    "inventory_workspace",
+    inventoryWorkspaceBuildDefault,
   );
   const firstRunCompleted = useStoreConfiguration(
     (state) => state.configuration.firstRunCompleted,
@@ -225,6 +235,12 @@ export const Layout: React.FC = () => {
   // authoritative: never advertise a module that this tenant cannot use.
   const canOpenFeature = (feature: FeatureKey) =>
     isFeatureEnabledForSnapshot(entitlementSnapshot, feature);
+  const inventoryWorkspaceAvailable = canOpenInventoryWorkspace({
+    role: currentRole,
+    moduleEnabled: modulePreferences.inventory,
+    entitled: canOpenFeature(FEATURE_KEYS.inventoryOperations),
+    platformEnabled: inventoryWorkspaceEnabled,
+  });
   const workforceApprovalAvailable = currentRole === "owner"
     && modulePreferences.workforce
     && isFeatureEnabledForSnapshot(entitlementSnapshot, FEATURE_KEYS.workforce);
@@ -304,6 +320,9 @@ export const Layout: React.FC = () => {
       ...(modulePreferences.customers && canOpenFeature(FEATURE_KEYS.customerCrm)
         ? [{ view: "customers" as const, label: "Klanten", Icon: Users, title: "Klanten (Alt+4)" }]
         : []),
+      ...(inventoryWorkspaceAvailable
+        ? [{ view: "inventory" as const, label: "Voorraad", Icon: PackageSearch, title: "Leveringen, tellingen en correcties" }]
+        : []),
       ...(modulePreferences.service && canOpenFeature(FEATURE_KEYS.serviceOrders)
         ? [{ view: "service" as const, label: "Herstellingen", Icon: Wrench, title: "Hersteldienst" }]
         : []),
@@ -320,7 +339,7 @@ export const Layout: React.FC = () => {
         ? [{ view: "profile" as const, label: "Webshop", Icon: ShoppingBag, title: "Webshopbeheer", profileTab: "webshop-general" as const }]
         : []),
     ],
-    [currentRole, modulePreferences, entitlementSnapshot],
+    [inventoryWorkspaceAvailable, modulePreferences, entitlementSnapshot],
   );
 
   const isNavigationItemActive = (item: NavigationItem): boolean =>
@@ -610,6 +629,7 @@ export const Layout: React.FC = () => {
       "service",
       "workforce",
       "integration-hub",
+      "inventory",
     ];
     if (requestedView && allowedViews.includes(requestedView)) {
       setMainView(requestedView as typeof mainView);
@@ -639,12 +659,13 @@ export const Layout: React.FC = () => {
   useEffect(() => {
     const hiddenView =
       (mainView === "customers" && (!modulePreferences.customers || !canOpenFeature(FEATURE_KEYS.customerCrm))) ||
+      (mainView === "inventory" && !inventoryWorkspaceAvailable) ||
       (mainView === "service" && (!modulePreferences.service || !canOpenFeature(FEATURE_KEYS.serviceOrders))) ||
       (mainView === "workforce" && (!modulePreferences.workforce || !canOpenFeature(FEATURE_KEYS.workforce))) ||
       (mainView === "integration-hub" && (!modulePreferences.catalog || !canOpenFeature(FEATURE_KEYS.integrations))) ||
       (mainView === "insights" && (!modulePreferences.insights || !canOpenFeature(FEATURE_KEYS.insights)));
     if (hiddenView) setMainView("pos");
-  }, [mainView, modulePreferences, entitlementSnapshot, setMainView]);
+  }, [mainView, modulePreferences, entitlementSnapshot, inventoryWorkspaceAvailable, setMainView]);
 
   useEffect(() => {
     const handleGlobalHotkeys = (event: KeyboardEvent) => {
@@ -1077,6 +1098,16 @@ export const Layout: React.FC = () => {
               onUpgrade={() => openProfile("billing")}
             >
               <Customers />
+            </FeatureGate>
+          )}
+          {mainView === "inventory" && (
+            <FeatureGate
+              feature={FEATURE_KEYS.inventoryOperations}
+              title="Voorraadoperaties zijn niet actief in dit abonnement"
+              description="Uw voorraaddata en achtergrondmutaties blijven veilig actief."
+              onUpgrade={() => openProfile("billing")}
+            >
+              <InventoryWorkspace />
             </FeatureGate>
           )}
           {mainView === "service" && (

@@ -12,6 +12,7 @@ import {
   EyeOff,
   LoaderCircle,
   Monitor,
+  PackageSearch,
   RotateCcw,
   ShoppingBag,
   Store,
@@ -84,6 +85,7 @@ const STEP_LABELS: Record<WizardStep, string> = {
 
 const moduleIcons: Record<ConfigurableModule, React.ElementType> = {
   catalog: Boxes,
+  inventory: PackageSearch,
   customers: Users,
   service: Wrench,
   workforce: CalendarClock,

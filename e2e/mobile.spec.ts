@@ -96,3 +96,18 @@ test("mobile annual workforce planner opens a future leave request", async ({ ap
   const hasPageOverflow = await appPage.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   expect(hasPageOverflow).toBe(false);
 });
+
+test("mobile inventory supports scanning and a persistent batch without page overflow", async ({ appPage }) => {
+  await openApp(appPage);
+  await appPage.getByRole("button", { name: "Navigatie openen" }).click();
+  await appPage.getByRole("menuitem", { name: "Voorraad" }).click();
+  await expect(appPage.getByRole("heading", { name: "Scannen, boeken, klaar" })).toBeVisible();
+  await expect(appPage.getByLabel("Scan barcode of zoek product")).toBeVisible();
+  await appPage.getByRole("switch", { name: "Batch starten" }).click();
+  await expect(appPage.getByRole("switch", { name: /Batch actief/ })).toHaveAttribute("aria-checked", "true");
+
+  const hasPageOverflow = await appPage.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+  );
+  expect(hasPageOverflow).toBe(false);
+});

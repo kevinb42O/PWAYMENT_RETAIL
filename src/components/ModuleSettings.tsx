@@ -9,6 +9,7 @@ import {
   Lightbulb,
   LoaderCircle,
   Monitor,
+  PackageSearch,
   ShoppingBag,
   Users,
   Wrench,
@@ -38,6 +39,13 @@ interface ModuleOption {
 }
 
 const MODULE_OPTIONS: ModuleOption[] = [
+  {
+    key: "inventory",
+    title: "Voorraad",
+    navigationLabel: "Voorraad",
+    description: "Scan leveringen, leg tellingen vast en corrigeer voorraad met een volledig auditspoor.",
+    Icon: PackageSearch,
+  },
   {
     key: "catalog",
     title: "Integration Hub",
@@ -90,6 +98,7 @@ const CORE_MODULES = [
 
 const MODULE_ENTITLEMENTS: Record<ConfigurableModule, FeatureKey> = {
   catalog: FEATURE_KEYS.integrations,
+  inventory: FEATURE_KEYS.inventoryOperations,
   customers: FEATURE_KEYS.customerCrm,
   service: FEATURE_KEYS.serviceOrders,
   workforce: FEATURE_KEYS.workforce,

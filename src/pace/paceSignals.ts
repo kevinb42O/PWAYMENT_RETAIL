@@ -71,6 +71,14 @@ const viewSignals: Record<MainView, Omit<PaceSignal, "id" | "priority">> = {
     action: { kind: "none" },
     tone: "flow",
   },
+  inventory: {
+    source: "Werkruimte",
+    title: "Voorraad snel en controleerbaar",
+    compact: "Scan een product en kies levering, telling of correctie.",
+    detail: "Elke boeking bewaart de oude stand, delta, nieuwe stand, reden en actor. Pace boekt zelf nooit voorraad.",
+    action: { kind: "none" },
+    tone: "flow",
+  },
   "z-report": {
     source: "Werkruimte",
     title: "Dagafsluiting onder controle",

@@ -686,6 +686,8 @@ export type AuditAction =
   | "purchase_order.receive"
   | "purchase_order.cancel"
   | "inventory.count"
+  | "inventory.operation"
+  | "inventory.batch"
   | "webshop_order.create"
   | "webshop_order.update"
   | "webshop_order.cancel"

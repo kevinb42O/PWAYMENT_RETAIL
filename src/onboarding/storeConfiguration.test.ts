@@ -23,6 +23,7 @@ describe("store configuration", () => {
     expect(normalized.modules.catalog).toBe(true);
     expect(normalized.modules.service).toBe(true);
     expect(normalized.modules.workforce).toBe(true);
+    expect(normalized.modules.inventory).toBe(true);
     expect(normalized.firstRunCompleted).toBe(true);
   });
 
@@ -33,10 +34,22 @@ describe("store configuration", () => {
       modules: { catalog: true },
     });
 
-    expect(normalized.version).toBe(2);
+    expect(normalized.version).toBe(3);
     expect(normalized.industry).toBe("fashion");
     expect(normalized.capabilities["variant-matrix"]).toBe("unknown");
     expect(normalized.capabilities["serial-numbers"]).toBe("unknown");
+  });
+
+  it("upgrades V2 stores with inventory enabled so existing stock tools do not disappear", () => {
+    const current = createStoreConfigurationDraft();
+    const normalized = normalizeStoreConfiguration({
+      ...current,
+      version: 2,
+      modules: { ...current.modules, inventory: undefined },
+    });
+
+    expect(normalized.version).toBe(3);
+    expect(normalized.modules.inventory).toBe(true);
   });
 
   it("uses the chosen retail profile to ask relevant questions without setting answers", () => {
@@ -47,7 +60,7 @@ describe("store configuration", () => {
     expect(createStoreConfigurationDraft().capabilities["lot-traceability"]).toBe("unknown");
   });
 
-  it("accepts only a complete V2 retail contract for account creation", () => {
+  it("accepts only a complete V3 retail contract for account creation", () => {
     const complete = completeStoreConfiguration(
       { ...createStoreConfigurationDraft(), industry: "fashion" },
       "2026-08-22T12:00:00.000Z",
@@ -91,6 +104,7 @@ describe("store configuration", () => {
         ...draft,
         modules: {
           catalog: false,
+          inventory: true,
           customers: true,
           service: true,
           workforce: false,

@@ -259,6 +259,16 @@ export const useProducts = create<ProductsState>((set, get) => ({
       if (!isSupportedVatRate(p.vatRate)) throw new UnsupportedVatRateError(p.vatRate, p.name);
     }
     const existingById = new Map(get().list.map((product) => [product.id, product]));
+    const unsafeStockRows = products.filter((product) => {
+      const existing = existingById.get(product.id);
+      if (existing) return product.stockQty !== existing.stockQty;
+      return product.stockQty != null && product.stockQty > 0;
+    });
+    if (unsafeStockRows.length > 0) {
+      throw new Error(
+        `Voorraad van ${unsafeStockRows.length} product${unsafeStockRows.length === 1 ? "" : "en"} kan niet via catalogusimport worden gewijzigd. Gebruik Voorraad zodat elke wijziging een controleerbare beweging krijgt.`,
+      );
+    }
     const next = products.map((p) => normalizeProduct(
       { ...p, isActive: p.isActive ?? true },
       existingById.get(p.id),

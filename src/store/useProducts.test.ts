@@ -46,7 +46,7 @@ describe("product repository store", () => {
 
   it("bulk writes atomically and keeps the list synchronized with persisted checkout changes", async () => {
     await useProducts.getState().bulkUpsert([
-      product(),
+      product({ stockQty: 0 }),
       product({ id: "product-2", name: "Truck", vatRate: 12, stockQty: undefined }),
     ]);
     expect(await db.products.count()).toBe(2);
@@ -55,6 +55,19 @@ describe("product repository store", () => {
     useProducts.getState().syncPersisted([]);
     await useProducts.getState().refresh();
     expect(useProducts.getState().hydrated).toBe(true);
+  });
+
+  it("never lets a catalog bulk import silently change existing or opening stock", async () => {
+    await useProducts.getState().bulkUpsert([product({ stockQty: 0 })]);
+    await expect(useProducts.getState().bulkUpsert([product({ stockQty: 8 })])).rejects.toThrow(
+      "kan niet via catalogusimport worden gewijzigd",
+    );
+    await expect(useProducts.getState().bulkUpsert([
+      product({ id: "new-with-stock", stockQty: 3 }),
+    ])).rejects.toThrow("kan niet via catalogusimport worden gewijzigd");
+    expect((await db.products.get("product-1"))?.stockQty).toBe(0);
+    expect(await db.products.get("new-with-stock")).toBeUndefined();
+    expect(await db.stock_movements.count()).toBe(0);
   });
 
   it("starts a real tenant with an empty catalogue and reads persisted rows on later starts", async () => {

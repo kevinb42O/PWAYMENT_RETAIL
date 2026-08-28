@@ -20,6 +20,7 @@ export const FEATURE_KEYS = {
   labels: "catalog.labels",
   insights: "insights.advanced",
   inventoryForecast: "inventory.forecast",
+  inventoryOperations: "inventory.operations",
   purchaseOrdersCreate: "purchase_orders.create",
   loyalty: "loyalty.manage",
   giftCardsIssue: "gift_cards.issue",
@@ -125,6 +126,7 @@ const basicFallbackSnapshot = (): EntitlementSnapshot => ({
     // A limited sales-history viewer is part of Basis. `history.full` only
     // controls the longer retention window offered by paid plans.
     [FEATURE_KEYS.historyViewer]: true,
+    [FEATURE_KEYS.inventoryOperations]: true,
   },
   limits: {
     [FEATURE_KEYS.activeProducts]: 250,

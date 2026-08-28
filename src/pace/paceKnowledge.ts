@@ -460,6 +460,7 @@ const KNOWLEDGE: PaceKnowledgeEntry[] = [
 
 const VIEW_HINTS: Record<MainView, string[]> = {
   pos: ["Hoe scan ik een product?", "Hoe parkeer ik deze mand?", "Hoe koppel ik een klant?", "Hoe werkt splitbetaling?", "Kan Pace terminalstatus zien?"],
+  inventory: ["Hoe boek ik een levering?", "Hoe leg ik een telling vast?", "Welke correctiereden kies ik?", "Waarom veranderde de voorraad?", "Hoe ontvang ik een inkooporder?"],
   "audit-log": ["Hoe zoek ik een ticket?", "Hoe start ik een retour?", "Welke voorraadbestemming kies ik?", "Hoe download ik een factuur?", "Waarom zie ik beperkte historiek?"],
   "z-report": ["Wat controleer ik vóór afsluiten?", "Hoe vul ik geteld cash in?", "Waarom is er een kasverschil?", "Waar zie ik de betaalmix?", "Kan ik een Z-rapport wijzigen?"],
   customers: ["Hoe maak ik een klant?", "Waar zie ik aankopen?", "Hoe werkt een prijsgroep?", "Hoe geef ik een cadeaubon uit?", "Waarom zie ik geen klantinzicht?"],

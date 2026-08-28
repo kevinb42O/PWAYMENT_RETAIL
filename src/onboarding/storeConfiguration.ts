@@ -1,9 +1,10 @@
 /**
- * V2 adds declared retail capability needs. These are deliberately separate
+ * V3 adds the independently configurable inventory operations workspace.
+ * Declared retail capability needs remain deliberately separate
  * from enabled product features: choosing a shop type must never silently
  * turn on a workflow that the merchant has not confirmed.
  */
-export const STORE_CONFIGURATION_VERSION = 2 as const;
+export const STORE_CONFIGURATION_VERSION = 3 as const;
 
 export const RETAIL_INDUSTRIES = [
   { value: "telecom-it", label: "Telecom & IT" },
@@ -134,6 +135,7 @@ export type RetailCapabilityState =
   | "blocked";
 export type ConfigurableModule =
   | "catalog"
+  | "inventory"
   | "customers"
   | "service"
   | "workforce"
@@ -143,6 +145,7 @@ export type RecommendedStartView = "pos" | "integration-hub" | "service";
 
 export interface StoreModulePreferences {
   catalog: boolean;
+  inventory: boolean;
   customers: boolean;
   service: boolean;
   workforce: boolean;
@@ -210,8 +213,13 @@ export const MODULE_DETAILS: Array<{
 }> = [
   {
     key: "catalog",
-    title: "Voorraad & Integration Hub",
-    description: "Producten, stock, leveranciersvelden en bestaande bestanden meenemen.",
+    title: "Integration Hub",
+    description: "Producten, leveranciersvelden en bestaande bestanden meenemen.",
+  },
+  {
+    key: "inventory",
+    title: "Voorraad",
+    description: "Leveringen, tellingen en correcties snel en controleerbaar verwerken.",
   },
   {
     key: "customers",
@@ -242,6 +250,7 @@ export const MODULE_DETAILS: Array<{
 
 const broadModuleDefaults: StoreModulePreferences = {
   catalog: true,
+  inventory: true,
   customers: true,
   service: true,
   workforce: true,
@@ -253,6 +262,9 @@ const modulePreset = (
   enabled: ConfigurableModule[],
 ): StoreModulePreferences => ({
   catalog: enabled.includes("catalog"),
+  // Inventory existed as core product functionality before it became its own
+  // workspace. Keep it enabled when upgrading an established retail profile.
+  inventory: true,
   customers: enabled.includes("customers"),
   service: enabled.includes("service"),
   workforce: true,
@@ -371,7 +383,7 @@ export const normalizeStoreConfiguration = (
 ): StoreConfiguration => {
   if (
     !isRecord(value) ||
-    (value.version !== STORE_CONFIGURATION_VERSION && value.version !== 1)
+    (value.version !== STORE_CONFIGURATION_VERSION && value.version !== 2 && value.version !== 1)
   ) {
     return {
       ...DEFAULT_STORE_CONFIGURATION,

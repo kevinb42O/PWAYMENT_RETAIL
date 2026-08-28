@@ -80,6 +80,7 @@ export type MainView =
   | 'service'
   | 'workforce'
   | 'integration-hub'
+  | 'inventory'
   | 'insights'
   | 'z-report'
   | 'audit-log'

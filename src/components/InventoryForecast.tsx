@@ -27,8 +27,11 @@ import {
 import { formatEUR } from '../utils/money';
 import { buildPurchaseOrderDrafts } from '../utils/purchaseOrders';
 import { MISSING_SUPPLIER } from '../utils/retailActionEngine';
-import { PurchaseOrderWorkflow } from './PurchaseOrderWorkflow';
 import { canUseFeature, FEATURE_KEYS } from '../billing/entitlements';
+import { useStore } from '../store/useStore';
+import { useStoreConfiguration } from '../store/useStoreConfiguration';
+import { usePlatformFeatureFlag } from '../billing/usePlatformFeatureFlag';
+import { inventoryWorkspaceBuildDefault } from '../inventory/access';
 
 interface InventoryForecastProps {
   rows: ReorderActionItem[];
@@ -79,14 +82,19 @@ const formatShortDate = (timestamp: number | null) => timestamp == null
   ? 'Nog onbekend'
   : new Intl.DateTimeFormat('nl-BE', { day: 'numeric', month: 'short' }).format(timestamp);
 
-export const InventoryForecast = ({ rows, recommendations, products, onInventoryChanged }: InventoryForecastProps) => {
+export const InventoryForecast = ({ rows, recommendations, products }: InventoryForecastProps) => {
   const auth = useAuth();
+  const setMainView = useStore((state) => state.setMainView);
+  const inventoryModuleEnabled = useStoreConfiguration((state) => state.configuration.modules.inventory);
+  const inventoryWorkspaceEnabled = usePlatformFeatureFlag(
+    'inventory_workspace',
+    inventoryWorkspaceBuildDefault,
+  );
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [expanded, setExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
-  const [orderRefreshKey, setOrderRefreshKey] = useState(0);
 
   useEffect(() => {
     setQuantities((current) => {
@@ -175,7 +183,6 @@ export const InventoryForecast = ({ rows, recommendations, products, onInventory
       }
       setSelectedIds(new Set());
       setFeedback(`${orders.length} ${orders.length === 1 ? 'concept-inkooporder is' : 'concept-inkooporders zijn'} aangemaakt. Er is niets verzonden en de voorraad is niet aangepast.`);
-      setOrderRefreshKey((current) => current + 1);
     } catch (error) {
       console.error('Concept-inkooporders aanmaken mislukt', error);
       setFeedback('De concepten konden niet worden aangemaakt. Er is niets besteld of aangepast.');
@@ -290,14 +297,13 @@ export const InventoryForecast = ({ rows, recommendations, products, onInventory
                 <div className="text-sm font-bold text-white">{selectedRows.length} {selectedRows.length === 1 ? 'product' : 'producten'} · {selectedSuppliers.size} {selectedSuppliers.size === 1 ? 'leverancier' : 'leveranciers'}</div>
                 <div className="mt-1 text-xs text-zinc-400">Inkoopwaarde: <strong className="text-zinc-200">{formatEUR(selectedValueCents)} excl. btw</strong>{selectedHasMissingCost ? ' · exclusief ontbrekende aankoopprijzen' : ''}</div>
               </div>
-              <button type="button" disabled={selectedRows.length === 0 || saving} onClick={() => void createDraftOrders()} className="inline-flex items-center justify-center gap-2 rounded-lg bg-sky-400 px-5 py-3 text-sm font-bold text-zinc-950 transition hover:bg-sky-300 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500">{saving ? <LoaderCircle size={17} className="animate-spin" /> : <PackagePlus size={17} />}{saving ? 'Concepten maken...' : 'Maak conceptorders'}</button>
+              <button type="button" disabled={!inventoryModuleEnabled || !inventoryWorkspaceEnabled || selectedRows.length === 0 || saving} onClick={() => void createDraftOrders()} className="inline-flex items-center justify-center gap-2 rounded-lg bg-sky-400 px-5 py-3 text-sm font-bold text-zinc-950 transition hover:bg-sky-300 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500">{saving ? <LoaderCircle size={17} className="animate-spin" /> : <PackagePlus size={17} />}{saving ? 'Concepten maken...' : inventoryModuleEnabled && inventoryWorkspaceEnabled ? 'Maak conceptorders' : 'Activeer Voorraad om te bestellen'}</button>
             </div>
 
-            {feedback && <div role="status" aria-live="polite" className="purchase-feedback-enter mt-3 flex items-start gap-2 rounded-lg border border-sky-400/20 bg-sky-400/[0.06] px-3 py-2.5 text-sm text-sky-100"><Check size={16} className="mt-0.5 shrink-0" />{feedback}</div>}
+            {feedback && <div role="status" aria-live="polite" className="purchase-feedback-enter mt-3 flex flex-col gap-3 rounded-lg border border-sky-400/20 bg-sky-400/[0.06] px-3 py-2.5 text-sm text-sky-100 sm:flex-row sm:items-center sm:justify-between"><span className="flex items-start gap-2"><Check size={16} className="mt-0.5 shrink-0" />{feedback}</span>{inventoryModuleEnabled && inventoryWorkspaceEnabled && <button type="button" onClick={() => setMainView('inventory')} className="shrink-0 rounded-md border border-sky-300/30 px-3 py-1.5 text-xs font-bold text-sky-100 hover:bg-sky-300/10">Open in Voorraad</button>}</div>}
           </>
         )}
 
-        <PurchaseOrderWorkflow key={`purchase-orders-${orderRefreshKey}`} refreshKey={orderRefreshKey} onInventoryChanged={onInventoryChanged} />
       </div>
     </section>
   );
