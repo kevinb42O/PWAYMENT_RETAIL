@@ -129,23 +129,106 @@ export const PaceCustomerStory = () => {
 };
 
 const PACE_CAPABILITIES = [
-  [ListChecks, "Begrijpt de context", "Pace leest de actieve werkruimte, rol, winkelstatus en verbindingsstatus. Daardoor hoef je niet eerst uit te leggen waar je bezig bent."],
-  [Sparkles, "Maakt betekenis zichtbaar", "Pace verbindt de relevante signalen en legt in mensentaal uit waarom iets nu aandacht verdient."],
-  [RefreshCw, "Opent de veilige volgende stap", "Pace stuurt naar de bestaande PWAYMENT-workflow. Geen parallel proces en geen verborgen mutatie."],
-  [UserRoundCheck, "Laat de beslissing bij jou", "Betalingen, voorraadwijzigingen, publicaties en gevoelige handelingen blijven bij de bevoegde medewerker."],
+  {
+    icon: ListChecks,
+    title: "Begrijpt de context",
+    body: "Pace leest de actieve werkruimte, rol, winkelstatus en verbindingsstatus. Daardoor hoef je niet eerst uit te leggen waar je bezig bent.",
+    source: "Kassa · verkoop in opbouw",
+    insight: "Betalen heeft nu voorrang",
+    action: "Setupactie bewaren voor later",
+  },
+  {
+    icon: Sparkles,
+    title: "Maakt betekenis zichtbaar",
+    body: "Pace verbindt de relevante signalen en legt in mensentaal uit waarom iets nu aandacht verdient.",
+    source: "Voorraaddekking · 8 dagen",
+    insight: "Vraag stijgt sneller dan je voorraad",
+    action: "Onderbouwing en leverancier tonen",
+  },
+  {
+    icon: RefreshCw,
+    title: "Opent de veilige volgende stap",
+    body: "Pace stuurt naar de bestaande PWAYMENT-workflow. Geen parallel proces en geen verborgen mutatie.",
+    source: "Bestelvoorstel · nog niet geopend",
+    insight: "De bestaande workflow staat klaar",
+    action: "Bestelvoorstel openen",
+  },
+  {
+    icon: UserRoundCheck,
+    title: "Laat de beslissing bij jou",
+    body: "Betalingen, voorraadwijzigingen, publicaties en gevoelige handelingen blijven bij de bevoegde medewerker.",
+    source: "Voorstel · nog niet uitgevoerd",
+    insight: "Geen automatische voorraadwijziging",
+    action: "Jij controleert en bevestigt",
+  },
 ] as const;
 
-const PaceCapabilities = () => (
-  <section className="pw-pace-capabilities pw-shell">
-    <div className="pw-pace-capabilities-heading"><span className="pw-eyebrow">Van context naar controle</span><h2>Vier stappen.<br />Eén duidelijke grens.</h2><p>Pace koppelt signalen aan de plek waar je werkt en maakt één veilige volgende stap zichtbaar. De operationele waarheid blijft in PWAYMENT; de beslissing blijft bij jou.</p></div>
-    <div className="pw-pace-capability-grid">{PACE_CAPABILITIES.map(([Icon, title, body], index) => <article key={title}><span>0{index + 1}</span><Icon size={22} /><h3>{title}</h3><p>{body}</p></article>)}</div>
-    <div className="pw-pace-control-strip">
-      <div><ShieldCheck size={18} /><span><strong>Jij bevestigt</strong><small>Financiële en definitieve acties blijven bij de medewerker.</small></span></div>
-      <div><EyeOff size={18} /><span><strong>Pace trekt zich terug</strong><small>Geen onderbreking tijdens betalen, PIN of kritieke schermen.</small></span></div>
-      <div><SlidersHorizontal size={18} /><span><strong>Afstelbaar per gebruiker</strong><small>Kies proactiviteit, beweging, antwoordstijl en winkelcontext.</small></span></div>
-    </div>
-  </section>
-);
+const PaceCapabilities = () => {
+  const [active, setActive] = useState(0);
+  const reducedMotion = useReducedMotion();
+  const capability = PACE_CAPABILITIES[active];
+
+  return (
+    <section className="pw-pace-capabilities pw-shell">
+      <div className="pw-pace-capabilities-heading">
+        <span className="pw-eyebrow">Van context naar controle</span>
+        <h2>Vier stappen.<br />Eén duidelijke grens.</h2>
+        <p>Pace koppelt signalen aan de plek waar je werkt en maakt één veilige volgende stap zichtbaar. De operationele waarheid blijft in PWAYMENT; de beslissing blijft bij jou.</p>
+      </div>
+
+      <div className="pw-pace-flow">
+        <div className="pw-pace-flow-rail" role="tablist" aria-label="Vier stappen van Pace">
+          {PACE_CAPABILITIES.map((item, index) => {
+            const Icon = item.icon;
+            return (
+              <button key={item.title} type="button" role="tab" aria-selected={active === index} aria-controls="pace-capability-panel" onClick={() => setActive(index)}>
+                <span className="pw-pace-flow-index"><small>0{index + 1}</small><Icon size={19} /></span>
+                <span className="pw-pace-flow-copy"><strong>{item.title}</strong><small>{item.body}</small></span>
+                <ArrowRight className="pw-pace-flow-arrow" size={17} />
+              </button>
+            );
+          })}
+        </div>
+
+        <motion.div
+          id="pace-capability-panel"
+          className="pw-pace-flow-stage"
+          role="tabpanel"
+          aria-live="polite"
+          key={capability.title}
+          initial={reducedMotion ? false : { opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: .32, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <div className="pw-pace-flow-stage-bar"><span><i /><i /><i /></span><strong>Pace · operationele context</strong><small><span /> Live context</small></div>
+          <div className="pw-pace-flow-stage-body">
+            <div className="pw-pace-flow-stage-heading">
+              <PaceMark size={68} active emotion={active === 3 ? "guiding" : "attentive"} tone={active === 1 ? "attention" : "flow"} motionMode={reducedMotion ? "off" : "subtle"} />
+              <span><small>Stap 0{active + 1}</small><strong>{capability.title}</strong></span>
+            </div>
+            <div className="pw-pace-signal-chain">
+              <article><span>PWAYMENT ziet</span><strong>{capability.source}</strong><small>Actuele, toegestane winkelcontext</small></article>
+              <div aria-hidden="true"><span /><ArrowRight size={16} /></div>
+              <article className="is-pace"><span>Pace maakt zichtbaar</span><strong>{capability.insight}</strong><small>Verklaarbaar in gewone mensentaal</small></article>
+            </div>
+            <div className="pw-pace-safe-action">
+              <span><ShieldCheck size={18} /><small>Veilige volgende stap</small></span>
+              <strong>{capability.action}</strong>
+              <small><Check size={14} /> Nog niets uitgevoerd</small>
+            </div>
+          </div>
+          <div className="pw-pace-flow-stage-foot"><UserRoundCheck size={15} /><span>Pace begeleidt. Jij controleert en bevestigt.</span></div>
+        </motion.div>
+      </div>
+
+      <div className="pw-pace-control-strip">
+        <div><ShieldCheck size={18} /><span><strong>Jij bevestigt</strong><small>Financiële en definitieve acties blijven bij de medewerker.</small></span></div>
+        <div><EyeOff size={18} /><span><strong>Pace trekt zich terug</strong><small>Geen onderbreking tijdens betalen, PIN of kritieke schermen.</small></span></div>
+        <div><SlidersHorizontal size={18} /><span><strong>Afstelbaar per gebruiker</strong><small>Kies proactiviteit, beweging, antwoordstijl en winkelcontext.</small></span></div>
+      </div>
+    </section>
+  );
+};
 
 const PaceRealWork = () => (
   <section className="pw-pace-real-work pw-shell">
