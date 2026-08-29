@@ -144,6 +144,14 @@ export const paceClarificationFollowUp = (label: string) => `Ik bedoel ${label.t
 export const shouldUseLocalPaceDestination = (answer: PaceQueryAnswer) =>
   answer.matched && answer.confidence >= 0.9 && answer.action.kind === "destination";
 
+export const shouldShowPaceSetupProgress = ({
+  role,
+  ready,
+}: {
+  role: PaceContext["role"];
+  ready: boolean;
+}) => (role === "owner" || role === "manager") && !ready;
+
 export const PaceAssistant = (props: PaceAssistantProps) => {
   const {
     open,
@@ -561,7 +569,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                       </div>
                     </section>
 
-                    {(props.role === "owner" || props.role === "manager") && (
+                    {shouldShowPaceSetupProgress({ role: props.role, ready: setupProgress.ready }) && (
                       <section className="pace-setup-progress" aria-label="Winkelsetup voortgang">
                         <div className="pace-setup-progress-head">
                           <span><Check size={14} /> WINKELSETUP</span>

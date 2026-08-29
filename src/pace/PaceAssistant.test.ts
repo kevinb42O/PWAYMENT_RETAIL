@@ -6,6 +6,7 @@ import {
   paceClarificationFollowUp,
   paceResponseSourceLabel,
   paceThinkingStatus,
+  shouldShowPaceSetupProgress,
   shouldUseLocalPaceDestination,
 } from "./PaceAssistant";
 import type { PaceQueryAnswer } from "./paceSignals";
@@ -48,6 +49,13 @@ describe("Pace assistant response safety", () => {
     expect(shouldUseLocalPaceDestination(typed)).toBe(true);
     expect(shouldUseLocalPaceDestination({ ...typed, confidence: 0.89 })).toBe(false);
     expect(shouldUseLocalPaceDestination(localAnswer)).toBe(false);
+  });
+
+  it("hides completed setup progress from the Pace overview", () => {
+    expect(shouldShowPaceSetupProgress({ role: "owner", ready: true })).toBe(false);
+    expect(shouldShowPaceSetupProgress({ role: "manager", ready: true })).toBe(false);
+    expect(shouldShowPaceSetupProgress({ role: "owner", ready: false })).toBe(true);
+    expect(shouldShowPaceSetupProgress({ role: "cashier", ready: false })).toBe(false);
   });
 
   it("does not reconstruct unverified actions when reopening a stored answer", () => {
