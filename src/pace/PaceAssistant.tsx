@@ -33,11 +33,13 @@ import { askPaceAi, PaceQuotaExceededError, type PaceConversationTurn } from "./
 import { paceQuotaLabel, usePaceBilling } from "./usePaceBilling";
 import { parsePaceAnswer } from "./paceAnswerFormat";
 import { deletePaceConversation, getPaceConversation, listPaceConversations } from "./conversation/api";
-import type { PaceCitation, PaceConversationSummary } from "./conversation/types";
+import type { PaceCitation, PaceClarification, PaceConversationSummary } from "./conversation/types";
 import {
   paceSetupProgress,
   type PaceSetupMilestone,
 } from "./setupMilestones";
+import { isPaceCatalogDestination, validatePaceDestination, type PaceDestinationAccess } from "./paceDestinations";
+import { derivePaceExpression, derivePaceTruthState, paceTruthStateLabel } from "./paceExperience";
 
 interface PaceAssistantProps extends PaceContext {
   userId: string | null;
@@ -49,18 +51,98 @@ interface PaceAssistantProps extends PaceContext {
   onOpenSetup: () => void;
   onOpenProfile: (tab: PaceProfileTab) => void;
   onOpenCatalog: (filter: { productIds: string[]; label: string }) => void;
+  onOpenDestination: (destination: Extract<PaceAction, { kind: "destination" }>["destination"]) => PaceDestinationAccess;
   onOpenMilestone: (milestone: PaceSetupMilestone) => void;
 }
 
 const executeAction = (
   action: PaceAction,
-  handlers: Pick<PaceAssistantProps, "onNavigate" | "onOpenSetup" | "onOpenProfile" | "onOpenCatalog">,
-) => {
+  handlers: Pick<PaceAssistantProps, "onNavigate" | "onOpenSetup" | "onOpenProfile" | "onOpenCatalog" | "onOpenDestination">,
+): PaceDestinationAccess => {
+  if (action.kind === "destination") return handlers.onOpenDestination(action.destination);
   if (action.kind === "navigate") handlers.onNavigate(action.view);
   if (action.kind === "setup") handlers.onOpenSetup();
   if (action.kind === "profile") handlers.onOpenProfile(action.tab);
   if (action.kind === "catalog") handlers.onOpenCatalog({ productIds: action.productIds, label: action.filterLabel });
+  return { allowed: true };
 };
+
+export const paceAssistantModeLabel = ({
+  aiEnabled,
+  liveStoreContext,
+  thinking,
+}: {
+  aiEnabled: boolean;
+  liveStoreContext: boolean;
+  thinking: boolean;
+}) => {
+  if (thinking) return "VRAAG WORDT VERWERKT";
+  if (!aiEnabled) return "LOKALE KENNIS";
+  return liveStoreContext ? "AI + WINKELGEGEVENS" : "AI · GEEN WINKELGEGEVENS";
+};
+
+export const paceThinkingStatus = ({
+  aiEnabled,
+  liveStoreContext,
+  slow,
+}: {
+  aiEnabled: boolean;
+  liveStoreContext: boolean;
+  slow: boolean;
+}) => {
+  if (slow) return "Dit duurt langer dan normaal. Pace schakelt automatisch terug als de service niet antwoordt.";
+  if (!aiEnabled) return "De lokale PWAYMENT-productkennis wordt geraadpleegd.";
+  if (!liveStoreContext) return "Je vraag is veilig verzonden zonder actuele winkelgegevens.";
+  return "Je vraag is veilig verzonden. Alleen toegestane winkelgegevens kunnen worden opgehaald.";
+};
+
+export const composePaceQueryResponse = (
+  local: PaceQueryAnswer,
+  ai: Pick<Awaited<ReturnType<typeof askPaceAi>>, "answer" | "source">,
+): PaceQueryAnswer => {
+  const base = {
+    ...local,
+    title: local.matched ? local.title : "Dit heb ik voor je gevonden",
+    answer: ai.answer,
+  };
+  if (ai.source === "local") return base;
+  // Until server-authoritative action proposals exist, never attach a local
+  // regex action or local instructional metadata to a remotely composed answer.
+  return {
+    ...base,
+    action: { kind: "none" },
+    actionLabel: undefined,
+    steps: undefined,
+    limitation: undefined,
+    followUps: undefined,
+  };
+};
+
+export const composeStoredPaceResponse = (local: PaceQueryAnswer, answer: string, title: string): PaceQueryAnswer => ({
+  ...local,
+  title,
+  answer,
+  action: { kind: "none" },
+  actionLabel: undefined,
+  steps: undefined,
+  limitation: undefined,
+  followUps: undefined,
+});
+
+export type PaceResponseSource = "gemini" | "openai" | "analytics" | "records" | "local" | "history";
+
+export const paceResponseSourceLabel = (source: PaceResponseSource) => {
+  if (source === "gemini") return "GEMINI";
+  if (source === "openai") return "OPENAI";
+  if (source === "analytics" || source === "records") return "LIVE GEGEVENS";
+  if (source === "history") return "BEWAARD ANTWOORD";
+  return "LOKALE KENNIS";
+};
+
+export const paceClarificationFollowUp = (label: string) => `Ik bedoel ${label.trim().slice(0, 160)}.`;
+
+export const shouldUseLocalPaceDestination = (answer: PaceQueryAnswer) =>
+  answer.matched && answer.confidence >= 0.9 && answer.action.kind === "destination";
 
 export const PaceAssistant = (props: PaceAssistantProps) => {
   const {
@@ -79,14 +161,16 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   const [query, setQuery] = useState("");
   const [activeQuestion, setActiveQuestion] = useState<string | null>(null);
   const [response, setResponse] = useState<PaceQueryAnswer | null>(null);
-  const [responseSource, setResponseSource] = useState<"gemini" | "openai" | "analytics" | "records" | "local">("local");
+  const [responseSource, setResponseSource] = useState<PaceResponseSource>("local");
   const [thinking, setThinking] = useState(false);
+  const [thinkingSlow, setThinkingSlow] = useState(false);
   const [externalDialogOpen, setExternalDialogOpen] = useState(false);
   const [sessionDismissedSignals, setSessionDismissedSignals] = useState<string[]>([]);
   const [conversation, setConversation] = useState<PaceConversationTurn[]>([]);
   const [serverConversation, setServerConversation] = useState<PaceConversationSummary | null>(null);
   const [recentConversations, setRecentConversations] = useState<PaceConversationSummary[]>([]);
   const [citations, setCitations] = useState<PaceCitation[]>([]);
+  const [clarification, setClarification] = useState<PaceClarification | null>(null);
   const { quota, hardLimited, load: loadBilling, recordQuota, markExceeded } = usePaceBilling();
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const queryRunRef = useRef(0);
@@ -124,6 +208,22 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   const queryHints = useMemo(() => getPaceQueryHints(context), [context]);
   const conversationActive = activeQuestion !== null;
   const usagePercent = quota ? (quota.tier === "basic" ? quota.daily_count / quota.quota : quota.monthly_count / quota.quota) * 100 : 0;
+  const modeLabel = paceAssistantModeLabel({ aiEnabled: preferences.aiEnabled, liveStoreContext: preferences.liveStoreContext, thinking });
+  const thinkingStatus = paceThinkingStatus({ aiEnabled: preferences.aiEnabled, liveStoreContext: preferences.liveStoreContext, slow: thinkingSlow });
+  const truthState = derivePaceTruthState({
+    enabled: preferences.enabled,
+    open,
+    online: context.online,
+    thinking,
+    slow: thinkingSlow,
+    hardLimited: preferences.aiEnabled && hardLimited,
+    hasResponse: Boolean(response),
+    hasClarification: Boolean(clarification?.candidates.length),
+    hasAction: Boolean(response && response.action.kind !== "none"),
+    hasAttentionSignal: shouldBadge,
+  });
+  const expression = derivePaceExpression(truthState, preferences.motion, primary.tone);
+  const truthStateLabel = paceTruthStateLabel(truthState.phase);
 
   useEffect(() => {
     setSessionDismissedSignals([]);
@@ -134,6 +234,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
     setServerConversation(null);
     setRecentConversations([]);
     setCitations([]);
+    setClarification(null);
     setActiveQuestion(null);
     setResponse(null);
     setQuery("");
@@ -162,6 +263,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
     const detail = await getPaceConversation(item.id);
     setServerConversation(item);
     setCitations([]);
+    setClarification(null);
     setConversation(detail.turns.filter((turn) => turn.status === "completed" || turn.status === "clarification").flatMap((turn) => [
       { role: "user" as const, text: turn.question },
       ...(turn.answer ? [{ role: "assistant" as const, text: turn.answer }] : []),
@@ -169,9 +271,9 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
     const last = [...detail.turns].reverse().find((turn) => turn.answer && (turn.status === "completed" || turn.status === "clarification"));
     if (last?.answer) {
       setActiveQuestion(last.question);
-      setResponse(answerPaceQuery(last.question, context));
-      setResponse((current) => current ? { ...current, title: item.title, answer: last.answer! } : current);
-      setResponseSource("local");
+      setResponse(composeStoredPaceResponse(answerPaceQuery(last.question, context), last.answer, item.title));
+      setResponseSource(last.source ?? "history");
+      setCitations(last.citations ?? []);
     }
   };
 
@@ -220,6 +322,15 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   }, [open, setOpen]);
 
   useEffect(() => {
+    if (!thinking) {
+      setThinkingSlow(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setThinkingSlow(true), 6_000);
+    return () => window.clearTimeout(timer);
+  }, [thinking]);
+
+  useEffect(() => {
     // Navigation changes the available UI context, but it should not erase the
     // conversation that caused that navigation. Only cancel an in-flight turn.
     queryRunRef.current += 1;
@@ -234,12 +345,23 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
     setActiveQuestion(question);
     setQuery("");
     setResponse(null);
+    setClarification(null);
     const local = answerPaceQuery(question, context);
     const remember = (answer: string) => setConversation((current) => [
       ...current,
       { role: "user" as const, text: question },
       { role: "assistant" as const, text: answer },
     ].slice(-6));
+    // Reviewed high-confidence navigation help is faster and safer locally:
+    // answer and typed destination originate from the same knowledge entry.
+    // Complex or unmatched questions continue through the AI endpoint.
+    if (shouldUseLocalPaceDestination(local)) {
+      setResponse(local);
+      setResponseSource("local");
+      setCitations([]);
+      remember(local.answer);
+      return;
+    }
     // A known local delivery failure has a deterministic, privacy-safe answer.
     // Prefer it over a generic AI response so "waarom?" always names the real
     // cause currently stored on this register.
@@ -264,13 +386,14 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
         },
       });
       if (queryRunRef.current !== runId) return;
-      setResponse({ ...local, title: local.matched ? local.title : "Dit heb ik voor je gevonden", answer: ai.answer });
+      setResponse(composePaceQueryResponse(local, ai));
       setResponseSource(ai.source);
       if (ai.conversation) {
         setServerConversation(ai.conversation);
         setRecentConversations((current) => [ai.conversation!, ...current.filter((item) => item.id !== ai.conversation!.id)].slice(0, 20));
       }
       setCitations(ai.citations ?? []);
+      setClarification(ai.clarification ?? null);
       if (ai.quota) recordQuota(ai.quota);
       remember(ai.answer);
     } catch (error) {
@@ -289,6 +412,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
       } : local);
       setResponseSource("local");
       setCitations([]);
+      setClarification(null);
       remember(local.answer);
     } finally {
       if (queryRunRef.current === runId) setThinking(false);
@@ -300,6 +424,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
     setThinking(false);
     setActiveQuestion(null);
     setResponse(null);
+    setClarification(null);
     setQuery("");
   };
 
@@ -309,8 +434,19 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   };
 
   const runAction = (action: PaceAction, customerInsightId?: string) => {
-    executeAction(action, props);
-    if (action.kind === "catalog" && customerInsightId) recordCustomerFeedback(customerInsightId, "used");
+    if (action.kind === "destination") {
+      const access = validatePaceDestination(action.destination, context.role);
+      if (!access.allowed) {
+        setResponse((current) => current ? { ...current, limitation: access.message, action: { kind: "none" }, actionLabel: undefined } : current);
+        return;
+      }
+    }
+    const outcome = executeAction(action, props);
+    if (!outcome.allowed) {
+      setResponse((current) => current ? { ...current, limitation: outcome.message, action: { kind: "none" }, actionLabel: undefined } : current);
+      return;
+    }
+    if ((action.kind === "catalog" || (action.kind === "destination" && isPaceCatalogDestination(action.destination))) && customerInsightId) recordCustomerFeedback(customerInsightId, "used");
     if (action.kind !== "none") setOpen(false);
   };
 
@@ -339,7 +475,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
         aria-controls="pace-assistant-panel"
       >
         <span className="pace-trigger-mark" aria-hidden="true">
-          <PaceMark size={46} active={open || shouldBadge} emotion={open ? "thinking" : undefined} tone={primary.tone} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
+          <PaceMark size={46} active={open || shouldBadge} emotion={expression.emotion} tone={expression.tone} performance={expression.performance} stateLabel={truthStateLabel} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
           {shouldBadge && !open && <span className={`pace-signal-dot is-${primary.tone}`} />}
         </span>
         <span className="pace-trigger-label" aria-hidden="true">
@@ -386,8 +522,8 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                 <div className="pace-header-leading">
                   {conversationActive && <button type="button" className="pace-header-back" onClick={returnToOverview} aria-label="Terug naar Nu belangrijk" title="Terug naar Nu belangrijk"><ArrowLeft size={18} /></button>}
                   <div className="pace-identity">
-                  <PaceMark size={52} active thinking={thinking} tone={primary.tone} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
-                  <div><span>PWAYMENT · LIVE CONTEXT</span><h2>Pace</h2></div>
+                  <PaceMark size={52} active emotion={expression.emotion} tone={expression.tone} performance={expression.performance} stateLabel={truthStateLabel} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
+                  <div><span>PWAYMENT · {modeLabel}</span><h2>Pace</h2></div>
                   </div>
                 </div>
                 <div className="pace-header-actions">
@@ -395,6 +531,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                     setServerConversation(null);
                     setConversation([]);
                     setCitations([]);
+                    setClarification(null);
                     setActiveQuestion(null);
                     setResponse(null);
                     setQuery("");
@@ -497,17 +634,13 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                       {(thinking || response) && (
                         <motion.section className="pace-response" key={thinking ? `thinking-${activeQuestion}` : `${activeQuestion}-${response?.title}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}>
                           {thinking ? <div className="pace-thinking-performance">
-                            <PaceMark size={76} active thinking tone={primary.tone} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
+                            <PaceMark size={76} active emotion={expression.emotion} tone={expression.tone} performance={expression.performance} stateLabel={truthStateLabel} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
                             <div className="pace-thinking-copy">
-                              <strong>Pace denkt met je mee</strong>
-                              <span className="pace-thinking-steps">
-                                <i>Je vraag begrijpen</i>
-                                <i>Je winkelcontext erbij nemen</i>
-                                <i>Een helder antwoord maken</i>
-                              </span>
+                              <strong>{thinkingSlow ? "Pace werkt nog aan je vraag" : "Pace verwerkt je vraag"}</strong>
+                              <span className="pace-thinking-status">{thinkingStatus}</span>
                             </div>
                           </div> : response && <>
-                            <div><Check size={14} /> PACE · {responseSource === "gemini" ? "GEMINI" : responseSource === "openai" ? "OPENAI" : responseSource === "analytics" || responseSource === "records" ? "LIVE GEGEVENS" : "LOKALE KENNIS"}</div>
+                            <div><Check size={14} /> PACE · {paceResponseSourceLabel(responseSource)}</div>
                             <h3>{response.title}</h3>
                             <div className="pace-response-content">
                               {parsePaceAnswer(response.answer).map((block, index) => {
@@ -521,6 +654,10 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                               {citations.map((citation) => <span key={citation.key} title={`${citation.label} · ${new Date(citation.observedAt).toLocaleString("nl-BE")}`}>
                                 <ShieldCheck size={12} /> {citation.label} · {citation.freshness === "live" ? "actueel" : citation.freshness === "period" ? "periode" : "algemeen"}
                               </span>)}
+                            </div>}
+                            {clarification && clarification.candidates.length > 0 && <div className="pace-clarification" aria-label="Kies wat je bedoelt">
+                              <strong>{clarification.prompt}</strong>
+                              <div>{clarification.candidates.map((candidate) => <button key={candidate.entityId} type="button" onClick={() => void runQuery(paceClarificationFollowUp(candidate.label))}>{candidate.label}</button>)}</div>
                             </div>}
                             {response.steps && response.steps.length > 0 && <ol className="pace-response-steps">{response.steps.map((step) => <li key={step}>{step}</li>)}</ol>}
                             {response.limitation && <p className="pace-response-limit"><ShieldCheck size={13} /> {response.limitation}</p>}

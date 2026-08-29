@@ -56,7 +56,7 @@ describe("Pace signal engine", () => {
     );
     expect(signals[0]).toMatchObject({
       id: "failed-sync",
-      action: { kind: "profile", tab: "integrations" },
+      action: { kind: "destination", destination: { type: "profile", tab: "integrations" } },
       tone: "attention",
     });
     expect(signals[0].compact).toBe("Een product bestaat nog niet op de server.");
@@ -115,7 +115,7 @@ describe("Pace signal engine", () => {
     }] }), DEFAULT_PACE_PREFERENCES);
     expect(signal).toMatchObject({
       actionLabel: "Bekijk 2 artikelen",
-      action: { kind: "catalog", productIds: ["one", "two"], filterLabel: "Completeer de look" },
+      action: { kind: "destination", destination: { type: "catalog-selection", productIds: ["one", "two"], filterLabel: "Completeer de look" } },
       evidenceLabel: "1 relevante verkoop · automatisch geleerd",
     });
   });

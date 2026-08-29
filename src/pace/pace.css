@@ -559,12 +559,12 @@
 .pace-thinking-performance .pace-mark-stage { filter: drop-shadow(0 12px 18px rgb(8 145 178 / 0.16)); }
 .pace-thinking-copy { min-width: 0; }
 .pace-thinking-copy strong { display: block; color: #172033; font-size: 0.8rem; font-weight: 850; }
-.pace-thinking-steps { position: relative; display: block; height: 1.2rem; margin-top: 0.35rem; overflow: hidden; color: #64748b; font-size: 0.66rem; font-weight: 650; }
-.pace-thinking-steps i { position: absolute; inset: 0; opacity: 0; font-style: normal; transform: translateY(8px); animation: pace-thinking-copy 5.4s ease-in-out infinite; }
-.pace-thinking-steps i:nth-child(2) { animation-delay: 1.8s; }
-.pace-thinking-steps i:nth-child(3) { animation-delay: 3.6s; }
-@keyframes pace-thinking-copy { 0% { opacity: 0; transform: translateY(8px); } 12%, 26% { opacity: 1; transform: translateY(0); } 34%, 100% { opacity: 0; transform: translateY(-7px); } }
-@media (prefers-reduced-motion: reduce) { .pace-thinking-steps i { animation: none; opacity: 0; transform: none; } .pace-thinking-steps i:first-child { opacity: 1; } }
+.pace-thinking-status { display: block; margin-top: 0.35rem; color: #64748b; font-size: 0.66rem; font-weight: 650; line-height: 1.45; }
+.pace-clarification { margin-top: 0.75rem; border-top: 1px solid #dbe7ed; padding-top: 0.7rem; }
+.pace-clarification > strong { display: block; color: #334155; font-size: 0.68rem; font-weight: 800; line-height: 1.45; }
+.pace-clarification > div { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+.pace-response .pace-clarification button { margin: 0; border: 1px solid #bae6fd; background: #f8fdff; color: #0e7490; }
+.pace-response .pace-clarification button:hover { border-color: #67e8f9; background: #ecfeff; }
 .pace-trust-line { display: flex; align-items: center; gap: 0.4rem; margin: 1rem 0 0.25rem; color: #64748b; font-size: 0.6rem; font-weight: 650; line-height: 1.4; }
 
 @media (min-width: 768px) {

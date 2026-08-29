@@ -30,6 +30,7 @@ import {
   type PaceSetupMilestone,
 } from "../pace/setupMilestones";
 import { getPrimaryPaceOutboxIssue } from "../pace/outboxIssue";
+import { validatePaceDestination, type PaceDestination, type PaceDestinationAccess } from "../pace/paceDestinations";
 import { playRegisterSound, unlockRegisterSounds } from "../sound/registerSounds";
 import {
   AlertCircle,
@@ -300,6 +301,30 @@ export const Layout: React.FC = () => {
       return;
     }
     openGuidedSetup(setupProgress.next?.id ?? "welcome");
+  };
+  const openPaceDestination = (destination: PaceDestination): PaceDestinationAccess => {
+    const access = validatePaceDestination(destination, currentRole);
+    if (!access.allowed) return access;
+
+    if (destination.type === "workspace") {
+      if (destination.focus === "return-search") {
+        setReturnReceiptBarcode(null);
+        setOpenAuditLogAtReturnSearch(true);
+      }
+      if (destination.view === "pos" && destination.focus === "cart") setMobileView("cart");
+      if (destination.view === "pos" && destination.focus === "product-search") setMobileView("menu");
+      setMainView(destination.view);
+      if (destination.view === "pos" && destination.focus === "product-search") focusScanInput();
+    } else if (destination.type === "profile") {
+      openProfile(destination.tab);
+    } else if (destination.type === "catalog-selection") {
+      openPaceCatalogFilter({ productIds: destination.productIds, label: destination.filterLabel });
+    } else {
+      openSetupForCurrentStore();
+    }
+
+    setScanFeedback({ tone: "info", title: `Pace opende ${destination.label}`, detail: destination.reason });
+    return { allowed: true };
   };
   const approvalStoreId = currentStoreId ?? (import.meta.env.VITE_E2E_BUILD === "true" ? "fixture-store" : null);
   const openLeaveApprovalGate = () => {
@@ -811,6 +836,7 @@ export const Layout: React.FC = () => {
             onOpenSetup={openSetupForCurrentStore}
             onOpenProfile={(tab) => openProfile(tab)}
             onOpenCatalog={openPaceCatalogFilter}
+            onOpenDestination={openPaceDestination}
             onOpenMilestone={(milestone) => {
               if (establishedCatalog) {
                 openMilestoneDirectly(milestone);

@@ -54,6 +54,7 @@ export const PaceMark = ({
   performance = null,
   forceMotion = false,
   expressive = true,
+  stateLabel,
 }: {
   size?: number;
   active?: boolean;
@@ -66,6 +67,8 @@ export const PaceMark = ({
   forceMotion?: boolean;
   /** Allows the operational ? / ! / liquid silhouettes. */
   expressive?: boolean;
+  /** Public, truthful state label supplied by the experience controller. */
+  stateLabel?: string;
 }) => {
   const gradientId = `pace-gradient-${useId().replaceAll(":", "")}`;
   const sheenId = `${gradientId}-sheen`;
@@ -95,7 +98,7 @@ export const PaceMark = ({
       className={`pace-mark-stage is-${state} tone-${tone}${performanceActive ? " is-performing" : ""}${thinkingMorphActive ? " is-pondering" : ""}`}
       style={{ width: size, height: size, perspective: Math.max(180, size * 5), "--pace-accent": palette.accent, "--pace-color-start": palette.start, "--pace-color-end": palette.end, "--pace-color-depth": palette.depth } as CSSProperties}
       role="img"
-      aria-label={`Pace · ${state}`}
+      aria-label={`Pace · ${stateLabel ?? state}`}
       initial={false}
       animate={canMove ? { y: state === "sleeping" ? [0, 1, 0] : [0, -1.5, 0], scale: state === "celebrating" ? [1, 1.08, 1] : 1 } : undefined}
       transition={canMove ? { duration: state === "celebrating" ? 1.35 : 3.8, repeat: Infinity, repeatDelay: pause, ease: "easeInOut" } : undefined}

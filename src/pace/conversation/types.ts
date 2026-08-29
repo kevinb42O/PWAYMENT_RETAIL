@@ -24,6 +24,10 @@ export interface PaceServerTurn {
   view: string;
   startedAt: string;
   completedAt: string | null;
+  /** Optional for backward compatibility while the provenance migration rolls out. */
+  source?: "gemini" | "openai" | "analytics" | "records" | "local";
+  model?: string | null;
+  citations?: PaceCitation[];
 }
 
 export interface PaceResolvedEntity {

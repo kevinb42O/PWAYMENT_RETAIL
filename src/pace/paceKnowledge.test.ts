@@ -81,6 +81,30 @@ describe("Pace product knowledge", () => {
     expect(answer).toMatchObject({ intentId: "sync.status", title: "Herstel nodig", matched: true });
     expect(answer.answer).toContain("Het product ontbreekt");
     expect(answer.answer).toContain("Synchroniseer eerst");
+    expect(answer.action).toMatchObject({
+      kind: "destination",
+      destination: { type: "profile", tab: "integrations" },
+    });
+  });
+
+  it("opens the real cart surface for cart guidance", () => {
+    const answer = answerFromPaceKnowledge("Hoe parkeer ik deze winkelmand?", context());
+    expect(answer).toMatchObject({
+      intentId: "pos.cart",
+      action: { kind: "destination", destination: { type: "workspace", view: "pos", focus: "cart" } },
+    });
+  });
+
+  it("opens the protected return-search flow without executing a return", () => {
+    const answer = answerFromPaceKnowledge("Hoe start ik een retour voor één artikel?", context({ view: "audit-log" }));
+    expect(answer).toMatchObject({
+      intentId: "history.return",
+      action: {
+        kind: "destination",
+        destination: { type: "workspace", view: "audit-log", focus: "return-search", requiredRoles: ["owner", "manager"] },
+      },
+    });
+    expect(answer.answer).toContain("kies bewust");
   });
 
   it("changes suggestions with workspace and live context", () => {

@@ -29,6 +29,7 @@ test("a question turns the existing Pace drawer into a dedicated conversation", 
   await expect(drawer.getByRole("textbox", { name: "Vervolgvraag aan Pace" })).toBeVisible();
   await expect(drawer.locator(".pace-response")).toBeVisible();
   await expect(drawer.getByText(/PACE · (LIVE GEGEVENS|LOKALE KENNIS)/)).toBeVisible();
+  await expect(drawer.getByRole("img", { name: "Pace · oplossing beschikbaar" }).first()).toBeVisible();
 
   const geometry = await appPage.evaluate(() => {
     const panel = document.querySelector(".pace-panel")!.getBoundingClientRect();

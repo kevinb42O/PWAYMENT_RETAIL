@@ -1,5 +1,6 @@
 import type { MainView } from "../store/useStore";
 import type { PaceAction, PaceContext, PaceQueryAnswer } from "./paceSignals";
+import { paceProfileDestination, paceWorkspaceDestination } from "./paceDestinations";
 
 interface PaceKnowledgeEntry {
   id: string;
@@ -48,7 +49,7 @@ const KNOWLEDGE: PaceKnowledgeEntry[] = [
         ? "Dit toestel is online en de lokale afleverwachtrij is leeg."
         : "Dit toestel is offline. Ondersteunde handelingen worden lokaal bewaard en later afgeleverd; serverafhankelijke functies kunnen tijdelijk niet werken.";
     },
-    action: { kind: "profile", tab: "integrations" },
+    action: { kind: "destination", destination: paceProfileDestination("integrations", "Synchronisatieherstel", "Pace opent de bestaande herstel- en integratiestatus; er wordt niets automatisch opnieuw uitgevoerd.") },
     actionLabel: "Open herstelwachtrij",
     followUps: ["Kan ik offline blijven verkopen?", "Moet ik de handeling opnieuw uitvoeren?"],
     priority: 20,
@@ -60,7 +61,7 @@ const KNOWLEDGE: PaceKnowledgeEntry[] = [
     title: "Product vinden aan de kassa",
     answer: "Gebruik de zoekbalk voor productnaam, SKU of barcode. Een keyboard-wedge scanner mag rechtstreeks scannen zolang geen invoerveld of betaalvenster actief is. Een onbekende code wijzigt de mand niet.",
     steps: ["Open Kassa.", "Klik in de zoekbalk of scan de code.", "Kies het juiste product uit de resultaten."],
-    action: { kind: "navigate", view: "pos" },
+    action: { kind: "destination", destination: paceWorkspaceDestination("pos", "productzoeken", "De zoekbalk staat klaar voor naam, SKU of barcode.", { focus: "product-search" }) },
     actionLabel: "Open Kassa",
     followUps: ["Waarom wordt deze barcode niet herkend?", "Waarom kan ik een uitverkocht product niet toevoegen?"],
   }),
@@ -71,7 +72,7 @@ const KNOWLEDGE: PaceKnowledgeEntry[] = [
     title: "Winkelmand beheren",
     answer: "Via de mandacties kun je de actieve mand parkeren, hervatten of gecontroleerd annuleren. Een geparkeerde mand blijft bij deze winkel bewaard. Bij vervangen kan de huidige gevulde mand eerst veilig worden geparkeerd.",
     steps: ["Open de winkelmand.", "Open Mandacties.", "Kies parkeren, hervatten of annuleren en bevestig in de bestaande dialoog."],
-    action: { kind: "navigate", view: "pos" },
+    action: { kind: "destination", destination: paceWorkspaceDestination("pos", "de winkelmand", "Op mobiel opent Pace de kassamand; op desktop staat de bestaande mand direct in beeld.", { focus: "cart" }) },
     actionLabel: "Open winkelmand",
     followUps: ["Wat gebeurt er met de actieve mand?", "Waar vind ik geparkeerde manden?"],
   }),
@@ -81,8 +82,8 @@ const KNOWLEDGE: PaceKnowledgeEntry[] = [
     patterns: [/(koppel|ontkoppel|selecteer).*(klant)/i, /(klant).*(verkoop|mand|prijs|groep)/i],
     title: "Klant aan de verkoop koppelen",
     answer: "Koppel een bestaande klant vanuit de winkelmand. PWAYMENT kan daarna de ingestelde prijsgroep en toegestane klantcontext gebruiken. Ontkoppelen verwijdert de klant alleen uit deze actieve verkoop.",
-    action: { kind: "navigate", view: "pos" },
-    actionLabel: "Open Kassa",
+    action: { kind: "destination", destination: paceWorkspaceDestination("pos", "de winkelmand", "Pace opent de bestaande mand waar je zelf een klant kunt koppelen of ontkoppelen.", { focus: "cart" }) },
+    actionLabel: "Open winkelmand",
     followUps: ["Waarom krijgt deze klant een andere prijs?", "Welke klantgegevens gebruikt Pace?"],
   }),
   entry({
@@ -91,7 +92,7 @@ const KNOWLEDGE: PaceKnowledgeEntry[] = [
     patterns: [/(korting|discount).*(geven|mand|reden|manager|pin|goedkeur)/i, /manager.*(korting|discount)/i],
     title: "Korting met controle",
     answer: "Voeg de korting toe in de winkelmand en noteer de reden. Wanneer de ingestelde grens of rol dit vereist, moet een bevoegde manager of eigenaar de korting in de bestaande flow goedkeuren. Pace vraagt of verwerkt de PIN nooit zelf.",
-    action: { kind: "navigate", view: "pos" },
+    action: { kind: "destination", destination: paceWorkspaceDestination("pos", "de winkelmand", "Pace opent de bestaande mandflow; korting en goedkeuring blijven volledig onder jouw controle.", { focus: "cart" }) },
     actionLabel: "Open winkelmand",
     followUps: ["Waarom is managergoedkeuring nodig?", "Wat als de PIN geblokkeerd is?"],
   }),
@@ -113,7 +114,7 @@ const KNOWLEDGE: PaceKnowledgeEntry[] = [
     patterns: [/(ticket|bon|b2c|b2b|factuur|btw.nummer|po.referentie).*(kies|maak|nodig|invul|print|herdruk)/i],
     title: "Verkoopdocument kiezen",
     answer: "Kies vóór betaling tussen ticket, B2C-factuur en B2B-factuur. Voor een factuur leg je de ontvanger vast; voor B2B kunnen btw- en PO-gegevens nodig zijn. Na verkoop vind je het document terug in Historiek.",
-    action: { kind: "navigate", view: "audit-log" },
+    action: { kind: "destination", destination: paceWorkspaceDestination("audit-log", "Historiek", "Pace opent Historiek waar verkoopdocumenten controleerbaar blijven.") },
     actionLabel: "Open Historiek",
     followUps: ["Welke klantgegevens zijn verplicht?", "Hoe download ik de factuur als PDF?"],
   }),
@@ -134,7 +135,7 @@ const KNOWLEDGE: PaceKnowledgeEntry[] = [
     title: "Retour uitvoeren",
     answer: "Open de oorspronkelijke verkoop in Historiek, kies alleen de retourneerbare regels en aantallen, geef een reden en kies bewust de terugbetaalwijze en voorraadbestemming. De oorspronkelijke verkoop blijft behouden; de retour wordt als aparte negatieve correctie gelogd.",
     steps: ["Zoek en open de oorspronkelijke verkoop.", "Start Retour en kies regels en aantallen.", "Kies reden, voorraadbestemming en terugbetaalwijze.", "Controleer en bevestig met de vereiste bevoegdheid."],
-    action: { kind: "navigate", view: "audit-log" },
+    action: { kind: "destination", destination: paceWorkspaceDestination("audit-log", "retour zoeken", "Historiek opent in de bestaande retourzoekflow. Pace selecteert of bevestigt geen retour.", { focus: "return-search", requiredRoles: ["owner", "manager"] }) },
     actionLabel: "Retour zoeken",
     followUps: ["Welke voorraadbestemming kies ik?", "Waarom kan ik niet meer stuks retourneren?"],
   }),

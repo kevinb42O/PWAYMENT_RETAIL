@@ -2,14 +2,23 @@ import type { MainView } from "../store/useStore";
 import type { PacePreferences, PaceTone } from "./usePace";
 import type { CustomerInsight } from "./customerInsights";
 import { answerFromPaceKnowledge } from "./paceKnowledge";
+import {
+  paceCatalogSelectionDestination,
+  paceProfileDestination,
+  paceSetupDestination,
+  type PaceDestination,
+  type PaceProfileTab,
+} from "./paceDestinations";
+
+export type { PaceProfileTab } from "./paceDestinations";
 
 export type PaceSignalTone = "flow" | "attention" | "success";
-export type PaceProfileTab = "billing" | "modules" | "pace" | "catalog-products" | "catalog-categories" | "labels" | "webshop-general" | "integrations";
 export type PaceAction =
   | { kind: "navigate"; view: MainView }
   | { kind: "setup" }
   | { kind: "profile"; tab: PaceProfileTab }
   | { kind: "catalog"; productIds: string[]; filterLabel: string }
+  | { kind: "destination"; destination: PaceDestination }
   | { kind: "none" };
 
 export interface PaceSignal {
@@ -168,7 +177,7 @@ export const buildPaceSignals = (
         detail: insight.detail,
         actionLabel: insight.action?.label,
         action: insight.action
-          ? { kind: "catalog", productIds: insight.action.productIds, filterLabel: insight.action.filterLabel }
+          ? { kind: "destination", destination: paceCatalogSelectionDestination(insight.action.productIds, insight.action.filterLabel, insight.action.label, "Pace opent alleen de producten die dit klantinzicht ondersteunen.") }
           : { kind: "none" },
         tone: insight.tone,
         priority: insight.priority,
@@ -203,7 +212,7 @@ export const buildPaceSignals = (
       detail: context.syncIssueResolution ?? "Open de herstelwachtrij, corrigeer eerst de getoonde oorzaak en plan daarna alleen de juiste rij opnieuw in.",
       actionLabel: context.role === "owner" || context.role === "manager" ? "Open herstelwachtrij" : undefined,
       action: context.role === "owner" || context.role === "manager"
-        ? { kind: "profile", tab: "integrations" }
+        ? { kind: "destination", destination: paceProfileDestination("integrations", "Synchronisatieherstel", "Pace opent de bestaande herstel- en integratiestatus; er wordt niets automatisch opnieuw uitgevoerd.") }
         : { kind: "none" },
       tone: "attention",
       priority: 95,
@@ -244,7 +253,7 @@ export const buildPaceSignals = (
       compact: "Start begeleid, voeg handmatig toe of importeer je bestaande lijst.",
       detail: "Pace opent de bestaande configuratiegids. Er worden geen voorbeeldproducten of instellingen zonder jouw keuze aangemaakt.",
       actionLabel: "Start begeleid",
-      action: { kind: "setup" },
+      action: { kind: "destination", destination: paceSetupDestination("Begeleide winkelsetup", "Pace opent de eerstvolgende bestaande setupstap zonder configuratie automatisch te wijzigen.") },
       tone: "attention",
       priority: 80,
     });
@@ -260,7 +269,7 @@ export const buildPaceSignals = (
       compact: "Loop de resterende configuratie gecontroleerd door.",
       detail: "De gids controleert catalogus, labels en relevante modules zonder je dagelijkse kassawerk over te nemen.",
       actionLabel: "Ga verder",
-      action: { kind: "setup" },
+      action: { kind: "destination", destination: paceSetupDestination("Begeleide winkelsetup", "Pace opent de eerstvolgende bestaande setupstap zonder configuratie automatisch te wijzigen.") },
       tone: "flow",
       priority: 70,
     });
