@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { PACE_THINKING_GLYPH_SEQUENCE, resolvePaceGlyph, resolvePaceMotion } from "./PaceMark";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { PaceMark, PACE_THINKING_GLYPH_SEQUENCE, resolvePaceGlyph, resolvePaceMotion } from "./PaceMark";
 import { paceTonePalette } from "./pacePalette";
 import { PACE_MORPH_BODY, PACE_MORPH_DOT } from "./paceMorphPaths";
 
@@ -42,5 +44,20 @@ describe("Pace motion resolution", () => {
     expect(resolvePaceGlyph({ state: "idle", tone: "attention", active: false })).toBe("pace");
     expect(resolvePaceGlyph({ state: "thinking", tone: "attention", active: true, performance: "liquid" })).toBe("liquid");
     expect(resolvePaceGlyph({ state: "thinking", tone: "attention", active: true, expressive: false })).toBe("pace");
+  });
+
+  it("exposes semantic choreography for inspection and assistive state labelling", () => {
+    const markup = renderToStaticMarkup(createElement(PaceMark, {
+      emotion: "thinking",
+      pose: "gather",
+      energy: "medium",
+      stateLabel: "toegestane gegevens worden opgehaald",
+    }));
+
+    expect(markup).toContain('data-pace-pose="gather"');
+    expect(markup).toContain('data-pace-energy="medium"');
+    expect(markup).toContain('aria-label="Pace · toegestane gegevens worden opgehaald"');
+    expect(markup).toContain("pace-source-node-a");
+    expect(markup).toContain("pace-shield-trace");
   });
 });

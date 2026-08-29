@@ -61,4 +61,14 @@ describe("Pace expression mapping", () => {
     expect(derivePaceExpression(planning, "off")).toMatchObject({ pose: "focus", energy: "still", emotion: "thinking", tone: "flow" });
     expect(derivePaceExpression({ ...planning, phase: "degraded" }, "full")).toMatchObject({ accent: "warning", emotion: "thinking", tone: "attention" });
   });
+
+  it("assigns a distinct semantic choreography to every operational phase", () => {
+    const truth = { interaction: "cancel", severity: "neutral", sequence: 2 } as const;
+
+    expect(derivePaceExpression({ ...truth, phase: "retrieving" }, "full")).toMatchObject({ pose: "gather", energy: "medium" });
+    expect(derivePaceExpression({ ...truth, phase: "comparing" }, "full")).toMatchObject({ pose: "split", energy: "medium" });
+    expect(derivePaceExpression({ ...truth, phase: "composing" }, "full")).toMatchObject({ pose: "focus", energy: "medium" });
+    expect(derivePaceExpression({ ...truth, phase: "awaiting_confirmation", interaction: "confirm" }, "full")).toMatchObject({ pose: "shield", energy: "low" });
+    expect(derivePaceExpression({ ...truth, phase: "ready", interaction: "none" }, "full")).toMatchObject({ pose: "settle", energy: "low" });
+  });
 });

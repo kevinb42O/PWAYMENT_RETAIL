@@ -1,4 +1,4 @@
-import type { PaceEmotion, PacePerformance } from "./PaceMark";
+import type { PaceEmotion, PaceEnergy, PacePerformance, PacePose } from "./PaceMark";
 import type { PaceSignalTone } from "./paceSignals";
 import type { PaceMotion } from "./usePace";
 
@@ -49,8 +49,8 @@ export interface PaceExperienceSnapshot {
 }
 
 export interface PaceExpressionToken {
-  pose: "rest" | "focus" | "split" | "gather" | "shield" | "path" | "settle" | "notch" | "tether";
-  energy: "still" | "low" | "medium";
+  pose: PacePose;
+  energy: PaceEnergy;
   accent: "brand" | "information" | "success" | "warning" | "danger" | "offline";
   emotion: PaceEmotion;
   tone: PaceSignalTone;
@@ -153,10 +153,18 @@ export const derivePaceExpression = (
 };
 
 export const paceTruthStateLabel = (phase: PaceExperienceState) => {
-  if (phase === "planning") return "vraag wordt verwerkt";
+  if (phase === "listening") return "vraag wordt ontvangen";
+  if (phase === "planning") return "aanpak wordt bepaald";
+  if (phase === "resolving") return "relevante bronnen worden bepaald";
+  if (phase === "retrieving") return "toegestane gegevens worden opgehaald";
+  if (phase === "comparing") return "resultaten worden vergeleken";
+  if (phase === "composing") return "antwoord wordt samengesteld";
+  if (phase === "verifying") return "antwoord wordt gecontroleerd";
+  if (phase === "executing") return "goedgekeurde actie wordt uitgevoerd";
   if (phase === "degraded") return "antwoord duurt langer";
   if (phase === "awaiting_confirmation") return "keuze nodig";
   if (phase === "guiding") return "oplossing beschikbaar";
+  if (phase === "completed") return "actie gecontroleerd voltooid";
   if (phase === "ready") return "antwoord klaar";
   if (phase === "blocked") return "actie geblokkeerd";
   if (phase === "offline") return "offline";

@@ -532,7 +532,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
         aria-controls="pace-assistant-panel"
       >
         <span className="pace-trigger-mark" aria-hidden="true">
-          <PaceMark size={46} active={open || shouldBadge} emotion={expression.emotion} tone={expression.tone} performance={expression.performance} stateLabel={truthStateLabel} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
+          <PaceMark size={46} active={open || shouldBadge} emotion={expression.emotion} tone={expression.tone} performance={expression.performance} pose={expression.pose} energy={expression.energy} stateLabel={truthStateLabel} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
           {shouldBadge && !open && <span className={`pace-signal-dot is-${primary.tone}`} />}
         </span>
         <span className="pace-trigger-label" aria-hidden="true">
@@ -579,7 +579,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                 <div className="pace-header-leading">
                   {conversationActive && <button type="button" className="pace-header-back" onClick={returnToOverview} aria-label="Terug naar Nu belangrijk" title="Terug naar Nu belangrijk"><ArrowLeft size={18} /></button>}
                   <div className="pace-identity">
-                  <PaceMark size={52} active emotion={expression.emotion} tone={expression.tone} performance={expression.performance} stateLabel={truthStateLabel} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
+                  <PaceMark size={52} active emotion={expression.emotion} tone={expression.tone} performance={expression.performance} pose={expression.pose} energy={expression.energy} stateLabel={truthStateLabel} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
                   <div><span>PWAYMENT · {modeLabel}</span><h2>Pace</h2></div>
                   </div>
                 </div>
@@ -691,7 +691,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                       {(thinking || response) && (
                         <motion.section className="pace-response" key={thinking ? `thinking-${activeQuestion}` : `${activeQuestion}-${response?.title}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}>
                           {thinking ? <div className="pace-thinking-performance">
-                            <PaceMark size={76} active emotion={expression.emotion} tone={expression.tone} performance={expression.performance} stateLabel={truthStateLabel} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
+                            <PaceMark size={76} active emotion={expression.emotion} tone={expression.tone} performance={expression.performance} pose={expression.pose} energy={expression.energy} stateLabel={truthStateLabel} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
                             <div className="pace-thinking-copy">
                               <strong>{thinkingSlow ? "Pace werkt nog aan je vraag" : "Pace verwerkt je vraag"}</strong>
                               <span className="pace-thinking-status">{thinkingStatus}</span>

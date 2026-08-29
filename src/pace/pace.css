@@ -12,6 +12,166 @@
   isolation: isolate;
 }
 
+/* Each truth-state gets a calm, semantic silhouette behind the Pace glyph. */
+.pace-mark-choreography {
+  position: absolute;
+  inset: -7%;
+  z-index: 1;
+  display: block;
+  overflow: visible;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.pace-mark-choreography > * {
+  position: absolute;
+  display: none;
+  box-sizing: border-box;
+}
+
+.pace-choreo-ring {
+  inset: 8%;
+  border: max(1px, .018em) solid color-mix(in srgb, var(--pace-accent) 38%, transparent);
+  border-radius: 50%;
+  box-shadow: 0 0 .18em color-mix(in srgb, var(--pace-accent) 16%, transparent);
+}
+.pace-choreo-ring-b { inset: 18%; }
+.pace-mark-stage.pose-focus.is-thinking .pace-choreo-ring {
+  display: block;
+  animation: pace-focus-ring 3.4s cubic-bezier(.4, 0, .2, 1) infinite;
+}
+.pace-mark-stage.pose-focus.is-thinking .pace-choreo-ring-b { animation-delay: -1.7s; }
+
+.pace-mark-stage.pose-gather .pace-choreo-ring-a {
+  display: block;
+  inset: 20%;
+  opacity: .48;
+  animation: pace-gather-ring 3.8s cubic-bezier(.22, 1, .36, 1) infinite;
+}
+.pace-source-node {
+  top: 50%;
+  left: 50%;
+  width: 9%;
+  aspect-ratio: 1;
+  border: max(1px, .012em) solid color-mix(in srgb, var(--pace-accent) 55%, white);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--pace-accent) 68%, white);
+  box-shadow: 0 0 .18em color-mix(in srgb, var(--pace-accent) 42%, transparent);
+}
+.pace-mark-stage.pose-gather .pace-source-node {
+  display: block;
+  animation: pace-gather-source 3.8s cubic-bezier(.22, 1, .36, 1) infinite;
+  animation-delay: var(--pace-source-delay);
+}
+.pace-source-node-a { --pace-source-x: -310%; --pace-source-y: -235%; --pace-source-delay: 0s; }
+.pace-source-node-b { --pace-source-x: 280%; --pace-source-y: -165%; --pace-source-delay: -.55s; }
+.pace-source-node-c { --pace-source-x: 245%; --pace-source-y: 245%; --pace-source-delay: -1.1s; }
+
+.pace-compare-plane {
+  top: 19%;
+  bottom: 19%;
+  width: 35%;
+  border: max(1px, .015em) solid color-mix(in srgb, var(--pace-accent) 36%, transparent);
+  border-radius: 24% 42% 28% 44%;
+  background: linear-gradient(150deg, color-mix(in srgb, var(--pace-accent) 12%, transparent), transparent 72%);
+  box-shadow: inset 0 0 .2em color-mix(in srgb, var(--pace-accent) 10%, transparent);
+}
+.pace-mark-stage.pose-split .pace-compare-plane { display: block; }
+.pace-compare-plane-a {
+  left: 19%;
+  transform-origin: right center;
+  animation: pace-split-left 4.2s cubic-bezier(.22, 1, .36, 1) infinite;
+}
+.pace-compare-plane-b {
+  right: 19%;
+  border-radius: 42% 24% 44% 28%;
+  transform-origin: left center;
+  animation: pace-split-right 4.2s cubic-bezier(.22, 1, .36, 1) infinite;
+}
+
+.pace-shield-trace,
+.pace-settle-trace {
+  inset: 1%;
+  width: 98%;
+  height: 98%;
+  overflow: visible;
+  fill: none;
+  stroke: color-mix(in srgb, var(--pace-accent) 58%, white);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.2;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 .12em color-mix(in srgb, var(--pace-accent) 26%, transparent));
+}
+.pace-mark-stage.pose-shield .pace-shield-trace {
+  display: block;
+  stroke-dasharray: 255;
+  animation: pace-shield-arrive 1.15s cubic-bezier(.22, 1, .36, 1) both,
+    pace-shield-breathe 4.8s 1.15s ease-in-out infinite;
+}
+.pace-mark-stage.pose-settle .pace-settle-trace { display: block; opacity: .76; }
+.pace-settle-trace circle {
+  stroke-dasharray: 246;
+  animation: pace-settle-ring .95s cubic-bezier(.22, 1, .36, 1) both;
+}
+.pace-settle-trace path {
+  stroke-dasharray: 58;
+  animation: pace-settle-check .68s .42s cubic-bezier(.22, 1, .36, 1) both;
+}
+
+@keyframes pace-focus-ring {
+  0%, 100% { opacity: .12; transform: scale(.92); }
+  48% { opacity: .52; transform: scale(1); }
+  72% { opacity: .22; transform: scale(.97); }
+}
+@keyframes pace-gather-ring {
+  0%, 100% { opacity: .18; transform: scale(1.18); }
+  45%, 65% { opacity: .52; transform: scale(.82); }
+}
+@keyframes pace-gather-source {
+  0%, 8% { opacity: .18; transform: translate(calc(-50% + var(--pace-source-x)), calc(-50% + var(--pace-source-y))) scale(.72); }
+  48%, 66% { opacity: .92; transform: translate(-50%, -50%) scale(1); }
+  88%, 100% { opacity: .12; transform: translate(-50%, -50%) scale(.58); }
+}
+@keyframes pace-split-left {
+  0%, 100% { opacity: .22; transform: translateX(17%) rotateY(-5deg) scaleX(.88); }
+  42%, 68% { opacity: .68; transform: translateX(-22%) rotateY(-16deg) scaleX(1); }
+}
+@keyframes pace-split-right {
+  0%, 100% { opacity: .22; transform: translateX(-17%) rotateY(5deg) scaleX(.88); }
+  42%, 68% { opacity: .68; transform: translateX(22%) rotateY(16deg) scaleX(1); }
+}
+@keyframes pace-shield-arrive {
+  from { opacity: 0; stroke-dashoffset: 255; transform: scale(.92); }
+  to { opacity: .74; stroke-dashoffset: 0; transform: scale(1); }
+}
+@keyframes pace-shield-breathe {
+  0%, 100% { opacity: .58; transform: scale(.985); }
+  50% { opacity: .82; transform: scale(1.015); }
+}
+@keyframes pace-settle-ring {
+  from { opacity: 0; stroke-dashoffset: 246; transform: rotate(-12deg) scale(.94); transform-origin: center; }
+  to { opacity: .7; stroke-dashoffset: 0; transform: rotate(0) scale(1); transform-origin: center; }
+}
+@keyframes pace-settle-check {
+  from { opacity: 0; stroke-dashoffset: 58; }
+  to { opacity: .92; stroke-dashoffset: 0; }
+}
+
+.pace-mark-stage.energy-low .pace-mark-choreography { opacity: .84; }
+.pace-mark-stage.energy-still .pace-mark-choreography *,
+.pace-mark-stage.energy-still .pace-mark-choreography svg,
+.pace-mark-stage.energy-still .pace-mark-choreography path,
+.pace-mark-stage.energy-still .pace-mark-choreography circle { animation: none !important; }
+.pace-mark-stage.energy-still.pose-gather .pace-source-node { opacity: .72; }
+.pace-mark-stage.energy-still.pose-gather .pace-source-node-a { transform: translate(-220%, -180%); }
+.pace-mark-stage.energy-still.pose-gather .pace-source-node-b { transform: translate(125%, -155%); }
+.pace-mark-stage.energy-still.pose-gather .pace-source-node-c { transform: translate(105%, 115%); }
+.pace-mark-stage.energy-still.pose-split .pace-compare-plane-a { opacity: .58; transform: translateX(-22%) rotateY(-12deg); }
+.pace-mark-stage.energy-still.pose-split .pace-compare-plane-b { opacity: .58; transform: translateX(22%) rotateY(12deg); }
+.pace-mark-stage.energy-still.pose-shield .pace-shield-trace,
+.pace-mark-stage.energy-still.pose-settle .pace-settle-trace { opacity: .72; stroke-dashoffset: 0; }
+
 .pace-mark-rig {
   position: absolute;
   inset: 1%;
@@ -590,6 +750,18 @@
 
 @media (prefers-reduced-motion: reduce) {
   .pace-mark-sheen { animation: none; opacity: 0.22; }
+  .pace-mark-choreography *,
+  .pace-mark-choreography svg,
+  .pace-mark-choreography path,
+  .pace-mark-choreography circle { animation: none !important; }
+  .pace-mark-stage.pose-gather .pace-source-node { opacity: .72; }
+  .pace-mark-stage.pose-gather .pace-source-node-a { transform: translate(-220%, -180%); }
+  .pace-mark-stage.pose-gather .pace-source-node-b { transform: translate(125%, -155%); }
+  .pace-mark-stage.pose-gather .pace-source-node-c { transform: translate(105%, 115%); }
+  .pace-mark-stage.pose-split .pace-compare-plane-a { opacity: .58; transform: translateX(-22%) rotateY(-12deg); }
+  .pace-mark-stage.pose-split .pace-compare-plane-b { opacity: .58; transform: translateX(22%) rotateY(12deg); }
+  .pace-mark-stage.pose-shield .pace-shield-trace,
+  .pace-mark-stage.pose-settle .pace-settle-trace { opacity: .72; stroke-dashoffset: 0; }
   .pace-trigger, .pace-header-actions button { transition: none; }
   .pace-trigger-brand, .pace-trigger-action { animation: none; }
   .pace-trigger-brand { opacity: 1; transform: none; }
