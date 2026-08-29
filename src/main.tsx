@@ -53,7 +53,7 @@ const publicWebsiteRoute =
   !presentationMode &&
   !presentationBuild;
 const serviceWorkerCleanupKey = "pwayment-service-worker-cleanup-v1";
-const productionCacheRefreshKey = "pwayment-production-cache-login-v2";
+const productionCacheRefreshKey = "pwayment-production-cache-pace-choreography-v3";
 
 const removeServiceWorkers = async () => {
   if (!("serviceWorker" in navigator)) return false;

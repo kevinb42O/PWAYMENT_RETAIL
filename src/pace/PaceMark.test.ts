@@ -60,4 +60,28 @@ describe("Pace motion resolution", () => {
     expect(markup).toContain("pace-source-node-a");
     expect(markup).toContain("pace-shield-trace");
   });
+
+  it("does not let the legacy punctuation morph mask semantic work poses", () => {
+    const focus = renderToStaticMarkup(createElement(PaceMark, {
+      emotion: "thinking",
+      pose: "focus",
+      energy: "medium",
+      motionMode: "full",
+      forceMotion: true,
+    }));
+    const gather = renderToStaticMarkup(createElement(PaceMark, {
+      emotion: "thinking",
+      pose: "gather",
+      energy: "medium",
+      motionMode: "full",
+      forceMotion: true,
+    }));
+
+    expect(focus).not.toContain("is-pondering");
+    expect(gather).not.toContain("is-pondering");
+    expect(focus).not.toContain(PACE_MORPH_BODY.question);
+    expect(focus).not.toContain(PACE_MORPH_BODY.liquid);
+    expect(focus).toContain('data-pace-pose="focus"');
+    expect(gather).toContain('data-pace-pose="gather"');
+  });
 });

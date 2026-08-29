@@ -92,9 +92,12 @@ export const PaceMark = ({
   const palette = paceTonePalette(tone);
   const pause = state === "celebrating" ? 1.8 : state === "thinking" ? 0 : 0.35;
   const performanceActive = Boolean(expressive && performance && fullMotion);
-  const thinkingMorphActive = Boolean(expressive && !performance && state === "thinking" && pose === "focus" && fullMotion);
+  // Semantic work poses own Pace's body language. The legacy punctuation/blob
+  // cycle is reserved for explicit expression previews and must never mask a
+  // truthful operational state.
+  const thinkingMorphActive = Boolean(expressive && !performance && state === "thinking" && pose === "rest" && fullMotion);
   const morphActive = performanceActive || thinkingMorphActive;
-  const poseOwnsGlyph = pose === "gather" || pose === "split" || pose === "shield" || pose === "settle";
+  const poseOwnsGlyph = pose === "focus" || pose === "gather" || pose === "split" || pose === "shield" || pose === "settle";
   const glyph = poseOwnsGlyph ? "pace" : resolvePaceGlyph({ state, tone, active, performance, expressive });
   const bodySequence = thinkingMorphActive
     ? PACE_THINKING_GLYPH_SEQUENCE.map((step) => PACE_MORPH_BODY[step])
