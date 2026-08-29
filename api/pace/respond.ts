@@ -10,6 +10,7 @@ import { buildPaceEvidence, publicCitations, redactPaceSummary } from "../../src
 import { resolutionPersistence, resolveQuestionEntities, type EntityResolution } from "../../src/server/pace/entityResolution.js";
 import { inheritConversationPlan } from "../../src/server/pace/conversationMemory.js";
 import { handlePaceConversations } from "../../src/server/pace/conversations.js";
+import { PACE_PROGRESS_CONTENT_TYPE, encodePaceStreamEvent, type PacePublicProgressEvent, type PacePublicStreamEvent } from "../../src/pace/paceProgress.js";
 
 type PaceRole = "owner" | "manager" | "cashier";
 type PaceView =
@@ -711,8 +712,10 @@ const callOpenAi = async (
   };
 };
 
-export default {
-  async fetch(request: Request) {
+type PaceProgressEmitter = (event: Omit<PacePublicProgressEvent, "version" | "type" | "sequence">) => void;
+const noProgress: PaceProgressEmitter = () => undefined;
+
+const handlePaceRequest = async (request: Request, emitProgress: PaceProgressEmitter = noProgress) => {
     const startedAt = Date.now();
     if (request.method !== "POST") return handlePaceConversations.fetch(request);
 
@@ -758,6 +761,7 @@ export default {
     const context = allowedContext(body);
     let history = allowedHistory(body);
     const localCandidate = allowedLocalCandidate(body);
+    emitProgress({ phase: "planning", interaction: "none", severity: "neutral" });
     const usesServerConversation = body.version === 2;
     const rpcConfig: PaceRpcConfig = { authorization, supabaseUrl, publishableKey };
     let conversation: { id: string; revision: number; title: string } | null = null;
@@ -826,6 +830,7 @@ export default {
           : [];
         const ambiguous = entityResolutions.find((item) => item.status === "ambiguous");
         if (ambiguous) {
+          emitProgress({ phase: "awaiting_confirmation", interaction: "choose", severity: "attention" });
           const persistence = resolutionPersistence(entityResolutions);
           const clarification = `Welke ${ambiguous.type === "customer" ? "klant" : ambiguous.type === "product" ? "productvariant" : "bedoel je precies"}?`;
           const completed = await completeTurn(rpcConfig, {
@@ -889,6 +894,7 @@ export default {
       questionPlan = await callGeminiPlannerWithFallback(geminiKey!, model, question, context, history);
     }
     if (questionPlan?.intent === "clarify" && questionPlan.clarification) {
+      emitProgress({ phase: "awaiting_confirmation", interaction: "choose", severity: "attention" });
       await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, { status: "completed", elapsedMs: Date.now() - startedAt, model: `${model} · planner` });
       if (conversation && begunTurn) {
         const completed = await completeTurn(rpcConfig, {
@@ -932,18 +938,48 @@ export default {
     const needsBroadContext = context.liveStoreContext && (questionPlan
       ? questionPlan.broadContext
       : analyticsPlans.length === 0 && !inventoryActionRequested && !recordPlan && readToolCalls.length === 0);
+    const selectedSourceCount = Number(needsBroadContext)
+      + Number(inventoryActionRequested)
+      + analyticsPlans.length
+      + Number(Boolean(recordPlan))
+      + readToolCalls.length;
+    emitProgress({ phase: "resolving", interaction: "none", severity: "neutral", sourceCount: selectedSourceCount });
     const safetyIdentifier = createHash("sha256").update(`pace:${userId}`).digest("hex").slice(0, 48);
     let tenantContext: unknown = null;
     let inventoryActionContext: unknown = null;
     let analyticsContexts: unknown[] = [];
     let recordContext: unknown = null;
     let toolContexts: unknown[] = [];
+    let completedSources = 0;
+    const trackSource = async <T,>(promise: Promise<T>): Promise<T> => {
+      try {
+        return await promise;
+      } finally {
+        completedSources += 1;
+        emitProgress({
+          phase: "retrieving",
+          interaction: "none",
+          severity: "neutral",
+          progress: { completed: completedSources, total: selectedSourceCount },
+          sourceCount: selectedSourceCount,
+        });
+      }
+    };
+    if (selectedSourceCount > 0) {
+      emitProgress({
+        phase: "retrieving",
+        interaction: "none",
+        severity: "neutral",
+        progress: { completed: 0, total: selectedSourceCount },
+        sourceCount: selectedSourceCount,
+      });
+    }
     const [tenantResult, inventoryResult, analyticsResult, recordResult, toolsResult] = await Promise.allSettled([
-      needsBroadContext ? fetchTenantContext(authorization, supabaseUrl, publishableKey, context.storeId, question) : Promise.resolve(null),
-      inventoryActionRequested ? fetchInventoryActionContext(authorization, supabaseUrl, publishableKey, context.storeId, question) : Promise.resolve(null),
-      Promise.all(analyticsPlans.map((plan) => fetchAnalyticsContext(authorization, supabaseUrl, publishableKey, context.storeId, plan))),
-      fetchRecordContext(authorization, supabaseUrl, publishableKey, context.storeId, recordPlan),
-      Promise.all(readToolCalls.map((toolCall) => fetchReadToolContext(authorization, supabaseUrl, publishableKey, context.storeId, toolCall))),
+      needsBroadContext ? trackSource(fetchTenantContext(authorization, supabaseUrl, publishableKey, context.storeId, question)) : Promise.resolve(null),
+      inventoryActionRequested ? trackSource(fetchInventoryActionContext(authorization, supabaseUrl, publishableKey, context.storeId, question)) : Promise.resolve(null),
+      Promise.all(analyticsPlans.map((plan) => trackSource(fetchAnalyticsContext(authorization, supabaseUrl, publishableKey, context.storeId, plan)))),
+      recordPlan ? trackSource(fetchRecordContext(authorization, supabaseUrl, publishableKey, context.storeId, recordPlan)) : Promise.resolve(null),
+      Promise.all(readToolCalls.map((toolCall) => trackSource(fetchReadToolContext(authorization, supabaseUrl, publishableKey, context.storeId, toolCall)))),
     ]);
     const accessDenied = [tenantResult, inventoryResult, analyticsResult, recordResult, toolsResult].some(
       (result) => result.status === "rejected" && result.reason instanceof TenantAccessError,
@@ -1012,6 +1048,7 @@ export default {
     const needsMixedComposition = questionPlan?.needsComposition === true || /\ben\s+(?:wat|hoe|waar|waarom)\b/i.test(question);
     const deterministicAnalyticsAnswer = needsMixedComposition ? null : renderPaceAnalyticsAnswer(analyticsContexts);
     if (deterministicAnalyticsAnswer) {
+      emitProgress({ phase: analyticsPlans.length > 1 ? "comparing" : "verifying", interaction: "none", severity: "neutral", sourceCount: selectedSourceCount });
       await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, { status: "completed", elapsedMs: Date.now() - startedAt, model: "PWAYMENT Analytics" });
       const completed = await finishServerTurn(deterministicAnalyticsAnswer, "analytics", "PWAYMENT Analytics");
       if (completed && conversation) return json(200, {
@@ -1031,6 +1068,7 @@ export default {
     }
     const deterministicRecordAnswer = needsMixedComposition ? null : renderPaceRecordAnswer(recordContext);
     if (deterministicRecordAnswer) {
+      emitProgress({ phase: "verifying", interaction: "none", severity: "neutral", sourceCount: selectedSourceCount });
       await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, { status: "completed", elapsedMs: Date.now() - startedAt, model: "PWAYMENT Records" });
       const completed = await finishServerTurn(deterministicRecordAnswer, "records", "PWAYMENT Records");
       if (completed && conversation) return json(200, {
@@ -1050,6 +1088,7 @@ export default {
     }
 
     let upstreamResult: Awaited<ReturnType<typeof callGeminiWithFallback>> | Awaited<ReturnType<typeof callOpenAi>>;
+    emitProgress({ phase: "composing", interaction: "none", severity: "neutral", sourceCount: selectedSourceCount });
     try {
       upstreamResult = provider === "gemini"
         ? await callGeminiWithFallback(geminiKey!, model, question, context, tenantContext, inventoryActionContext, analyticsContexts, recordContext, toolContexts, history, localCandidate)
@@ -1078,6 +1117,7 @@ export default {
     }
 
     const inputTokens = upstreamResult.inputTokens;
+    emitProgress({ phase: "verifying", interaction: "none", severity: "neutral", sourceCount: selectedSourceCount });
     const outputTokens = upstreamResult.outputTokens;
     const inputPrice = Number(process.env.PACE_INPUT_EUR_PER_MILLION ?? "0");
     const outputPrice = Number(process.env.PACE_OUTPUT_EUR_PER_MILLION ?? "0");
@@ -1113,5 +1153,68 @@ export default {
       },
       quota,
     }, quota ? quotaHeaders(quota) : {});
+};
+
+const streamPaceResponse = (request: Request) => {
+  const encoder = new TextEncoder();
+  let closed = false;
+  let sequence = 0;
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      const write = (event: PacePublicStreamEvent) => {
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(encodePaceStreamEvent(event)));
+        } catch {
+          closed = true;
+        }
+      };
+      const emitProgress: PaceProgressEmitter = (event) => write({
+        version: 1,
+        type: "progress",
+        sequence: sequence += 1,
+        ...event,
+      });
+      void handlePaceRequest(request, emitProgress).then(async (response) => {
+        const raw = await response.text();
+        let payload: Record<string, unknown>;
+        try {
+          const parsed = JSON.parse(raw) as unknown;
+          payload = parsed && typeof parsed === "object" && !Array.isArray(parsed)
+            ? parsed as Record<string, unknown>
+            : { error: "PACE_STREAM_INVALID_PAYLOAD", fallback: "local" };
+        } catch {
+          payload = { error: "PACE_STREAM_INVALID_PAYLOAD", fallback: "local" };
+        }
+        write({ version: 1, type: response.ok ? "answer" : "error", status: response.status, payload });
+      }).catch(() => {
+        write({ version: 1, type: "error", status: 503, payload: { error: "PACE_STREAM_UNAVAILABLE", fallback: "local" } });
+      }).finally(() => {
+        if (!closed) controller.close();
+        closed = true;
+      });
+    },
+    cancel() {
+      closed = true;
+    },
+  });
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      "Cache-Control": "no-store, no-transform",
+      "Content-Type": `${PACE_PROGRESS_CONTENT_TYPE}; charset=utf-8`,
+      "X-Accel-Buffering": "no",
+      "X-Content-Type-Options": "nosniff",
+      "X-Pace-Progress-Version": "1",
+    },
+  });
+};
+
+export default {
+  async fetch(request: Request) {
+    if (request.method === "POST" && request.headers.get("accept")?.includes(PACE_PROGRESS_CONTENT_TYPE)) {
+      return streamPaceResponse(request);
+    }
+    return handlePaceRequest(request);
   },
 };

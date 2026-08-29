@@ -39,7 +39,14 @@ import {
   type PaceSetupMilestone,
 } from "./setupMilestones";
 import { isPaceCatalogDestination, validatePaceDestination, type PaceDestinationAccess } from "./paceDestinations";
-import { derivePaceExpression, derivePaceTruthState, paceTruthStateLabel } from "./paceExperience";
+import {
+  INITIAL_PACE_TRUTH_STATE,
+  derivePaceExpression,
+  derivePaceTruthState,
+  paceTruthStateLabel,
+  reducePaceTruthState,
+  type PaceTruthState,
+} from "./paceExperience";
 
 interface PaceAssistantProps extends PaceContext {
   userId: string | null;
@@ -85,11 +92,23 @@ export const paceThinkingStatus = ({
   aiEnabled,
   liveStoreContext,
   slow,
+  truthState,
 }: {
   aiEnabled: boolean;
   liveStoreContext: boolean;
   slow: boolean;
+  truthState?: PaceTruthState;
 }) => {
+  if (truthState?.phase === "retrieving" && truthState.progress) {
+    return `${truthState.progress.completed} van ${truthState.progress.total} toegestane gegevensbronnen gecontroleerd.`;
+  }
+  if (truthState?.phase === "resolving") return truthState.sourceCount
+    ? `${truthState.sourceCount} toegestane gegevensbronnen geselecteerd.`
+    : "Pace bepaalt welke productkennis nodig is.";
+  if (truthState?.phase === "comparing") return "De opgehaalde resultaten worden controleerbaar vergeleken.";
+  if (truthState?.phase === "composing") return "De gecontroleerde gegevens worden tot een antwoord samengesteld.";
+  if (truthState?.phase === "verifying") return "Het antwoord wordt gecontroleerd op bron en actualiteit.";
+  if (truthState?.phase === "awaiting_confirmation") return "Pace heeft een concrete keuze nodig om veilig verder te gaan.";
   if (slow) return "Dit duurt langer dan normaal. Pace schakelt automatisch terug als de service niet antwoordt.";
   if (!aiEnabled) return "De lokale PWAYMENT-productkennis wordt geraadpleegd.";
   if (!liveStoreContext) return "Je vraag is veilig verzonden zonder actuele winkelgegevens.";
@@ -172,6 +191,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   const [responseSource, setResponseSource] = useState<PaceResponseSource>("local");
   const [thinking, setThinking] = useState(false);
   const [thinkingSlow, setThinkingSlow] = useState(false);
+  const [streamTruthState, setStreamTruthState] = useState<PaceTruthState | null>(null);
   const [externalDialogOpen, setExternalDialogOpen] = useState(false);
   const [sessionDismissedSignals, setSessionDismissedSignals] = useState<string[]>([]);
   const [conversation, setConversation] = useState<PaceConversationTurn[]>([]);
@@ -217,8 +237,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   const conversationActive = activeQuestion !== null;
   const usagePercent = quota ? (quota.tier === "basic" ? quota.daily_count / quota.quota : quota.monthly_count / quota.quota) * 100 : 0;
   const modeLabel = paceAssistantModeLabel({ aiEnabled: preferences.aiEnabled, liveStoreContext: preferences.liveStoreContext, thinking });
-  const thinkingStatus = paceThinkingStatus({ aiEnabled: preferences.aiEnabled, liveStoreContext: preferences.liveStoreContext, slow: thinkingSlow });
-  const truthState = derivePaceTruthState({
+  const snapshotTruthState = derivePaceTruthState({
     enabled: preferences.enabled,
     open,
     online: context.online,
@@ -230,8 +249,19 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
     hasAction: Boolean(response && response.action.kind !== "none"),
     hasAttentionSignal: shouldBadge,
   });
+  const truthState = streamTruthState
+    ? thinkingSlow && streamTruthState.phase === "planning"
+      ? { ...streamTruthState, phase: "degraded" as const, severity: "attention" as const, reasonCode: "slow" }
+      : streamTruthState
+    : snapshotTruthState;
   const expression = derivePaceExpression(truthState, preferences.motion, primary.tone);
   const truthStateLabel = paceTruthStateLabel(truthState.phase);
+  const thinkingStatus = paceThinkingStatus({
+    aiEnabled: preferences.aiEnabled,
+    liveStoreContext: preferences.liveStoreContext,
+    slow: thinkingSlow,
+    truthState,
+  });
 
   useEffect(() => {
     setSessionDismissedSignals([]);
@@ -245,6 +275,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
     setClarification(null);
     setActiveQuestion(null);
     setResponse(null);
+    setStreamTruthState(null);
     setQuery("");
     queryRunRef.current += 1;
   }, [props.storeId]);
@@ -343,6 +374,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
     // conversation that caused that navigation. Only cancel an in-flight turn.
     queryRunRef.current += 1;
     setThinking(false);
+    setStreamTruthState(null);
   }, [props.view]);
 
   const runQuery = async (rawQuestion: string) => {
@@ -382,6 +414,9 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
       remember(local.answer);
       return;
     }
+    const clientTurnId = crypto.randomUUID();
+    const startedTruthState = reducePaceTruthState(INITIAL_PACE_TRUTH_STATE, { type: "turn_started", turnId: clientTurnId });
+    setStreamTruthState(startedTruthState);
     setThinking(true);
     try {
       const ai = await askPaceAi(question, context, conversation, local, {
@@ -390,8 +425,18 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
         conversation: {
           id: serverConversation?.id,
           revision: serverConversation?.revision,
-          clientTurnId: crypto.randomUUID(),
+          clientTurnId,
         },
+        onProgress: (event) => setStreamTruthState((current) => reducePaceTruthState(current ?? startedTruthState, {
+          type: "progress",
+          turnId: clientTurnId,
+          sequence: event.sequence,
+          phase: event.phase,
+          interaction: event.interaction,
+          severity: event.severity,
+          progress: event.progress,
+          sourceCount: event.sourceCount,
+        })),
       });
       if (queryRunRef.current !== runId) return;
       setResponse(composePaceQueryResponse(local, ai));
@@ -423,13 +468,17 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
       setClarification(null);
       remember(local.answer);
     } finally {
-      if (queryRunRef.current === runId) setThinking(false);
+      if (queryRunRef.current === runId) {
+        setThinking(false);
+        setStreamTruthState(null);
+      }
     }
   };
 
   const returnToOverview = () => {
     queryRunRef.current += 1;
     setThinking(false);
+    setStreamTruthState(null);
     setActiveQuestion(null);
     setResponse(null);
     setClarification(null);

@@ -18,6 +18,7 @@
 - concrete POS-focus voor productzoeken en winkelmand;
 - een bevestigende, tijdelijke Pace-cue na geslaagde navigatie;
 - historische gesprekken herstellen na database-uitrol hun echte antwoordbron, model en begrensde publieke bronvermeldingen, zonder ruwe evidence of interne plannen vrij te geven;
+- een versioned publiek NDJSON-progressprotocol stuurt de truth-state reducer aan met planning, resolving, retrieval, comparison, composition en verification; klassieke JSON-clients blijven compatibel;
 - regressietests voor responseveiligheid, destinations, rollen, concrete oplossingsroutes en historische provenance.
 
 Nog niet geactiveerd: server-gegenereerde action proposals, write-commands, streaming progress en protected transactions. Deze blijven bewust achter de volgende architectuur- en securitygates.

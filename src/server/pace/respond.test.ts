@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import handler from "../../../api/pace/respond";
+import { parsePaceStreamEvent } from "../../pace/paceProgress";
 
 const originalEnv = { ...process.env };
 
-const request = (body: unknown, token = "valid-token") => new Request("https://pwayment.test/api/pace/respond", {
+const request = (body: unknown, token = "valid-token", stream = false) => new Request("https://pwayment.test/api/pace/respond", {
   method: "POST",
-  headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+  headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...(stream ? { Accept: "application/x-ndjson" } : {}) },
   body: JSON.stringify(body),
 });
 
@@ -100,6 +101,34 @@ describe("Pace OpenAI endpoint", () => {
     expect(upstreamBody.store).toBe(false);
     expect(String(upstreamBody.input)).not.toContain("must-not-pass");
     expect(String(upstreamBody.input)).toContain('"productCount":0');
+  });
+
+  it("streams only public phases before the final answer payload", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({ id: "user-stream-test" }))
+      .mockResolvedValueOnce(Response.json({
+        id: "resp_stream",
+        output: [{ type: "message", content: [{ type: "output_text", text: "Het antwoord is klaar." }] }],
+        usage: { input_tokens: 10, output_tokens: 5 },
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handler.fetch(request({
+      question: "Leg de lokale productkennis uit",
+      context: { view: "pos", role: "owner", online: true, liveStoreContext: false },
+    }, "stream-token", true));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toContain("application/x-ndjson");
+    const events = (await response.text()).trim().split("\n").map(parsePaceStreamEvent);
+    const phases = events.filter((event) => event?.type === "progress").map((event) => event?.type === "progress" ? event.phase : null);
+    expect(phases).toEqual(["planning", "resolving", "composing", "verifying"]);
+    expect(events.at(-1)).toMatchObject({
+      type: "answer",
+      status: 200,
+      payload: { answer: "Het antwoord is klaar.", source: "openai" },
+    });
+    expect(JSON.stringify(events)).not.toContain("reasoning");
   });
 
   it("persists a v2 turn server-side and returns conversation metadata", async () => {

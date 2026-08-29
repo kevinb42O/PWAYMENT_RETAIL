@@ -82,6 +82,21 @@ describe("Pace assistant response safety", () => {
     expect(paceThinkingStatus({ aiEnabled: true, liveStoreContext: true, slow: true })).toContain("langer dan normaal");
   });
 
+  it("turns authenticated progress into specific public status copy", () => {
+    expect(paceThinkingStatus({
+      aiEnabled: true,
+      liveStoreContext: true,
+      slow: false,
+      truthState: { phase: "retrieving", interaction: "cancel", severity: "neutral", sequence: 3, progress: { completed: 2, total: 4 } },
+    })).toBe("2 van 4 toegestane gegevensbronnen gecontroleerd.");
+    expect(paceThinkingStatus({
+      aiEnabled: true,
+      liveStoreContext: true,
+      slow: false,
+      truthState: { phase: "verifying", interaction: "cancel", severity: "neutral", sequence: 4 },
+    })).toContain("bron en actualiteit");
+  });
+
   it("bounds clarification labels before sending a follow-up", () => {
     const followUp = paceClarificationFollowUp(`  ${"A".repeat(200)}  `);
     expect(followUp).toBe(`Ik bedoel ${"A".repeat(160)}.`);

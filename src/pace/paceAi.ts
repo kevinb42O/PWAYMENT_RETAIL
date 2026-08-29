@@ -2,6 +2,7 @@ import { supabase } from "../lib/supabase";
 import type { PaceContext, PaceQueryAnswer } from "./paceSignals";
 import type { PaceQuotaSnapshot } from "./usePaceBilling";
 import type { PaceCitation, PaceConversationResponse, PaceResolvedEntity } from "./conversation/types";
+import { PACE_PROGRESS_CONTENT_TYPE, parsePaceStreamEvent, type PacePublicProgressEvent } from "./paceProgress";
 
 export interface PaceAiAnswer {
   answer: string;
@@ -25,6 +26,43 @@ export interface PaceConversationTurn {
   role: "user" | "assistant";
   text: string;
 }
+
+type PaceApiPayload = Partial<PaceConversationResponse & PaceAiAnswer> & {
+  error?: string;
+  remaining_credits?: number;
+  reset_in_seconds?: number;
+  reset_at?: string;
+  tier?: PaceQuotaSnapshot["tier"];
+};
+
+export const readPaceApiResponse = async (
+  response: Response,
+  onProgress?: (event: PacePublicProgressEvent) => void,
+): Promise<{ status: number; result: PaceApiPayload | null }> => {
+  if (!response.headers.get("content-type")?.includes(PACE_PROGRESS_CONTENT_TYPE) || !response.body) {
+    return { status: response.status, result: await response.json().catch(() => null) as PaceApiPayload | null };
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let final: { status: number; payload: Record<string, unknown> } | null = null;
+  while (true) {
+    const { done, value } = await reader.read();
+    buffer += decoder.decode(value, { stream: !done });
+    const lines = buffer.split("\n");
+    buffer = done ? "" : lines.pop() ?? "";
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const event = parsePaceStreamEvent(line);
+      if (!event) continue;
+      if (event.type === "progress") onProgress?.(event);
+      else final = { status: event.status, payload: event.payload };
+    }
+    if (done) break;
+  }
+  if (!final) return { status: 502, result: { error: "PACE_STREAM_INCOMPLETE" } };
+  return { status: final.status, result: final.payload as PaceApiPayload };
+};
 
 let aiUnavailableUntil = 0;
 
@@ -77,6 +115,7 @@ export const askPaceAi = async (
     enabled?: boolean;
     includeLiveStoreContext?: boolean;
     conversation?: { id?: string; revision?: number; clientTurnId?: string };
+    onProgress?: (event: PacePublicProgressEvent) => void;
   } = {},
 ): Promise<PaceAiAnswer> => {
   if (options.enabled === false) {
@@ -104,6 +143,7 @@ export const askPaceAi = async (
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
+        ...(options.onProgress ? { Accept: PACE_PROGRESS_CONTENT_TYPE, "X-Pace-Progress-Version": "1" } : {}),
       },
       body: JSON.stringify({
         ...(options.conversation ? {
@@ -132,12 +172,12 @@ export const askPaceAi = async (
     throw new PaceAiUnavailableError("Pace AI is tijdelijk niet bereikbaar.");
   }
 
-  const result = await response.json().catch(() => null) as Partial<PaceConversationResponse & PaceAiAnswer> & { error?: string; remaining_credits?: number; reset_in_seconds?: number; reset_at?: string; tier?: PaceQuotaSnapshot["tier"] } | null;
-  if (response.status === 429 && result?.error === "QUOTA_EXCEEDED") {
+  const { status, result } = await readPaceApiResponse(response, options.onProgress);
+  if (status === 429 && result?.error === "QUOTA_EXCEEDED") {
     throw new PaceQuotaExceededError({ tier: result.tier, remaining: 0, remaining_credits: result.remaining_credits ?? 0, reset_in_seconds: result.reset_in_seconds, reset_at: result.reset_at });
   }
-  if (!response.ok || (result?.source !== "gemini" && result?.source !== "openai" && result?.source !== "analytics" && result?.source !== "records" && result?.source !== "local") || typeof result.answer !== "string") {
-    aiUnavailableUntil = Date.now() + (response.status === 429 || result?.error === "PACE_AI_QUOTA_EXHAUSTED" ? 60_000 : 15_000);
+  if (status < 200 || status >= 300 || (result?.source !== "gemini" && result?.source !== "openai" && result?.source !== "analytics" && result?.source !== "records" && result?.source !== "local") || typeof result.answer !== "string") {
+    aiUnavailableUntil = Date.now() + (status === 429 || result?.error === "PACE_AI_QUOTA_EXHAUSTED" ? 60_000 : 15_000);
     throw new PaceAiUnavailableError(result?.error ?? "Pace AI is tijdelijk niet beschikbaar.");
   }
   aiUnavailableUntil = 0;

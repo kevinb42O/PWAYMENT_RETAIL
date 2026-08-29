@@ -94,7 +94,7 @@ export const reducePaceTruthState = (state: PaceTruthState, event: PaceTruthEven
   if (event.type === "turn_started") {
     return {
       phase: "planning",
-      interaction: "cancel",
+      interaction: "none",
       severity: "neutral",
       turnId: event.turnId,
       sequence: 0,
@@ -122,8 +122,8 @@ export const derivePaceTruthState = (snapshot: PaceExperienceSnapshot): PaceTrut
   if (!snapshot.enabled) return INITIAL_PACE_TRUTH_STATE;
   if (!snapshot.online) return { phase: "offline", interaction: "none", severity: "attention", sequence: 0, reasonCode: "offline" };
   if (snapshot.open && snapshot.hardLimited) return { phase: "blocked", interaction: "retry", severity: "attention", sequence: 0, reasonCode: "quota" };
-  if (snapshot.thinking && snapshot.slow) return { phase: "degraded", interaction: "cancel", severity: "attention", sequence: 0, reasonCode: "slow" };
-  if (snapshot.thinking) return { phase: "planning", interaction: "cancel", severity: "neutral", sequence: 0 };
+  if (snapshot.thinking && snapshot.slow) return { phase: "degraded", interaction: "none", severity: "attention", sequence: 0, reasonCode: "slow" };
+  if (snapshot.thinking) return { phase: "planning", interaction: "none", severity: "neutral", sequence: 0 };
   if (snapshot.hasClarification) return { phase: "awaiting_confirmation", interaction: "choose", severity: "attention", sequence: 0 };
   if (snapshot.hasResponse && snapshot.hasAction) return { phase: "guiding", interaction: "none", severity: "neutral", sequence: 0 };
   if (snapshot.hasResponse) return { phase: "ready", interaction: "none", severity: "positive", sequence: 0 };

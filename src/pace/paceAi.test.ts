@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { askPaceAi, normalizePaceAiAnswer, toPaceAiContext } from "./paceAi";
+import { askPaceAi, normalizePaceAiAnswer, readPaceApiResponse, toPaceAiContext } from "./paceAi";
 import type { PaceContext } from "./paceSignals";
 
 describe("Pace AI privacy boundary", () => {
@@ -75,5 +75,35 @@ describe("Pace AI privacy boundary", () => {
     await expect(askPaceAi("hi", context, [], undefined, { enabled: false })).rejects.toThrow("AI-antwoorden staan uit");
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
+  });
+
+  it("reads public progress incrementally and returns the final payload", async () => {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode('{"version":1,"type":"progress","sequence":1,"phase":"planning","interaction":"cancel"}\n'));
+        controller.enqueue(encoder.encode('{"version":1,"type":"progress","sequence":2,"phase":"retrieving","progress":{"completed":1,"total":2},"sourceCount":2}\n'));
+        controller.enqueue(encoder.encode('{"version":1,"type":"answer","status":200,"payload":{"answer":"Klaar","source":"analytics","model":"PWAYMENT Analytics"}}\n'));
+        controller.close();
+      },
+    });
+    const progress: string[] = [];
+    const parsed = await readPaceApiResponse(new Response(stream, {
+      headers: { "Content-Type": "application/x-ndjson; charset=utf-8" },
+    }), (event) => progress.push(event.phase));
+    expect(progress).toEqual(["planning", "retrieving"]);
+    expect(parsed).toEqual({ status: 200, result: { answer: "Klaar", source: "analytics", model: "PWAYMENT Analytics" } });
+  });
+
+  it("fails closed when a progress stream has no final event", async () => {
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('{"version":1,"type":"progress","sequence":1,"phase":"planning"}\n'));
+        controller.close();
+      },
+    });
+    await expect(readPaceApiResponse(new Response(stream, {
+      headers: { "Content-Type": "application/x-ndjson" },
+    }))).resolves.toEqual({ status: 502, result: { error: "PACE_STREAM_INCOMPLETE" } });
   });
 });
