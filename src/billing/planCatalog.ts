@@ -34,7 +34,7 @@ export const PLAN_CATALOG: Record<PublicPlanCode, PlanCatalogEntry> = {
     audience: 'Voor pop-ups, markten en een eerste winkel.',
     cta: 'Start met Basis',
     href: '/register?plan=basis',
-    features: ['1 locatie en 1 kassascherm', '250 actieve producten', 'Koppel je eigen printer en barcodescanner', 'Basis voorraadbeheer', 'Z-rapport en 30 dagen historie', 'E-mailondersteuning'],
+    features: ['1 locatie en 1 kassascherm', '250 actieve producten', 'Pace-begeleiding + 5 AI-vragen per dag', 'Koppel je eigen printer en barcodescanner', 'Basis voorraadbeheer', 'Z-rapport en 30 dagen historie', 'E-mailondersteuning'],
   },
   pro: {
     code: 'pro',
@@ -45,7 +45,7 @@ export const PLAN_CATALOG: Record<PublicPlanCode, PlanCatalogEntry> = {
     cta: 'Probeer 30 dagen gratis',
     href: '/register?plan=professional',
     featured: true,
-    features: ['Onbeperkte producten en varianten', 'Dual-screen klantendisplay', 'ServiceDesk tot 50 actieve dossiers', 'Barcode-labels op Dymo en Zebra', 'CRM, loyaliteit, VIP en cadeaubonnen', 'PWAYMENT Webshop met live voorraad', 'Boekhouding en Peppol volgens connectorstatus', 'Prioriteit e-mail en chat'],
+    features: ['Onbeperkte producten en varianten', 'Pace-begeleiding + 250 AI-vragen per maand', 'Dual-screen klantendisplay', 'ServiceDesk tot 50 actieve dossiers', 'Barcode-labels op Dymo en Zebra', 'CRM, loyaliteit, VIP en cadeaubonnen', 'PWAYMENT Webshop met live voorraad', 'Boekhouding en Peppol volgens connectorstatus', 'Prioriteit e-mail en chat'],
   },
   enterprise: {
     code: 'enterprise',
@@ -55,11 +55,19 @@ export const PLAN_CATALOG: Record<PublicPlanCode, PlanCatalogEntry> = {
     audience: 'Voor ketens, franchises en multichannel retail.',
     cta: 'Kies Enterprise',
     href: '/register?plan=enterprise',
-    features: ['Meerdere locaties en voorraadoverdrachten', 'Personeelsplanning, uren en verlof', 'Voorraadprognose met AI en inkooporders', 'Onbeperkte ServiceDesk met uitgebreide werkwijze', 'Fijnmazige rechten en volledig auditlogboek', 'REST API en webhooks', 'Meerdere webshops', 'SLA en ondersteuning volgens overeenkomst'],
+    features: ['Meerdere locaties en voorraadoverdrachten', 'Pace-beleid per rol + 2.500 AI-vragen per maand', 'Personeelsplanning, uren en verlof', 'Voorraadprognose met AI en inkooporders', 'Onbeperkte ServiceDesk met uitgebreide werkwijze', 'Fijnmazige rechten en volledig auditlogboek', 'REST API en webhooks', 'Meerdere webshops', 'SLA en ondersteuning volgens overeenkomst'],
   },
 };
 
 export const PLAN_COMPARISON_GROUPS: PlanComparisonGroup[] = [
+  {
+    category: 'Pace-begeleiding',
+    rows: [
+      { label: 'Contextuele setup en navigatie', basic: 'Inbegrepen', pro: 'Inbegrepen', enterprise: 'Inbegrepen' },
+      { label: 'Generatieve AI-vragen', basic: '5 per dag', pro: '250 per maand', enterprise: '2.500 per maand' },
+      { label: 'Pace-beleid en proactiviteit per rol', basic: '—', pro: 'Persoonlijke voorkeur', enterprise: 'Centraal beleid per rol' },
+    ],
+  },
   {
     category: 'Kassasoftware & compatibiliteit',
     rows: [

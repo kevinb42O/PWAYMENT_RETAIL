@@ -66,6 +66,13 @@ const integrationsImage = '/website/pwayment-integrations-current.jpg';
 const plansImage = '/website/pwayment-plans-current.jpg';
 const heroVideo = '/website/hero_video1.mp4';
 const paymentVideo = '/website/hero_video.mp4';
+const guidedStoreSetupImage = '/mail-assets/screenshot_0_guided_store_setup.png';
+const guidedTicketSetupImage = '/mail-assets/screenshot_0_guided_ticket_setup.png';
+const stockQuickEntryImage = '/mail-assets/screenshot_3_stock_builder_quick_entry.png';
+const stockOpeningImage = '/mail-assets/screenshot_3_stock_builder_opening_stock.png';
+const migrationStartImage = '/mail-assets/screenshot_6_migration_start.png';
+const migrationMappingImage = '/mail-assets/screenshot_6_migration_mapping.png';
+const migrationReceiptImage = '/mail-assets/screenshot_6_migration_receipt.png';
 
 const keepVideoSilent = (video: HTMLVideoElement) => {
   video.defaultMuted = true;
@@ -490,10 +497,11 @@ const PublicSite: React.FC = () => {
   let page: React.ReactNode;
   if (path === '/') page = <HomePage />;
   else if (path === '/pace') page = <PacePublicPage />;
+  else if (path === '/start') page = <StartPage />;
   else if (path === '/pricing' || path === '/compare') page = <PricingPage />;
   else if (path === '/demo' || path === '/contact') page = <ContactPage demo={path === '/demo'} />;
   else if (featurePages[path]) page = <FeaturePage data={featurePages[path]} route={path} />;
-  else if (operationalPages[path]) page = <OperationalPage data={operationalPages[path]} />;
+  else if (operationalPages[path]) page = <OperationalPage data={operationalPages[path]} route={path} />;
   else if (guidePages[path]) page = <GuidePage data={guidePages[path]} />;
   else if (solutionPages[path]) page = <SolutionPage data={solutionPages[path]} />;
   else if (path === '/migrate') page = <MigrationPage />;
@@ -576,16 +584,18 @@ export const SiteHeader = ({ mobileOpen, setMobileOpen, locale = 'nl', routePath
       <div className="pw-header-inner">
         <a href="/" className="pw-logo" aria-label="PWAYMENT home" onClick={closeNavigation}>
           <PaceMark size={38} active emotion="attentive" motionMode="subtle" />
+          <span className="pw-logo-lockup"><strong>PWAYMENT</strong><small>powered by Pace</small></span>
         </a>
         <nav className="pw-nav" aria-label="Hoofdnavigatie">
+          <a href="/pace" className="pw-nav-pace" onClick={closeNavigation}>Pace</a>
           <NavGroup label="Product" columns={[
             { title: 'Verkopen & bedienen', links: [['/pos', 'Kassa & betalingen', 'Scan-first, offline en gecontroleerd afrekenen'], ['/customers', 'Klanten & loyaliteit', 'Van klantbeeld tot cadeaubon'], ['/service-desk', 'ServiceDesk & herstellingen', 'Intake, status en aflevering samen'], ['/webshop', 'Webshop & orders', 'Eén voorraad voor winkel en online']] },
             { title: 'Voorraad & beslissingen', links: [['/inventory', 'Producten & voorraad', 'Van barcode tot besteladvies'], ['/purchasing-suppliers', 'Inkoop & leveranciers', 'Forecast, order en ontvangst'], ['/insights', 'Retail intelligence', 'Van data naar concrete actie'], ['/daily-close-reporting', 'Dagafsluiting & rapportage', 'Btw, cash en controle per dag']] },
-            { title: 'Groei & controle', links: [['/pace', 'Pace', 'Contextuele hulp die weet wanneer ze moet verdwijnen'], ['/workforce', 'Team & planning', 'Roosters, verlof en rechten'], ['/offline', 'Offline-first', 'Blijf verkopen als verbinding wegvalt'], ['/integrations', 'Hardware & koppelingen', 'Open waar nodig, helder per status']] },
+            { title: 'Groei & controle', links: [['/workforce', 'Team & planning', 'Roosters, verlof en rechten'], ['/offline', 'Offline-first', 'Blijf verkopen als verbinding wegvalt'], ['/integrations', 'Hardware & koppelingen', 'Open waar nodig, helder per status'], ['/security', 'Veiligheid & controle', 'Rollen, audit en veilige acties']] },
           ]} active={activeMenu === 'Product'} onToggle={() => toggleMenu('Product')} onHoverStart={() => openMenuOnHover('Product')} onHoverEnd={closeMenuOnHoverExit} onNavigate={closeNavigation} />
           <NavGroup label="Voor jouw winkel" columns={[
             { title: 'Type winkel', links: [['/solutions/independent-retail', 'Onafhankelijke retail', 'Professionele controle zonder complexiteit'], ['/solutions/specialist-retail', 'Speciaalzaken', 'Varianten, merken en advies'], ['/service-desk', 'Herstelgedreven retail', 'Service naast verkoop op één plek']] },
-            { title: 'Groeipad', links: [['/solutions/multi-location', 'Keten & multi-location', 'Centraal sturen, lokaal verkopen'], ['/solutions/accountants', 'Accountants & partners', 'Schone data, minder herstelwerk'], ['/migrate', 'Overstappen naar PWAYMENT', 'Gecontroleerd live zonder onrust']] },
+            { title: 'Groeipad', links: [['/start', 'Start met PWAYMENT', 'Nieuw, importeren of gecontroleerd overstappen'], ['/solutions/multi-location', 'Keten & multi-location', 'Centraal sturen, lokaal verkopen'], ['/solutions/accountants', 'Accountants & partners', 'Schone data, minder herstelwerk'], ['/migrate', 'Overstappen naar PWAYMENT', 'Gecontroleerd live zonder onrust']] },
           ]} active={activeMenu === 'Voor jouw winkel'} onToggle={() => toggleMenu('Voor jouw winkel')} onHoverStart={() => openMenuOnHover('Voor jouw winkel')} onHoverEnd={closeMenuOnHoverExit} onNavigate={closeNavigation} />
           <a href="/pricing" onClick={closeNavigation}>Prijzen</a>
           <a href="/resources" onClick={closeNavigation}>Resources</a>
@@ -602,8 +612,9 @@ export const SiteHeader = ({ mobileOpen, setMobileOpen, locale = 'nl', routePath
       </motion.header>
       {mobileOpen && (
         <nav className="pw-mobile-nav" aria-label="Mobiele navigatie">
-          <div className="pw-mobile-nav-group"><strong>Product</strong><a href="/pace" onClick={closeNavigation}>Pace</a><a href="/pos" onClick={closeNavigation}>Kassa & betalingen</a><a href="/inventory" onClick={closeNavigation}>Voorraad & inkoop</a><a href="/customers" onClick={closeNavigation}>Klanten & loyalty</a><a href="/service-desk" onClick={closeNavigation}>ServiceDesk & herstellingen</a><a href="/webshop" onClick={closeNavigation}>Webshop & orders</a><a href="/insights" onClick={closeNavigation}>Retail intelligence</a><a href="/workforce" onClick={closeNavigation}>Team & planning</a><a href="/offline" onClick={closeNavigation}>Offline-first</a></div>
-          <div className="pw-mobile-nav-group"><strong>Voor jouw winkel</strong><a href="/solutions/independent-retail" onClick={closeNavigation}>Onafhankelijke retail</a><a href="/solutions/specialist-retail" onClick={closeNavigation}>Speciaalzaken</a><a href="/solutions/multi-location" onClick={closeNavigation}>Keten & multi-location</a><a href="/migrate" onClick={closeNavigation}>Overstappen naar PWAYMENT</a></div>
+          <a className="pw-mobile-pace" href="/pace" onClick={closeNavigation}>Pace <span>De intelligente laag van PWAYMENT</span></a>
+          <div className="pw-mobile-nav-group"><strong>Product</strong><a href="/pos" onClick={closeNavigation}>Kassa & betalingen</a><a href="/inventory" onClick={closeNavigation}>Voorraad & inkoop</a><a href="/customers" onClick={closeNavigation}>Klanten & loyalty</a><a href="/service-desk" onClick={closeNavigation}>ServiceDesk & herstellingen</a><a href="/webshop" onClick={closeNavigation}>Webshop & orders</a><a href="/insights" onClick={closeNavigation}>Retail intelligence</a><a href="/workforce" onClick={closeNavigation}>Team & planning</a><a href="/offline" onClick={closeNavigation}>Offline-first</a></div>
+          <div className="pw-mobile-nav-group"><strong>Voor jouw winkel</strong><a href="/start" onClick={closeNavigation}>Start met PWAYMENT</a><a href="/solutions/independent-retail" onClick={closeNavigation}>Onafhankelijke retail</a><a href="/solutions/specialist-retail" onClick={closeNavigation}>Speciaalzaken</a><a href="/solutions/multi-location" onClick={closeNavigation}>Keten & multi-location</a><a href="/migrate" onClick={closeNavigation}>Overstappen naar PWAYMENT</a></div>
           <a href="/pricing" onClick={closeNavigation}>Prijzen</a><a href="/resources" onClick={closeNavigation}>Resources</a>
           <LanguageSwitcher locale={locale} routePath={routePath} />
           <div className="pw-mobile-actions"><a href="/login" onClick={closeNavigation}>Log in</a><a href="/register" className="pw-button pw-button-dark" onClick={closeNavigation}>Start gratis</a></div>
@@ -681,14 +692,14 @@ const HomePage = () => (
       <HeroProductVideo />
       <div className="pw-hero-shade" aria-hidden="true" />
       <motion.div className="pw-hero-copy" initial="hidden" animate="visible" variants={stagger}>
-        <motion.div className="pw-kicker" variants={fadeUp}><span /> Retailplatform voor Belgische winkels</motion.div>
+        <motion.div className="pw-kicker" variants={fadeUp}><span /> PWAYMENT, powered by Pace</motion.div>
         <motion.h1 variants={fadeUp}>Minder losse systemen.<br /><em>Meer grip op je winkel.</em></motion.h1>
-        <motion.p variants={fadeUp}>PWAYMENT verbindt kassa, voorraad, klanten, webshop en rapportage in één rustige werkplek. Pace, de geïntegreerde AI-laag, helpt je begrijpen wat er nu speelt en welke stap daarna telt.</motion.p>
+        <motion.p variants={fadeUp}>PWAYMENT verbindt kassa, voorraad, klanten, webshop en rapportage in één rustige werkplek. Pace begrijpt waar je bezig bent, legt uit wat aandacht vraagt en opent de veilige volgende stap. Jij blijft beslissen.</motion.p>
         <motion.div className="pw-hero-actions" variants={fadeUp}>
-          <a href="/register?plan=professional" className="pw-button pw-button-dark">Start gratis met PWAYMENT <ArrowRight size={17} /></a>
-          <a href="/demo" className="pw-text-link">Plan een persoonlijke demo <ArrowRight size={15} /></a>
+          <a href="#pace-in-action" className="pw-button pw-button-dark">Bekijk Pace in actie <ArrowRight size={17} /></a>
+          <a href="/product" className="pw-text-link">Ontdek het platform <ArrowRight size={15} /></a>
         </motion.div>
-        <motion.div className="pw-hero-proof" variants={fadeUp}><span>Basis blijft gratis</span><span>30 dagen Professional</span><span>Offline-first kassa</span></motion.div>
+        <motion.div className="pw-hero-proof" variants={fadeUp}><span>Offline-first kassa</span><span>Controleerbare acties</span><span>Eén operationele waarheid</span></motion.div>
       </motion.div>
       <a className="pw-scroll-badge" href="#home-story" aria-label="Scroll naar beneden">
         <ChevronDown size={20} strokeWidth={1.8} />
@@ -697,47 +708,51 @@ const HomePage = () => (
 
     <section className="pw-home-proof" id="home-story" aria-label="PWAYMENT in het kort">
       <div className="pw-shell">{[
-        ['Verkoop zonder stilstand', 'De kritieke kassaflow blijft werken als je verbinding wegvalt.'],
-        ['Dagcontrole die klopt', 'Cash, btw, retouren en Z-rapport in één betrouwbare afsluiting.'],
-        ['Voorraad die vooruitdenkt', 'Zie verkooptempo, stilstand en besteladvies vanuit dezelfde bron.'],
-        ['Groei zonder herbeginnen', 'Van één kassa tot teams, webshop, service en meerdere locaties.'],
+        ['Start begeleid', 'Pace leidt een eigenaar door winkeldata, ticket, catalogus en eerste voorraad.'],
+        ['Verkoop met rust', 'De kritieke kassaflow blijft werken en Pace weet wanneer stilte belangrijker is.'],
+        ['Begrijp je winkel', 'Voorraad, marge en klanten vertellen vanuit dezelfde bron hetzelfde verhaal.'],
+        ['Groei zonder herbeginnen', 'Van één kassa tot webshop, team, service en meerdere locaties.'],
       ].map(([title, body]) => <div key={title}><span>{title}</span><p>{body}</p></div>)}</div>
     </section>
 
     <motion.section className="pw-home-intro pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>
-      <motion.div variants={fadeUp}><span className="pw-eyebrow">Eén systeem, één waarheid</span><h2>De hele winkel<br />onder controle.</h2></motion.div>
-      <motion.p variants={fadeUp}>PWAYMENT maakt van elke verkoop direct bruikbare winkelinformatie. Niet door er nog een dashboard naast te zetten, maar doordat verkoop, voorraad, klanten en online orders vanaf het begin hetzelfde verhaal vertellen.</motion.p>
+      <motion.div variants={fadeUp}><span className="pw-eyebrow">Het platform dat met je meewerkt</span><h2>Software die niet alleen registreert.<br />Software die begrijpt.</h2></motion.div>
+      <motion.p variants={fadeUp}>PWAYMENT bewaart de operationele waarheid. Pace maakt die begrijpelijk op de plek waar je werkt. Geen extra dashboard en geen autonome beslisser, maar contextuele begeleiding die je bestaande werkwijze sterker maakt.</motion.p>
     </motion.section>
+
+    <div className="pw-shell pw-pace-home-wrap"><PaceHomeTeaser /></div>
 
     <motion.section className="pw-home-product pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>
       <motion.div className="pw-home-product-copy" variants={fadeUp}><span className="pw-eyebrow">De winkelvloer, opnieuw ontworpen</span><h2>Rust voor je team.<br />Grip voor jou.</h2><p>Een snelle kassaflow aan de voorkant. Een volledig, betrouwbaar winkelbeeld achter de schermen.</p><a href="/pos" className="pw-text-link">Ontdek de kassa <ArrowRight size={15} /></a></motion.div>
       <motion.div className="pw-home-product-screen" variants={fadeUp}><div className="pw-window-bar"><i /><i /><i /><span>app.pwayment.be · Kassa</span><b>Live</b></div><img src={posImage} alt="PWAYMENT kassascherm met catalogus en winkelwagen" loading="lazy" /></motion.div>
     </motion.section>
 
-    <div className="pw-shell pw-pace-home-wrap"><PaceHomeTeaser /></div>
-
     <motion.section className="pw-home-outcomes" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>
-      <div className="pw-shell"><motion.div className="pw-home-section-title" variants={fadeUp}><span className="pw-eyebrow">Wat verandert er in je dag?</span><h2>Van transactie naar<br />volgende stap.</h2></motion.div><div className="pw-home-outcome-grid">
+      <div className="pw-shell"><motion.div className="pw-home-section-title" variants={fadeUp}><span className="pw-eyebrow">Eén doorlopende retailreis</span><h2>Van eerste setup tot<br />slimmere groei.</h2></motion.div><div className="pw-home-outcome-grid is-journey">
         {[
-          [ScanLine, 'Verkoop zonder vertraging', 'Scan, zoek, koppel een klant en rond af. De flow blijft kort wanneer het druk wordt.', '/pos'],
-          [Box, 'Voorraad die vooruitkijkt', 'Zie wat hard loopt, wat stilstaat en wat je op tijd moet bestellen.', '/inventory'],
-          [TrendingUp, 'Inzichten met een doel', 'Begrijp marge, ritme en klantgedrag en weet waar je vandaag op stuurt.', '/insights'],
+          [Store, 'Start', 'Richt je winkel begeleid in of neem bestaande data gecontroleerd mee.', '/start'],
+          [ScanLine, 'Verkoop', 'Scan, zoek, koppel een klant en rond af zonder de winkel uit haar ritme te halen.', '/pos'],
+          [Box, 'Beheer', 'Houd producten, voorraad, leveranciers en ontvangsten in dezelfde waarheid.', '/inventory'],
+          [TrendingUp, 'Begrijp', 'Zie marge, winkelritme, voorraadtempo en klantgedrag in hun echte context.', '/insights'],
+          [Layers3, 'Groei', 'Voeg webshop, team, service en locaties toe zonder opnieuw te beginnen.', '/product'],
         ].map(([Icon, title, body, href], index) => <motion.a href={String(href)} key={String(title)} variants={fadeUp} whileHover={{ y: -6 }}><span>0{index + 1}</span><Icon size={25} /><h3>{String(title)}</h3><p>{String(body)}</p><ArrowRight size={17} /></motion.a>)}
       </div></div>
     </motion.section>
 
     <motion.section className="pw-home-platform pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>
       <motion.div className="pw-home-platform-heading" variants={fadeUp}><span className="pw-eyebrow">Gebouwd voor echte retail</span><h2>Alles wat moet kloppen,<br />werkt samen.</h2><p>Geen verzameling losse modules. Wel één retailoperatie die verder gaat dan de kassa.</p></motion.div>
-      <motion.div className="pw-home-platform-grid" variants={stagger}>{[
+      <motion.div className="pw-home-platform-grid is-six" variants={stagger}>{[
+        [ScanLine, 'Kassa & betalingen', 'Een snelle scanner-first flow met gecontroleerde betalingen en retouren.', '/pos'],
+        [Box, 'Producten & voorraad', 'Van productimport en barcode tot ontvangst, prognose en inkoop.', '/inventory'],
         [Users, 'Klanten & loyaliteit', 'Herken waardevolle klanten, spaarpunten en cadeaubonnen op één plek.', '/customers'],
         [ShoppingBag, 'Winkel + webshop', 'Eén assortiment en voorraadbeeld voor winkelvloer en online orders.', '/webshop'],
         [ReceiptText, 'Retouren & rapportage', 'Van originele verkoop tot btw, betaalmix en controleerbare dagafsluiting.', '/daily-close-reporting'],
-        [Webhook, 'Hardware & koppelingen', 'Bekijk per scanner, printer, terminal of connector wat echt actief is.', '/integrations'],
+        [Webhook, 'Hardware & integraties', 'Bekijk per scanner, printer, terminal of connector wat echt actief is.', '/integrations'],
       ].map(([Icon, title, body, href]) => <motion.a href={String(href)} key={String(title)} variants={fadeUp} whileHover={{ y: -5 }}><Icon size={21} /><h3>{String(title)}</h3><p>{String(body)}</p><ArrowRight size={15} /></motion.a>)}</motion.div>
       <motion.a href="/product" className="pw-button pw-button-light" variants={fadeUp}>Bekijk het volledige platform <ArrowRight size={16} /></motion.a>
     </motion.section>
 
-    <motion.section className="pw-home-assurance" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><div className="pw-shell"><motion.div variants={fadeUp}><span className="pw-eyebrow">Klaar om over te stappen?</span><h2>Begin waar je winkel nu staat.</h2><p>Start gratis, plan een persoonlijke demo of neem je bestaande data gecontroleerd mee.</p></motion.div><motion.div className="pw-home-assurance-actions" variants={fadeUp}><a href="/register?plan=professional" className="pw-button pw-button-dark">Start gratis <ArrowRight size={16} /></a><a href="/migrate" className="pw-text-link">Bekijk de migratieaanpak <ArrowRight size={15} /></a></motion.div></div></motion.section>
+    <motion.section className="pw-home-assurance" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><div className="pw-shell"><motion.div variants={fadeUp}><span className="pw-eyebrow">Begin waar je winkel nu staat</span><h2>Nieuw starten of slim overstappen.</h2><p>Pace begeleidt je door de basis. De migratiemodule helpt bestaande producten, barcodes en voorraad gecontroleerd over te nemen.</p></motion.div><motion.div className="pw-home-assurance-actions" variants={fadeUp}><a href="/start" className="pw-button pw-button-dark">Kies je startroute <ArrowRight size={16} /></a><a href="/migrate" className="pw-text-link">Bekijk de migratieaanpak <ArrowRight size={15} /></a></motion.div></div></motion.section>
   </>
 );
 
@@ -939,12 +954,39 @@ const HardwareCompatibilitySection = () => (
   </motion.section>
 );
 
-const OperationalPage = ({ data }: { data: OperationalPageData }) => (
+const paceContextByRoute: Record<string, { context: string; explains: string; opens: string; boundary: string }> = {
+  '/product': { context: 'Actieve module, rol, winkelstatus en openstaande taken.', explains: 'Welke stap nu het meeste effect heeft over de hele operatie.', opens: 'De bestaande PWAYMENT-workflow waarin je die stap veilig uitvoert.', boundary: 'Pace verandert niets definitief zonder jouw bevestiging.' },
+  '/pos': { context: 'Verkoop in opbouw, gekoppelde klant en verbindingsstatus.', explains: 'Alleen relevante afwijkingen zonder het betaalmoment te verstoren.', opens: 'De juiste verkoop-, klant- of correctieflow.', boundary: 'Pace trekt zich terug tijdens betalen en PIN.' },
+  '/inventory': { context: 'Voorraad, verkooptempo, minimumgrens en leverancier.', explains: 'Waarom een product dreigt uit te verkopen of juist blijft liggen.', opens: 'Product, quick entry, telling of bestelvoorstel.', boundary: 'Pace plaatst nooit zelfstandig een bestelling.' },
+  '/insights': { context: 'Omzet, marge, voorraadtempo, klanten en datadekking.', explains: 'Waarom een signaal betrouwbaar genoeg is om aandacht te verdienen.', opens: 'De onderliggende producten, perioden of actiekaart.', boundary: 'Pace toont bron en redenering; jij bepaalt de actie.' },
+  '/customers': { context: 'Bewust gekoppelde klant, aankopen en winkelbeleid.', explains: 'Eén bruikbaar servicefeit voor het huidige gesprek.', opens: 'Het klantprofiel, de verkoop of relevante opvolging.', boundary: 'Geen verborgen profilering en geen autonome klantactie.' },
+  '/webshop': { context: 'Orderstatus, reservering, betaalstatus en beschikbare voorraad.', explains: 'Waar een order wacht en wat de volgende geldige status is.', opens: 'De bestaande order- of voorraadhandeling.', boundary: 'Verzenden, annuleren en terugbetalen blijven bevestigde acties.' },
+  '/service-desk': { context: 'Dossierstatus, toestel, onderdelen, planning en klant.', explains: 'Wat ontbreekt of welk dossier aandacht nodig heeft.', opens: 'De juiste intake-, status- of afleverstap.', boundary: 'Pace communiceert of factureert nooit zonder bevestiging.' },
+  '/workforce': { context: 'Rol, planning, verlof en bezetting per locatie.', explains: 'Waar capaciteit of toegang niet aansluit op de werkdag.', opens: 'De planning, aanvraag of rechteninstelling.', boundary: 'Publiceren en rechten wijzigen blijven bevoegde acties.' },
+  '/integrations': { context: 'Werkelijke connectorstatus, configuratie en laatste controle.', explains: 'Of iets actief, in pilot, in validatie of niet ingericht is.', opens: 'De gekoppelde configuratie of technische controle.', boundary: 'Geen logo wordt als werkend voorgesteld zonder bewijs.' },
+  '/hardware': { context: 'Browser, apparaattoestemming, model en workflow.', explains: 'Welke combinatie aantoonbaar werkt en wat nog getest moet worden.', opens: 'De juiste hardware- of registerinstelling.', boundary: 'Pace belooft geen compatibiliteit buiten de gevalideerde matrix.' },
+  '/offline': { context: 'Verbinding, lokale wachtrij en actieve kassaflow.', explains: 'Wat lokaal doorloopt en wat synchronisatie afwacht.', opens: 'De relevante status of herstelcontrole.', boundary: 'Onzekere synchronisatie wordt nooit als afgerond getoond.' },
+  '/security': { context: 'Rol, toestemming, gevoeligheid en auditcontext.', explains: 'Waarom een handeling geblokkeerd is of goedkeuring vereist.', opens: 'De juiste rechten- of goedkeuringsflow.', boundary: 'Pace omzeilt nooit rollen, toestemmingen of audit.' },
+};
+
+const PaceFeatureContext = ({ route }: { route: string }) => {
+  const item = paceContextByRoute[route] ?? paceContextByRoute['/product'];
+  return <motion.section className="pw-pace-context pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>
+    <motion.div className="pw-pace-context-heading" variants={fadeUp}><span className="pw-eyebrow">Powered by Pace</span><h2>Context erin.<br />Een veilige stap eruit.</h2><p>Pace staat niet naast deze module. Het begrijpt de module waarin je werkt en verbindt die context met de bestaande PWAYMENT-acties.</p></motion.div>
+    <motion.div className="pw-pace-context-grid" variants={stagger}>{[
+      ['Wat Pace ziet', item.context], ['Wat Pace uitlegt', item.explains], ['Wat Pace opent', item.opens], ['Wat jij beslist', item.boundary],
+    ].map(([title, body], index) => <motion.article key={title} variants={fadeUp}><span>0{index + 1}</span><h3>{title}</h3><p>{body}</p></motion.article>)}</motion.div>
+    <motion.a variants={fadeUp} href="/pace" className="pw-text-link">Ontdek hoe Pace werkt <ArrowRight size={15} /></motion.a>
+  </motion.section>;
+};
+
+const OperationalPage = ({ data, route }: { data: OperationalPageData; route: string }) => (
   <>
     <AnimatedPageHero eyebrow={data.eyebrow} title={data.title} intro={data.intro} actions={<><a className="pw-button pw-button-dark" href="/demo">Bespreek je werkwijze <ArrowRight size={16} /></a><a className="pw-text-link" href="/pricing">Bekijk de plannen <ArrowRight size={15} /></a></>} />
     <motion.section className="pw-wide-product pw-shell" initial={{ opacity: 0, y: 42, scale: .98 }} whileInView={{ opacity: 1, y: 0, scale: 1 }} viewport={revealViewport} transition={{ duration: .9, ease: motionEase }}><div className="pw-window-bar"><i /><i /><i /><span>In de PWAYMENT-app</span><b>In beeld</b></div><img src={data.image} alt={data.imageAlt} loading="eager" /><div className="pw-wide-proof"><CircleCheck size={18} />{data.proof}</div></motion.section>
     <motion.section className="pw-operational-flow pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>{data.flow.map(step => <motion.article key={step.number} variants={fadeUp}><span>{step.number}</span><h2>{step.title}</h2><p>{step.body}</p></motion.article>)}</motion.section>
     <motion.section className="pw-evidence-grid pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><motion.div variants={fadeUp}><span className="pw-eyebrow">Aantoonbare productdiepte</span><h2>Wat deze workflow concreet kan.</h2></motion.div><motion.div variants={stagger}>{data.capabilities.map(item => <motion.article key={item.title} variants={fadeUp}><BadgeCheck size={21} /><h3>{item.title}</h3><p>{item.body}</p><span>{item.evidence}</span></motion.article>)}</motion.div></motion.section>
+    <PaceFeatureContext route={route} />
     <motion.nav className="pw-related-links pw-shell" aria-label="Gerelateerde productpagina’s" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>{data.related.map(item => <motion.a key={item.href} href={item.href} variants={fadeUp}>{item.label}<ArrowRight size={15} /></motion.a>)}</motion.nav>
     <FinalCta />
   </>
@@ -975,6 +1017,7 @@ const FeaturePage = ({ data, route }: { data: FeaturePageData; route: string }) 
     {route === '/pos' && <PosPaymentVideoSection />}
     {route === '/integrations' && <IntegrationStatusSection />}
     {route === '/hardware' && <HardwareCompatibilitySection />}
+    <PaceFeatureContext route={route} />
     <FeatureRelated route={route} />
     <FinalCta eyebrow="Klaar om dit in je winkel te zien?" title={<>Begin met één winkel.<br />Groei op je tempo.</>} />
   </>
@@ -1001,8 +1044,9 @@ const PricingPage = () => {
     + smsBundles * 1500;
 
   return <>
-    <AnimatedPageHero className="pw-pricing-hero" eyebrow="Prijzen" title={<>Alles wat je nodig hebt.<br />Precies op het juiste moment.</>} intro="PWAYMENT Basis blijft gratis. Probeer Retail Professional 30 dagen gratis en groei zonder van systeem te veranderen. Alle softwareprijzen zijn exclusief btw." actions={<BillingCycleControl cycle={cycle} onChange={setCycle} />} />
+    <AnimatedPageHero className="pw-pricing-hero" eyebrow="Prijzen" title={<>Eén platform.<br />Pace groeit met je mee.</>} intro="PWAYMENT Basis blijft gratis. De contextuele Pace-begeleiding zit in het platform; het aantal generatieve AI-vragen groeit per plan. Alle softwareprijzen zijn exclusief btw." actions={<BillingCycleControl cycle={cycle} onChange={setCycle} />} />
     <section className="pw-shell"><PlanCards cycle={cycle} context="pricing" /></section>
+    <motion.section className="pw-pricing-pace pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><motion.div variants={fadeUp}><span className="pw-eyebrow">Pace in elk groeipad</span><h2>Begeleiding is de basis.<br />AI-capaciteit volgt je plan.</h2><p>Pace blijft een onderdeel van PWAYMENT, geen los product. Lokale context, navigatie en setupbegeleiding blijven beschikbaar; generatieve antwoorden volgen heldere gebruikslimieten.</p><a href="/pace" className="pw-text-link">Hoe Pace veilig werkt <ArrowRight size={15} /></a></motion.div><motion.div className="pw-pricing-pace-grid" variants={stagger}>{[['Basis', '5 AI-vragen per dag', 'Voor setup, navigatie en een eerste winkelcontext.'], ['Professional', '250 AI-vragen per maand', 'Voor dagelijkse begeleiding over verkoop, voorraad en klanten.'], ['Enterprise', '2.500 AI-vragen per maand', 'Met Pace-beleid en proactiviteit afgestemd per rol.']].map(([plan, quota, body]) => <motion.article key={plan} variants={fadeUp}><span>{plan}</span><strong>{quota}</strong><p>{body}</p></motion.article>)}</motion.div></motion.section>
     <motion.section className="pw-feature-matrix pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>
       <motion.div variants={fadeUp} className="pw-section-heading">
         <div><span className="pw-eyebrow">Volledige vergelijking</span><h2>Bekijk precies waar elke groeistap begint.</h2></div>
@@ -1063,7 +1107,7 @@ const ContactPage = ({ demo }: { demo: boolean }) => {
         company: String(values.get('company') ?? ''),
         locations: String(values.get('locations') ?? ''),
         currentSystem: String(values.get('current') ?? ''),
-        message: String(values.get('message') ?? ''),
+        message: [values.get('interest') ? `Gewenste startroute: ${String(values.get('interest'))}` : '', String(values.get('message') ?? '')].filter(Boolean).join('\n\n'),
         sourcePath: window.location.pathname,
         consentedAt: new Date().toISOString(),
       });
@@ -1082,9 +1126,9 @@ const ContactPage = ({ demo }: { demo: boolean }) => {
     <motion.section className="pw-contact pw-shell" initial="hidden" animate="visible" variants={stagger}>
       <motion.div className="pw-contact-copy" variants={{ hidden: { opacity: 0, x: -34 }, visible: { opacity: 1, x: 0, transition: { duration: .75, ease: motionEase } } }}>
         <span className="pw-eyebrow">{demo ? 'Persoonlijke demo' : 'Contact'}</span>
-        <h1>{demo ? 'Laat ons je winkel zien. Wij tonen wat PWAYMENT ermee kan.' : 'Waar kunnen we bij helpen?'}</h1>
-        <p>{demo ? 'In dertig minuten lopen we door je verkoopflow, assortiment, hardware, webshop en rapportage. Je krijgt een eerlijk beeld van de juiste setup en het passende plan.' : 'Een vraag over het product, migratie, hardware of je account? Stuur ons de context; het juiste team pakt het op.'}</p>
-        <ul><li><Check />Afgestemd op jouw type winkel</li><li><Check />Ruimte voor technische en commerciële vragen</li><li><Check />Geen generieke verkooppresentatie</li></ul>
+        <h1>{demo ? 'Laat ons je winkel zien. Ervaar hoe PWAYMENT en Pace ermee meewerken.' : 'Waar kunnen we bij helpen?'}</h1>
+        <p>{demo ? 'In dertig minuten vertrekken we van je echte winkelcontext: opstart of migratie, verkoopflow, assortiment, hardware en groei. Je ziet niet alleen de modules, maar ook hoe Pace je er veilig doorheen begeleidt.' : 'Een vraag over het product, migratie, hardware of je account? Stuur ons de context; het juiste team pakt het op.'}</p>
+        <ul><li><Check />Afgestemd op jouw type winkel en startroute</li><li><Check />Pace in je echte operationele context</li><li><Check />Een helder voorstel zonder generieke verkooppresentatie</li></ul>
       </motion.div>
       <motion.div className="pw-form-card" variants={{ hidden: { opacity: 0, x: 34, scale: .985 }, visible: { opacity: 1, x: 0, scale: 1, transition: { duration: .82, ease: motionEase } } }}>
         <AnimatePresence mode="wait">
@@ -1095,7 +1139,7 @@ const ContactPage = ({ demo }: { demo: boolean }) => {
               <div className="pw-form-grid"><label>Voornaam<input name="firstName" autoComplete="given-name" maxLength={80} required /></label><label>Achternaam<input name="lastName" autoComplete="family-name" maxLength={80} required /></label></div>
               <label>Zakelijk e-mailadres<input type="email" name="email" autoComplete="email" maxLength={254} required /></label>
               <label>Winkel of bedrijf<input name="company" autoComplete="organization" maxLength={160} required /></label>
-              {demo && <div className="pw-form-grid"><label>Aantal locaties<select name="locations"><option>1 locatie</option><option>2–3 locaties</option><option>4–10 locaties</option><option>Meer dan 10</option></select></label><label>Huidige situatie<select name="current"><option>Nog geen POS</option><option>Spreadsheet/eenvoudige kassa</option><option>Andere POS</option><option>Meerdere systemen</option></select></label></div>}
+              {demo && <><div className="pw-form-grid"><label>Aantal locaties<select name="locations"><option>1 locatie</option><option>2–3 locaties</option><option>4–10 locaties</option><option>Meer dan 10</option></select></label><label>Huidige situatie<select name="current"><option>Nog geen POS</option><option>Spreadsheet/eenvoudige kassa</option><option>Andere POS</option><option>Meerdere systemen</option></select></label></div><label>Waar wil je mee starten?<select name="interest" defaultValue={new URLSearchParams(window.location.search).get('interest') === 'pace' ? 'Pace in mijn winkelcontext' : 'Nieuwe winkel opstarten'}><option>Nieuwe winkel opstarten</option><option>Bestaande bestanden importeren</option><option>Overstappen van een andere POS</option><option>Kassa en betalingen</option><option>Voorraad en inkoop</option><option>Winkel en webshop verbinden</option><option>Pace in mijn winkelcontext</option><option>Meerdere locaties</option></select></label></>}
               <label>Waar wil je vooral duidelijkheid over?<textarea name="message" rows={4} minLength={10} maxLength={4000} required /></label>
               <label className="pw-form-honeypot" aria-hidden="true">Website<input name="website" tabIndex={-1} autoComplete="off" /></label>
               <label className="pw-consent"><input name="consent" type="checkbox" required />Ik ga akkoord dat PWAYMENT mijn gegevens gebruikt om op deze aanvraag te antwoorden.</label>
@@ -1110,9 +1154,32 @@ const ContactPage = ({ demo }: { demo: boolean }) => {
   );
 };
 
-const MigrationPage = () => <><AnimatedPageHero eyebrow="Overstappen naar PWAYMENT" title={<>Stap gecontroleerd over.<br />Zonder je winkel stil te zetten.</>} intro="Producten, varianten, barcodes, klanten en voorraad migreren gecontroleerd. Daarna configureren we hardware, team en rapportage rond je echte werkdag." actions={<a className="pw-button pw-button-dark" href="/demo">Plan je migratie <ArrowRight size={16} /></a>} /><motion.section className="pw-steps pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>{[['01', 'Inventariseren', 'We brengen data, hardware, betaalmethodes en integraties in kaart.'], ['02', 'Importeren', 'We valideren velden, duplicaten, prijzen, btw en voorraad voor ze live gaan.'], ['03', 'Inrichten', 'Locaties, registers, rollen, tickets, webshop en koppelingen worden getest.'], ['04', 'Live gaan', 'Je team oefent de volledige winkeldag en krijgt begeleiding bij de overstap.']].map(([n, title, body]) => <motion.article key={n} variants={fadeUp} whileHover={{ y: -7 }}><span>{n}</span><h2>{title}</h2><p>{body}</p></motion.article>)}</motion.section><FinalCta /></>;
+const StartPage = () => <>
+  <AnimatedPageHero eyebrow="Start met PWAYMENT" title={<>Begin waar je winkel staat.<br />Pace wijst de weg.</>} intro="Een nieuwe winkel, bestaande bestanden of een volledig kassasysteem: PWAYMENT heeft voor elke beginsituatie een gecontroleerde route. Pace houdt bij wat al klaar is en brengt je naar de volgende veilige stap." actions={<><a className="pw-button pw-button-dark" href="/register">Start begeleid <ArrowRight size={16} /></a><a className="pw-text-link" href="/demo?interest=pace">Bekijk het in een demo <ArrowRight size={15} /></a></>} />
+  <motion.section className="pw-start-routes pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>{[
+    ['01', 'Ik start een nieuwe winkel', 'Bouw winkelgegevens, ticket, categorieën, catalogus en eerste voorraad stap voor stap op.', '/register', 'Start gratis'],
+    ['02', 'Ik heb bestanden met productdata', 'Importeer producten, varianten, barcodes, prijzen en voorraad met mapping en validatie.', '/migrate', 'Bekijk de importflow'],
+    ['03', 'Ik stap over van een andere POS', 'Breng data, hardware, betaalwijzen, team en dagrapportage samen in een gecontroleerd liveplan.', '/demo?interest=Overstappen', 'Plan de overstap'],
+  ].map(([number, title, body, href, label]) => <motion.article key={number} variants={fadeUp}><span>{number}</span><h2>{title}</h2><p>{body}</p><a href={href} className="pw-text-link">{label} <ArrowRight size={15} /></a></motion.article>)}</motion.section>
+  <motion.section className="pw-start-proof pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>
+    <motion.div className="pw-start-proof-copy" variants={fadeUp}><span className="pw-eyebrow">Accountbegeleiding in de app</span><h2>Geen los hulpfilmpje.<br />Een rondleiding die je winkel begrijpt.</h2><p>Pace leest de echte status van je account. Het weet welke basisstappen klaar zijn, opent het juiste bestaande scherm en blijft beschikbaar zonder de flow over te nemen.</p><ul><li><Check />Voortgang uit je werkelijke winkelconfiguratie</li><li><Check />Context per eigenaar, scherm en volgende stap</li><li><Check />Instellingen blijven door jou bevestigd</li></ul></motion.div>
+    <motion.div className="pw-start-shot-stack" variants={fadeUp}><figure><img src={guidedStoreSetupImage} alt="Pace begeleidt de inrichting van winkelgegevens" loading="eager" /><figcaption>Winkelgegevens en basisconfiguratie</figcaption></figure><figure><img src={guidedTicketSetupImage} alt="Pace begeleidt de inrichting van het verkoopticket" loading="lazy" /><figcaption>Van winkelstatus naar de volgende echte instelling</figcaption></figure></motion.div>
+  </motion.section>
+  <motion.section className="pw-start-stock pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><motion.div variants={fadeUp}><span className="pw-eyebrow">Voorraad opbouwen zonder monnikenwerk</span><h2>Snel invoeren.<br />Daarna gecontroleerd boeken.</h2><p>De quick-entrymodule laat je bestaande producten zoeken of scannen, aantallen en kostprijzen vastleggen en een volledige beginsessie controleren voordat voorraad wordt geboekt.</p><a className="pw-text-link" href="/inventory">Ontdek producten &amp; voorraad <ArrowRight size={15} /></a></motion.div><motion.div className="pw-start-stock-shots" variants={stagger}><motion.figure variants={fadeUp}><img src={stockQuickEntryImage} alt="Snelle voorraadinvoer met zoeken en scannen" loading="lazy" /><figcaption>Zoeken, scannen en regels opbouwen</figcaption></motion.figure><motion.figure variants={fadeUp}><img src={stockOpeningImage} alt="Beginsessie voor voorraadopbouw met controle voor boeking" loading="lazy" /><figcaption>Eerst controleren, dan voorraad boeken</figcaption></motion.figure></motion.div></motion.section>
+  <FinalCta eyebrow="Klaar om goed te beginnen?" title={<>Pace kent de route.<br />Jij bepaalt het tempo.</>} />
+</>;
 
-const AboutPage = () => <><AnimatedPageHero eyebrow="Over PWAYMENT" title="Retailsoftware hoort de winkel beter te maken." intro="PWAYMENT is gebouwd vanuit één overtuiging: een kassa mag geen eindpunt zijn. Elke verkoop moet voorraad kloppend houden, klanten beter begrijpen en de volgende beslissing eenvoudiger maken." /><motion.section className="pw-manifesto pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><motion.p variants={fadeUp}>Wij bouwen voor de mensen die elke dag openen, verkopen, adviseren, tellen, bestellen en opnieuw beginnen.</motion.p><motion.div variants={stagger}>{[['Rust in de interface.', 'De winkel is al levendig genoeg. Software moet aandacht sturen, niet opeisen.'], ['Diepte achter eenvoud.', 'Een korte flow aan de voorkant mag geen oppervlakkige administratie aan de achterkant betekenen.'], ['Open, maar verantwoordelijk.', 'Integraties en API’s horen controleerbaar, veilig en ondersteunbaar te zijn.']].map(([title, body]) => <motion.div className="pw-manifesto-point" key={title} variants={fadeUp}><h2>{title}</h2><p>{body}</p></motion.div>)}</motion.div></motion.section><FinalCta /></>;
+const MigrationPage = () => <>
+  <AnimatedPageHero eyebrow="Overstappen naar PWAYMENT" title={<>Je data hoeft niet opnieuw.<br />Ze moet juist landen.</>} intro="Importeer producten, varianten, barcodes, prijzen en voorraad met een gecontroleerde mapping. Daarna configureren we hardware, team en rapportage rond je echte werkdag." actions={<><a className="pw-button pw-button-dark" href="/demo?interest=Overstappen">Plan je migratie <ArrowRight size={16} /></a><a className="pw-text-link" href="/start">Vergelijk de startroutes <ArrowRight size={15} /></a></>} />
+  <motion.section className="pw-migration-story pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>
+    <motion.div className="pw-migration-heading" variants={fadeUp}><span className="pw-eyebrow">Van bestand naar database</span><h2>Niet alles opnieuw manueel invoeren.</h2><p>De migratiemodule leest je bestand, helpt kolommen koppelen aan het PWAYMENT-datamodel, valideert de inhoud en toont achteraf exact wat is verwerkt.</p></motion.div>
+    <motion.div className="pw-migration-screens" variants={stagger}>{[[migrationStartImage, '01', 'Upload je bestaande productbestand', 'Start met CSV- of spreadsheetdata uit je huidige systeem.'], [migrationMappingImage, '02', 'Koppel je eigen kolommen', 'Map namen, varianten, barcodes, prijzen, btw en voorraad naar de juiste velden.'], [migrationReceiptImage, '03', 'Controleer het importbewijs', 'Zie hoeveel regels geslaagd, overgeslagen of geblokkeerd zijn voordat je verdergaat.']].map(([image, number, title, body]) => <motion.figure key={number} variants={fadeUp}><img src={image} alt={title} loading="lazy" /><figcaption><span>{number}</span><h3>{title}</h3><p>{body}</p></figcaption></motion.figure>)}</motion.div>
+  </motion.section>
+  <motion.section className="pw-steps pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}>{[['01', 'Inventariseren', 'We brengen data, hardware, betaalmethodes en integraties in kaart.'], ['02', 'Importeren', 'We valideren mapping, duplicaten, prijzen, btw en voorraad voor ze live gaan.'], ['03', 'Inrichten', 'Locaties, registers, rollen, tickets, webshop en koppelingen worden getest.'], ['04', 'Live gaan', 'Je team oefent de volledige winkeldag en Pace ondersteunt de eerste stappen in de app.']].map(([n, title, body]) => <motion.article key={n} variants={fadeUp} whileHover={{ y: -7 }}><span>{n}</span><h2>{title}</h2><p>{body}</p></motion.article>)}</motion.section>
+  <FinalCta eyebrow="Je gegevens zijn het begin, niet het obstakel." title={<>Stap gecontroleerd over.<br />Zonder je winkel stil te zetten.</>} />
+</>;
+
+const AboutPage = () => <><AnimatedPageHero eyebrow="PWAYMENT, powered by Pace" title="Retailsoftware hoort niet alleen vast te leggen. Ze hoort mee te werken." intro="PWAYMENT is het operationele platform. Pace is de intelligente laag die context begrijpt, betekenis zichtbaar maakt en de veilige volgende stap opent. Samen maken ze elke verkoop bruikbaar voor wat daarna komt." /><motion.section className="pw-manifesto pw-shell" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><motion.p variants={fadeUp}>Wij bouwen voor de mensen die elke dag openen, verkopen, adviseren, tellen, bestellen en opnieuw beginnen.</motion.p><motion.div variants={stagger}>{[['Rust in de interface.', 'De winkel is al levendig genoeg. PWAYMENT houdt de flow kort en Pace weet wanneer het moet verdwijnen.'], ['Diepte achter eenvoud.', 'Verkoop, voorraad, klanten, webshop en controle delen dezelfde operationele waarheid.'], ['Intelligentie met grenzen.', 'Pace verklaart en begeleidt, maar financiële en definitieve beslissingen blijven bij de bevoegde gebruiker.']].map(([title, body]) => <motion.div className="pw-manifesto-point" key={title} variants={fadeUp}><h2>{title}</h2><p>{body}</p></motion.div>)}</motion.div></motion.section><FinalCta /></>;
 
 const resourceItems = [
   ['Gedeeltelijke retouren in retail', 'Waarom een retour aan de oorspronkelijke verkoop, voorraad en audit gekoppeld hoort te blijven.', 'Gids', '/guides/retouren'],
@@ -1148,10 +1215,10 @@ const LegalPage = ({ type }: { type: string }) => {
 
 const NotFoundPage = () => <motion.section className="pw-not-found pw-shell" initial="hidden" animate="visible" variants={stagger}><motion.span variants={fadeUp}>404</motion.span><motion.h1 variants={fadeUp}>Deze pagina staat niet in de winkel.</motion.h1><motion.p variants={fadeUp}>De link is mogelijk verplaatst. Vanaf het overzicht vind je snel de juiste richting.</motion.p><motion.a variants={fadeUp} href="/" className="pw-button pw-button-dark">Terug naar home <ArrowRight size={16} /></motion.a></motion.section>;
 
-const FinalCta = ({ eyebrow = 'Klaar voor je volgende stap?', title = <>Begin gratis.<br />Probeer Professional 1 maand.</> }: { eyebrow?: string; title?: React.ReactNode }) => <motion.section className="pw-final" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><div className="pw-shell"><motion.span className="pw-eyebrow" variants={fadeUp}>{eyebrow}</motion.span><motion.h2 variants={fadeUp}>{title}</motion.h2><motion.p variants={fadeUp}>Basis blijft gratis. Na de proefperiode activeer je Professional of blijf je Basis gebruiken.</motion.p><motion.div variants={fadeUp}><a href="/register?plan=professional" className="pw-button pw-button-dark">Probeer Professional gratis <ArrowRight size={17} /></a><a href="/demo" className="pw-text-link">Plan liever een demo <ArrowRight size={15} /></a></motion.div></div></motion.section>;
+const FinalCta = ({ eyebrow = 'PWAYMENT, powered by Pace', title = <>Begin waar je winkel staat.<br />Groei zonder opnieuw te beginnen.</> }: { eyebrow?: string; title?: React.ReactNode }) => <motion.section className="pw-final" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><div className="pw-shell"><motion.span className="pw-eyebrow" variants={fadeUp}>{eyebrow}</motion.span><motion.h2 variants={fadeUp}>{title}</motion.h2><motion.p variants={fadeUp}>Start gratis, laat Pace je account begeleiden of plan een demo rond je bestaande winkelcontext.</motion.p><motion.div variants={fadeUp}><a href="/start" className="pw-button pw-button-dark">Kies je startroute <ArrowRight size={17} /></a><a href="/demo" className="pw-text-link">Plan een persoonlijke demo <ArrowRight size={15} /></a></motion.div></div></motion.section>;
 
 const SiteFooter = ({ locale, routePath }: { locale: PublicLocale; routePath: string }) => (
-  <footer className="pw-footer"><div className="pw-shell"><div className="pw-footer-top"><div className="pw-footer-brand"><a href="/" aria-label="PWAYMENT home"><PaceMark size={74} active emotion="idle" motionMode="subtle" /></a><p>Retailsoftware voor winkels die willen verkopen, beheren en groeien.</p></div><div className="pw-footer-links"><div><strong>Product</strong><a href="/pace">Pace</a><a href="/pos">POS & betalingen</a><a href="/history-returns-invoices">Retouren & facturen</a><a href="/daily-close-reporting">Dagafsluiting</a><a href="/purchasing-suppliers">Inkoop</a><a href="/team-permissions">Team & rechten</a></div><div><strong>Platform</strong><a href="/inventory">Voorraad</a><a href="/insights">Inzichten</a><a href="/customers">Klanten</a><a href="/webshop">Webshop</a><a href="/integrations">Integraties & status</a><a href="/hardware">Hardwarematrix</a></div><div><strong>Bedrijf</strong><a href="/about">Over PWAYMENT</a><a href="/customer-stories">Klantverhalen</a><a href="/resources">Resources</a><a href="/migrate">Migreren</a><a href="/contact">Contact</a></div><div><strong>Account</strong><a href="/pricing">Prijzen</a><a href="/login">Log in</a><a href="/register">Start gratis</a><a href="/demo">Plan een demo</a><a href="/contact">Support</a></div></div></div><div className="pw-footer-bottom"><span>© 2026 PWAYMENT. Alle rechten voorbehouden.</span><div><a href="/legal/privacy">Privacy</a><a href="/legal/cookies">Cookies</a><a href="/legal/terms">Voorwaarden</a><a href="/legal/dpa">Verwerkersovereenkomst</a><a href="/legal/subprocessors">Subverwerkers</a></div><LanguageSwitcher locale={locale} routePath={routePath} compact /></div></div></footer>
+  <footer className="pw-footer"><div className="pw-shell"><div className="pw-footer-top"><div className="pw-footer-brand"><a href="/" aria-label="PWAYMENT home"><PaceMark size={74} active emotion="idle" motionMode="subtle" /></a><strong>PWAYMENT, powered by Pace.</strong><p>Het retailplatform dat met je meewerkt.</p></div><div className="pw-footer-links"><div><strong>Product</strong><a href="/pace">Pace</a><a href="/pos">POS & betalingen</a><a href="/history-returns-invoices">Retouren & facturen</a><a href="/daily-close-reporting">Dagafsluiting</a><a href="/purchasing-suppliers">Inkoop</a><a href="/team-permissions">Team & rechten</a></div><div><strong>Platform</strong><a href="/inventory">Voorraad</a><a href="/insights">Inzichten</a><a href="/customers">Klanten</a><a href="/webshop">Webshop</a><a href="/integrations">Integraties & status</a><a href="/hardware">Hardwarematrix</a></div><div><strong>Bedrijf</strong><a href="/about">Over PWAYMENT</a><a href="/start">Start met PWAYMENT</a><a href="/resources">Resources</a><a href="/migrate">Migreren</a><a href="/contact">Contact</a></div><div><strong>Account</strong><a href="/pricing">Prijzen</a><a href="/login">Log in</a><a href="/register">Start gratis</a><a href="/demo">Plan een demo</a><a href="/contact">Support</a></div></div></div><div className="pw-footer-bottom"><span>© 2026 PWAYMENT. Alle rechten voorbehouden.</span><div><a href="/legal/privacy">Privacy</a><a href="/legal/cookies">Cookies</a><a href="/legal/terms">Voorwaarden</a><a href="/legal/dpa">Verwerkersovereenkomst</a><a href="/legal/subprocessors">Subverwerkers</a></div><LanguageSwitcher locale={locale} routePath={routePath} compact /></div></div></footer>
 );
 
 export default PublicSite;

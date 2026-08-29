@@ -15,9 +15,9 @@ const PRIMARY_SITE_ORIGIN = 'https://www.pwayment.be';
 const SHARE_IMAGE_URL = `${PRIMARY_SITE_ORIGIN}/og-pwayment-social-2026.jpg`;
 
 const shareImageAlt: Record<PublicLocale, string> = {
-  nl: 'PWAYMENT — je winkel, één helder systeem',
-  fr: 'PWAYMENT — votre magasin, un système clair',
-  en: 'PWAYMENT — your store, one clear system',
+  nl: 'PWAYMENT, powered by Pace — het retailplatform dat met je meewerkt',
+  fr: 'PWAYMENT, propulsé par Pace — la plateforme retail qui travaille avec vous',
+  en: 'PWAYMENT, powered by Pace — the retail platform that works with you',
 };
 
 const aliases: Record<string, string> = {
@@ -63,9 +63,9 @@ const routeLabel = (path: string, locale: PublicLocale = 'nl') => {
 };
 
 const organizationDescriptions: Record<PublicLocale, string> = {
-  nl: 'Belgisch retailplatform voor kassa, voorraad, klanten, webshop en retail intelligence.',
-  fr: 'Plateforme belge de gestion retail pour la caisse, le stock, les clients, la boutique en ligne et l\u2019analyse commerciale.',
-  en: 'Belgian retail platform for POS, inventory, customers, online sales and retail intelligence.',
+  nl: 'Belgisch retailplatform voor kassa, voorraad, klanten en webshop, powered by contextuele begeleiding van Pace.',
+  fr: 'Plateforme retail belge pour la caisse, le stock, les clients et la boutique en ligne, propulsée par l\u2019accompagnement contextuel de Pace.',
+  en: 'Belgian retail platform for POS, inventory, customers and online sales, powered by Pace contextual guidance.',
 };
 
 const structuredDataFor = (metadata: PublicRouteMetadata, canonical: string, locale: PublicLocale) => {
@@ -112,11 +112,11 @@ const structuredDataFor = (metadata: PublicRouteMetadata, canonical: string, loc
     '@context': 'https://schema.org',
     '@graph': [
       organization,
-      { '@type': 'WebSite', '@id': `${PRIMARY_SITE_ORIGIN}/#website`, name: 'PWAYMENT', url: localizedHome, inLanguage: language, publisher: { '@id': `${PRIMARY_SITE_ORIGIN}/#organization` } },
-      ...(metadata.path === '/' || metadata.path === '/product' || metadata.path === '/pos' ? [{
+      { '@type': 'WebSite', '@id': `${PRIMARY_SITE_ORIGIN}/#website`, name: 'PWAYMENT, powered by Pace', alternateName: 'PWAYMENT', url: localizedHome, inLanguage: language, publisher: { '@id': `${PRIMARY_SITE_ORIGIN}/#organization` } },
+      ...(metadata.path === '/' || metadata.path === '/product' || metadata.path === '/pos' || metadata.path === '/pace' ? [{
         '@type': 'SoftwareApplication',
         '@id': `${PRIMARY_SITE_ORIGIN}/#software`,
-        name: 'PWAYMENT',
+        name: 'PWAYMENT, powered by Pace',
         applicationCategory: 'BusinessApplication',
         applicationSubCategory: 'Point of Sale and retail management software',
         operatingSystem: 'Web',

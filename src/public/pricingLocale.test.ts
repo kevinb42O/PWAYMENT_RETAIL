@@ -12,6 +12,10 @@ describe('public pricing translations', () => {
     ]);
 
     expect(matrix).toEqual([
+      'Conseils Pace',
+      'Configuration et navigation contextuelles', 'Inclus', 'Inclus', 'Inclus',
+      'Questions sur l\'IA générative', '5 par jour', '250 par mois', '2 500 par mois',
+      'Politiques Pace et proactivité par rôle', '—', 'Préférence personnelle', 'Politique centrale par rôle',
       'Logiciel de caisse et compatibilité',
       'Écrans de caisse inclus dans le logiciel', '1', '1', 'Selon le contrat',
       'Connexion d’une imprimante et d’un lecteur de codes-barres', 'Basic', 'Étendue', 'Étendue',
@@ -31,7 +35,7 @@ describe('public pricing translations', () => {
       'Boutique en ligne et intégrations',
       'Boutique en ligne PWAYMENT', '—', '1 boutique en ligne', 'Plusieurs boutiques en ligne',
       'Comptabilité et Peppol', '—', 'Selon disponibilité du connecteur', 'Inclus / sur mesure',
-      'REST API & webhooks', '—', '—', 'Inclus',
+      'API REST et webhooks', '—', '—', 'Inclus',
       'Équipe, analyses et contrôle',
       'Historique complet des transactions', '30 jours', 'Inclus', 'Inclus',
       'Analyses des ventes, des marges et des clients', '—', 'Inclus', 'Inclus',
