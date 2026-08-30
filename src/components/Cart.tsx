@@ -18,6 +18,9 @@ import {
   MoreHorizontal,
   Clock3,
   Monitor,
+  Pin,
+  PinOff,
+  X,
 } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { useProducts } from "../store/useProducts";
@@ -140,7 +143,19 @@ const documentRequestLabel = (
   return "Kassabon";
 };
 
-export const Cart: React.FC = () => {
+interface CartProps {
+  desktopPanelMode?: "open" | "pinned";
+  onCloseDesktopPanel?: () => void;
+  onToggleDesktopPin?: () => void;
+  onReceiptVisibilityChange?: (visible: boolean) => void;
+}
+
+export const Cart: React.FC<CartProps> = ({
+  desktopPanelMode,
+  onCloseDesktopPanel,
+  onToggleDesktopPin,
+  onReceiptVisibilityChange,
+}) => {
   const cart = useStore((s) => s.cart);
   const updateOrderItemQuantity = useStore((s) => s.updateOrderItemQuantity);
   const removeOrderItem = useStore((s) => s.removeOrderItem);
@@ -530,7 +545,9 @@ export const Cart: React.FC = () => {
           <button
             onClick={() => {
               useCustomerDisplayRuntime.getState().resetPayment();
+              onReceiptVisibilityChange?.(false);
               setReceipt(null);
+              onCloseDesktopPanel?.();
             }}
             className="flex-1 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold"
           >
@@ -615,6 +632,7 @@ export const Cart: React.FC = () => {
       useCustomerDisplayRuntime
         .getState()
         .completePayment(result.transaction);
+      onReceiptVisibilityChange?.(true);
       clearCart();
       setReceipt(result.transaction);
       // Printing happens only after the commit, so a printer failure can never
@@ -1008,28 +1026,51 @@ export const Cart: React.FC = () => {
             )}
           </div>
         </div>
-        <div ref={cartActionsRef} className="relative shrink-0">
-          <button
-            type="button"
-            onClick={() => setCartActionsOpen((open) => !open)}
-            className={`rounded-xl border p-2 transition-colors ${
-              cartActionsOpen
-                ? "border-sky-200 bg-sky-50 text-sky-800"
-                : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900"
-            }`}
-            title="Winkelwagenacties"
-            aria-label="Winkelwagenacties"
-            aria-expanded={cartActionsOpen}
-            aria-haspopup="menu"
-          >
-            <MoreHorizontal size={20} />
-          </button>
-          {cartActionsOpen && (
-            <div
-              role="menu"
-              aria-label="Winkelwagenacties"
-              className="absolute right-0 top-11 z-40 w-64 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl"
+        <div className="flex shrink-0 items-center gap-1">
+          {desktopPanelMode && onToggleDesktopPin && (
+            <button
+              type="button"
+              onClick={onToggleDesktopPin}
+              className="rounded-xl border border-transparent p-2 text-slate-600 transition-colors hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900"
+              title={desktopPanelMode === "pinned" ? "Winkelwagen losmaken" : "Winkelwagen vastzetten"}
+              aria-label={desktopPanelMode === "pinned" ? "Winkelwagen losmaken" : "Winkelwagen vastzetten"}
             >
+              {desktopPanelMode === "pinned" ? <PinOff size={18} /> : <Pin size={18} />}
+            </button>
+          )}
+          {desktopPanelMode === "open" && onCloseDesktopPanel && (
+            <button
+              type="button"
+              onClick={onCloseDesktopPanel}
+              className="rounded-xl border border-transparent p-2 text-slate-600 transition-colors hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900"
+              title="Winkelwagen sluiten"
+              aria-label="Winkelwagen sluiten"
+            >
+              <X size={19} />
+            </button>
+          )}
+          <div ref={cartActionsRef} className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => setCartActionsOpen((open) => !open)}
+              className={`rounded-xl border p-2 transition-colors ${
+                cartActionsOpen
+                  ? "border-sky-200 bg-sky-50 text-sky-800"
+                  : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900"
+              }`}
+              title="Winkelwagenacties"
+              aria-label="Winkelwagenacties"
+              aria-expanded={cartActionsOpen}
+              aria-haspopup="menu"
+            >
+              <MoreHorizontal size={20} />
+            </button>
+            {cartActionsOpen && (
+              <div
+                role="menu"
+                aria-label="Winkelwagenacties"
+                className="absolute right-0 top-11 z-40 w-64 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl"
+              >
               <button
                 type="button"
                 role="menuitem"
@@ -1133,8 +1174,9 @@ export const Cart: React.FC = () => {
                   </button>
                 </>
               )}
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

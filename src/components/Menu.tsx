@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "../store/useStore";
 import { useProducts } from "../store/useProducts";
 import { formatEUR } from "../utils/money";
@@ -30,6 +30,11 @@ interface MenuProps {
   onStartStoreSetup?: () => void;
   onImportProducts?: () => void;
   onAddCategory?: () => void;
+  onProductSelected?: (feedback: {
+    productName: string;
+    priceCents: number;
+    sourceRect: { left: number; top: number; width: number; height: number };
+  }) => void;
 }
 
 export const Menu: React.FC<MenuProps> = ({
@@ -38,6 +43,7 @@ export const Menu: React.FC<MenuProps> = ({
   onStartStoreSetup,
   onImportProducts,
   onAddCategory,
+  onProductSelected,
 }) => {
   const addOrderItem = useStore((s) => s.addOrderItem);
   const findByScanCode = useProducts((s) => s.findByScanCode);
@@ -52,6 +58,12 @@ export const Menu: React.FC<MenuProps> = ({
   );
   const [activeBrand, setActiveBrand] = useState<string | "all">("all");
   const [visibleProductCount, setVisibleProductCount] = useState(40);
+  const [recentlyAdded, setRecentlyAdded] = useState<{ productId: string; nonce: number } | null>(null);
+  const addedFeedbackTimerRef = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (addedFeedbackTimerRef.current != null) window.clearTimeout(addedFeedbackTimerRef.current);
+  }, []);
 
   useEffect(() => {
     void hydrateProducts();
@@ -428,7 +440,7 @@ export const Menu: React.FC<MenuProps> = ({
 
         {/* Product grid */}
         <div className="pos-product-grid flex-1 overflow-y-auto p-4 lg:p-5">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          <div className="pos-product-grid-layout grid gap-3">
             {visibleProducts.map((product) => {
               const outOfStock =
                 product.stockQty != null && product.stockQty <= 0;
@@ -441,7 +453,19 @@ export const Menu: React.FC<MenuProps> = ({
               return (
                 <button
                   key={product.id}
-                  onClick={() => addOrderItem(product)}
+                  style={{ viewTransitionName: `pos-product-${String(product.id).replace(/[^a-zA-Z0-9_-]/g, "-")}` }}
+                  onClick={(event) => {
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    addOrderItem(product);
+                    setRecentlyAdded({ productId: product.id, nonce: Date.now() });
+                    if (addedFeedbackTimerRef.current != null) window.clearTimeout(addedFeedbackTimerRef.current);
+                    addedFeedbackTimerRef.current = window.setTimeout(() => setRecentlyAdded(null), 520);
+                    onProductSelected?.({
+                      productName: product.name,
+                      priceCents: product.priceCents,
+                      sourceRect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
+                    });
+                  }}
                   disabled={outOfStock}
                   className={`pos-product-card relative flex min-h-[146px] flex-col justify-between overflow-hidden rounded-xl border p-4 text-left transition-colors ${
                     outOfStock
@@ -449,6 +473,9 @@ export const Menu: React.FC<MenuProps> = ({
                       : "hover:border-sky-300 active:bg-sky-50/40"
                   }`}
                 >
+                  {recentlyAdded?.productId === product.id && (
+                    <span key={recentlyAdded.nonce} className="pos-product-added-feedback" aria-hidden="true">+1</span>
+                  )}
                   <div className="relative z-10 space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <span className="rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-600">

@@ -1,7 +1,7 @@
 import {
   CUSTOMER_DISPLAY_SESSION_STORAGE_KEY,
 } from "../src/customer-display/localSession";
-import { addProduct, expect, openApp, test } from "./fixtures";
+import { addProduct, expect, openApp, openDesktopCart, test } from "./fixtures";
 
 const enabledConfig = {
   enabled: true,
@@ -61,6 +61,7 @@ test("cashier can open an enabled customer display from cart actions", async ({
     );
   }, enabledConfig);
   await openApp(appPage);
+  await openDesktopCart(appPage);
 
   await appPage
     .getByRole("button", { name: "Winkelwagenacties" })
@@ -133,6 +134,7 @@ test("customer display follows the local cart and committed payment", async ({
   ).toBeVisible();
   await expect(displayPage.getByText("€ 5,95").last()).toBeVisible();
 
+  await openDesktopCart(appPage);
   await appPage.getByRole("button", { name: "Kaart", exact: true }).click();
   await expect(
     displayPage.getByRole("heading", { name: "Bedankt voor je aankoop" }),

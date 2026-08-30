@@ -42,7 +42,14 @@ export const addProduct = async (
   for (let index = 0; index < quantity; index += 1) await product.click();
 };
 
+export const openDesktopCart = async (page: Page): Promise<void> => {
+  const opener = page.getByRole("button", { name: /Winkelwagen openen/ });
+  if (await opener.isVisible()) await opener.click();
+  await expect(page.getByRole("heading", { name: "Winkelwagen" })).toBeVisible();
+};
+
 export const checkoutPin = async (page: Page): Promise<void> => {
+  await openDesktopCart(page);
   await page.getByRole("button", { name: "Kaart", exact: true }).click();
   await expect(page.getByText("Betaling gelukt")).toBeVisible();
 };
@@ -50,7 +57,7 @@ export const checkoutPin = async (page: Page): Promise<void> => {
 export const closeReceipt = async (page: Page): Promise<void> => {
   await page.getByRole("button", { name: "Sluiten", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Winkelwagen" }),
+    page.getByRole("button", { name: /Winkelwagen openen, 0 artikelen/ }),
   ).toBeVisible();
 };
 

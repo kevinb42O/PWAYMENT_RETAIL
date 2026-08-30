@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { useStore, type MainView } from "../store/useStore";
 import { useAuth } from "../auth/useAuth";
 import { useProducts } from "../store/useProducts";
@@ -32,6 +33,8 @@ import {
 import { getPrimaryPaceOutboxIssue } from "../pace/outboxIssue";
 import { validatePaceDestination, type PaceDestination, type PaceDestinationAccess } from "../pace/paceDestinations";
 import { playRegisterSound, unlockRegisterSounds } from "../sound/registerSounds";
+import { projectCart } from "../customer-display/cartProjection";
+import { formatEUR } from "../utils/money";
 import {
   AlertCircle,
   CheckCircle2,
@@ -58,6 +61,7 @@ import {
   ShieldCheck,
   RotateCcw,
   PackageSearch,
+  PanelRightOpen,
   type LucideIcon,
 } from "lucide-react";
 
@@ -126,6 +130,16 @@ interface ScanFeedback {
   detail: string;
 }
 
+interface CartFlight {
+  id: number;
+  productName: string;
+  priceLabel: string;
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+}
+
 interface NavigationItem {
   view: MainView;
   label: string;
@@ -140,6 +154,7 @@ export const Layout: React.FC = () => {
     setMobileView,
     cart,
     cartDiscount,
+    cartGiftCards,
     cartDocumentRequest,
     mainView,
     setMainView,
@@ -177,6 +192,10 @@ export const Layout: React.FC = () => {
   );
   const [isNavDropdownOpen, setIsNavDropdownOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [desktopCartOpen, setDesktopCartOpen] = useState(false);
+  const [desktopCartPinned, setDesktopCartPinned] = useState(false);
+  const [cartFlights, setCartFlights] = useState<CartFlight[]>([]);
+  const [cartArrivalNonce, setCartArrivalNonce] = useState(0);
   const [openAuditLogAtReturnSearch, setOpenAuditLogAtReturnSearch] =
     useState(false);
   const [returnReceiptBarcode, setReturnReceiptBarcode] = useState<string | null>(null);
@@ -208,12 +227,230 @@ export const Layout: React.FC = () => {
   const navDropdownRef = useRef<HTMLDivElement | null>(null);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
   const userMenuButtonRef = useRef<HTMLButtonElement | null>(null);
+  const previousDesktopCartCountRef = useRef(0);
+  const desktopCartReceiptOpenRef = useRef(false);
+  const desktopCartPanelRef = useRef<HTMLDivElement | null>(null);
+  const desktopCartDockTargetRef = useRef<HTMLSpanElement | null>(null);
+  const cartFlightSequenceRef = useRef(0);
+  const cartFlightTimersRef = useRef(new Set<number>());
 
   const cartCount = cart.orders.reduce((acc, o) => acc + o.quantity, 0);
+  const desktopCartVisible = desktopCartOpen || desktopCartPinned;
   const linkedCustomer = React.useMemo(
     () => customers.find((customer) => customer.id === linkedCustomerId),
     [customers, linkedCustomerId],
   );
+  const compactCartTotal = React.useMemo(
+    () => projectCart({
+      orders: cart.orders,
+      linkedCustomer,
+      discountCents: cartDiscount?.amountCents ?? 0,
+      giftCards: cartGiftCards,
+    }).remainingCents,
+    [cart.orders, cartDiscount?.amountCents, cartGiftCards, linkedCustomer],
+  );
+
+  const desktopCartPreferenceKey = `pwayment:desktop-cart-pinned:v1:${currentStoreId ?? "unscoped"}:${currentUserId ?? "anonymous"}`;
+
+  const transitionDesktopCartLayout = React.useCallback((update: () => void) => {
+    const root = document.documentElement;
+    const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+    if (!isDesktop || reducedMotion || root.classList.contains("pos-cart-layout-transitioning")) {
+      update();
+      return;
+    }
+
+    root.classList.add("pos-cart-layout-transitioning");
+
+    if (!document.startViewTransition) {
+      const visibleCards = Array.from(document.querySelectorAll<HTMLElement>(".pos-product-card"))
+        .map((element) => ({ element, rect: element.getBoundingClientRect() }))
+        .filter(({ rect }) => rect.bottom > 0 && rect.top < window.innerHeight);
+      const panel = desktopCartPanelRef.current;
+      const dock = document.querySelector<HTMLElement>(".pos-cart-dock");
+      const oldPanelRect = panel?.getBoundingClientRect();
+      const oldDockRect = dock?.getBoundingClientRect();
+
+      const cloneVisibleRegion = (element: HTMLElement | null, rect?: DOMRect) => {
+        if (!element || !rect || rect.width < 2 || rect.height < 2) return null;
+        const clone = element.cloneNode(true) as HTMLElement;
+        clone.setAttribute("aria-hidden", "true");
+        clone.inert = true;
+        Object.assign(clone.style, {
+          position: "fixed",
+          left: `${rect.left}px`,
+          top: `${rect.top}px`,
+          width: `${rect.width}px`,
+          minWidth: `${rect.width}px`,
+          height: `${rect.height}px`,
+          margin: "0",
+          zIndex: "90",
+          pointerEvents: "none",
+          transition: "none",
+          viewTransitionName: "none",
+        });
+        document.body.appendChild(clone);
+        return clone;
+      };
+
+      const oldPanelClone = cloneVisibleRegion(panel, oldPanelRect);
+      const oldDockClone = cloneVisibleRegion(dock, oldDockRect);
+      flushSync(update);
+
+      const newPanelRect = panel?.getBoundingClientRect();
+      const newDockRect = dock?.getBoundingClientRect();
+      root.classList.remove("pos-cart-layout-transitioning");
+
+      for (const { element, rect } of visibleCards) {
+        const nextRect = element.getBoundingClientRect();
+        if (nextRect.width < 2 || nextRect.height < 2) continue;
+        const deltaX = rect.left - nextRect.left;
+        const deltaY = rect.top - nextRect.top;
+        const scaleX = rect.width / nextRect.width;
+        const scaleY = rect.height / nextRect.height;
+        if (Math.abs(deltaX) < 0.5 && Math.abs(deltaY) < 0.5 && Math.abs(scaleX - 1) < 0.005) continue;
+        element.style.setProperty("--pos-layout-delta-x", `${deltaX}px`);
+        element.style.setProperty("--pos-layout-delta-y", `${deltaY}px`);
+        element.style.setProperty("--pos-layout-scale-x", String(scaleX));
+        element.style.setProperty("--pos-layout-scale-y", String(scaleY));
+        element.classList.remove("pos-product-card--layout-moving");
+        void element.offsetWidth;
+        element.classList.add("pos-product-card--layout-moving");
+        window.setTimeout(() => element.classList.remove("pos-product-card--layout-moving"), 340);
+      }
+
+      const animateRegionChange = (
+        element: HTMLElement | null,
+        oldRect: DOMRect | undefined,
+        nextRect: DOMRect | undefined,
+        oldClone: HTMLElement | null,
+      ) => {
+        const wasVisible = Boolean(oldRect && oldRect.width >= 2);
+        const isVisible = Boolean(nextRect && nextRect.width >= 2);
+        if (!wasVisible && isVisible && element) {
+          element.classList.add("pos-cart-region--entering");
+          window.setTimeout(() => element.classList.remove("pos-cart-region--entering"), 320);
+        }
+        if (wasVisible && !isVisible && oldClone) {
+          oldClone.classList.add("pos-cart-region--leaving");
+          window.setTimeout(() => oldClone.remove(), 280);
+        } else {
+          oldClone?.remove();
+        }
+      };
+
+      animateRegionChange(panel, oldPanelRect, newPanelRect, oldPanelClone);
+      animateRegionChange(dock, oldDockRect, newDockRect, oldDockClone);
+      return;
+    }
+
+    const transition = document.startViewTransition(() => {
+      flushSync(update);
+    });
+    void transition.finished.finally(() => {
+      root.classList.remove("pos-cart-layout-transitioning");
+    });
+  }, [isDesktop]);
+
+  useEffect(() => {
+    try {
+      setDesktopCartPinned(globalThis.localStorage?.getItem(desktopCartPreferenceKey) === "true");
+    } catch {
+      setDesktopCartPinned(false);
+    }
+    setDesktopCartOpen(false);
+    desktopCartReceiptOpenRef.current = false;
+  }, [desktopCartPreferenceKey]);
+
+  useEffect(() => {
+    try {
+      globalThis.localStorage?.setItem(desktopCartPreferenceKey, String(desktopCartPinned));
+    } catch {
+      // The in-memory layout preference still works when storage is unavailable.
+    }
+  }, [desktopCartPinned, desktopCartPreferenceKey]);
+
+  useEffect(() => {
+    if (!desktopCartOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        transitionDesktopCartLayout(() => setDesktopCartOpen(false));
+      }
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [desktopCartOpen, transitionDesktopCartLayout]);
+
+  useEffect(() => {
+    const previousCount = previousDesktopCartCountRef.current;
+    previousDesktopCartCountRef.current = cartCount;
+    if (
+      previousCount > 0
+      && cartCount === 0
+      && !desktopCartPinned
+      && !desktopCartReceiptOpenRef.current
+    ) {
+      transitionDesktopCartLayout(() => setDesktopCartOpen(false));
+    }
+  }, [cartCount, desktopCartPinned, transitionDesktopCartLayout]);
+
+  useEffect(() => () => {
+    for (const timer of cartFlightTimersRef.current) window.clearTimeout(timer);
+    cartFlightTimersRef.current.clear();
+  }, []);
+
+  const showProductArrival = React.useCallback((feedback: {
+    productName: string;
+    priceCents: number;
+    sourceRect: { left: number; top: number; width: number; height: number };
+  }) => {
+    if (!isDesktop) return;
+    const panelCount = desktopCartPanelRef.current?.querySelector<HTMLElement>(".pos-cart-count");
+    const target = desktopCartVisible ? panelCount : desktopCartDockTargetRef.current;
+    if (!target) return;
+
+    const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reducedMotion) {
+      setCartArrivalNonce((nonce) => nonce + 1);
+      return;
+    }
+
+    const targetRect = target.getBoundingClientRect();
+    const startX = feedback.sourceRect.left + feedback.sourceRect.width / 2;
+    const startY = feedback.sourceRect.top + feedback.sourceRect.height / 2;
+    const endX = targetRect.left + targetRect.width / 2;
+    const endY = targetRect.top + targetRect.height / 2;
+    const deltaX = endX - startX;
+    const deltaY = endY - startY;
+    const id = ++cartFlightSequenceRef.current;
+
+    setCartFlights((flights) => [
+      ...flights.slice(-5),
+      {
+        id,
+        productName: feedback.productName,
+        priceLabel: formatEUR(feedback.priceCents),
+        startX,
+        startY,
+        endX: deltaX,
+        endY: deltaY,
+      },
+    ]);
+
+    const timer = window.setTimeout(() => {
+      setCartFlights((flights) => flights.filter((flight) => flight.id !== id));
+      if (target !== desktopCartDockTargetRef.current) {
+        target.classList.remove("pos-cart-target-pop");
+        void target.offsetWidth;
+        target.classList.add("pos-cart-target-pop");
+        window.setTimeout(() => target.classList.remove("pos-cart-target-pop"), 260);
+      }
+      setCartArrivalNonce((nonce) => nonce + 1);
+      cartFlightTimersRef.current.delete(timer);
+    }, 500);
+    cartFlightTimersRef.current.add(timer);
+  }, [desktopCartVisible, isDesktop]);
   const customerInsights = useCustomerInsights(
     linkedCustomerId,
     products,
@@ -311,7 +548,10 @@ export const Layout: React.FC = () => {
         setReturnReceiptBarcode(null);
         setOpenAuditLogAtReturnSearch(true);
       }
-      if (destination.view === "pos" && destination.focus === "cart") setMobileView("cart");
+      if (destination.view === "pos" && destination.focus === "cart") {
+        setMobileView("cart");
+        if (isDesktop) transitionDesktopCartLayout(() => setDesktopCartOpen(true));
+      }
       if (destination.view === "pos" && destination.focus === "product-search") setMobileView("menu");
       setMainView(destination.view);
       if (destination.view === "pos" && destination.focus === "product-search") focusScanInput();
@@ -516,6 +756,19 @@ export const Layout: React.FC = () => {
     const result = scanCodeToCart(value);
 
     if (result.status === "matched" && result.product) {
+      const sourceRect = scanInputRef.current?.getBoundingClientRect();
+      if (sourceRect) {
+        showProductArrival({
+          productName: result.product.name,
+          priceCents: result.product.priceCents,
+          sourceRect: {
+            left: sourceRect.left,
+            top: sourceRect.top,
+            width: sourceRect.width,
+            height: sourceRect.height,
+          },
+        });
+      }
       setProductQuery("");
       setScanFeedback({
         tone: "success",
@@ -1307,19 +1560,84 @@ export const Layout: React.FC = () => {
                   </div>
                 </>
               ) : (
-                <div className="flex min-w-0 w-full h-full">
-                  <div className="min-w-0 flex-1 h-full border-r border-slate-200">
+                <div className="relative flex min-w-0 w-full h-full overflow-hidden">
+                  <div
+                    className={`pos-product-stage-frame min-w-0 flex-1 h-full ${desktopCartPinned || desktopCartOpen ? "border-r border-slate-200" : ""}`}
+                  >
                     <Menu
                       query={productQuery}
                       onQueryChange={setProductQuery}
                       onStartStoreSetup={() => openGuidedSetup("welcome")}
                       onAddCategory={openCategorySetup}
                       onImportProducts={openImportSetup}
+                      onProductSelected={showProductArrival}
                     />
                   </div>
-                  <div className="w-[32%] lg:w-[28%] shrink-0 h-full">
-                    <Cart />
+                  <div
+                    ref={desktopCartPanelRef}
+                    className={`pos-cart-panel-frame ${desktopCartVisible ? "pos-cart-panel-frame--open" : "pos-cart-panel-frame--closed"} h-full bg-white`}
+                    aria-hidden={!desktopCartVisible}
+                    inert={!desktopCartVisible ? true : undefined}
+                    role="region"
+                    aria-label="Winkelwagen"
+                  >
+                    <Cart
+                      desktopPanelMode={desktopCartPinned ? "pinned" : "open"}
+                      onCloseDesktopPanel={() => transitionDesktopCartLayout(() => setDesktopCartOpen(false))}
+                      onReceiptVisibilityChange={(visible) => {
+                        desktopCartReceiptOpenRef.current = visible;
+                      }}
+                      onToggleDesktopPin={() => {
+                        transitionDesktopCartLayout(() => {
+                          if (desktopCartPinned) {
+                            setDesktopCartPinned(false);
+                            setDesktopCartOpen(true);
+                          } else {
+                            setDesktopCartPinned(true);
+                            setDesktopCartOpen(false);
+                          }
+                        });
+                      }}
+                    />
                   </div>
+                  <aside
+                    aria-label="Compacte winkelwagen"
+                    aria-hidden={desktopCartVisible}
+                    className={`pos-cart-dock relative z-40 h-full shrink-0 bg-white shadow-[-4px_0_18px_rgba(15,23,42,0.06)] print:hidden ${desktopCartVisible ? "pos-cart-dock--hidden" : "pos-cart-dock--open"}`}
+                  >
+                    <button
+                      type="button"
+                      disabled={desktopCartVisible}
+                      onClick={() => transitionDesktopCartLayout(() => setDesktopCartOpen(true))}
+                      aria-label={`Winkelwagen openen, ${cartCount} ${cartCount === 1 ? "artikel" : "artikelen"}, ${formatEUR(compactCartTotal)}`}
+                      aria-expanded={desktopCartVisible}
+                      className="flex h-full w-full cursor-pointer flex-col items-center rounded-none bg-white px-2 py-3 text-slate-700 outline-none transition-colors hover:bg-sky-50 hover:text-sky-900 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500 disabled:cursor-default"
+                    >
+                      <span className="flex w-full flex-col items-center rounded-2xl border border-slate-200 px-1.5 py-3">
+                        <span
+                          ref={desktopCartDockTargetRef}
+                          key={`arrival-${cartArrivalNonce}`}
+                          className={cartArrivalNonce > 0 ? "pos-cart-target-pop relative" : "relative"}
+                        >
+                          <ShoppingCart size={24} />
+                          {cartCount > 0 && (
+                            <span className="absolute -right-3 -top-3 min-w-5 rounded-full bg-red-500 px-1.5 py-0.5 text-center text-[10px] font-black leading-4 text-white shadow-sm">
+                              {cartCount > 99 ? "99+" : cartCount}
+                            </span>
+                          )}
+                        </span>
+                        <span className="mt-3 text-[10px] font-black uppercase tracking-[0.12em]">Kassa</span>
+                      </span>
+
+                      <span className="mt-auto flex w-full flex-col items-center rounded-2xl border border-slate-200 bg-slate-50 px-1 py-3">
+                        <span className="text-[9px] font-black uppercase tracking-wider text-slate-500">Totaal</span>
+                        <span className="mt-1 max-w-full text-[11px] font-black tabular-nums tracking-tight">
+                          {formatEUR(compactCartTotal)}
+                        </span>
+                        <PanelRightOpen size={17} className="mt-2 text-sky-600" />
+                      </span>
+                    </button>
+                  </aside>
                 </div>
               )}
             </div>
@@ -1327,6 +1645,25 @@ export const Layout: React.FC = () => {
           </div>
         )}
       </main>
+      {cartFlights.map((flight) => (
+        <div
+          key={flight.id}
+          className="pos-cart-flight"
+          aria-hidden="true"
+          style={{
+            left: flight.startX,
+            top: flight.startY,
+            "--cart-flight-end-x": `${flight.endX}px`,
+            "--cart-flight-end-y": `${flight.endY}px`,
+          } as React.CSSProperties}
+        >
+          <span className="pos-cart-flight-icon"><ShoppingBag size={15} /></span>
+          <span className="min-w-0">
+            <strong className="block truncate text-[11px] font-black text-slate-900">{flight.productName}</strong>
+            <span className="block text-[10px] font-bold text-sky-700">{flight.priceLabel}</span>
+          </span>
+        </div>
+      ))}
       {(currentRole === "owner" || currentRole === "manager") && (
         <StoreSetupGuide
           open={storeSetupOpen}

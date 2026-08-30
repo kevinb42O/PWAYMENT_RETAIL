@@ -4,6 +4,7 @@ import {
   closeReceipt,
   expect,
   openApp,
+  openDesktopCart,
   readStore,
   test,
 } from "./fixtures";
@@ -69,6 +70,7 @@ test("cash entry accepts a hardware keyboard and confirms with Enter", async ({
 }) => {
   await openApp(appPage);
   await addProduct(appPage, /Allen Hardware Bolts 1 inch/);
+  await openDesktopCart(appPage);
   await appPage.getByRole("button", { name: "Cash", exact: true }).click();
 
   const dialog = appPage.getByRole("dialog", { name: "Contante betaling" });
@@ -86,11 +88,22 @@ test("cash entry accepts a hardware keyboard and confirms with Enter", async ({
   await amount.press("Enter");
 
   await expect(appPage.getByText("Betaling gelukt")).toBeVisible();
+  await expect(
+    appPage.getByRole("region", { name: "Winkelwagen" }),
+  ).toBeVisible();
+  await expect(
+    appPage.getByRole("complementary", { name: "Compacte winkelwagen" }),
+  ).toBeHidden();
   const transactions = await readStore<StoredTransaction>(appPage, "transactions");
   expect(transactions[0]).toMatchObject({
     paymentMethod: "Cash",
     tenderedCents: 1_000,
   });
+
+  await appPage.getByRole("button", { name: "Sluiten", exact: true }).click();
+  await expect(
+    appPage.getByRole("complementary", { name: "Compacte winkelwagen" }),
+  ).toBeVisible();
 });
 
 test("POS return shortcut opens the manual transaction lookup directly", async ({
@@ -176,6 +189,7 @@ test("gift-card issuance is a liability and redemption uses its own tender", asy
 
   await appPage.getByRole("button", { name: "Kassa" }).click();
   await addProduct(appPage, /Allen Hardware Bolts 1 inch/);
+  await openDesktopCart(appPage);
   await appPage
     .getByRole("button", { name: "Deels betalen of cadeaubon gebruiken" })
     .click();
@@ -216,6 +230,7 @@ test("cash and card split is exact and visibly explained in Historiek", async ({
 }) => {
   await openApp(appPage);
   await addProduct(appPage, /Allen Hardware Bolts 1 inch/);
+  await openDesktopCart(appPage);
   await appPage
     .getByRole("button", { name: "Deels betalen of cadeaubon gebruiken" })
     .click();
@@ -336,6 +351,7 @@ test("open cart survives a full reload without duplicating lines", async ({
   await expect(
     appPage.getByRole("searchbox", { name: "Scan barcode of zoek product" }),
   ).toBeVisible();
+  await openDesktopCart(appPage);
   await expect(
     appPage.getByRole("button", { name: /Allen Hardware Bolts 1 inch € 5,95/ }),
   ).toBeVisible();
@@ -355,6 +371,7 @@ test("a held cart resumes safely while the current customer is kept in the queue
   const stockBefore = await readStore<StoredProduct>(appPage, "products");
 
   await addProduct(appPage, firstCustomerProduct);
+  await openDesktopCart(appPage);
   await appPage
     .getByRole("button", { name: "Winkelwagenacties" })
     .click();
@@ -363,9 +380,8 @@ test("a held cart resumes safely while the current customer is kept in the queue
     .click();
 
   await expect(
-    appPage.getByText("Klaar voor de eerste scan", { exact: true }),
+    appPage.getByRole("button", { name: /Winkelwagen openen, 0 artikelen/ }),
   ).toBeVisible();
-  await expect(appPage.locator(".pos-cart-count")).toHaveText("0");
   expect(
     await readStore<StoredTransaction>(appPage, "transactions"),
   ).toHaveLength(0);
@@ -378,6 +394,7 @@ test("a held cart resumes safely while the current customer is kept in the queue
   );
 
   await addProduct(appPage, nextCustomerProduct, 2);
+  await openDesktopCart(appPage);
   await expect(appPage.locator(".pos-cart-count")).toHaveText("2");
 
   await appPage

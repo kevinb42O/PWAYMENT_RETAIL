@@ -1461,6 +1461,10 @@ body {
   background: #f4f7f9;
 }
 
+.pos-product-grid-layout {
+  grid-template-columns: repeat(auto-fill, minmax(min(210px, 100%), 1fr));
+}
+
 .pos-product-card {
   border-color: #dbe3ea;
   background: #ffffff;
@@ -1471,9 +1475,241 @@ body {
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.07);
 }
 
+@keyframes pos-product-card-layout-move {
+  from {
+    transform-origin: top left;
+    transform: translate(var(--pos-layout-delta-x), var(--pos-layout-delta-y)) scale(var(--pos-layout-scale-x), var(--pos-layout-scale-y));
+  }
+  to {
+    transform-origin: top left;
+    transform: none;
+  }
+}
+
+.pos-product-card--layout-moving {
+  animation: pos-product-card-layout-move 320ms cubic-bezier(.22,.8,.22,1) both;
+  will-change: transform;
+}
+
+@keyframes pos-product-added-confirm {
+  0% { opacity: 0; transform: translateY(5px) scale(0.75); }
+  38% { opacity: 1; transform: translateY(0) scale(1.08); }
+  100% { opacity: 0; transform: translateY(-7px) scale(0.96); }
+}
+
+.pos-product-added-feedback {
+  position: absolute;
+  right: 12px;
+  bottom: 48px;
+  z-index: 20;
+  display: grid;
+  min-width: 28px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid #67e8f9;
+  border-radius: 999px;
+  background: #ecfeff;
+  color: #0e7490;
+  font-size: 11px;
+  font-weight: 900;
+  box-shadow: 0 7px 18px rgba(8, 145, 178, 0.18);
+  animation: pos-product-added-confirm 500ms ease-out both;
+}
+
+@keyframes pos-cart-flight-travel {
+  from { transform: translate(-50%, -50%) scale(0.96) rotate(-1deg); }
+  to { transform: translate(calc(-50% + var(--cart-flight-end-x)), calc(-50% + var(--cart-flight-end-y))) scale(0.42) rotate(2deg); }
+}
+
+@keyframes pos-cart-flight-fade {
+  0% { opacity: 0; }
+  10%, 76% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.pos-cart-flight {
+  position: fixed;
+  z-index: 100;
+  display: grid;
+  width: min(180px, 34vw);
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  pointer-events: none;
+  border: 1px solid rgba(125, 211, 252, 0.9);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.2);
+  backdrop-filter: blur(8px);
+  animation:
+    pos-cart-flight-travel 480ms cubic-bezier(.18,.82,.24,1) both,
+    pos-cart-flight-fade 480ms linear both;
+}
+
+.pos-cart-flight-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 9px;
+  background: #ecfeff;
+  color: #0e7490;
+}
+
 .pos-cart {
   background: #ffffff;
   box-shadow: none;
+}
+
+.pos-cart-panel-frame {
+  flex: 0 0 auto;
+  width: 0;
+  min-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    width 240ms cubic-bezier(.2,.75,.2,1),
+    min-width 240ms cubic-bezier(.2,.75,.2,1),
+    opacity 150ms ease-out;
+}
+
+.pos-product-stage-frame {
+  view-transition-name: pos-product-stage;
+}
+
+.pos-product-card {
+  view-transition-class: pos-product-card;
+}
+
+.pos-cart-panel-frame {
+  view-transition-name: pos-cart-panel;
+}
+
+.pos-cart-dock {
+  view-transition-name: pos-cart-dock;
+}
+
+.pos-cart-layout-transitioning .pos-cart-panel-frame,
+.pos-cart-layout-transitioning .pos-cart-dock {
+  transition: none !important;
+}
+
+@keyframes pos-cart-region-enter {
+  from { opacity: 0; transform: translateX(32px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pos-cart-region-leave {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(32px); }
+}
+
+.pos-cart-region--entering {
+  animation: pos-cart-region-enter 300ms cubic-bezier(.22,.8,.22,1) both;
+}
+
+.pos-cart-region--leaving {
+  animation: pos-cart-region-leave 260ms cubic-bezier(.4,0,.6,1) both;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-group(pos-product-stage),
+::view-transition-group(pos-cart-panel),
+::view-transition-group(pos-cart-dock),
+::view-transition-group(.pos-product-card) {
+  animation-duration: 320ms;
+  animation-timing-function: cubic-bezier(.22,.8,.22,1);
+}
+
+::view-transition-old(pos-product-stage),
+::view-transition-new(pos-product-stage),
+::view-transition-old(pos-cart-panel),
+::view-transition-new(pos-cart-panel),
+::view-transition-old(pos-cart-dock),
+::view-transition-new(pos-cart-dock),
+::view-transition-old(.pos-product-card),
+::view-transition-new(.pos-product-card) {
+  animation-duration: 320ms;
+  animation-timing-function: cubic-bezier(.22,.8,.22,1);
+  mix-blend-mode: normal;
+}
+
+.pos-cart-panel-frame--open {
+  width: clamp(360px, 28vw, 480px);
+  min-width: clamp(360px, 28vw, 480px);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.pos-cart-panel-frame > .pos-cart {
+  min-width: 360px;
+}
+
+.pos-cart-dock {
+  overflow: hidden;
+  border-left: 1px solid #e2e8f0;
+  opacity: 1;
+  transition:
+    width 240ms cubic-bezier(.2,.75,.2,1),
+    padding 240ms cubic-bezier(.2,.75,.2,1),
+    opacity 140ms ease-out,
+    border-color 140ms ease-out;
+}
+
+.pos-cart-dock--open {
+  width: 88px;
+}
+
+.pos-cart-dock--hidden {
+  width: 0;
+  border-left-width: 0;
+  border-color: transparent;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@keyframes pos-cart-target-pop {
+  0%, 100% { transform: scale(1); }
+  45% { transform: scale(1.24); }
+}
+
+.pos-cart-target-pop {
+  animation: pos-cart-target-pop 240ms cubic-bezier(.2,.8,.2,1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pos-cart-panel-frame,
+  .pos-cart-dock {
+    transition: none;
+  }
+
+  .pos-cart-flight,
+  .pos-product-added-feedback,
+  .pos-cart-target-pop,
+  .pos-product-card--layout-moving,
+  .pos-cart-region--entering,
+  .pos-cart-region--leaving {
+    animation: none;
+  }
+
+  .pos-cart-flight,
+  .pos-product-added-feedback {
+    display: none;
+  }
+
+  ::view-transition-group(pos-product-stage),
+  ::view-transition-group(pos-cart-panel),
+  ::view-transition-group(pos-cart-dock),
+  ::view-transition-group(.pos-product-card) {
+    animation-duration: 0s;
+  }
 }
 
 .pos-cart-header {
