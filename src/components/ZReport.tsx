@@ -21,10 +21,7 @@ import {
   ReceiptText,
   RefreshCw,
   ShieldCheck,
-  ShoppingBag,
-  TrendingUp,
   Users,
-  WalletCards,
 } from "lucide-react";
 import {
   calculateReportData,
@@ -42,7 +39,7 @@ import {
 import { useAuth } from "../auth/useAuth";
 import { formatEUR, parseDecimalToCents } from "../utils/money";
 import { db } from "../db/db";
-import { DEFAULT_REGISTER_ID, transactionTenders } from "../utils/financial";
+import { commerceItems, DEFAULT_REGISTER_ID, transactionTenders } from "../utils/financial";
 import { Modal } from "./Modal";
 import { vatBreakdownForReport } from "../utils/vatReport";
 
@@ -52,25 +49,19 @@ type SortDirection = "asc" | "desc";
 
 const paymentMeta: Record<
   PaymentKey,
-  { label: string; Icon: typeof Banknote; tone: string; bar: string }
+  { label: string; Icon: typeof Banknote }
 > = {
   Cash: {
     label: "Contant",
     Icon: Banknote,
-    tone: "bg-emerald-50 text-emerald-700",
-    bar: "bg-emerald-500",
   },
   PIN: {
     label: "Kaart",
     Icon: CreditCard,
-    tone: "bg-sky-50 text-sky-700",
-    bar: "bg-cyan-600",
   },
   Cadeaubon: {
     label: "Cadeaubon",
     Icon: Gift,
-    tone: "bg-violet-50 text-violet-700",
-    bar: "bg-violet-500",
   },
 };
 
@@ -451,12 +442,19 @@ export const ZReportView: React.FC = () => {
     );
     const margin =
       revenue > 0 ? ((reportData?.grossProfitCents ?? 0) / revenue) * 100 : 0;
+    const commerceLines = transactions.flatMap((transaction) => commerceItems(transaction));
+    const commerceQuantity = commerceLines.reduce((sum, item) => sum + Math.abs(item.quantity), 0);
+    const costedQuantity = commerceLines.reduce(
+      (sum, item) => sum + (item.product.costPriceCents != null ? Math.abs(item.quantity) : 0),
+      0,
+    );
 
     return {
       itemCount,
       averageBasketCents:
         transactionCount > 0 ? Math.round(revenue / transactionCount) : 0,
       margin,
+      costCoverage: commerceQuantity > 0 ? Math.round((costedQuantity / commerceQuantity) * 100) : 100,
       paymentDifferenceCents:
         salesPaymentTotal +
         liabilityPaymentTotal -
@@ -685,16 +683,17 @@ export const ZReportView: React.FC = () => {
     totalRevenueCents +
     reportData.giftCardLiabilityAddedCents +
     reportData.totalCashRoundingAdjustmentCents;
-  const paymentMax = Math.max(
-    1,
-    ...(Object.keys(paymentMeta) as PaymentKey[]).map(
-      (key) =>
-        reportData.paymentTotalsCents[key] +
-        reportData.giftCardLiabilityPaymentTotalsCents[key],
-    ),
-  );
   const splitSummary = splitPaymentSummary(transactions);
   const canFinalize = auth.hasRole("owner", "manager");
+  const closeChecksPassed = 1
+    + Number(analytics.paymentDifferenceCents === 0)
+    + Number(analytics.vatDifferenceCents === 0)
+    + Number(canFinalize);
+  const roleLabel = auth.currentRole === "owner"
+    ? "Eigenaar"
+    : auth.currentRole === "manager"
+      ? "Manager"
+      : "Medewerker";
   const parsedOpeningFloat = parseDecimalToCents(openingFloatText);
   const expectedCashCents =
     (parsedOpeningFloat.ok
@@ -840,19 +839,17 @@ export const ZReportView: React.FC = () => {
               <p className="text-xs font-bold uppercase tracking-[0.14em] text-cyan-700">
                 Dagafsluiting
               </p>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-800">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                Voorlopig X-rapport
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-600">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true" />
+                Open dag · nog niet afgesloten
               </span>
             </div>
             <h1 className="mt-2 text-[28px] font-bold tracking-tight text-slate-950">
-              Klaar om de dag af te sluiten
+              Controleer en sluit de dag af
             </h1>
             <p className="mt-1 text-sm text-slate-500">
-              {analytics.firstSaleAt && analytics.lastSaleAt
-                ? `${format(analytics.firstSaleAt, "HH:mm")} – ${format(analytics.lastSaleAt, "HH:mm")} · `
-                : ""}
-              {format(reportData.timestamp, "EEEE d MMMM yyyy", { locale: nl })}
+              Open dag{analytics.firstSaleAt && analytics.lastSaleAt ? ` van ${format(analytics.firstSaleAt, "HH:mm")} tot ${format(analytics.lastSaleAt, "HH:mm")}` : ""}
+              {` · ${format(reportData.timestamp, "EEEE d MMMM yyyy", { locale: nl })}`}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -862,7 +859,7 @@ export const ZReportView: React.FC = () => {
               className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50"
             >
               <Printer size={16} />
-              X-rapport
+              Rapport printen
             </button>
             {canFinalize && (
               <button
@@ -876,38 +873,40 @@ export const ZReportView: React.FC = () => {
                 className="insights-primary-action inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-bold"
               >
                 <LockKeyhole size={16} />
-                Dag afsluiten
+                Naar afsluiten
                 <ArrowRight size={15} />
               </button>
             )}
           </div>
         </header>
 
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <Metric
-            icon={WalletCards}
-            label="Omzet incl. BTW"
+        <section className="insights-panel grid grid-cols-2 overflow-hidden sm:grid-cols-4">
+          <SummaryMetric
+            className="border-b border-r border-slate-100 sm:border-b-0"
+            label="Productomzet incl. btw"
             value={formatEUR(totalRevenueCents)}
-            detail={`${formatEUR(reportData.totalDiscountCents)} korting verwerkt`}
+            detail={reportData.totalDiscountCents > 0 ? `Na ${formatEUR(reportData.totalDiscountCents)} korting` : undefined}
           />
-          <Metric
-            icon={ReceiptText}
-            label="Transacties"
+          <SummaryMetric
+            className="border-b border-slate-100 sm:border-b-0 sm:border-r"
+            label="Verkopen"
             value={String(transactions.length)}
-            detail={`${analytics.itemCount} artikelen verkocht`}
+            detail={`${analytics.itemCount} ${analytics.itemCount === 1 ? "artikel" : "artikelen"}`}
           />
-          <Metric
-            icon={ShoppingBag}
-            label="Gemiddeld kassaticket"
+          <SummaryMetric
+            className="border-r border-slate-100"
+            label="Gemiddelde bonwaarde"
             value={formatEUR(analytics.averageBasketCents)}
-            detail="Per afgerekende transactie"
+            detail="Gemiddeld per verkoop"
           />
-          <Metric
-            icon={TrendingUp}
-            label="Brutowinst"
-            value={formatEUR(reportData.grossProfitCents)}
-            detail={`${analytics.margin.toFixed(1).replace(".", ",")}% brutomarge`}
-            tone="emerald"
+          <SummaryMetric
+            label={analytics.costCoverage === 100 ? "Brutowinst" : "Geschatte brutowinst"}
+            value={analytics.costCoverage === 0 ? "Niet beschikbaar" : formatEUR(reportData.grossProfitCents)}
+            detail={analytics.costCoverage === 100
+              ? `${analytics.margin.toFixed(1).replace(".", ",")}% brutomarge`
+              : analytics.costCoverage === 0
+                ? "Kostprijzen ontbreken"
+                : `${analytics.costCoverage}% van de artikelen heeft een kostprijs`}
           />
         </section>
 
@@ -916,10 +915,10 @@ export const ZReportView: React.FC = () => {
             <section className="insights-panel p-5 sm:p-6">
               <SectionHeading
                 icon={CreditCard}
-                title="Betaalmethodes"
-                subtitle="Ontvangsten sluiten aan op de geregistreerde omzet."
+                title="Betalingen"
+                subtitle="Ontvangen bedragen en hun aansluiting op de productomzet."
               />
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <div className="mt-5 divide-y divide-slate-100 border-y border-slate-100">
                 {(Object.keys(paymentMeta) as PaymentKey[]).map((key) => {
                   const meta = paymentMeta[key];
                   const value =
@@ -928,64 +927,45 @@ export const ZReportView: React.FC = () => {
                   return (
                     <div
                       key={key}
-                      className="rounded-xl border border-slate-200 bg-slate-50/60 p-4"
+                      className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 py-3.5"
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <span
-                          className={`grid h-8 w-8 place-items-center rounded-lg ${meta.tone}`}
-                        >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-600">
                           <meta.Icon size={16} />
                         </span>
-                        <strong className="text-lg text-slate-950">
-                          {formatEUR(value)}
-                        </strong>
+                        <span className="truncate text-sm font-semibold text-slate-700">{meta.label}</span>
                       </div>
-                      <div className="mt-4 flex items-center justify-between text-xs">
-                        <span className="font-semibold text-slate-600">
-                          {meta.label}
-                        </span>
-                        <span className="text-slate-400">
-                          {totalCollectedCents > 0
-                            ? Math.round((value / totalCollectedCents) * 100)
-                            : 0}
-                          %
-                        </span>
-                      </div>
-                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200">
-                        <div
-                          className={`h-full rounded-full ${meta.bar}`}
-                          style={{ width: `${(value / paymentMax) * 100}%` }}
-                        />
-                      </div>
+                      <span className="text-xs tabular-nums text-slate-400">{totalCollectedCents > 0 ? Math.round((value / totalCollectedCents) * 100) : 0}%</span>
+                      <strong className="min-w-24 text-right text-base tabular-nums text-slate-950">{formatEUR(value)}</strong>
                     </div>
                   );
                 })}
               </div>
-              <div
-                className={`mt-4 flex items-center justify-between rounded-lg px-3.5 py-3 text-xs font-semibold ${analytics.paymentDifferenceCents === 0 ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800"}`}
-              >
-                <span className="flex items-center gap-2">
-                  {analytics.paymentDifferenceCents === 0 ? (
-                    <CheckCircle2 size={16} />
-                  ) : (
-                    <AlertTriangle size={16} />
-                  )}
-                  {analytics.paymentDifferenceCents === 0
-                    ? "Betaaltotalen sluiten volledig aan"
-                    : "Verschil tussen omzet en betaalmethodes"}
-                </span>
-                <strong>{signedEUR(analytics.paymentDifferenceCents)}</strong>
+              <div className="mt-4 space-y-2 rounded-xl bg-slate-50 px-4 py-3.5">
+                <ValueRow label="Productomzet" value={formatEUR(totalRevenueCents)} />
+                {reportData.giftCardLiabilityAddedCents > 0 && <ValueRow label="Nieuw cadeaubontegoed" value={formatEUR(reportData.giftCardLiabilityAddedCents)} />}
+                {reportData.totalCashRoundingAdjustmentCents !== 0 && <ValueRow label="Cashafronding" value={signedEUR(reportData.totalCashRoundingAdjustmentCents)} />}
+                <div className="border-t border-slate-200 pt-2">
+                  <ValueRow label="Ontvangen betalingen" value={formatEUR(totalCollectedCents)} strong />
+                </div>
+                <div className={`flex items-center justify-between gap-3 border-t pt-2 text-xs font-semibold ${analytics.paymentDifferenceCents === 0 ? "border-slate-200 text-slate-600" : "border-rose-200 text-rose-800"}`}>
+                  <span className="flex items-center gap-2">
+                    {analytics.paymentDifferenceCents === 0 ? <CheckCircle2 size={15} className="text-emerald-600" /> : <AlertTriangle size={15} />}
+                    {analytics.paymentDifferenceCents === 0 ? "Geen betaalverschil" : "Controleverschil"}
+                  </span>
+                  <strong className="tabular-nums">{signedEUR(analytics.paymentDifferenceCents)}</strong>
+                </div>
               </div>
               {splitSummary.count > 0 && (
-                <div className="mt-4 rounded-lg border border-violet-100 bg-violet-50 px-3.5 py-3 text-xs text-violet-950">
-                  <div className="flex items-center justify-between gap-3 font-bold">
-                    <span>Gesplitste betalingen</span>
-                    <span>{splitSummary.count} verkoop{splitSummary.count === 1 ? "" : "en"}</span>
+                <div className="mt-4 flex items-start gap-3 rounded-lg border border-slate-200 px-3.5 py-3 text-xs text-slate-600">
+                  <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-600"><CreditCard size={14} /></span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-slate-700">{splitSummary.count} {splitSummary.count === 1 ? "verkoop" : "verkopen"} met meerdere betaalmethodes</p>
+                    <div className="mt-1.5">
+                      {splitSummary.combinations.map(([label, count]) => `${label}: ${count}`).join(" · ")}
+                    </div>
+                    <p className="mt-1 text-slate-400">Al verwerkt in de totalen hierboven.</p>
                   </div>
-                  <div className="mt-1.5 text-violet-800">
-                    {splitSummary.combinations.map(([label, count]) => `${label}: ${count}`).join(" · ")}
-                  </div>
-                  <p className="mt-1 text-violet-700/80">Al inbegrepen in Cash, Kaart en Cadeaubon hierboven.</p>
                 </div>
               )}
             </section>
@@ -994,8 +974,8 @@ export const ZReportView: React.FC = () => {
               <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-start sm:justify-between sm:p-6">
                 <SectionHeading
                   icon={ReceiptText}
-                  title="Transacties in dit X-rapport"
-                  subtitle="Live overzicht van alle nog niet afgesloten transacties. Kies een kolomkop om te sorteren."
+                  title="Verkopen in deze open dag"
+                  subtitle="Controleer de transacties die bij de definitieve afsluiting worden opgenomen."
                 />
                 <p
                   className="shrink-0 text-sm font-bold tabular-nums text-slate-600"
@@ -1094,38 +1074,42 @@ export const ZReportView: React.FC = () => {
             <section className="insights-panel p-5">
               <SectionHeading
                 icon={FileCheck2}
-                title="Afsluitcontrole"
-                subtitle="Automatisch gecontroleerd op basis van de transacties."
+                title="Gereed voor afsluiting"
+                subtitle="Transacties, betalingen, btw en bevoegdheid zijn gecontroleerd."
               />
+              <div className={`mt-4 flex items-center gap-2 rounded-lg border px-3 py-2.5 text-xs font-bold ${closeChecksPassed === 4 ? "border-slate-200 bg-slate-50 text-slate-700" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
+                {closeChecksPassed === 4 ? <CheckCircle2 size={16} className="text-emerald-600" /> : <AlertTriangle size={16} />}
+                {closeChecksPassed} van 4 controles geslaagd
+              </div>
               <div className="mt-4 space-y-1">
                 <CheckRow
-                  label="Transacties compleet"
-                  detail={`${transactions.length} verkopen opgenomen`}
+                  label={transactions.length === 1 ? "De verkoop is opgenomen" : `Alle ${transactions.length} verkopen zijn opgenomen`}
+                  detail={`${analytics.itemCount} ${analytics.itemCount === 1 ? "artikel" : "artikelen"} in deze open dag`}
                   ok
                 />
                 <CheckRow
-                  label="Betaaltotalen"
+                  label="Betalingen"
                   detail={
                     analytics.paymentDifferenceCents === 0
-                      ? "Geen verschil gevonden"
+                      ? "Geen betaalverschil"
                       : `${signedEUR(analytics.paymentDifferenceCents)} verschil`
                   }
                   ok={analytics.paymentDifferenceCents === 0}
                 />
                 <CheckRow
-                  label="BTW-berekening"
+                  label="Btw"
                   detail={
                     analytics.vatDifferenceCents === 0
-                      ? `${formatEUR(analytics.vatTotal)} verschuldigde BTW`
+                      ? `${formatEUR(analytics.vatTotal)} verschuldigd`
                       : `${signedEUR(analytics.vatDifferenceCents)} verschil`
                   }
                   ok={analytics.vatDifferenceCents === 0}
                 />
                 <CheckRow
-                  label="Rapportbevoegdheid"
+                  label="Bevoegdheid"
                   detail={
                     canFinalize
-                      ? `${auth.currentRole} kan afsluiten`
+                      ? `${roleLabel} · bevoegd om af te sluiten`
                       : "Manager of eigenaar vereist"
                   }
                   ok={canFinalize}
@@ -1134,29 +1118,29 @@ export const ZReportView: React.FC = () => {
             </section>
 
             <section className="insights-panel p-5">
-              <SectionHeading icon={Percent} title="Omzet & BTW" />
+              <SectionHeading icon={Percent} title="Belastingen" />
               <div className="mt-4 space-y-3">
                 <ValueRow
-                  label="Omzet incl. BTW"
+                  label="Productomzet incl. btw"
                   value={formatEUR(totalRevenueCents)}
                   strong
                 />
                 <ValueRow
-                  label="Omzet excl. BTW"
+                  label="Productomzet excl. btw"
                   value={formatEUR(vatBreakdownForReport(reportData).reduce(
                     (sum, line) => sum + line.exclCents,
                     0,
                   ))}
                 />
-                {vatBreakdownForReport(reportData).map((line) => (
+                {vatBreakdownForReport(reportData).filter((line) => line.vatCents !== 0).map((line) => (
                   <ValueRow
                     key={line.rate}
-                    label={`BTW ${line.rate}%`}
+                    label={`Btw ${line.rate}%`}
                     value={formatEUR(line.vatCents)}
                     muted={line.vatCents === 0}
                   />
                 ))}
-                <div className="border-t border-slate-100 pt-3">
+                {reportData.totalDiscountCents > 0 && <div className="border-t border-slate-100 pt-3">
                   <ValueRow
                     label="Kortingen"
                     value={`-${formatEUR(reportData.totalDiscountCents)}`}
@@ -1164,7 +1148,7 @@ export const ZReportView: React.FC = () => {
                   <p className="mt-1 text-[11px] text-slate-400">
                     {analytics.discountedTransactions} transacties met korting
                   </p>
-                </div>
+                </div>}
               </div>
             </section>
 
@@ -1181,7 +1165,7 @@ export const ZReportView: React.FC = () => {
                     className="flex items-center justify-between gap-3"
                   >
                     <div className="flex min-w-0 items-center gap-3">
-                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-cyan-50 text-xs font-bold text-cyan-800">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">
                         {member.name.charAt(0).toUpperCase()}
                       </span>
                       <div className="min-w-0">
@@ -1189,7 +1173,7 @@ export const ZReportView: React.FC = () => {
                           {member.name}
                         </p>
                         <p className="text-[11px] text-slate-400">
-                          {member.count} transacties
+                          {member.count} {member.count === 1 ? "transactie" : "transacties"}
                         </p>
                       </div>
                     </div>
@@ -1223,34 +1207,21 @@ export const ZReportView: React.FC = () => {
   );
 };
 
-const Metric = ({
-  icon: Icon,
+const SummaryMetric = ({
+  className = "",
   label,
   value,
   detail,
-  tone = "cyan",
 }: {
-  icon: typeof ReceiptText;
+  className?: string;
   label: string;
   value: string;
-  detail: string;
-  tone?: "cyan" | "emerald";
+  detail?: string;
 }) => (
-  <div className="insights-panel min-w-0 p-4 sm:p-5">
-    <div className="flex items-start justify-between gap-3">
-      <div>
-        <p className="text-xs font-semibold text-slate-500">{label}</p>
-        <p className="mt-2 break-words text-2xl font-bold tracking-tight text-slate-950">
-          {value}
-        </p>
-      </div>
-      <span
-        className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${tone === "emerald" ? "bg-emerald-50 text-emerald-700" : "bg-cyan-50 text-cyan-800"}`}
-      >
-        <Icon size={18} />
-      </span>
-    </div>
-    <p className="mt-2 text-xs text-slate-500">{detail}</p>
+  <div className={`min-w-0 p-4 sm:p-5 ${className}`}>
+    <p className="text-xs font-semibold text-slate-500">{label}</p>
+    <p className="mt-2 break-words text-2xl font-bold tracking-tight tabular-nums text-slate-950">{value}</p>
+    {detail && <p className="mt-2 text-xs text-slate-500">{detail}</p>}
   </div>
 );
 
