@@ -29,6 +29,7 @@ import {
 interface PurchaseOrderWorkflowProps {
   refreshKey: number;
   onInventoryChanged?: () => Promise<void>;
+  view?: 'all' | 'open' | 'overdue';
 }
 
 const statusMeta: Record<PurchaseOrderStatus, { label: string; classes: string }> = {
@@ -49,7 +50,7 @@ const parseDateInput = (value: string) => {
   return Number.isFinite(timestamp) ? timestamp : undefined;
 };
 
-export const PurchaseOrderWorkflow = ({ refreshKey, onInventoryChanged }: PurchaseOrderWorkflowProps) => {
+export const PurchaseOrderWorkflow = ({ refreshKey, onInventoryChanged, view = 'all' }: PurchaseOrderWorkflowProps) => {
   const auth = useAuth();
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
@@ -83,6 +84,16 @@ export const PurchaseOrderWorkflow = ({ refreshKey, onInventoryChanged }: Purcha
     () => orders.filter((order) => order.status === 'draft' || order.status === 'ordered' || order.status === 'partially-received'),
     [orders],
   );
+  const visibleOrders = useMemo(() => {
+    if (view === 'open') return activeOrders;
+    if (view === 'overdue') {
+      const now = Date.now();
+      return activeOrders.filter((order) => order.status !== 'draft'
+        && order.expectedDeliveryAt != null
+        && order.expectedDeliveryAt < now);
+    }
+    return orders;
+  }, [activeOrders, orders, view]);
   const completedCount = orders.filter((order) => order.status === 'received').length;
 
   const runOrderAction = async (orderId: string, action: () => Promise<void>) => {
@@ -238,7 +249,12 @@ export const PurchaseOrderWorkflow = ({ refreshKey, onInventoryChanged }: Purcha
       {activeOrders.some((order) => order.status === 'ordered' || order.status === 'partially-received') && <div className="mt-4 flex flex-col gap-2 rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 sm:flex-row sm:items-center"><label className="flex min-w-0 flex-1 items-center gap-2 text-xs font-bold text-zinc-300"><ScanLine size={16} className="shrink-0 text-emerald-300" /><input value={receiptScan} onChange={(event) => setReceiptScan(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void scanOpenReceiptLine(); } }} placeholder="Scan barcode of SKU tegen open order" className="h-10 min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 text-sm text-white outline-none focus:border-emerald-400" /></label><button type="button" onClick={() => void scanOpenReceiptLine()} className="h-10 rounded-lg bg-emerald-400 px-4 text-sm font-bold text-zinc-950">Ontvang scan</button></div>}
 
       <div className="mt-4 space-y-3">
-        {orders.slice(0, 12).map((order) => {
+        {visibleOrders.length === 0 && (
+          <div className="rounded-xl border border-zinc-800 bg-zinc-950/55 px-4 py-8 text-center text-sm font-medium text-zinc-500">
+            {view === 'overdue' ? 'Geen achterstallige inkooporders.' : 'Geen openstaande inkooporders.'}
+          </div>
+        )}
+        {visibleOrders.slice(0, 12).map((order) => {
           const expanded = expandedOrderId === order.id;
           const meta = statusMeta[order.status];
           const outstandingQty = purchaseOrderOutstandingQty(order);

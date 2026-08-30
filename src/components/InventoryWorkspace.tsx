@@ -3,6 +3,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronRight,
   ClipboardCheck,
   History,
   MinusCircle,
@@ -28,6 +29,7 @@ import { PurchaseOrderWorkflow } from "./PurchaseOrderWorkflow";
 import { inventoryCsvTemplate, parseInventoryCsv } from "../utils/inventoryCsv";
 import { isSupabaseConfigured } from "../lib/supabase";
 import { inventoryCategoryFilterOptions } from "../inventory/categoryFilters";
+import { matchesInventorySignal, type InventorySignalFilter } from "../inventory/signalFilters";
 
 type WorkspaceTab = "operations" | "orders";
 
@@ -116,7 +118,8 @@ export const InventoryWorkspace = () => {
   const [batchStartedAt, setBatchStartedAt] = useState(initialSession.startedAt);
   const [batchSource, setBatchSource] = useState<"scan" | "csv">(initialSession.source);
   const [feedback, setFeedback] = useState<{ tone: "success" | "error"; text: string } | null>(null);
-  const [lowStockOnly, setLowStockOnly] = useState(false);
+  const [stockSignalFilter, setStockSignalFilter] = useState<InventorySignalFilter | null>(null);
+  const [orderView, setOrderView] = useState<"all" | "open" | "overdue">("all");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [supplierFilter, setSupplierFilter] = useState("");
   const [changedLinesOnly, setChangedLinesOnly] = useState(false);
@@ -150,10 +153,10 @@ export const InventoryWorkspace = () => {
       && (!categoryFilter || product.category === categoryFilter)
       && (!supplierFilter || product.supplier === supplierFilter)
       && (
-      !lowStockOnly || product.stockQty === 0 || (product.minStockQty != null && product.stockQty <= product.minStockQty)
+      !stockSignalFilter || matchesInventorySignal(product, stockSignalFilter)
     ));
-    return query.trim() ? candidates.filter((product) => matchesCatalogQuery(product, query)).slice(0, 20) : lowStockOnly || categoryFilter || supplierFilter ? candidates.slice(0, 20) : [];
-  }, [products, query, lowStockOnly, categoryFilter, supplierFilter]);
+    return query.trim() ? candidates.filter((product) => matchesCatalogQuery(product, query)).slice(0, 20) : stockSignalFilter || categoryFilter || supplierFilter ? candidates.slice(0, 20) : [];
+  }, [products, query, stockSignalFilter, categoryFilter, supplierFilter]);
   const filterOptions = useMemo(() => ({
     categories: inventoryCategoryFilterOptions(products, categories),
     suppliers: [...new Set(products.map((product) => product.supplier).filter((value): value is string => Boolean(value)))].sort(),
@@ -174,8 +177,8 @@ export const InventoryWorkspace = () => {
     };
   }, [], { open: 0, overdue: 0 });
   const stockInbox = useMemo(() => ({
-    out: products.filter((product) => product.stockQty === 0).length,
-    low: products.filter((product) => product.stockQty != null && product.stockQty > 0 && product.minStockQty != null && product.stockQty <= product.minStockQty).length,
+    out: products.filter((product) => matchesInventorySignal(product, "out")).length,
+    low: products.filter((product) => matchesInventorySignal(product, "low")).length,
   }), [products]);
   const relatedVariants = useMemo(() => selected ? products.filter((product) =>
     product.id !== selected.id && product.stockQty != null && (
@@ -367,18 +370,40 @@ export const InventoryWorkspace = () => {
           </div>
           <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
             <button type="button" onClick={() => setTab("operations")} className={`rounded-lg px-4 py-2 text-sm font-extrabold ${tab === "operations" ? "bg-slate-950 text-white" : "text-slate-600"}`}>Bijwerken</button>
-            <button type="button" onClick={() => setTab("orders")} className={`rounded-lg px-4 py-2 text-sm font-extrabold ${tab === "orders" ? "bg-slate-950 text-white" : "text-slate-600"}`}>Inkooporders</button>
+            <button type="button" onClick={() => { setTab("orders"); setOrderView("all"); }} className={`rounded-lg px-4 py-2 text-sm font-extrabold ${tab === "orders" ? "bg-slate-950 text-white" : "text-slate-600"}`}>Inkooporders</button>
           </div>
         </header>
 
-        <section aria-label="Voorraadinbox" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><button type="button" onClick={() => { setTab("operations"); setLowStockOnly(true); setQuery(""); }} className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-left"><span className="text-xs font-bold uppercase tracking-wide text-rose-700">Uitverkocht</span><strong className="mt-1 block text-2xl font-black text-rose-950">{stockInbox.out}</strong></button><button type="button" onClick={() => { setTab("operations"); setLowStockOnly(true); setQuery(""); }} className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left"><span className="text-xs font-bold uppercase tracking-wide text-amber-700">Lage voorraad</span><strong className="mt-1 block text-2xl font-black text-amber-950">{stockInbox.low}</strong></button><button type="button" onClick={() => setTab("orders")} className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-left"><span className="text-xs font-bold uppercase tracking-wide text-sky-700">Open orders</span><strong className="mt-1 block text-2xl font-black text-sky-950">{orderInbox.open}</strong></button><button type="button" onClick={() => setTab("orders")} className="rounded-2xl border border-violet-200 bg-violet-50 p-4 text-left"><span className="text-xs font-bold uppercase tracking-wide text-violet-700">Te laat</span><strong className="mt-1 block text-2xl font-black text-violet-950">{orderInbox.overdue}</strong></button></section>
+        <section aria-label="Voorraadinbox" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { key: "out", label: "Uitverkocht", value: stockInbox.out, accent: "bg-rose-600", active: tab === "operations" && stockSignalFilter === "out", onClick: () => { setTab("operations"); setStockSignalFilter("out"); setQuery(""); } },
+            { key: "low", label: "Lage voorraad", value: stockInbox.low, accent: "bg-amber-500", active: tab === "operations" && stockSignalFilter === "low", onClick: () => { setTab("operations"); setStockSignalFilter("low"); setQuery(""); } },
+            { key: "open", label: "Open orders", value: orderInbox.open, accent: "bg-[#0e7490]", active: tab === "orders" && orderView === "open", onClick: () => { setTab("orders"); setOrderView("open"); } },
+            { key: "overdue", label: "Te laat", value: orderInbox.overdue, accent: "bg-rose-600", active: tab === "orders" && orderView === "overdue", onClick: () => { setTab("orders"); setOrderView("overdue"); } },
+          ].map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={item.onClick}
+              aria-pressed={item.active}
+              className={`group relative flex min-h-28 cursor-pointer items-center gap-3 overflow-hidden rounded-2xl border bg-white p-4 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] outline-none transition duration-150 active:scale-[0.99] active:bg-[#f3fbfc] focus-visible:ring-2 focus-visible:ring-[#38bdf8] focus-visible:ring-offset-2 ${item.active ? "border-[#8bdce8] ring-1 ring-[#bae6fd]" : "border-slate-200 hover:border-[#8bdce8] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]"}`}
+            >
+              <span aria-hidden="true" className={`h-9 w-1 shrink-0 rounded-full ${item.accent}`} />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[11px] font-black uppercase tracking-[0.12em] text-slate-600">{item.label}</span>
+                <strong className="mt-1 block text-2xl font-black tabular-nums text-slate-950">{item.value}</strong>
+              </span>
+              <ChevronRight aria-hidden="true" size={20} className="shrink-0 text-slate-400 transition-transform duration-150 group-hover:translate-x-1 group-hover:text-[#0e7490]" />
+            </button>
+          ))}
+        </section>
 
         {tab === "operations" ? (
           <>
             <div className="grid gap-3 md:grid-cols-3">
               {modes.map(({ key, label, detail, Icon }) => (
-                <button key={key} type="button" onClick={() => changeMode(key)} className={`flex items-center gap-3 rounded-2xl border p-4 text-left shadow-sm transition ${mode === key ? "border-sky-300 bg-sky-50 ring-2 ring-sky-100" : "border-slate-200 bg-white hover:border-slate-300"}`}>
-                  <span className={`rounded-xl p-2.5 ${mode === key ? "bg-sky-700 text-white" : "bg-slate-100 text-slate-600"}`}><Icon size={20} /></span>
+                <button key={key} type="button" onClick={() => changeMode(key)} aria-pressed={mode === key} className={`flex cursor-pointer items-center gap-3 rounded-2xl border bg-white p-4 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] outline-none transition active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-[#38bdf8] focus-visible:ring-offset-2 ${mode === key ? "border-[#0e7490] ring-1 ring-[#bae6fd]" : "border-slate-200 hover:border-[#8bdce8] hover:shadow-sm"}`}>
+                  <span className={`rounded-xl p-2.5 transition ${mode === key ? "bg-[#0e7490] text-white" : "bg-slate-100 text-slate-600"}`}><Icon size={20} /></span>
                   <span><strong className="block text-sm text-slate-950">{label}</strong><span className="mt-0.5 block text-xs text-slate-500">{detail}</span></span>
                 </button>
               ))}
@@ -402,8 +427,8 @@ export const InventoryWorkspace = () => {
                   <label className="text-xs font-bold text-slate-600">Categorie<select aria-label="Filter voorraad op categorie" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm"><option value="">Alle categorieën</option>{filterOptions.categories.map((category) => <option key={category.value} value={category.value}>{category.label} · {category.productCount}</option>)}</select></label>
                   <label className="text-xs font-bold text-slate-600">Leverancier<select aria-label="Filter voorraad op leverancier" value={supplierFilter} onChange={(event) => setSupplierFilter(event.target.value)} className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm"><option value="">Alle leveranciers</option>{filterOptions.suppliers.map((supplier) => <option key={supplier} value={supplier}>{supplier}</option>)}</select></label>
                 </div>
-                {lowStockOnly && <div className="mt-2 flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900"><span>Filter: lage of nulvoorraad</span><button type="button" onClick={() => setLowStockOnly(false)} className="underline">Filter wissen</button></div>}
-                {matches.length > 0 && (query.trim() || lowStockOnly || categoryFilter || supplierFilter) && (
+                {stockSignalFilter && <div className="mt-2 flex items-center justify-between rounded-xl border border-[#bae6fd] bg-[#f0f9ff] px-3 py-2 text-xs font-bold text-[#0e7490]"><span>Filter: {stockSignalFilter === "out" ? "uitverkocht" : "lage voorraad"}</span><button type="button" onClick={() => setStockSignalFilter(null)} className="underline underline-offset-2">Filter wissen</button></div>}
+                {matches.length > 0 && (query.trim() || stockSignalFilter || categoryFilter || supplierFilter) && (
                   <div className="mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
                     {matches.map((product) => <button key={product.id} type="button" onClick={() => choose(product)} className="flex w-full items-center justify-between border-b border-slate-100 px-4 py-3 text-left last:border-0 hover:bg-sky-50"><span><strong className="block text-sm text-slate-900">{product.name}</strong><span className="text-xs text-slate-500">{product.sku || product.barcode || "Geen productcode"}{product.variant ? ` · ${product.variant}` : ""}</span></span><span className="rounded-lg bg-slate-100 px-2.5 py-1 text-sm font-black text-slate-700">{product.stockQty}</span></button>)}
                   </div>
@@ -436,7 +461,7 @@ export const InventoryWorkspace = () => {
             </div>
           </>
         ) : canManageOrders ? (
-          <section className="rounded-3xl bg-zinc-950 p-5 shadow-sm sm:p-7"><PurchaseOrderWorkflow refreshKey={0} onInventoryChanged={refresh} /></section>
+          <section className="rounded-3xl bg-zinc-950 p-5 shadow-sm sm:p-7"><PurchaseOrderWorkflow refreshKey={0} onInventoryChanged={refresh} view={orderView} /></section>
         ) : (
           <section className="rounded-3xl border border-amber-200 bg-amber-50 p-8 text-center"><h2 className="font-black text-amber-950">Inkooporders zijn niet actief in dit abonnement</h2><p className="mt-2 text-sm text-amber-800">De operationele voorraadmodule blijft beschikbaar voor leveringen, tellingen en correcties.</p></section>
         )}
