@@ -4,7 +4,6 @@ import {
   Calculator,
   CircleAlert,
   ExternalLink,
-  ShieldCheck,
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
@@ -79,17 +78,7 @@ const ReliabilityNotice = ({
   }
   const costComplete =
     snapshot.completeCostTransactions === snapshot.transactionCount;
-  if (costComplete && activeCostCount > 0) {
-    return (
-      <div className="mb-4 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs leading-5 text-emerald-900">
-        <ShieldCheck size={17} className="mt-0.5 shrink-0 text-emerald-700" />
-        <span>
-          De productkost is volledig voor deze verkopen. Het resultaat gebruikt {activeCostCount}{" "}
-          door de eigenaar geregistreerde {activeCostCount === 1 ? "kost" : "kosten"}. Dit is managementinformatie, geen officiële jaarrekening.
-        </span>
-      </div>
-    );
-  }
+  if (costComplete) return null;
   return (
     <div className="mb-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
       <CircleAlert size={17} className="mt-0.5 shrink-0 text-amber-700" />
@@ -310,7 +299,7 @@ export const FinancialInsights = ({
     : 0;
   return (
     <>
-      <PageHeader title="Hoeveel moet u verkopen om uit de kosten te komen?" subtitle="Op dit omzetniveau is uw berekende resultaat precies nul" actions={<div className="flex flex-wrap gap-2">{periodActions}<ManageCostsButton onClick={onOpenFinancialSettings} /></div>} />
+      <PageHeader title="Hoeveel moet u verkopen om uit de kosten te komen?" subtitle="Vergelijk uw huidige omzet met de omzet die nodig is om uw geregistreerde kosten te dragen" actions={<div className="flex flex-wrap gap-2">{periodActions}<ManageCostsButton onClick={onOpenFinancialSettings} /></div>} />
       <ReliabilityNotice snapshot={snapshot} activeCostCount={periodCosts.length} />
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Omzet nodig om alle kosten te dragen" value={reliable && snapshot.breakEvenRevenueCents != null ? formatEUR(snapshot.breakEvenRevenueCents) : "Nog niet betrouwbaar"} detail="Dit is uw break-evenomzet zonder btw" />
