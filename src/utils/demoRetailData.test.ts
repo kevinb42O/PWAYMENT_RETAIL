@@ -5,6 +5,7 @@ import { GiftCard, Product } from '../types';
 import { buildInventoryForecast } from './retailActionEngine';
 import {
   buildDemoDemandProfiles,
+  buildDemoFinancialDataset,
   buildDemoRetailDataset,
   clearDemoRetailData,
   DemoDemandProfile,
@@ -153,6 +154,8 @@ describe('demo gift card persistence', () => {
       db.gift_cards.clear(),
       db.gift_card_events.clear(),
       db.products.clear(),
+      db.financial_costs.clear(),
+      db.financial_settings.clear(),
     ]);
     await db.products.bulkPut(products);
     await db.gift_cards.put(liveGiftCard);
@@ -165,6 +168,8 @@ describe('demo gift card persistence', () => {
       db.gift_cards.clear(),
       db.gift_card_events.clear(),
       db.products.clear(),
+      db.financial_costs.clear(),
+      db.financial_settings.clear(),
     ]);
   });
 
@@ -185,6 +190,17 @@ describe('demo gift card persistence', () => {
     expect((await db.gift_cards.get(usedCard.id))?.balanceCents).toBe(321);
     expect(await db.gift_cards.get(demoCards[1].id)).toBeDefined();
     expect(await db.transactions.filter((transaction) => transaction.source === 'demo').count()).toBe(first.transactions);
+
+    const expectedFinancial = buildDemoFinancialDataset(now);
+    expect(await db.financial_costs.count()).toBe(expectedFinancial.costs.length);
+    expect(await db.financial_settings.get('store')).toEqual(expectedFinancial.settings);
+    const editedRent = { ...expectedFinancial.costs[0], amountCents: 123_456 };
+    await db.financial_costs.put(editedRent);
+    await db.financial_costs.delete(expectedFinancial.costs[1].id);
+    await seedDemoRetailData(now);
+    expect((await db.financial_costs.get(editedRent.id))?.amountCents).toBe(123_456);
+    expect(await db.financial_costs.get(expectedFinancial.costs[1].id)).toBeDefined();
+    expect(await db.financial_costs.count()).toBe(expectedFinancial.costs.length);
   }, 30_000);
 
   it('removes only demo customers, sales and gift cards', async () => {
@@ -196,5 +212,7 @@ describe('demo gift card persistence', () => {
     expect((await db.gift_cards.toArray()).some((giftCard) => giftCard.id.startsWith('demo-gift-card-'))).toBe(false);
     expect((await db.gift_card_events.toArray()).some((event) => event.id.startsWith('demo-gift-card-event-'))).toBe(false);
     expect(await db.gift_cards.get(liveGiftCard.id)).toEqual(liveGiftCard);
+    expect(await db.financial_costs.count()).toBe(0);
+    expect(await db.financial_settings.get('store')).toBeUndefined();
   }, 60_000);
 });

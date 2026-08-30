@@ -3,6 +3,7 @@ import { useAuth } from "../auth/useAuth";
 import { db } from "../db/db";
 import { isSupabaseConfigured } from "../lib/supabase";
 import { fetchOwnerFinancialWorkspace } from "../services/financialWorkspace";
+import { seedDemoFinancialData } from "../utils/demoRetailData";
 import type {
   FinancialCost,
   FinancialSettings,
@@ -127,6 +128,8 @@ export const useFinancialWorkspace = create<FinancialWorkspaceState>((set, get) 
         ? { costs: [], settings: defaultSettings(), hydrated: false }
         : {}),
     });
+    const demoStore = useAuth.getState().currentStoreIsDemo;
+    if (demoStore) await seedDemoFinancialData();
     const [localCosts, localSettings] = await Promise.all([
       db.financial_costs.toArray(),
       db.financial_settings.get("store"),
@@ -139,7 +142,7 @@ export const useFinancialWorkspace = create<FinancialWorkspaceState>((set, get) 
       loading: true,
     });
 
-    if (!isSupabaseConfigured || navigator.onLine === false || import.meta.env.VITE_E2E_BUILD === "true") {
+    if (demoStore || !isSupabaseConfigured || navigator.onLine === false || import.meta.env.VITE_E2E_BUILD === "true") {
       set({ loading: false });
       return;
     }
@@ -193,10 +196,14 @@ export const useFinancialWorkspace = create<FinancialWorkspaceState>((set, get) 
       operation: "upsert",
       cost,
     };
-    await db.transaction("rw", db.financial_costs, db.outbox, async () => {
+    if (useAuth.getState().currentStoreIsDemo) {
       await db.financial_costs.put(cost);
-      await enqueueMutation(mutation);
-    });
+    } else {
+      await db.transaction("rw", db.financial_costs, db.outbox, async () => {
+        await db.financial_costs.put(cost);
+        await enqueueMutation(mutation);
+      });
+    }
     set((state) => ({
       costs: [cost, ...state.costs.filter((candidate) => candidate.id !== cost.id)]
         .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
@@ -237,10 +244,14 @@ export const useFinancialWorkspace = create<FinancialWorkspaceState>((set, get) 
       operation: "upsert",
       settings,
     };
-    await db.transaction("rw", db.financial_settings, db.outbox, async () => {
+    if (useAuth.getState().currentStoreIsDemo) {
       await db.financial_settings.put(settings);
-      await enqueueMutation(mutation);
-    });
+    } else {
+      await db.transaction("rw", db.financial_settings, db.outbox, async () => {
+        await db.financial_settings.put(settings);
+        await enqueueMutation(mutation);
+      });
+    }
     set({ settings, error: null });
   },
 

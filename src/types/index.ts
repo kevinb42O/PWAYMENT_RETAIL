@@ -588,6 +588,8 @@ export interface FinancialSettings {
   id: "store";
   safetyBufferCents: number;
   updatedAt: string;
+  /** Keeps fixture preferences removable without ever touching live settings. */
+  source?: "live" | "demo";
 }
 
 export type FinancialWorkspaceMutation =

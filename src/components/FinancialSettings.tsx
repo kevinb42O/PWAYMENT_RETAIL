@@ -108,6 +108,7 @@ const csvCell = (value: string | number) => {
 export const FinancialSettings = () => {
   const currentRole = useAuth((state) => state.currentRole);
   const storeId = useAuth((state) => state.currentStoreId);
+  const currentStoreIsDemo = useAuth((state) => state.currentStoreIsDemo);
   const costs = useFinancialWorkspace((state) => state.costs);
   const settings = useFinancialWorkspace((state) => state.settings);
   const loading = useFinancialWorkspace((state) => state.loading);
@@ -199,7 +200,9 @@ export const FinancialSettings = () => {
       status: "active",
       createdAt: draft.createdAt ?? now,
       updatedAt: now,
-      source: "live",
+      source: currentStoreIsDemo
+        ? "demo"
+        : (costs.find((item) => item.id === draft.id)?.source ?? "live"),
     };
     setSaving(true);
     setFormError(null);
@@ -207,7 +210,9 @@ export const FinancialSettings = () => {
       await saveCost(cost);
       setDraft(null);
       setMessage({
-        text: `${cost.name} is veilig bewaard en wordt gesynchroniseerd.`,
+        text: currentStoreIsDemo
+          ? `${cost.name} is bewaard in het demo-account.`
+          : `${cost.name} is veilig bewaard en wordt gesynchroniseerd.`,
         tone: "success",
       });
     } catch (cause) {
@@ -230,6 +235,7 @@ export const FinancialSettings = () => {
         id: "store",
         safetyBufferCents: parsed.cents,
         updatedAt: new Date().toISOString(),
+        source: currentStoreIsDemo ? "demo" : "live",
       });
       setMessage({
         text: "De absolute veiligheidsbuffer is bewaard voor de liquiditeitsfase.",

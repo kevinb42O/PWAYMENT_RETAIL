@@ -26,7 +26,11 @@ describe("owner financial workspace store", () => {
   beforeEach(async () => {
     activateTenantDatabase(`financial-test-${crypto.randomUUID()}`);
     await db.open();
-    useAuth.setState({ currentRole: "owner", currentStoreId: "store-owner" });
+    useAuth.setState({
+      currentRole: "owner",
+      currentStoreId: "store-owner",
+      currentStoreIsDemo: false,
+    });
     useFinancialWorkspace.getState().reset();
   });
 
@@ -42,6 +46,21 @@ describe("owner financial workspace store", () => {
     expect(await db.financial_costs.get("rent")).toEqual(example);
     expect(await db.outbox.where("kind").equals("financial_workspace_mutation").count()).toBe(1);
     expect(useFinancialWorkspace.getState().costs).toEqual([example]);
+  });
+
+  it("keeps demo financial edits local and out of the live synchronization queue", async () => {
+    useAuth.setState({ currentStoreIsDemo: true });
+    await useFinancialWorkspace.getState().saveCost({ ...example, source: "demo" });
+    await useFinancialWorkspace.getState().saveSettings({
+      id: "store",
+      safetyBufferCents: 1_000_000,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      source: "demo",
+    });
+
+    expect(await db.financial_costs.get("rent")).toMatchObject({ source: "demo" });
+    expect(await db.financial_settings.get("store")).toMatchObject({ source: "demo" });
+    expect(await db.outbox.where("kind").equals("financial_workspace_mutation").count()).toBe(0);
   });
 
   it("archives instead of deleting financial history", async () => {

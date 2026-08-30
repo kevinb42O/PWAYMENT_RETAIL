@@ -429,7 +429,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             >
               <div className="flex items-center gap-2.5">
                 <Landmark size={16} className={activeTab === 'financial' ? 'text-cyan-700' : 'text-slate-500'} />
-                <span>Kosten & financiële planning</span>
+                <span>Financiële planning</span>
               </div>
             </button>
           )}
@@ -789,7 +789,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               {activeTab === 'modules' && 'Modules & navigatie'}
               {activeTab.startsWith('pace') && 'Pace-instellingen'}
               {activeTab === 'workforce' && 'Personeel, verlof & bezetting'}
-              {activeTab === 'financial' && 'Kosten & financiële planning'}
+              {activeTab === 'financial' && 'Financiële planning'}
               {activeTab === 'leave-approvals' && 'Verlof goedkeuren'}
               {activeTab === 'billing-invoices' && "Facturen & Creditnota's"}
               {activeTab === 'billing-payment' && 'Betaalmethode & SEPA Mandaat'}

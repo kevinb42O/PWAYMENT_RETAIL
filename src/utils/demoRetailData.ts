@@ -1,10 +1,21 @@
 import { db } from '../db/db';
-import { Customer, GiftCard, GiftCardEvent, OrderItem, PaymentMethod, Product, Transaction } from '../types';
+import {
+  Customer,
+  FinancialCost,
+  FinancialSettings,
+  GiftCard,
+  GiftCardEvent,
+  OrderItem,
+  PaymentMethod,
+  Product,
+  Transaction,
+} from '../types';
 import { calculateTotals } from './vat';
 
 const DEMO_CUSTOMER_PREFIX = 'demo-customer-';
 const DEMO_GIFT_CARD_PREFIX = 'demo-gift-card-';
 const DEMO_GIFT_CARD_EVENT_PREFIX = 'demo-gift-card-event-';
+const DEMO_FINANCIAL_COST_PREFIX = 'demo-financial-';
 const firstNames = ['Alex', 'Amélie', 'An', 'Bram', 'Camille', 'Eline', 'Emma', 'Flor', 'Jens', 'Julie', 'Lina', 'Lucas', 'Marie', 'Mats', 'Noor', 'Sofie'];
 const lastNames = ['Aerts', 'Baert', 'Claeys', 'De Smet', 'Hermans', 'Janssens', 'Maes', 'Peeters', 'Smet', 'Vermeulen'];
 const streets = ['Korenmarkt', 'Lange Nieuwstraat', 'Meir', 'Nationalestraat', 'Oude Koornmarkt', 'Sint-Jacobsmarkt', 'Vlaanderenstraat', 'Vrijdagmarkt'];
@@ -23,6 +34,140 @@ const team = [
   { id: 'demo-user-sam', name: 'Sam' },
 ];
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+const localDate = (date: Date): string => [
+  date.getFullYear(),
+  String(date.getMonth() + 1).padStart(2, '0'),
+  String(date.getDate()).padStart(2, '0'),
+].join('-');
+
+export interface DemoFinancialDataset {
+  costs: FinancialCost[];
+  settings: FinancialSettings;
+}
+
+/**
+ * Credible owner-operated boutique costs, deliberately calibrated against the
+ * demo turnover so the management view contains both healthy and warning
+ * periods. Every row records VAT treatment, supplier and a document reference.
+ */
+export const buildDemoFinancialDataset = (now = new Date()): DemoFinancialDataset => {
+  const recurringStart = new Date(now.getFullYear(), now.getMonth() - 23, 1, 9);
+  const investmentDate = new Date(now.getFullYear(), now.getMonth() - 4, 15, 9);
+  const createdAt = recurringStart.toISOString();
+  const updatedAt = new Date(now.getFullYear(), now.getMonth(), 1, 9).toISOString();
+  const startDate = localDate(recurringStart);
+  const row = (
+    id: string,
+    values: Omit<FinancialCost, 'id' | 'startDate' | 'status' | 'createdAt' | 'updatedAt' | 'source'>,
+  ): FinancialCost => ({
+    id: `${DEMO_FINANCIAL_COST_PREFIX}${id}`,
+    ...values,
+    startDate,
+    status: 'active',
+    createdAt,
+    updatedAt,
+    source: 'demo',
+  });
+
+  return {
+    costs: [
+      row('rent', {
+        kind: 'recurring', name: 'Huur winkelpand', category: 'premises',
+        supplier: 'Immo Centrum NV', documentNumber: 'HUUR-DEMO-2026',
+        amountCents: 115_000, amountMode: 'excluding-vat', vatRate: 21,
+        vatRecoverablePercent: 100, behavior: 'fixed', frequency: 'monthly',
+      }),
+      row('personnel', {
+        kind: 'recurring', name: 'Deeltijdse winkelmedewerker', category: 'personnel',
+        supplier: 'Demo Sociaal Secretariaat', documentNumber: 'LOONSTAAT-DEMO',
+        amountCents: 65_000, amountMode: 'including-vat', vatRate: 0,
+        vatRecoverablePercent: 0, behavior: 'fixed', frequency: 'monthly',
+      }),
+      row('energy', {
+        kind: 'recurring', name: 'Elektriciteit & verwarming', category: 'utilities',
+        supplier: 'Energie Demo NV', documentNumber: 'VOORSCHOT-ENERGIE',
+        amountCents: 22_000, amountMode: 'including-vat', vatRate: 21,
+        vatRecoverablePercent: 100, behavior: 'variable', frequency: 'monthly',
+      }),
+      row('internet-software', {
+        kind: 'recurring', name: 'Internet & winkelsoftware', category: 'administration',
+        supplier: 'Connecta Business', documentNumber: 'CONTRACT-DEMO-018',
+        amountCents: 9_900, amountMode: 'excluding-vat', vatRate: 21,
+        vatRecoverablePercent: 100, behavior: 'fixed', frequency: 'monthly',
+      }),
+      row('accountant', {
+        kind: 'recurring', name: 'Boekhouder', category: 'administration',
+        supplier: 'Kantoor Balans BV', documentNumber: 'ERELONEN-DEMO-Q',
+        amountCents: 45_000, amountMode: 'excluding-vat', vatRate: 21,
+        vatRecoverablePercent: 100, behavior: 'fixed', frequency: 'quarterly',
+      }),
+      row('insurance', {
+        kind: 'recurring', name: 'Brand- en handelsverzekering', category: 'insurance',
+        supplier: 'Zeker Ondernemen', documentNumber: 'POLIS-DEMO-2026',
+        amountCents: 96_000, amountMode: 'including-vat', vatRate: 0,
+        vatRecoverablePercent: 0, behavior: 'fixed', frequency: 'yearly',
+      }),
+      row('marketing', {
+        kind: 'recurring', name: 'Lokale marketing', category: 'marketing',
+        supplier: 'Studio Buurt', documentNumber: 'MARKETING-DEMO-M',
+        amountCents: 18_000, amountMode: 'excluding-vat', vatRate: 21,
+        vatRecoverablePercent: 100, behavior: 'variable', frequency: 'monthly',
+      }),
+      row('payments', {
+        kind: 'recurring', name: 'Betaal- en transactiekosten', category: 'payments',
+        supplier: 'Demo Payment Services', documentNumber: 'AFREKENING-DEMO-M',
+        amountCents: 12_000, amountMode: 'including-vat', vatRate: 21,
+        vatRecoverablePercent: 100, behavior: 'variable', frequency: 'monthly',
+      }),
+      row('cleaning', {
+        kind: 'recurring', name: 'Schoonmaak & afval', category: 'premises',
+        supplier: 'Proper & Co', documentNumber: 'ONDERHOUD-DEMO-M',
+        amountCents: 14_500, amountMode: 'excluding-vat', vatRate: 21,
+        vatRecoverablePercent: 100, behavior: 'fixed', frequency: 'monthly',
+      }),
+      row('municipal-tax', {
+        kind: 'recurring', name: 'Gemeentelijke bedrijfsbelasting', category: 'taxes',
+        supplier: 'Stad Demo', documentNumber: 'AANSLAG-DEMO-2026',
+        amountCents: 60_000, amountMode: 'including-vat', vatRate: 0,
+        vatRecoverablePercent: 0, behavior: 'fixed', frequency: 'yearly',
+      }),
+      {
+        ...row('display-investment', {
+          kind: 'one-off', name: 'Nieuwe presentatiewand', category: 'investments',
+          supplier: 'Retail Interieur BV', documentNumber: 'INV-DEMO-2026-041',
+          amountCents: 120_000, amountMode: 'excluding-vat', vatRate: 21,
+          vatRecoverablePercent: 100, behavior: 'fixed', frequency: 'once',
+        }),
+        startDate: localDate(investmentDate),
+      },
+    ],
+    settings: {
+      id: 'store',
+      safetyBufferCents: 1_000_000,
+      updatedAt,
+      source: 'demo',
+    },
+  };
+};
+
+/** Add only missing demo rows: repeated loads never duplicate or reset edits. */
+export const seedDemoFinancialData = async (now = new Date()): Promise<DemoFinancialDataset> => {
+  const dataset = buildDemoFinancialDataset(now);
+  const [existingIds, existingSettings] = await Promise.all([
+    db.financial_costs.bulkGet(dataset.costs.map((cost) => cost.id)),
+    db.financial_settings.get('store'),
+  ]);
+  const missingCosts = dataset.costs.filter((_, index) => existingIds[index] == null);
+  const settingsAreUnconfigured = !existingSettings || (
+    existingSettings.safetyBufferCents === 0 && Date.parse(existingSettings.updatedAt) === 0
+  );
+  await db.transaction('rw', [db.financial_costs, db.financial_settings], async () => {
+    if (missingCosts.length > 0) await db.financial_costs.bulkAdd(missingCosts);
+    if (settingsAreUnconfigured) await db.financial_settings.put(dataset.settings);
+  });
+  return dataset;
+};
 
 export type DemoDemandProfile =
   | 'stable'
@@ -590,7 +735,7 @@ export const buildDemoRetailDataset = (catalogue: Product[], now = new Date()): 
 };
 
 export const clearDemoRetailData = async (): Promise<void> => {
-  await db.transaction('rw', [db.transactions, db.customers, db.gift_cards, db.gift_card_events, db.users], async () => {
+  await db.transaction('rw', [db.transactions, db.customers, db.gift_cards, db.gift_card_events, db.users, db.financial_costs, db.financial_settings], async () => {
     // Fetch keys only: loading hundreds of complete receipt objects solely to
     // delete them wastes memory, while Collection.delete() issues one request
     // per row in IndexedDB.
@@ -614,16 +759,23 @@ export const clearDemoRetailData = async (): Promise<void> => {
       .where('id')
       .startsWith('demo-user-')
       .primaryKeys() as string[];
+    const demoFinancialCostIds = (await db.financial_costs
+      .filter((cost) => cost.source === 'demo')
+      .primaryKeys()) as string[];
+    const financialSettings = await db.financial_settings.get('store');
 
     if (transactionIds.length > 0) await db.transactions.bulkDelete(transactionIds);
     if (customerIds.length > 0) await db.customers.bulkDelete(customerIds);
     if (giftCardEventIds.length > 0) await db.gift_card_events.bulkDelete(giftCardEventIds);
     if (giftCardIds.length > 0) await db.gift_cards.bulkDelete(giftCardIds);
     if (demoUserIds.length > 0) await db.users.bulkDelete(demoUserIds);
+    if (demoFinancialCostIds.length > 0) await db.financial_costs.bulkDelete(demoFinancialCostIds);
+    if (financialSettings?.source === 'demo') await db.financial_settings.delete('store');
   });
 };
 
 export const seedDemoRetailData = async (now = new Date()): Promise<DemoSeedResult> => {
+  await seedDemoFinancialData(now);
   const [existingTransactions, existingGiftCards, existingGiftCardEvents, products] = await Promise.all([
     db.transactions.where('source').equals('demo').count(),
     db.gift_cards.where('id').startsWith(DEMO_GIFT_CARD_PREFIX).toArray(),
