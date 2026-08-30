@@ -223,6 +223,25 @@ describe("calculateReportData", () => {
     expect(() => calculateReportData([row])).toThrow(ReportIntegrityError);
   });
 
+  it("describes an invalid legacy gift-card tender without leaking NaN", () => {
+    const event = {
+      id: "gift-bad-tender",
+      giftCardId: "gift-1",
+      giftCardCode: "PW-1",
+      type: "issue" as const,
+      amountCents: 50000,
+      balanceBeforeCents: 0,
+      balanceAfterCents: 50000,
+      timestamp: Date.now(),
+      paymentTenders: [{ method: "PIN" as const, amountCents: undefined as unknown as number }],
+    };
+
+    expect(() => calculateReportData([], [event])).toThrow(
+      "betaalregel 1 bevat geen geldig bedrag of betaalmiddel",
+    );
+    expect(() => calculateReportData([], [event])).not.toThrow(/NaN/);
+  });
+
   it("books gift-card catalog value as liability rather than product revenue", () => {
     const row = tx(1, 2500, "PIN");
     row.items[0].product = {

@@ -311,7 +311,15 @@ const pushTransactionToSupabase = async (
     const hasCashTender = tenders.some((tender) => tender.method === "Cash");
     const items = tx.items.map((item) => ({
       line_id: item.lineId,
-      product: { id: item.product.id, priceCents: item.product.priceCents },
+      product: {
+        id: item.product.id,
+        name: item.product.name,
+        category: item.product.category,
+        subCategory: item.product.subCategory,
+        priceCents: item.product.priceCents,
+        vatRate: item.product.vatRate,
+        productType: item.product.productType,
+      },
       quantity: item.quantity,
       notes: item.notes,
       modifiers: item.modifiers ?? [],

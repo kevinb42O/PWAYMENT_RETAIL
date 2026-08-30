@@ -27,6 +27,7 @@ import type {
   DailyReport,
   GiftCard,
   GiftCardEvent,
+  PaymentTender,
   Product,
   ProductCategory,
   PurchaseOrder,
@@ -76,6 +77,26 @@ const jsonArray = <T>(value: Json | null): T[] =>
   Array.isArray(value) ? (value as T[]) : [];
 
 const jsonObject = <T>(value: Json | null): T => (value ?? {}) as T;
+
+const paymentTendersFromJson = (value: Json | null): PaymentTender[] => {
+  if (!Array.isArray(value)) return [];
+  return value.map((row, index) => {
+    if (!row || typeof row !== "object" || Array.isArray(row)) {
+      throw new Error(`Cadeaubonbetaling ${index + 1} heeft een ongeldig formaat.`);
+    }
+    const method = row.method;
+    const rawAmount = row.amountCents ?? row.amount_cents;
+    const amountCents = Number(rawAmount);
+    if (
+      (method !== "Cash" && method !== "PIN" && method !== "Cadeaubon") ||
+      !Number.isSafeInteger(amountCents) ||
+      amountCents <= 0
+    ) {
+      throw new Error(`Cadeaubonbetaling ${index + 1} bevat een ongeldig betaalmiddel of bedrag.`);
+    }
+    return { method, amountCents };
+  });
+};
 
 /** Accept only a complete, internally reconciling VAT snapshot from the API. */
 const validVatBreakdown = (value: unknown): Transaction["vatBreakdown"] => {
@@ -644,6 +665,15 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
   const transactionLocalId = new Map(
     transactionRows.map((row, index) => [row.id, index + 1]),
   );
+  const giftCardTransactionIds = new Set(
+    giftCardEventRows
+      .filter(
+        (event) =>
+          event.transaction_id != null &&
+          (event.event_type === "issue" || event.event_type === "recharge"),
+      )
+      .map((event) => event.transaction_id as string),
+  );
   const transactions: Transaction[] = transactionRows.map((row, index) => ({
     id: index + 1,
     clientRequestId: row.client_request_id,
@@ -662,6 +692,9 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
               ? undefined
               : Number(line.unit_cost_cents),
           vatRate: Number(line.vat_rate),
+          productType: giftCardTransactionIds.has(row.id)
+            ? "gift-card"
+            : productSnapshot.productType,
         },
         quantity: line.quantity,
         notes: line.notes ?? undefined,
@@ -1004,6 +1037,9 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
     balanceBeforeCents: Number(row.balance_before_cents),
     balanceAfterCents: Number(row.balance_after_cents),
     timestamp: Date.parse(row.occurred_at),
+    transactionId: row.transaction_id
+      ? transactionLocalId.get(row.transaction_id)
+      : undefined,
     clientRequestId: row.client_request_id ?? undefined,
     customerId: row.customer_id
       ? customerExternalId.get(row.customer_id)
@@ -1012,7 +1048,7 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
     userName: row.user_name ?? undefined,
     source: row.source as GiftCardEvent["source"],
     note: row.note ?? undefined,
-    paymentTenders: jsonArray(row.payment_tenders),
+    paymentTenders: paymentTendersFromJson(row.payment_tenders),
     dailyReportId: row.daily_report_id
       ? dailyReportLocalId.get(row.daily_report_id)
       : undefined,

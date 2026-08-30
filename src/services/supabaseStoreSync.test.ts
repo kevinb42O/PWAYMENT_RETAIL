@@ -140,7 +140,7 @@ describe("Supabase store bootstrap", () => {
       transaction_lines: [{ id: "line-db", transaction_id: "transaction-db", line_external_id: "line-1", product_id: "product-db", product_external_id: "product-1", product_name: "Nieuwe deck", sku: "DECK-1", barcode: "123", quantity: 1, unit_price_cents: 6500, unit_cost_cents: 2500, vat_rate: 21, line_total_cents: 6500, notes: "Grip inbegrepen", modifiers: [], product_snapshot: { category: "decks", priceCents: 6500, vatRate: 21 }, created_at: now }],
       transaction_tenders: [{ id: "tender-db", transaction_id: "transaction-db", method: "PIN", amount_cents: 6500, created_at: now }],
       gift_cards: [{ id: "gift-db", external_id: "gift-1", customer_id: "customer-db", code: "PW-1", initial_cents: 5000, balance_cents: 3000, issued_at: now, expires_at: null, is_active: true }],
-      gift_card_events: [{ id: "event-db", external_id: "event-1", gift_card_id: "gift-db", gift_card_code: "PW-1", event_type: "redeem", amount_cents: 2000, balance_before_cents: 5000, balance_after_cents: 3000, occurred_at: now, transaction_id: "transaction-db", client_request_id: "request-1", customer_id: "customer-db", user_id: "user-1", user_name: "Alex", source: "live", note: null, payment_tenders: [{ method: "PIN", amountCents: 2000 }], daily_report_id: "report-db" }],
+      gift_card_events: [{ id: "event-db", external_id: "event-1", gift_card_id: "gift-db", gift_card_code: "PW-1", event_type: "issue", amount_cents: 50000, balance_before_cents: 0, balance_after_cents: 50000, occurred_at: now, transaction_id: "transaction-db", client_request_id: "request-1", customer_id: "customer-db", user_id: "user-1", user_name: "Alex", source: "live", note: null, payment_tenders: [{ method: "PIN", amount_cents: 50000 }], daily_report_id: "report-db" }],
       registers: [{ id: "register-db", external_id: "register-1", name: "Kassa 1", is_active: true, created_at: now }],
       register_shifts: [{ id: "shift-db", register_id: "register-db", shift_number: 1, opened_at: now, opened_by_user_id: "user-1", opened_by_user_name: "Alex", opening_float_cents: 1000, closed_at: null, closed_by_user_id: null, closed_by_user_name: null, counted_cash_cents: null, expected_cash_cents: null, cash_difference_cents: null, cash_difference_reason: null, status: "open" }],
       stock_movements: [{ id: "movement-db", product_id: "product-db", product_name: "Nieuwe deck", quantity_delta: -1, reason: "pos-sale", occurred_at: now, purchase_order_id: null, transaction_id: "transaction-db", user_id: "user-1", user_name: "Alex" }],
@@ -246,7 +246,15 @@ describe("Supabase store bootstrap", () => {
         { rate: 21, grossCents: 5440, exclCents: 4496, vatCents: 944 },
       ],
     });
-    expect(await activeDb.gift_card_events.get("event-1")).toMatchObject({ giftCardId: "gift-1", dailyReportId: 1 });
+    expect(await activeDb.gift_card_events.get("event-1")).toMatchObject({
+      giftCardId: "gift-1",
+      transactionId: 1,
+      paymentTenders: [{ method: "PIN", amountCents: 50000 }],
+      dailyReportId: 1,
+    });
+    expect((await activeDb.transactions.get(1))?.items[0].product).toMatchObject({
+      productType: "gift-card",
+    });
     const { useStoreConfiguration } = await import("../store/useStoreConfiguration");
     expect(useStoreConfiguration.getState().configuration.capabilities["variant-matrix"])
       .toBe("enabled");

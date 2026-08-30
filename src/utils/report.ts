@@ -216,6 +216,17 @@ export const calculateReportData = (
     // is naturally closed out.  Counting both would overstate cash/PIN.
     if (event.transactionId != null) continue;
     const tenders = event.paymentTenders ?? [];
+    for (const [index, tender] of tenders.entries()) {
+      if (
+        !Number.isSafeInteger(tender.amountCents) ||
+        tender.amountCents <= 0 ||
+        !["Cash", "PIN", "Cadeaubon"].includes(tender.method)
+      ) {
+        throw new ReportIntegrityError(
+          `Cadeaubongebeurtenis ${event.id}: betaalregel ${index + 1} bevat geen geldig bedrag of betaalmiddel.`,
+        );
+      }
+    }
     const tenderTotal = tenders.reduce(
       (sum, tender) => sum + tender.amountCents,
       0,

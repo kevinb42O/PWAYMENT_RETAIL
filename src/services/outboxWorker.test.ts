@@ -207,6 +207,55 @@ describe("synchronizeFinancialLedgerBeforeReport", () => {
     });
   });
 
+  it("sends gift-card checkout tenders at the API boundary and preserves product classification", async () => {
+    const giftCardSale: Transaction = {
+      ...transaction("gift-card-checkout-contract"),
+      items: [{
+        lineId: "gift-line",
+        product: {
+          id: "gift-product",
+          name: "Cadeaubon – uitgifte",
+          category: "Cadeaubonnen",
+          priceCents: 50000,
+          vatRate: 0,
+          productType: "gift-card",
+        },
+        quantity: 1,
+        giftCardOperation: {
+          action: "issue",
+          cardId: "gift-card-1",
+          code: "PW-500",
+        },
+      }],
+      subtotalCents: 50000,
+      totalCents: 50000,
+      vat21Cents: 0,
+      tenders: [{ method: "PIN", amountCents: 50000 }],
+    };
+    const rpc = vi.spyOn(supabase, "rpc").mockResolvedValue({
+      data: { duplicate: false },
+      error: null,
+    } as never);
+
+    await synchronizeFinancialLedgerBeforeReport(
+      "00000000-0000-0000-0000-000000000001",
+      [giftCardSale],
+      [],
+    );
+
+    expect(rpc).toHaveBeenCalledWith("checkout_gift_card_sale", expect.objectContaining({
+      payload: expect.objectContaining({
+        tenders: [{ method: "PIN", amount_cents: 50000 }],
+        items: [expect.objectContaining({
+          product: expect.objectContaining({
+            name: "Cadeaubon – uitgifte",
+            productType: "gift-card",
+          }),
+        })],
+      }),
+    }));
+  });
+
   it("records the Mollie reconciliation reference after the server sale exists", async () => {
     const row = {
       ...transaction("mollie-reference-contract"),
