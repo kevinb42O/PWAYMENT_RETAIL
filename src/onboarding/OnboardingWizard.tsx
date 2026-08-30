@@ -211,6 +211,8 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [businessUseConfirmed, setBusinessUseConfirmed] = useState(false);
   const [industrySelected, setIndustrySelected] = useState(mode === "settings");
   const currentStep = steps[stepIndex];
   const selectedModules = MODULE_DETAILS.filter(
@@ -320,6 +322,12 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
         setStepIndex(0);
         return;
       }
+      if (!termsAccepted || !businessUseConfirmed) {
+        setIsSubmitting(false);
+        setError("Bevestig de algemene voorwaarden en dat u PWAYMENT professioneel gebruikt.");
+        setStepIndex(steps.length - 1);
+        return;
+      }
       const completed = completeStoreConfiguration(configuration);
       const result = await registerAccount({
         email: account.email,
@@ -328,6 +336,8 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
         lastName: account.lastName,
         storeName: account.storeName,
         pin: account.pin,
+        termsAccepted,
+        businessUseConfirmed,
         onboardingConfiguration: completed,
       });
       setIsSubmitting(false);
@@ -916,6 +926,10 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                   <p className="text-xs leading-5 text-slate-500">
                     Door verder te gaan maakt PWAYMENT alleen de werkruimte klaar. Er worden nog geen producten gepubliceerd, berichten verstuurd of externe koppelingen geactiveerd.
                   </p>
+                  {mode === "registration" && <div className="space-y-3 rounded-2xl border border-sky-200 bg-sky-50/70 p-5 text-xs leading-5 text-slate-700">
+                    <label className="flex items-start gap-3"><input type="checkbox" checked={businessUseConfirmed} onChange={(event) => { setBusinessUseConfirmed(event.target.checked); setError(null); }} className="mt-1 h-4 w-4 shrink-0 accent-sky-700" /><span>Ik bevestig dat ik PWAYMENT uitsluitend afneem voor mijn handels-, bedrijfs-, ambachts- of beroepsactiviteit en bevoegd ben om de opgegeven onderneming te verbinden.</span></label>
+                    <label className="flex items-start gap-3"><input type="checkbox" checked={termsAccepted} onChange={(event) => { setTermsAccepted(event.target.checked); setError(null); }} className="mt-1 h-4 w-4 shrink-0 accent-sky-700" /><span>Ik aanvaard de <a className="font-bold text-sky-800 underline" href="/legal/terms" target="_blank" rel="noreferrer">Algemene SaaS-voorwaarden</a> en heb de <a className="font-bold text-sky-800 underline" href="/legal/privacy" target="_blank" rel="noreferrer">privacyverklaring</a> en <a className="font-bold text-sky-800 underline" href="/legal/dpa" target="_blank" rel="noreferrer">verwerkersovereenkomst</a> kunnen lezen.</span></label>
+                  </div>}
                 </div>
               )}
             </div>

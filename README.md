@@ -396,6 +396,8 @@ welkomststatus zonder kostprijzen, interne notities of klantdetails te delen.
 
 ## Aanvullende documentatie
 
+- [`COMPLIANCE-READINESS.md`](COMPLIANCE-READINESS.md) — juridische
+  productievelden, retentie/offboarding, subverwerkers en de releasegate.
 - [`AUDIT.md`](AUDIT.md) — historische audit van een eerdere POS-fase. De
   actuele implementatie, migraties en tests zijn de bron van waarheid voor de
   huidige productiestatus.

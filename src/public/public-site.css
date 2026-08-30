@@ -430,6 +430,7 @@
 .pw-form-card textarea { resize: vertical; }
 .pw-form-card .pw-consent { flex-direction: row; align-items: flex-start; gap: 9px; font-size: 10px; font-weight: 500; line-height: 1.45; letter-spacing: 0; text-transform: none; }
 .pw-form-card .pw-consent input { width: 15px; height: 15px; margin-top: 1px; }
+.pw-form-card .pw-consent a { color: #075985; text-decoration: underline; text-underline-offset: 2px; }
 .pw-form-card .pw-form-honeypot { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 .pw-form-error { margin: -3px 0 0; padding: 12px 14px; border: 1px solid #e8c9c6; border-radius: 10px; background: #fff4f2; color: #9c3932; font-size: 11px; line-height: 1.5; }
 .pw-form-card button { width: 100%; cursor: pointer; }
@@ -459,10 +460,15 @@
 .pw-resource-grid article:hover > a { background: var(--pw-ink); color: white; }
 .pw-legal { max-width: 850px; padding-block: 120px 150px; }
 .pw-legal h1 { margin: 22px 0 5px; font-size: clamp(48px, 6vw, 78px); letter-spacing: -.06em; line-height: 1; }
+.pw-legal-lead { max-width: 700px; margin: 22px 0 10px; color: var(--pw-muted); font-size: 17px; line-height: 1.7; }
 .pw-legal-updated { color: var(--pw-faint); font-size: 11px; }
+.pw-legal-warning { display: grid; gap: 6px; margin-top: 28px; padding: 18px 20px; border: 1px solid #e8cf88; border-radius: 14px; background: #fff9e8; color: #6b5214; font-size: 12px; line-height: 1.6; }
 .pw-legal article { margin-top: 70px; padding-top: 40px; border-top: 1px solid var(--pw-line); }
 .pw-legal h2 { margin: 40px 0 10px; font-size: 24px; letter-spacing: -.03em; }
-.pw-legal article p { color: var(--pw-muted); line-height: 1.75; }
+.pw-legal article p, .pw-legal article li { color: var(--pw-muted); line-height: 1.75; }
+.pw-legal article ul { display: grid; gap: 9px; margin: 14px 0 0; padding-left: 20px; }
+.pw-legal article a { color: #075985; text-decoration: underline; text-underline-offset: 3px; }
+.pw-legal-language { margin-top: 52px; padding-top: 20px; border-top: 1px solid var(--pw-line); color: var(--pw-faint); font-size: 11px; line-height: 1.6; }
 .pw-not-found { min-height: 72vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 .pw-not-found > span { color: var(--pw-faint); font-size: 11px; font-weight: 800; letter-spacing: .14em; }
 .pw-not-found h1 { margin: 22px 0 12px; font-size: 58px; letter-spacing: -.06em; }
@@ -473,6 +479,8 @@
 .pw-footer-brand > a { display: inline-flex; }
 .pw-footer-brand > strong { display: block; margin-top: 20px; font-size: 14px; letter-spacing: -.025em; }
 .pw-footer-brand p { max-width: 320px; margin-top: 7px; color: var(--pw-muted); font-size: 13px; line-height: 1.65; }
+.pw-footer-brand address { display: grid; gap: 4px; margin-top: 20px; color: #6b6d72; font-size: 9px; font-style: normal; line-height: 1.5; }
+.pw-footer-brand address a { color: #4e5157; text-decoration: underline; text-underline-offset: 2px; }
 .pw-footer-links { display: grid; grid-template-columns: repeat(4, 1fr); gap: 35px; }
 .pw-footer-links > div { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
 .pw-footer-links strong { margin-bottom: 9px; font-size: 11px; }

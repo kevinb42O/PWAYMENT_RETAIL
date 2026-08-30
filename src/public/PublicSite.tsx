@@ -46,11 +46,14 @@ import {
 } from '../billing/planCatalog';
 import { publicLeadStorageAvailable, submitPublicLead } from '../services/publicLeads';
 import { trackPublicEvent } from '../services/publicAnalytics';
+import { legalIdentity } from '../config/legal';
 import { PaceMark } from '../pace/PaceMark';
 import { applyRouteSeo } from './siteSeo';
 import { PaceHomeTeaser, PacePublicPage } from './PacePublicExperience';
 import { localizePublicDom, localizedPublicPath, parsePublicPath, PUBLIC_LOCALE_INFO, PUBLIC_LOCALES, type PublicLocale } from './publicLocale';
 import './public-site.css';
+
+const LazyLegalPage = React.lazy(() => import('./LegalPage'));
 
 // These captures come from the current local application in presentation mode.
 // Keep public marketing visuals independent from the retired presentation export.
@@ -238,7 +241,7 @@ const featurePages: Record<string, FeaturePageData> = {
     proof: 'Beheerde connectors én open bouwblokken voor maatwerk.',
     chapters: [
       { number: '01', title: 'Commerce en leveranciers', body: 'Configuratie en mapping bestaan; live synchronisatie wordt per connector end-to-end gevalideerd.', points: ['Shopify en WooCommerce: pilot', 'REST, GraphQL en SFTP feeds: validatie', 'PWAYMENT Webshop: actief'] },
-      { number: '02', title: 'Boekhouding en Peppol', body: 'Boekhoudconfiguratie is voorzien, maar een publieke live-status volgt pas na een bewezen volledige documentflow.', points: ['Exact Online en Octopus: pilot', 'Peppol: pilot', 'Z-journaalconfiguratie aanwezig'] },
+      { number: '02', title: 'Boekhouding en Peppol', body: 'PDF-documenten en boekhoudconfiguratie zijn geen gestructureerde e-facturatie. Gebruik voor Belgische B2B-facturen een afzonderlijk geactiveerde Peppol/EN 16931-oplossing tot PWAYMENT de volledige documentflow als actief bevestigt.', points: ['Exact Online en Octopus: pilot', 'Peppol: niet live / validatie', 'Z-journaalconfiguratie aanwezig'] },
       { number: '03', title: 'API en webhooks', body: 'Sleutel-, webhook- en logbeheer zijn zichtbaar; endpoints, delivery en documentatie bepalen de live-status.', points: ['Beheerinterface aanwezig', 'Deliveryservice nog in pilot', 'Geen actief-label zonder end-to-end bewijs'] },
     ],
   },
@@ -414,7 +417,8 @@ const integrationStatuses = [
   { name: 'CSV catalogus', status: 'Actief', tone: 'live', detail: 'Export werkt; import is beschikbaar achter een gecontroleerde releaseflag.' },
   { name: 'Supabase realtime', status: 'Actief', tone: 'live', detail: 'Tenantdata en entitlementwijzigingen synchroniseren via de centrale backend.' },
   { name: 'Shopify & WooCommerce', status: 'Pilot', tone: 'pilot', detail: 'Configuratie en mapping zijn voorzien; end-to-end connectorvalidatie blijft vereist.' },
-  { name: 'Exact, Octopus & Peppol', status: 'Pilot', tone: 'pilot', detail: 'Boekhoudconfiguratie is voorzien; publieke live-status volgt na end-to-end verificatie.' },
+  { name: 'Peppol / EN 16931', status: 'Validatie', tone: 'validate', detail: 'Niet live: een PDF uit PWAYMENT voldoet niet als Belgische gestructureerde B2B-factuur. Gebruik een actieve externe Peppoloplossing.' },
+  { name: 'Exact & Octopus', status: 'Pilot', tone: 'pilot', detail: 'Boekhoudconfiguratie is voorzien; publieke live-status volgt pas na end-to-end verificatie.' },
   { name: 'REST API & webhooks', status: 'Pilot', tone: 'pilot', detail: 'Sleutel-, webhook- en logbeheer zijn zichtbaar; deliveryservice en documentatie bepalen live-status.' },
   { name: 'Betaalterminals', status: 'Validatie', tone: 'validate', detail: 'Providerkeuze bestaat; elk merk en model krijgt pas live-status na device- en reconciliatietest.' },
   { name: 'Leveranciersfeeds', status: 'Validatie', tone: 'validate', detail: 'REST, GraphQL en SFTP blijven als maatwerkpad gelabeld tot een feed aantoonbaar draait.' },
@@ -507,7 +511,7 @@ const PublicSite: React.FC = () => {
   else if (path === '/migrate') page = <MigrationPage />;
   else if (path === '/about') page = <AboutPage />;
   else if (path === '/resources' || path === '/customer-stories') page = <ResourcesPage stories={path === '/customer-stories'} />;
-  else if (path.startsWith('/legal/')) page = <LegalPage type={path.split('/').pop() || 'privacy'} />;
+  else if (path.startsWith('/legal/')) page = <React.Suspense fallback={<div className="pw-legal pw-shell" role="status">Juridische informatie laden…</div>}><LazyLegalPage type={path.split('/').pop() || 'privacy'} /></React.Suspense>;
   else page = <NotFoundPage />;
 
   return (
@@ -1142,7 +1146,7 @@ const ContactPage = ({ demo }: { demo: boolean }) => {
               {demo && <><div className="pw-form-grid"><label>Aantal locaties<select name="locations"><option>1 locatie</option><option>2–3 locaties</option><option>4–10 locaties</option><option>Meer dan 10</option></select></label><label>Huidige situatie<select name="current"><option>Nog geen POS</option><option>Spreadsheet/eenvoudige kassa</option><option>Andere POS</option><option>Meerdere systemen</option></select></label></div><label>Waar wil je mee starten?<select name="interest" defaultValue={new URLSearchParams(window.location.search).get('interest') === 'pace' ? 'Pace in mijn winkelcontext' : 'Nieuwe winkel opstarten'}><option>Nieuwe winkel opstarten</option><option>Bestaande bestanden importeren</option><option>Overstappen van een andere POS</option><option>Kassa en betalingen</option><option>Voorraad en inkoop</option><option>Winkel en webshop verbinden</option><option>Pace in mijn winkelcontext</option><option>Meerdere locaties</option></select></label></>}
               <label>Waar wil je vooral duidelijkheid over?<textarea name="message" rows={4} minLength={10} maxLength={4000} required /></label>
               <label className="pw-form-honeypot" aria-hidden="true">Website<input name="website" tabIndex={-1} autoComplete="off" /></label>
-              <label className="pw-consent"><input name="consent" type="checkbox" required />Ik ga akkoord dat PWAYMENT mijn gegevens gebruikt om op deze aanvraag te antwoorden.</label>
+              <label className="pw-consent"><input name="consent" type="checkbox" required />Ik ga akkoord dat PWAYMENT mijn gegevens gebruikt om op deze aanvraag te antwoorden zoals uitgelegd in de <a href="/legal/privacy" target="_blank" rel="noreferrer">privacyverklaring</a>.</label>
               {submitError && <p className="pw-form-error" role="alert">{submitError}</p>}
               <button className="pw-button pw-button-dark" type="submit" disabled={submitting}>{submitting ? 'Veilig verzenden…' : demo ? 'Vraag mijn demo aan' : 'Verstuur bericht'}{!submitting && <ArrowRight size={16} />}</button>
               <small>Geen spam. Je gegevens worden alleen gebruikt voor deze aanvraag en zijn niet publiek leesbaar.</small>
@@ -1208,17 +1212,12 @@ const ResourcesPage = ({ stories, compact = false }: { stories: boolean; compact
   </>;
 };
 
-const LegalPage = ({ type }: { type: string }) => {
-  const titles: Record<string, string> = { privacy: 'Privacyverklaring', cookies: 'Cookiebeleid', terms: 'Algemene voorwaarden', dpa: 'Verwerkersovereenkomst', subprocessors: 'Subverwerkers' };
-  return <motion.section className="pw-legal pw-shell" initial="hidden" animate="visible" variants={stagger}><motion.span className="pw-eyebrow" variants={fadeUp}>Juridisch</motion.span><motion.h1 variants={fadeUp}>{titles[type] || 'Juridische informatie'}</motion.h1><motion.p className="pw-legal-updated" variants={fadeUp}>Laatst bijgewerkt op 11 augustus 2026</motion.p><motion.article variants={fadeUp}><h2>Heldere afspraken</h2><p>Deze pagina is voorbereid als definitieve juridische bestemming voor {titles[type]?.toLowerCase() || 'deze informatie'}. Voor publieke ingebruikname wordt de volledige, door juridisch adviseurs goedgekeurde tekst hier opgenomen, inclusief bedrijfsidentiteit, doeleinden, bewaartermijnen, rechten, contactkanalen en toepasselijke voorwaarden.</p><h2>Contact</h2><p>Vragen over privacy, voorwaarden of gegevensverwerking kunnen worden gericht aan privacy@pwayment.be.</p><h2>Versiebeheer</h2><p>Elke wijziging krijgt een ingangsdatum en versienummer. Eerdere versies blijven opvraagbaar wanneer contractuele of wettelijke transparantie dat vereist.</p></motion.article></motion.section>;
-};
-
 const NotFoundPage = () => <motion.section className="pw-not-found pw-shell" initial="hidden" animate="visible" variants={stagger}><motion.span variants={fadeUp}>404</motion.span><motion.h1 variants={fadeUp}>Deze pagina staat niet in de winkel.</motion.h1><motion.p variants={fadeUp}>De link is mogelijk verplaatst. Vanaf het overzicht vind je snel de juiste richting.</motion.p><motion.a variants={fadeUp} href="/" className="pw-button pw-button-dark">Terug naar home <ArrowRight size={16} /></motion.a></motion.section>;
 
 const FinalCta = ({ eyebrow = 'PWAYMENT, powered by Pace', title = <>Begin waar je winkel staat.<br />Groei zonder opnieuw te beginnen.</> }: { eyebrow?: string; title?: React.ReactNode }) => <motion.section className="pw-final" initial="hidden" whileInView="visible" viewport={revealViewport} variants={stagger}><div className="pw-shell"><motion.span className="pw-eyebrow" variants={fadeUp}>{eyebrow}</motion.span><motion.h2 variants={fadeUp}>{title}</motion.h2><motion.p variants={fadeUp}>Start gratis, laat Pace je account begeleiden of plan een demo rond je bestaande winkelcontext.</motion.p><motion.div variants={fadeUp}><a href="/start" className="pw-button pw-button-dark">Kies je startroute <ArrowRight size={17} /></a><a href="/demo" className="pw-text-link">Plan een persoonlijke demo <ArrowRight size={15} /></a></motion.div></div></motion.section>;
 
 const SiteFooter = ({ locale, routePath }: { locale: PublicLocale; routePath: string }) => (
-  <footer className="pw-footer"><div className="pw-shell"><div className="pw-footer-top"><div className="pw-footer-brand"><a href="/" aria-label="PWAYMENT home"><PaceMark size={74} active emotion="idle" motionMode="subtle" /></a><strong>PWAYMENT, powered by Pace.</strong><p>Het retailplatform dat met je meewerkt.</p></div><div className="pw-footer-links"><div><strong>Product</strong><a href="/pace">Pace</a><a href="/pos">POS & betalingen</a><a href="/history-returns-invoices">Retouren & facturen</a><a href="/daily-close-reporting">Dagafsluiting</a><a href="/purchasing-suppliers">Inkoop</a><a href="/team-permissions">Team & rechten</a></div><div><strong>Platform</strong><a href="/inventory">Voorraad</a><a href="/insights">Inzichten</a><a href="/customers">Klanten</a><a href="/webshop">Webshop</a><a href="/integrations">Integraties & status</a><a href="/hardware">Hardwarematrix</a></div><div><strong>Bedrijf</strong><a href="/about">Over PWAYMENT</a><a href="/start">Start met PWAYMENT</a><a href="/resources">Resources</a><a href="/migrate">Migreren</a><a href="/contact">Contact</a></div><div><strong>Account</strong><a href="/pricing">Prijzen</a><a href="/login">Log in</a><a href="/register">Start gratis</a><a href="/demo">Plan een demo</a><a href="/contact">Support</a></div></div></div><div className="pw-footer-bottom"><span>© 2026 PWAYMENT. Alle rechten voorbehouden.</span><div><a href="/legal/privacy">Privacy</a><a href="/legal/cookies">Cookies</a><a href="/legal/terms">Voorwaarden</a><a href="/legal/dpa">Verwerkersovereenkomst</a><a href="/legal/subprocessors">Subverwerkers</a></div><LanguageSwitcher locale={locale} routePath={routePath} compact /></div></div></footer>
+  <footer className="pw-footer"><div className="pw-shell"><div className="pw-footer-top"><div className="pw-footer-brand"><a href="/" aria-label="PWAYMENT home"><PaceMark size={74} active emotion="idle" motionMode="subtle" /></a><strong>PWAYMENT, powered by Pace.</strong><p>Het retailplatform dat met je meewerkt.</p><address><span>{legalIdentity.legalName} · {legalIdentity.legalForm}</span><span>{legalIdentity.registeredAddress}</span><span>Ondernemingsnr. {legalIdentity.enterpriseNumber} · BTW {legalIdentity.vatNumber}</span><span>{legalIdentity.rpr}</span><a href={`mailto:${legalIdentity.email}`}>{legalIdentity.email}</a><a href={`tel:${legalIdentity.phone.replace(/[^+\d]/g, '')}`}>{legalIdentity.phone}</a></address></div><div className="pw-footer-links"><div><strong>Product</strong><a href="/pace">Pace</a><a href="/pos">POS & betalingen</a><a href="/history-returns-invoices">Retouren & facturen</a><a href="/daily-close-reporting">Dagafsluiting</a><a href="/purchasing-suppliers">Inkoop</a><a href="/team-permissions">Team & rechten</a></div><div><strong>Platform</strong><a href="/inventory">Voorraad</a><a href="/insights">Inzichten</a><a href="/customers">Klanten</a><a href="/webshop">Webshop</a><a href="/integrations">Integraties & status</a><a href="/hardware">Hardwarematrix</a></div><div><strong>Bedrijf</strong><a href="/about">Over PWAYMENT</a><a href="/start">Start met PWAYMENT</a><a href="/resources">Resources</a><a href="/migrate">Migreren</a><a href="/contact">Contact</a></div><div><strong>Account</strong><a href="/pricing">Prijzen</a><a href="/login">Log in</a><a href="/register">Start gratis</a><a href="/demo">Plan een demo</a><a href="/contact">Support</a></div></div></div><div className="pw-footer-bottom"><span>© 2026 PWAYMENT. Alle rechten voorbehouden.</span><div><a href="/legal/privacy">Privacy</a><a href="/legal/cookies">Cookies</a><a href="/legal/terms">Voorwaarden</a><a href="/legal/dpa">Verwerkersovereenkomst</a><a href="/legal/subprocessors">Subverwerkers</a></div><LanguageSwitcher locale={locale} routePath={routePath} compact /></div></div></footer>
 );
 
 export default PublicSite;

@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { RotateCcw, Save } from 'lucide-react';
 import { useMerchantProfile } from '../store/useMerchantProfile';
 import { MerchantTicketPreview } from './MerchantTicketPreview';
+import { merchantIdentityIssues } from '../data/merchant';
 
 export const MerchantSettings: React.FC = () => {
   const profile = useMerchantProfile((state) => state.profile);
@@ -9,9 +10,10 @@ export const MerchantSettings: React.FC = () => {
   const resetProfile = useMerchantProfile((state) => state.resetProfile);
   const [draft, setDraft] = useState(profile);
   const [saved, setSaved] = useState(false);
+  const identityIssues = merchantIdentityIssues(draft);
 
   const canSave = useMemo(() => {
-    return draft.name.trim() && draft.addressLine1.trim() && draft.addressLine2.trim() && draft.vatNumber.trim();
+    return identityIssues.length === 0;
   }, [draft]);
 
   const set = (key: keyof typeof draft, value: string) => {
@@ -48,6 +50,7 @@ export const MerchantSettings: React.FC = () => {
           <h2 className="text-lg font-bold">Ticket- en factuuridentiteit</h2>
           <p className="text-sm text-zinc-400">Deze juridische identiteit wordt bevroren op ieder nieuw ticket en iedere factuur. Controleer ze zorgvuldig vóór livegebruik.</p>
         </div>
+        {identityIssues.length > 0 && <div role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs leading-5 text-amber-200"><strong>Niet klaar voor live tickets.</strong> Vul echte waarden in voor: {identityIssues.join(', ')}. Een productieafrekening blijft geblokkeerd zolang voorbeeldgegevens aanwezig zijn.</div>}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Field label="Shopnaam op ticket" required>

@@ -19,6 +19,7 @@ import {
 } from "../onboarding/storeConfiguration";
 import { useStoreConfiguration } from "../store/useStoreConfiguration";
 import { useWorkforce } from "../store/useWorkforce";
+import { LEGAL_VERSION } from "../config/legal";
 
 interface AuthState {
   currentUserId: string | null;
@@ -41,6 +42,8 @@ interface AuthState {
     lastName: string;
     storeName: string;
     pin: string;
+    termsAccepted: boolean;
+    businessUseConfirmed: boolean;
     onboardingConfiguration: StoreConfiguration;
   }) => Promise<{ success: boolean; message?: string }>;
   logout: () => Promise<void>;
@@ -434,6 +437,8 @@ export const useAuth = create<AuthState>()(
         lastName,
         storeName,
         pin,
+        termsAccepted,
+        businessUseConfirmed,
         onboardingConfiguration,
       }) {
         const cleanEmail = email.trim().toLowerCase();
@@ -451,6 +456,12 @@ export const useAuth = create<AuthState>()(
           return {
             success: false,
             message: "Vul alstublieft alle verplichte velden in",
+          };
+        }
+        if (!termsAccepted || !businessUseConfirmed) {
+          return {
+            success: false,
+            message: "Bevestig de voorwaarden en het professionele gebruik.",
           };
         }
         if (password.length < 12) {
@@ -520,6 +531,9 @@ export const useAuth = create<AuthState>()(
                 last_name: cleanLast,
                 store_name: cleanStore,
                 onboarding_config: onboardingConfiguration,
+                legal_version: LEGAL_VERSION,
+                legal_accepted_at: new Date().toISOString(),
+                business_use_confirmed: true,
               },
             },
           });

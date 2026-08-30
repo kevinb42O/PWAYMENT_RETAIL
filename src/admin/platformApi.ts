@@ -869,7 +869,7 @@ export const updatePlatformStoreSubscription = (
 });
 
 export const deletePlatformStore = (storeId: string, expectedStoreName: string, reason: string) =>
-  call<{ deleted_store_id: string; deleted_store_name: string; deleted_orphan_users: number }>("platform_delete_store", {
+  call<{ deleted_store_id: string; deleted_store_name: string; deleted_orphan_users: number; archived: boolean; retention_until: string | null }>("platform_delete_store", {
     target_store_id: storeId,
     expected_store_name: expectedStoreName,
     deletion_reason: reason,

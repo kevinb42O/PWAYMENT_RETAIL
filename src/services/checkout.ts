@@ -32,6 +32,7 @@ import {
   roundCashSettlementCents,
 } from "../utils/cashRounding";
 import { assertRetailVatServerSupport } from "./retailPlatformCapabilities";
+import { merchantIdentityIssues } from "../data/merchant";
 
 export type CheckoutErrorCode =
   | "empty-cart"
@@ -308,6 +309,18 @@ const runCheckout = async (
   // Policy objects must be frozen with the sale. A later settings change may
   // never rewrite the commercial deadline that applied at checkout time.
   const merchantSnapshot = structuredClone(getMerchantProfileSnapshot());
+  const identityIssues = merchantIdentityIssues(merchantSnapshot);
+  if (
+    import.meta.env.PROD &&
+    import.meta.env.VITE_E2E_BUILD !== "true" &&
+    import.meta.env.VITE_PRESENTATION_BUILD !== "true" &&
+    identityIssues.length > 0
+  ) {
+    throw new CheckoutError(
+      "invalid-request",
+      `Live afrekenen is geblokkeerd. Vul eerst de echte ticketidentiteit in: ${identityIssues.join(", ")}.`,
+    );
+  }
 
   return db.transaction(
     "rw",

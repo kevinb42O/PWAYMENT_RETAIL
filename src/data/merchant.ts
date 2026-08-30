@@ -93,3 +93,21 @@ export const DEFAULT_MERCHANT: MerchantInfo = {
 };
 
 export const MERCHANT = DEFAULT_MERCHANT;
+
+const productionPlaceholderValues = new Set([
+  'PWAYMENT',
+  'Voorbeeldstraat 1',
+  '9000 Gent',
+  'BE0123.456.789',
+  '+32 9 000 00 00',
+]);
+
+export const merchantIdentityIssues = (merchant: MerchantInfo): string[] => {
+  const issues: string[] = [];
+  if (!merchant.name.trim() || productionPlaceholderValues.has(merchant.name.trim())) issues.push('winkelnaam');
+  if (!merchant.legalName?.trim() || productionPlaceholderValues.has(merchant.legalName.trim())) issues.push('officiële bedrijfsnaam');
+  if (!merchant.addressLine1.trim() || productionPlaceholderValues.has(merchant.addressLine1.trim())) issues.push('straat en nummer');
+  if (!merchant.addressLine2.trim() || productionPlaceholderValues.has(merchant.addressLine2.trim())) issues.push('postcode en gemeente');
+  if (!/^BE\s?0?\d{3}[.]?\d{3}[.]?\d{3}$/.test(merchant.vatNumber.trim()) || productionPlaceholderValues.has(merchant.vatNumber.trim())) issues.push('geldig Belgisch btw-nummer');
+  return issues;
+};

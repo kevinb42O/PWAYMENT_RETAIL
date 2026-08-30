@@ -28,6 +28,7 @@
     "check:site": "node scripts/check-public-site.mjs",
     "check:bundle": "node scripts/check-bundle-budget.mjs",
     "check:security": "npm audit --audit-level=high",
+    "check:compliance": "node scripts/check-compliance-readiness.mjs",
     "check:supabase-release": "node scripts/verify-supabase-release.mjs",
     "check": "npm run lint && npm run test:coverage && npm run build && npm run check:site && npm run check:bundle"
   },

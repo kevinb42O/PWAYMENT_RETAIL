@@ -58,6 +58,8 @@ describe("fixture authentication", () => {
       email: "owner@example.test",
       password: "CorrectHorseBattery12!",
       pin: "123",
+      termsAccepted: true,
+      businessUseConfirmed: true,
       onboardingConfiguration,
     });
     expect(invalid).toMatchObject({ success: false });
@@ -69,6 +71,8 @@ describe("fixture authentication", () => {
       email: "owner@example.test",
       password: "CorrectHorseBattery12!",
       pin: "654321",
+      termsAccepted: true,
+      businessUseConfirmed: true,
       onboardingConfiguration,
     });
     expect(created).toEqual({ success: true });

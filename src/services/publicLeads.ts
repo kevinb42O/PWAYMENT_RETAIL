@@ -1,4 +1,7 @@
 import { isSupabaseConfigured, requireSupabaseConfiguration, supabase } from '../lib/supabase';
+import { LEGAL_VERSION } from '../config/legal';
+
+export const PUBLIC_LEAD_CONSENT_TEXT = 'Ik ga akkoord dat PWAYMENT mijn gegevens gebruikt om op deze aanvraag te antwoorden zoals uitgelegd in de privacyverklaring.';
 
 export interface PublicLeadInput {
   requestType: 'demo' | 'contact';
@@ -27,6 +30,8 @@ type PublicLeadRpcClient = {
       lead_message: string;
       lead_source_path: string;
       lead_consented_at: string;
+      lead_consent_version: string;
+      lead_consent_text: string;
     },
   ) => Promise<{ data: string | null; error: { message?: string } | null }>;
 };
@@ -48,6 +53,8 @@ export const submitPublicLead = async (input: PublicLeadInput): Promise<string> 
     lead_message: input.message,
     lead_source_path: input.sourcePath,
     lead_consented_at: input.consentedAt,
+    lead_consent_version: LEGAL_VERSION,
+    lead_consent_text: PUBLIC_LEAD_CONSENT_TEXT,
   });
   if (error || !data) {
     throw new Error(error?.message || 'De aanvraag kon niet veilig worden opgeslagen.');

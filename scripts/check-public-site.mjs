@@ -4,7 +4,7 @@ import path from 'node:path';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relative) => readFile(path.join(root, relative), 'utf8');
-const [registryText, publicSite, sitemap, robots, planCatalog, billingSettings, marketingMigration, englishText, frenchText, overridesText, localeSource, seoSource, prerenderSource, indexSource] = await Promise.all([
+const [registryText, publicSite, sitemap, robots, planCatalog, billingSettings, marketingMigration, englishText, frenchText, overridesText, localeSource, seoSource, prerenderSource, indexSource, legalContent, legalConfig, complianceMigration] = await Promise.all([
   read('src/public/public-site-registry.json'),
   read('src/public/PublicSite.tsx'),
   read('public/sitemap.xml'),
@@ -19,6 +19,9 @@ const [registryText, publicSite, sitemap, robots, planCatalog, billingSettings, 
   read('src/public/siteSeo.ts'),
   read('scripts/prerender-public-site.mjs'),
   read('index.html'),
+  read('src/public/legalContent.tsx'),
+  read('src/config/legal.ts'),
+  read('supabase/migrations/20260830193000_legal_acceptance_and_privacy_retention.sql'),
 ]);
 
 const routes = JSON.parse(registryText);
@@ -98,6 +101,16 @@ for (const unsupportedClaim of ['99,9% SLA en 24/7', 'Worldline, CCV, SumUp, Viv
 for (const requiredStoragePrimitive of ['create table public.marketing_leads', 'submit_public_lead', 'create table public.marketing_events', 'submit_public_event']) {
   if (!marketingMigration.includes(requiredStoragePrimitive)) errors.push(`Publieke conversieopslag mist ${requiredStoragePrimitive}.`);
 }
+for (const requiredLegalPrimitive of ['Privacyverklaring', 'Algemene SaaS-voorwaarden', 'Verwerkersovereenkomst', 'Subverwerkers', 'Bewaartermijnen', 'E-facturatie en boekhouding']) {
+  if (!legalContent.includes(requiredLegalPrimitive)) errors.push(`Juridische inhoud mist ${requiredLegalPrimitive}.`);
+}
+for (const requiredIdentityField of ['VITE_LEGAL_NAME', 'VITE_LEGAL_ADDRESS', 'VITE_LEGAL_ENTERPRISE_NUMBER', 'VITE_LEGAL_VAT_NUMBER', 'VITE_LEGAL_PHONE']) {
+  if (!legalConfig.includes(requiredIdentityField)) errors.push(`Juridische configuratie mist ${requiredIdentityField}.`);
+}
+for (const requiredEvidencePrimitive of ['consent_version', 'consent_text', 'legal_acceptances', 'business_use_confirmed']) {
+  if (!complianceMigration.includes(requiredEvidencePrimitive)) errors.push(`Compliance-opslag mist ${requiredEvidencePrimitive}.`);
+}
+if (publicSite.includes('Deze pagina is voorbereid als definitieve juridische bestemming')) errors.push('De publieke juridische placeholder is opnieuw aanwezig.');
 
 if (errors.length) {
   console.error(['Public-sitecontrole mislukt:', ...errors.map((error) => `- ${error}`)].join('\n'));
