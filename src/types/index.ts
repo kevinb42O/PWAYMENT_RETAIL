@@ -550,6 +550,60 @@ export interface BusinessAction {
   note?: string;
 }
 
+export type FinancialCostKind = "recurring" | "one-off";
+export type FinancialCostBehavior = "fixed" | "variable";
+export type FinancialAmountMode = "excluding-vat" | "including-vat";
+export type FinancialCostFrequency = "once" | "monthly" | "quarterly" | "yearly";
+export type FinancialCostStatus = "active" | "archived";
+
+/**
+ * Owner-only management cost. The entered amount and its VAT treatment stay
+ * immutable enough to reconstruct the management result without pretending to
+ * be a statutory accounting ledger.
+ */
+export interface FinancialCost {
+  id: string;
+  kind: FinancialCostKind;
+  name: string;
+  category: string;
+  customCategory?: string;
+  supplier?: string;
+  documentNumber?: string;
+  amountCents: number;
+  amountMode: FinancialAmountMode;
+  vatRate: 0 | 6 | 12 | 21;
+  vatRecoverablePercent: number;
+  behavior: FinancialCostBehavior;
+  frequency: FinancialCostFrequency;
+  startDate: string;
+  endDate?: string;
+  status: FinancialCostStatus;
+  createdAt: string;
+  updatedAt: string;
+  source?: "live" | "demo";
+}
+
+/** Owner-only preferences shared by profitability and the later cash runway. */
+export interface FinancialSettings {
+  id: "store";
+  safetyBufferCents: number;
+  updatedAt: string;
+}
+
+export type FinancialWorkspaceMutation =
+  | {
+      mutationId: string;
+      entity: "cost";
+      operation: "upsert";
+      cost: FinancialCost;
+    }
+  | {
+      mutationId: string;
+      entity: "settings";
+      operation: "upsert";
+      settings: FinancialSettings;
+    };
+
 export interface DailyReport {
   id?: number;
   /** Canonical Supabase UUID; local `id` remains the Dexie cache key. */
@@ -731,7 +785,9 @@ export interface OutboxEntry {
     /** Durable server command that closes the automatic full-undo window. */
     | "migration_lock"
     /** Durable server command for a locally committed Mode 1 undo. */
-    | "migration_undo";
+    | "migration_undo"
+    /** Owner-only cost/settings mutation; never mixed into the sales ledger. */
+    | "financial_workspace_mutation";
   payload: unknown;
   attempts: number;
   lastError?: string;

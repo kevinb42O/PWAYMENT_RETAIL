@@ -200,7 +200,7 @@ export const Layout: React.FC = () => {
     useState(false);
   const [returnReceiptBarcode, setReturnReceiptBarcode] = useState<string | null>(null);
   const [profileInitialTarget, setProfileInitialTarget] = useState<{
-    tab: "billing" | "webshop-general" | "modules" | "pace" | "workforce" | "leave-approvals" | "catalog-products" | "catalog-categories" | "labels" | "integrations" | "general" | "merchant";
+    tab: "billing" | "webshop-general" | "modules" | "pace" | "workforce" | "financial" | "leave-approvals" | "catalog-products" | "catalog-categories" | "labels" | "integrations" | "general" | "merchant";
     requestKey: number;
     openNewProductRequestKey?: number;
     catalogFilter?: { requestKey: number; productIds: string[]; label: string };
@@ -484,7 +484,7 @@ export const Layout: React.FC = () => {
     && isFeatureEnabledForSnapshot(entitlementSnapshot, FEATURE_KEYS.workforce);
 
   const openProfile = (
-    tab: "billing" | "webshop-general" | "modules" | "pace" | "workforce" | "leave-approvals" | "catalog-products" | "catalog-categories" | "labels" | "integrations" | "general" | "merchant" = "billing",
+    tab: "billing" | "webshop-general" | "modules" | "pace" | "workforce" | "financial" | "leave-approvals" | "catalog-products" | "catalog-categories" | "labels" | "integrations" | "general" | "merchant" = "billing",
   ) => {
     setProfileInitialTarget((current) => ({
       tab,

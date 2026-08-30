@@ -33,7 +33,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
-    exclude: ["e2e/**", "node_modules/**", "dist/**"],
+    exclude: ["e2e/**", "node_modules/**", "dist/**", ".codex-build/**"],
     coverage: {
       provider: "v8",
       reporter: ["text", "json-summary", "html"],
@@ -45,6 +45,7 @@ export default defineConfig({
         "e2e/**",
         "node_modules/**",
         "dist/**",
+        ".codex-build/**",
         "src/services/outboxWorker.ts",
         "src/services/platformTelemetry.ts",
         "src/services/integrationOperations.ts",

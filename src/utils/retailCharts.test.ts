@@ -28,8 +28,8 @@ describe('buildSalesChart', () => {
     ], '7d', now);
 
     expect(result).toHaveLength(7);
-    expect(result.at(-1)).toMatchObject({ revenueCents: 5000, grossProfitCents: 3000, transactionCount: 1 });
-    expect(result.at(-3)).toMatchObject({ revenueCents: 3000, grossProfitCents: 2000, transactionCount: 1 });
+    expect(result.at(-1)).toMatchObject({ revenueCents: 4132, grossProfitCents: 2132, transactionCount: 1 });
+    expect(result.at(-3)).toMatchObject({ revenueCents: 2479, grossProfitCents: 1479, transactionCount: 1 });
     expect(result.at(-2)).toMatchObject({ revenueCents: 0, transactionCount: 0 });
   });
 });

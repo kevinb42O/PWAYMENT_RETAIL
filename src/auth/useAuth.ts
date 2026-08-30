@@ -576,6 +576,8 @@ export const useAuth = create<AuthState>()(
         });
         useStoreConfiguration.getState().reset();
         useWorkforce.getState().reset();
+        const { useFinancialWorkspace } = await import("../store/useFinancialWorkspace");
+        useFinancialWorkspace.getState().reset();
       },
       hasRole(...roles) {
         const r = get().currentRole;

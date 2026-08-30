@@ -39,8 +39,8 @@ describe('insights analytics', () => {
     const previous = [sale('2026-07-10T10:00:00', { totalCents: 5_000 })];
     expect(buildProductInsights(current, previous)[0]).toMatchObject({
       productId: 'board',
-      revenueCents: 10_000,
-      previousRevenueCents: 5_000,
+      revenueCents: 8_264,
+      previousRevenueCents: 4_132,
       changePercent: 100,
     });
   });
@@ -48,8 +48,8 @@ describe('insights analytics', () => {
   it('groups actual store moments by weekday and hour', () => {
     const rows = [sale('2026-08-10T10:00:00'), sale('2026-08-10T10:30:00')];
     const monday = buildWeekdayInsights(rows)[0];
-    expect(monday).toMatchObject({ label: 'Ma', revenueCents: 20_000, transactionCount: 2, averageSaleCents: 10_000 });
-    expect(buildHourlyInsights(rows)).toEqual([{ key: '10', label: '10u', revenueCents: 20_000, transactionCount: 2, averageSaleCents: 10_000 }]);
+    expect(monday).toMatchObject({ label: 'Ma', revenueCents: 16_528, transactionCount: 2, averageSaleCents: 8_264 });
+    expect(buildHourlyInsights(rows)).toEqual([{ key: '10', label: '10u', revenueCents: 16_528, transactionCount: 2, averageSaleCents: 8_264 }]);
   });
 
   it('measures return behaviour from ordered customer purchases', () => {
@@ -59,7 +59,7 @@ describe('insights analytics', () => {
       sale('2026-02-01T10:00:00', { customerId: 'c2' }),
     ];
     const snapshot = buildCustomerInsights(rows);
-    expect(snapshot).toMatchObject({ recognizedCustomers: 2, oneTimeCustomers: 1, returningCustomers: 1, repeatRate: 50, averageDaysToSecondPurchase: 20 });
+    expect(snapshot).toMatchObject({ recognizedCustomers: 2, oneTimeCustomers: 1, returningCustomers: 1, repeatRate: 50, averageCustomerValueCents: 12_396, averageDaysToSecondPurchase: 20 });
     expect(snapshot.returnBuckets[0].customers).toBe(1);
   });
 
@@ -115,18 +115,18 @@ describe('insights analytics', () => {
     ]);
 
     expect(snapshot).toMatchObject({
-      discountCents: 2_000,
+      discountCents: 1_652,
       discountedTransactionCount: 1,
-      grossSalesBeforeDiscountCents: 10_000,
-      discountRate: 20,
-      grossProfitAfterDiscountCents: 4_000,
-      marginAfterDiscountPercent: 50,
+      netSalesBeforeDiscountCents: 8_264,
+      discountRate: 19.99031945788964,
+      grossProfitAfterDiscountCents: 2_612,
+      marginAfterDiscountPercent: expect.closeTo(39.5039, 3),
     });
     expect(snapshot.categoryRows[0]).toMatchObject({
       label: 'Skateboards',
-      discountCents: 2_000,
+      discountCents: 1_652,
       transactionCount: 1,
-      marginPercent: 50,
+      marginPercent: expect.closeTo(39.5039, 3),
     });
   });
 

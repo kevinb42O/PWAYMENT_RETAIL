@@ -32,7 +32,7 @@ describe('retail dashboard data', () => {
       }),
     ];
 
-    expect(buildCategoryPerformance(rows)).toMatchObject([{ category: 'Kleding', revenueCents: 3000, grossProfitCents: 2200, units: 2 }]);
+    expect(buildCategoryPerformance(rows)).toMatchObject([{ category: 'Kleding', revenueCents: 2479, grossProfitCents: 1679, units: 2 }]);
     expect(buildPaymentMix(rows)).toEqual([
       { method: 'Cash', amountCents: 2000, transactionCount: 1 },
       { method: 'Kaart', amountCents: 1000, transactionCount: 1 },

@@ -30,7 +30,9 @@ const budgets = [
   { label: "Customers", match: /^Customers-.*\.js$/, max: 80 * 1024 },
   { label: "Audit log", match: /^AuditLog-.*\.js$/, max: 80 * 1024 },
   { label: "Z-report", match: /^ZReport-.*\.js$/, max: 60 * 1024 },
-  { label: "Main CSS", match: /^index-.*\.css$/, max: 185 * 1024 },
+  // The owner financial workspace adds two dense responsive management views.
+  // Keep a tight global Tailwind ceiling while allowing their shared utilities.
+  { label: "Main CSS", match: /^index-.*\.css$/, max: 195 * 1024 },
 ];
 
 const failures = [];

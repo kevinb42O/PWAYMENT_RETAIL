@@ -2,7 +2,7 @@ import { drainOutbox, retryOutboxEntry } from "../db/outbox";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { useAuth } from "../auth/useAuth";
 import type { Json } from "../types/database.generated";
-import type { DailyReport, GiftCardEvent, ManualCatalogBatchPayload, OutboxEntry, Transaction, WebshopOrder } from "../types";
+import type { DailyReport, FinancialWorkspaceMutation, GiftCardEvent, ManualCatalogBatchPayload, OutboxEntry, Transaction, WebshopOrder } from "../types";
 import { db } from "../db/db";
 import { upsertSupabaseProducts, upsertSupabaseCustomers, upsertSupabaseCategories, deleteSupabaseCategory, upsertSupabaseCatalogBatch } from "./supabaseMutations";
 import { pushMigrationOutboxEntry, type MigrationActivationOutboxPayload } from "./migrationSync";
@@ -19,6 +19,7 @@ import {
   safeErrorFingerprint,
 } from "./platformTelemetry";
 import { settlementTotalCents } from "../utils/cashRounding";
+import { pushFinancialWorkspaceMutation } from "./financialWorkspace";
 
 /**
  * New checkouts carry an explicit tender ledger.  The fallback keeps historic
@@ -681,6 +682,11 @@ const sendOutboxEntry = async (storeId: string, entry: OutboxEntry) => {
     || entry.kind === "migration_undo"
   ) {
     await pushMigrationOutboxEntry(storeId, entry);
+  } else if (entry.kind === "financial_workspace_mutation") {
+    await pushFinancialWorkspaceMutation(
+      storeId,
+      entry.payload as FinancialWorkspaceMutation,
+    );
   } else {
     // An unknown kind must remain in the queue and become visible as a failed
     // sync. Silently deleting it would lose business data.

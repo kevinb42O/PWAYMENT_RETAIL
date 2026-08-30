@@ -1,4 +1,5 @@
 import { Transaction } from '../types';
+import { transactionCommerceFinancials } from './financial';
 
 export type InsightPeriod = '7d' | '30d' | '12m';
 
@@ -17,12 +18,6 @@ const startOfDay = (date: Date): Date => {
 };
 
 const startOfMonth = (date: Date): Date => new Date(date.getFullYear(), date.getMonth(), 1);
-
-const saleCost = (transaction: Transaction): number =>
-  transaction.items.reduce(
-    (total, item) => total + (item.product.costPriceCents ?? 0) * item.quantity,
-    0,
-  );
 
 const dayKey = (date: Date): string =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -62,8 +57,9 @@ export const buildSalesChart = (
     const key = period === '12m' ? monthKey(timestamp) : dayKey(timestamp);
     const bucket = buckets.get(key);
     if (!bucket) continue;
-    bucket.revenueCents += transaction.totalCents;
-    bucket.grossProfitCents += transaction.totalCents - saleCost(transaction);
+    const financials = transactionCommerceFinancials(transaction);
+    bucket.revenueCents += financials.netRevenueExVatCents;
+    bucket.grossProfitCents += financials.grossProfitCents;
     bucket.transactionCount += 1;
   }
 

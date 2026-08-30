@@ -1,4 +1,5 @@
 import { Customer, Product, Transaction } from '../types';
+import { transactionCommerceFinancials } from './financial';
 
 export type InsightTone = 'attention' | 'opportunity' | 'neutral';
 
@@ -55,12 +56,6 @@ export interface RetailIntelligenceSnapshot {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const productCostForTransaction = (transaction: Transaction): number =>
-  transaction.items.reduce(
-    (total, item) => total + (item.product.costPriceCents ?? 0) * item.quantity,
-    0,
-  );
-
 /**
  * Convert the sales ledger into owner-facing insights. All values derive from
  * persisted transactions, products and customers; this function never seeds
@@ -73,8 +68,17 @@ export const buildRetailIntelligence = (
   now = Date.now(),
   users: { id: string; name: string }[] = [],
 ): RetailIntelligenceSnapshot => {
-  const revenueCents = transactions.reduce((total, transaction) => total + transaction.totalCents, 0);
-  const costCents = transactions.reduce((total, transaction) => total + productCostForTransaction(transaction), 0);
+  const financials = new Map(
+    transactions.map((transaction) => [transaction, transactionCommerceFinancials(transaction)]),
+  );
+  const revenueCents = transactions.reduce(
+    (total, transaction) => total + financials.get(transaction)!.netRevenueExVatCents,
+    0,
+  );
+  const costCents = transactions.reduce(
+    (total, transaction) => total + financials.get(transaction)!.costOfGoodsCents,
+    0,
+  );
   const grossProfitCents = revenueCents - costCents;
   const grossMarginPercent = revenueCents > 0 ? (grossProfitCents / revenueCents) * 100 : null;
 
@@ -114,7 +118,7 @@ export const buildRetailIntelligence = (
       revenueCents: 0,
     };
     current.transactionCount += 1;
-    current.revenueCents += transaction.totalCents;
+    current.revenueCents += financials.get(transaction)!.netRevenueExVatCents;
     employees.set(seller.id, current);
   }
   const employeePerformance = [...employees.values()].sort((a, b) => b.revenueCents - a.revenueCents);

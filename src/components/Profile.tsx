@@ -17,6 +17,7 @@ import { CustomerDisplaySettings } from './CustomerDisplaySettings';
 import { ModuleSettings } from './ModuleSettings';
 import { WorkforceSettings } from './WorkforceSettings';
 import { SoundSettings } from './SoundSettings';
+import { FinancialSettings } from './FinancialSettings';
 import { LeaveApprovalCenter } from './LeaveApprovalCenter';
 import { FeatureGate } from '../billing/FeatureGate';
 import { FEATURE_KEYS } from '../billing/entitlements';
@@ -84,6 +85,7 @@ import {
   Gauge,
   BellRing,
   UserRound,
+  Landmark,
 } from 'lucide-react';
 
 type WorkspaceTab =
@@ -99,6 +101,7 @@ type WorkspaceTab =
   | 'pace-guidance'
   | 'pace-team'
   | 'workforce'
+  | 'financial'
   | 'leave-approvals'
   | 'catalog'
   | 'catalog-products'
@@ -217,6 +220,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     if (requested === 'modules') return 'modules';
     if (requested === 'pace' || requested?.startsWith('pace-')) return requested as WorkspaceTab;
     if (requested === 'workforce') return 'workforce';
+    if (requested === 'financial' && currentRole === 'owner') return 'financial';
     if (directWebshopTabs.includes(requested as WorkspaceTab)) return requested as WorkspaceTab;
     return 'billing';
   });
@@ -413,6 +417,22 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <span>Personeel & verlof</span>
             </div>
           </button>
+
+          {currentRole === 'owner' && (
+            <button
+              onClick={() => setActiveTab('financial')}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                activeTab === 'financial'
+                  ? 'border border-cyan-200 bg-cyan-50 text-cyan-900 shadow-xs'
+                  : 'border border-transparent text-slate-600 hover:border-cyan-100 hover:bg-cyan-50 hover:text-cyan-900'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Landmark size={16} className={activeTab === 'financial' ? 'text-cyan-700' : 'text-slate-500'} />
+                <span>Kosten & financiële planning</span>
+              </div>
+            </button>
+          )}
 
           {/* 1. ABONNEMENTEN & BILLING (EXPANDABLE ACCORDION MENU) */}
           <div className="space-y-1">
@@ -769,6 +789,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               {activeTab === 'modules' && 'Modules & navigatie'}
               {activeTab.startsWith('pace') && 'Pace-instellingen'}
               {activeTab === 'workforce' && 'Personeel, verlof & bezetting'}
+              {activeTab === 'financial' && 'Kosten & financiële planning'}
               {activeTab === 'leave-approvals' && 'Verlof goedkeuren'}
               {activeTab === 'billing-invoices' && "Facturen & Creditnota's"}
               {activeTab === 'billing-payment' && 'Betaalmethode & SEPA Mandaat'}
@@ -796,6 +817,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 ? 'Beheer je persoonlijke Pace-ervaring, AI-antwoorden, winkelcontext, animaties en winkelbrede begeleiding.'
                 : activeTab === 'workforce'
                 ? 'Beheer medewerkers, verlofsaldi en de regels waarmee PWAYMENT de winkelbezetting controleert.'
+                : activeTab === 'financial'
+                ? 'Registreer alle bedrijfskosten veilig en bouw een betrouwbare managementblik op winstgevendheid op.'
                 : activeTab === 'leave-approvals'
                 ? 'Beoordeel aanvragen veilig vanuit eigenaarstoegang. Elke beslissing wordt gelogd en vereist uw persoonlijke PIN.'
                 : activeTab === 'catalog-categories'
@@ -839,6 +862,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <WorkforceSettings />
           </FeatureGate>
         )}
+        {activeTab === 'financial' && currentRole === 'owner' && <FinancialSettings />}
         {activeTab === 'leave-approvals' && currentRole === 'owner' && (
           <FeatureGate
             feature={FEATURE_KEYS.workforce}

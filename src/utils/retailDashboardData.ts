@@ -1,6 +1,5 @@
 import { PaymentMethod, Transaction } from "../types";
-import { allocateCents } from "./money";
-import { isGiftCardProduct, transactionTenders } from "./financial";
+import { transactionCommerceLineFinancials, transactionTenders } from "./financial";
 import { productRootCategoryLabel } from "../catalog/categoryTaxonomy";
 import {
   getZonedDateParts,
@@ -62,19 +61,8 @@ export const buildCategoryPerformance = (
   const categories = new Map<string, CategoryPerformance>();
 
   for (const transaction of transactions) {
-    const commerceItems = transaction.items.filter(
-      (item) => !isGiftCardProduct(item.product),
-    );
-    const lineTotals = commerceItems.map((item) => {
-      const modifiers = (item.modifiers ?? []).reduce(
-        (sum, modifier) => sum + modifier.deltaCents,
-        0,
-      );
-      return (item.product.priceCents + modifiers) * item.quantity;
-    });
-    const allocated = allocateCents(transaction.totalCents, lineTotals);
-    for (const [index, item] of commerceItems.entries()) {
-      const allocatedRevenue = allocated[index] ?? 0;
+    for (const line of transactionCommerceLineFinancials(transaction)) {
+      const item = line.item;
       const category = productRootCategoryLabel(item.product);
       const current = categories.get(category) ?? {
         category,
@@ -82,10 +70,9 @@ export const buildCategoryPerformance = (
         grossProfitCents: 0,
         units: 0,
       };
-      current.revenueCents += allocatedRevenue;
-      current.grossProfitCents +=
-        allocatedRevenue - (item.product.costPriceCents ?? 0) * item.quantity;
-      current.units += item.quantity;
+      current.revenueCents += line.netRevenueExVatCents;
+      current.grossProfitCents += line.grossProfitCents;
+      current.units += item.quantity * ((transaction.kind ?? "sale") === "refund" ? -1 : 1);
       categories.set(category, current);
     }
   }

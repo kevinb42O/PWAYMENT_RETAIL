@@ -1,6 +1,8 @@
 import { Transaction } from "../types";
-import { allocateCents } from "./money";
-import { isGiftCardProduct, transactionCostCents } from "./financial";
+import {
+  transactionCommerceFinancials,
+  transactionCommerceLineFinancials,
+} from "./financial";
 import { productRootCategoryLabel } from "../catalog/categoryTaxonomy";
 import {
   calendarDayDifference,
@@ -132,25 +134,9 @@ export const buildSeasonalRetailSnapshot = (
       categories: new Map<string, { revenueCents: number; units: number }>(),
       dailyRevenueCents: new Map<number, number>(),
     };
-    const grossLines = transaction.items.map(
-      (item) =>
-        (item.product.priceCents +
-          (item.modifiers ?? []).reduce(
-            (sum, modifier) => sum + modifier.deltaCents,
-            0,
-          )) *
-        item.quantity,
-    );
-    const allocatedRevenue = allocateCents(transaction.totalCents, grossLines);
-    const revenueCents = allocatedRevenue.reduce(
-      (sum, revenue, index) =>
-        sum +
-        (isGiftCardProduct(transaction.items[index].product) ? 0 : revenue),
-      0,
-    );
-    occurrence.revenueCents += revenueCents;
-    occurrence.grossProfitCents +=
-      revenueCents - transactionCostCents(transaction);
+    const financials = transactionCommerceFinancials(transaction);
+    occurrence.revenueCents += financials.netRevenueExVatCents;
+    occurrence.grossProfitCents += financials.grossProfitCents;
     occurrence.transactionCount += 1;
     const dayIndex = Math.max(
       0,
@@ -158,18 +144,20 @@ export const buildSeasonalRetailSnapshot = (
     );
     occurrence.dailyRevenueCents.set(
       dayIndex,
-      (occurrence.dailyRevenueCents.get(dayIndex) ?? 0) + revenueCents,
+      (occurrence.dailyRevenueCents.get(dayIndex) ?? 0) +
+        financials.netRevenueExVatCents,
     );
-    for (const [index, item] of transaction.items.entries()) {
-      if (isGiftCardProduct(item.product)) continue;
-      occurrence.units += item.quantity;
+    for (const line of transactionCommerceLineFinancials(transaction)) {
+      const item = line.item;
+      const direction = (transaction.kind ?? "sale") === "refund" ? -1 : 1;
+      occurrence.units += item.quantity * direction;
       const category = productRootCategoryLabel(item.product) || "Overig";
       const categoryRow = occurrence.categories.get(category) ?? {
         revenueCents: 0,
         units: 0,
       };
-      categoryRow.revenueCents += allocatedRevenue[index] ?? 0;
-      categoryRow.units += item.quantity;
+      categoryRow.revenueCents += line.netRevenueExVatCents;
+      categoryRow.units += item.quantity * direction;
       occurrence.categories.set(category, categoryRow);
     }
     occurrences.set(key, occurrence);

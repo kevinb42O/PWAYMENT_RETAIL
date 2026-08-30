@@ -9,6 +9,7 @@ import {
   Transaction,
   WebshopOrder,
 } from '../types';
+import { transactionCommerceFinancials } from './financial';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -398,18 +399,19 @@ const defaultActionId = () => {
 };
 
 const baselineFromTransactions = (transactions: Transaction[]): BusinessAction['baseline'] => {
-  const revenueCents = transactions.reduce((sum, transaction) => sum + transaction.totalCents, 0);
-  const costCents = transactions.reduce(
-    (sum, transaction) => sum + transaction.items.reduce(
-      (lineSum, item) => lineSum + (item.product.costPriceCents ?? 0) * item.quantity,
-      0,
-    ),
+  const financials = transactions.map(transactionCommerceFinancials);
+  const revenueCents = financials.reduce(
+    (sum, transaction) => sum + transaction.netRevenueExVatCents,
+    0,
+  );
+  const grossProfitCents = financials.reduce(
+    (sum, transaction) => sum + transaction.grossProfitCents,
     0,
   );
   return {
     transactionCount: transactions.length,
     revenueCents,
-    grossProfitCents: revenueCents - costCents,
+    grossProfitCents,
   };
 };
 

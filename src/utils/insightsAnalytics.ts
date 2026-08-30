@@ -1,6 +1,9 @@
 import { Customer, Product, Transaction } from "../types";
-import { allocateCents } from "./money";
-import { isGiftCardProduct } from "./financial";
+import {
+  isGiftCardProduct,
+  transactionCommerceFinancials,
+  transactionCommerceLineFinancials,
+} from "./financial";
 import { getTransactionSellerIdentity } from "./retailIntelligence";
 import { calendarDayDifference, getZonedDateParts } from "./time";
 import { productRootCategoryLabel } from "../catalog/categoryTaxonomy";
@@ -85,7 +88,7 @@ export interface DiscountInsightRow {
 export interface DiscountInsightSnapshot {
   discountCents: number;
   discountedTransactionCount: number;
-  grossSalesBeforeDiscountCents: number;
+  netSalesBeforeDiscountCents: number;
   discountRate: number;
   grossProfitAfterDiscountCents: number;
   marginAfterDiscountPercent: number | null;
@@ -104,17 +107,8 @@ export const buildProductInsights = (
       Omit<ProductInsightRow, "previousRevenueCents" | "changePercent">
     >();
     for (const transaction of rows.filter((row) => row.isFinalized)) {
-      const grossLines = transaction.items.map((item) => {
-        const modifiers = (item.modifiers ?? []).reduce(
-          (sum, modifier) => sum + modifier.deltaCents,
-          0,
-        );
-        return (item.product.priceCents + modifiers) * item.quantity;
-      });
-      const revenues = allocateCents(transaction.totalCents, grossLines);
-      for (const [index, item] of transaction.items.entries()) {
-        if (isGiftCardProduct(item.product)) continue;
-        const revenueCents = revenues[index] ?? 0;
+      for (const line of transactionCommerceLineFinancials(transaction)) {
+        const item = line.item;
         const current = products.get(item.product.id) ?? {
           productId: item.product.id,
           name: item.product.name,
@@ -124,11 +118,10 @@ export const buildProductInsights = (
           units: 0,
           missingCostLines: 0,
         };
-        current.revenueCents += revenueCents;
-        current.grossProfitCents +=
-          revenueCents - (item.product.costPriceCents ?? 0) * item.quantity;
+        current.revenueCents += line.netRevenueExVatCents;
+        current.grossProfitCents += line.grossProfitCents;
         if (item.product.costPriceCents == null) current.missingCostLines += 1;
-        current.units += item.quantity;
+        current.units += item.quantity * ((transaction.kind ?? "sale") === "refund" ? -1 : 1);
         products.set(item.product.id, current);
       }
     }
@@ -159,7 +152,10 @@ export const buildDiscountInsights = (
   transactions: Transaction[],
 ): DiscountInsightSnapshot => {
   const discountedTransactions = transactions.filter(
-    (transaction) => transaction.isFinalized && transaction.discountCents > 0,
+    (transaction) =>
+      transaction.isFinalized &&
+      (transaction.kind ?? "sale") === "sale" &&
+      transaction.discountCents > 0,
   );
   const categoryRows = new Map<string, DiscountInsightRow>();
   const productRows = new Map<string, DiscountInsightRow>();
@@ -169,26 +165,30 @@ export const buildDiscountInsights = (
   let missingCostLines = 0;
 
   for (const transaction of discountedTransactions) {
-    const grossLines = transaction.items.map((item) => {
+    const financialLines = transactionCommerceLineFinancials(transaction);
+
+    const categoriesSeen = new Set<string>();
+    const productsSeen = new Set<string>();
+    for (const line of financialLines) {
+      const item = line.item;
       const modifiers = (item.modifiers ?? []).reduce(
         (sum, modifier) => sum + modifier.deltaCents,
         0,
       );
-      return (item.product.priceCents + modifiers) * item.quantity;
-    });
-    const discounts = allocateCents(transaction.discountCents, grossLines);
-    const revenues = allocateCents(transaction.totalCents, grossLines);
-
-    const categoriesSeen = new Set<string>();
-    const productsSeen = new Set<string>();
-    for (const [index, item] of transaction.items.entries()) {
-      if (isGiftCardProduct(item.product)) continue;
-      const allocatedDiscountCents = discounts[index] ?? 0;
-      const allocatedNetRevenueCents = revenues[index] ?? 0;
+      const grossBeforeDiscount =
+        (item.product.priceCents + modifiers) * item.quantity;
+      const netBeforeDiscount = item.product.vatRate === 0
+        ? grossBeforeDiscount
+        : Math.round(grossBeforeDiscount / (1 + item.product.vatRate / 100));
+      const allocatedNetRevenueCents = line.netRevenueExVatCents;
+      const allocatedDiscountCents = Math.max(
+        0,
+        netBeforeDiscount - allocatedNetRevenueCents,
+      );
       discountCents += allocatedDiscountCents;
       netRevenueCents += allocatedNetRevenueCents;
       const hasCost = item.product.costPriceCents != null;
-      const costCents = (item.product.costPriceCents ?? 0) * item.quantity;
+      const costCents = line.costOfGoodsCents;
       totalCostCents += costCents;
       if (!hasCost) missingCostLines += 1;
 
@@ -238,16 +238,16 @@ export const buildDiscountInsights = (
             : null,
       }))
       .sort((a, b) => b.discountCents - a.discountCents);
-  const grossSalesBeforeDiscountCents = netRevenueCents + discountCents;
+  const netSalesBeforeDiscountCents = netRevenueCents + discountCents;
   const grossProfitAfterDiscountCents = netRevenueCents - totalCostCents;
 
   return {
     discountCents,
     discountedTransactionCount: discountedTransactions.length,
-    grossSalesBeforeDiscountCents,
+    netSalesBeforeDiscountCents,
     discountRate:
-      grossSalesBeforeDiscountCents > 0
-        ? (discountCents / grossSalesBeforeDiscountCents) * 100
+      netSalesBeforeDiscountCents > 0
+        ? (discountCents / netSalesBeforeDiscountCents) * 100
         : 0,
     grossProfitAfterDiscountCents,
     marginAfterDiscountPercent:
@@ -278,7 +278,8 @@ export const buildWeekdayInsights = (
       Date.UTC(parts.year, parts.month - 1, parts.day),
     ).getUTCDay();
     const index = sundayFirst === 0 ? 6 : sundayFirst - 1;
-    rows[index].revenueCents += transaction.totalCents;
+    rows[index].revenueCents +=
+      transactionCommerceFinancials(transaction).netRevenueExVatCents;
     rows[index].transactionCount += 1;
   }
   return rows.map((row) => ({
@@ -303,7 +304,8 @@ export const buildHourlyInsights = (
       transactionCount: 0,
       averageSaleCents: 0,
     };
-    current.revenueCents += transaction.totalCents;
+    current.revenueCents +=
+      transactionCommerceFinancials(transaction).netRevenueExVatCents;
     current.transactionCount += 1;
     buckets.set(hour, current);
   }
@@ -368,7 +370,11 @@ export const buildCustomerInsights = (
   const customerRows: CustomerInsightSnapshot["customerRows"] = [];
 
   customerSales.forEach((sales, customerId) => {
-    const revenueCents = sales.reduce((sum, sale) => sum + sale.totalCents, 0);
+    const revenueCents = sales.reduce(
+      (sum, sale) =>
+        sum + transactionCommerceFinancials(sale).netRevenueExVatCents,
+      0,
+    );
     totalCustomerRevenueCents += revenueCents;
     valueRows.push({ revenueCents, purchases: sales.length });
     customerRows.push({

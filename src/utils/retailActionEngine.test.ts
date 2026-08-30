@@ -308,7 +308,7 @@ describe('buildInventoryDraftActions', () => {
         status: 'draft',
         ownerUserId: 'owner-1',
         inventoryItems: [expect.objectContaining({ productId: 'a', selectedQty: 4 })],
-        baseline: expect.objectContaining({ transactionCount: 1, revenueCents: 4000, grossProfitCents: 2400 }),
+        baseline: expect.objectContaining({ transactionCount: 1, revenueCents: 3306, grossProfitCents: 1706 }),
       }),
       expect.objectContaining({
         id: 'draft-2',

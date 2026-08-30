@@ -52,13 +52,13 @@ describe('buildRetailIntelligence', () => {
       Date.UTC(2026, 7, 5),
     );
 
-    expect(result.revenueCents).toBe(4000);
+    expect(result.revenueCents).toBe(3306);
     expect(result.costCents).toBe(1500);
-    expect(result.grossProfitCents).toBe(2500);
+    expect(result.grossProfitCents).toBe(1806);
     expect(result.lowStockProducts).toEqual([product]);
     expect(result.dormantCustomers).toEqual([customer]);
     expect(result.employeePerformance).toEqual([
-      { userId: 'cashier-1', name: 'Mila', transactionCount: 1, revenueCents: 4000 },
+      { userId: 'cashier-1', name: 'Mila', transactionCount: 1, revenueCents: 3306 },
     ]);
     expect(result.actions.map((action) => action.id)).toEqual(
       expect.arrayContaining(['low-stock', 'discounts', 'dormant-customers', 'team-activity']),

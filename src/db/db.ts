@@ -4,6 +4,8 @@ import {
   BusinessAction,
   Customer,
   DailyReport,
+  FinancialCost,
+  FinancialSettings,
   GiftCard,
   GiftCardEvent,
   ImportJob,
@@ -71,6 +73,8 @@ export class POSDatabase extends Dexie {
   migration_inverse_changes!: Table<MigrationInverseChange, string>;
   migration_activity_locks!: Table<MigrationActivityLock, string>;
   service_orders!: Table<ServiceOrder, string>;
+  financial_costs!: Table<FinancialCost, string>;
+  financial_settings!: Table<FinancialSettings, string>;
 
   constructor(databaseName = DB_NAME) {
     super(databaseName);
@@ -762,6 +766,14 @@ export class POSDatabase extends Dexie {
           if (!Number.isFinite(row.attempts)) row.attempts = 0;
         });
       });
+
+    // Owner-only management costs are cached locally for offline use. They
+    // remain separate from the statutory sales ledger and general settings.
+    this.version(24).stores({
+      financial_costs:
+        "id, kind, category, behavior, frequency, startDate, endDate, status, updatedAt",
+      financial_settings: "id, updatedAt",
+    });
   }
 }
 

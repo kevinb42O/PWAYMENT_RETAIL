@@ -38,8 +38,8 @@ describe('buildSeasonalRetailSnapshot', () => {
     expect(snapshot.currentSeason).toBe('summer');
     expect(snapshot.nextSeason).toBe('autumn');
     expect(snapshot.nextSeasonLabel).toBe('Herfst');
-    expect(snapshot.upcomingProfile.averageRevenueCents).toBe(15_000);
-    expect(snapshot.upcomingProfile.categories[0]).toMatchObject({ category: 'Kledij', revenueCents: 10_000 });
+    expect(snapshot.upcomingProfile.averageRevenueCents).toBe(12_396);
+    expect(snapshot.upcomingProfile.categories[0]).toMatchObject({ category: 'Kledij', revenueCents: 8_264 });
     expect(snapshot.daysUntilNextSeason).toBeGreaterThan(0);
   });
 
@@ -51,7 +51,7 @@ describe('buildSeasonalRetailSnapshot', () => {
 
     const summer = snapshot.profiles.find((profile) => profile.season === 'summer');
     expect(summer?.completedOccurrences).toBe(1);
-    expect(summer?.averageRevenueCents).toBe(12_000);
-    expect(snapshot.currentRevenueCents).toBe(30_000);
+    expect(summer?.averageRevenueCents).toBe(9_917);
+    expect(snapshot.currentRevenueCents).toBe(24_793);
   });
 });

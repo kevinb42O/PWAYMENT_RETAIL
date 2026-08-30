@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ClipboardCheck,
   Database,
+  Landmark,
   Menu,
   Users,
   X,
@@ -18,6 +19,7 @@ export type InsightsSection =
   | "seasons"
   | "customers"
   | "team"
+  | "financial"
   | "quality";
 export type InsightsPage =
   | "today"
@@ -36,6 +38,9 @@ export type InsightsPage =
   | "customers-value"
   | "team-overview"
   | "team-activity"
+  | "financial-result"
+  | "financial-costs"
+  | "financial-break-even"
   | "quality";
 
 interface NavigationItem {
@@ -125,6 +130,17 @@ const navigationGroups: Array<{ label: string; items: NavigationItem[] }> = [
           { id: "team-activity", label: "Weekdagen" },
         ],
       },
+      {
+        section: "financial",
+        label: "Financieel",
+        icon: Landmark,
+        defaultPage: "financial-result",
+        pages: [
+          { id: "financial-result", label: "Resultaat" },
+          { id: "financial-costs", label: "Kosten" },
+          { id: "financial-break-even", label: "Break-even" },
+        ],
+      },
     ],
   },
 ];
@@ -151,6 +167,7 @@ interface InsightsSidebarProps {
   onNavigate: (section: InsightsSection, page: InsightsPage) => void;
   badges: Partial<Record<InsightsSection, string | number>>;
   qualityLabel: string;
+  showFinancial: boolean;
 }
 
 const compactBadgeLabel = (value: string | number): string => {
@@ -181,6 +198,7 @@ const NavigationContent = ({
   onNavigate,
   badges,
   qualityLabel,
+  showFinancial,
   onSelected,
 }: InsightsSidebarProps & { onSelected?: () => void }) => (
   <div className="flex h-full flex-col bg-white">
@@ -202,7 +220,7 @@ const NavigationContent = ({
             {group.label}
           </div>
           <div className="space-y-1">
-            {group.items.map((item) => {
+            {group.items.filter((item) => item.section !== "financial" || showFinancial).map((item) => {
               const active = section === item.section;
               const Icon = item.icon;
               return (

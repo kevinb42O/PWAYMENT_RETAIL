@@ -48,6 +48,7 @@ import { FEATURE_KEYS } from "../billing/entitlements";
 import { Modal } from "./Modal";
 import { getZonedDateParts } from "../utils/time";
 import { useAuth } from "../auth/useAuth";
+import { useFinancialWorkspace } from "../store/useFinancialWorkspace";
 import { webshopCommerce } from "../services/webshopCommerce";
 import {
   InsightsMobileNavigation,
@@ -70,6 +71,8 @@ import {
   tooltipPositionFromElement,
   VerticalBars,
 } from "./insights/InsightPrimitives";
+import { FinancialInsights } from "./insights/FinancialInsights";
+import { buildProfitabilitySnapshot } from "../utils/financialManagement";
 
 type WorkflowView = "active" | "snoozed";
 type WorkflowState = Record<string, { snoozedUntil: number }>;
@@ -145,6 +148,7 @@ const validSections: InsightsSection[] = [
   "seasons",
   "customers",
   "team",
+  "financial",
   "quality",
 ];
 const validPages: InsightsPage[] = [
@@ -164,6 +168,9 @@ const validPages: InsightsPage[] = [
   "customers-value",
   "team-overview",
   "team-activity",
+  "financial-result",
+  "financial-costs",
+  "financial-break-even",
   "quality",
 ];
 
@@ -187,6 +194,10 @@ export const Insights = () => {
     new URLSearchParams(window.location.search).get("presentation") === "1" &&
     (import.meta.env.DEV || import.meta.env.VITE_PRESENTATION_BUILD === "true");
   const demoStore = useAuth((state) => state.currentStoreIsDemo);
+  const currentRole = useAuth((state) => state.currentRole);
+  const currentStoreId = useAuth((state) => state.currentStoreId);
+  const financialCosts = useFinancialWorkspace((state) => state.costs);
+  const hydrateFinancialWorkspace = useFinancialWorkspace((state) => state.hydrate);
   const products = useProducts((state) => state.list);
   const hydrateProducts = useProducts((state) => state.hydrate);
   const customers = useCustomers((state) => state.customers);
@@ -220,6 +231,18 @@ export const Insights = () => {
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(() => {
+    if (currentRole === "owner" && currentStoreId) {
+      void hydrateFinancialWorkspace(currentStoreId);
+    } else if (currentRole !== "owner") {
+      useFinancialWorkspace.getState().reset();
+    }
+  }, [currentRole, currentStoreId, hydrateFinancialWorkspace]);
+  useEffect(() => {
+    if (currentRole !== "owner" && location.section === "financial") {
+      setLocation({ section: "today", page: "today" });
+    }
+  }, [currentRole, location.section]);
   useEffect(() => {
     const timer = window.setInterval(
       () => setWorkflowClock(Date.now()),
@@ -357,7 +380,7 @@ export const Insights = () => {
     () => buildStockSnapshot(products, analysisTransactions, categories),
     [analysisTransactions, categories, products],
   );
-  const actions = useMemo(
+  const operationalActions = useMemo(
     () =>
       buildOwnerActions({
         seasonalSnapshot,
@@ -377,6 +400,72 @@ export const Insights = () => {
       seasonalSnapshot,
       stockSnapshot,
     ],
+  );
+  const financialMonthSnapshot = useMemo(() => {
+    const monthStart = new Date(now);
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    return buildProfitabilitySnapshot({
+      transactions: analysisTransactions,
+      costs: financialCosts,
+      rangeStart: monthStart.getTime(),
+      rangeEnd: now,
+    });
+  }, [analysisTransactions, financialCosts, now]);
+  const financialActions = useMemo<OwnerAction[]>(() => {
+    if (currentRole !== "owner" || financialMonthSnapshot.transactionCount === 0) return [];
+    const activeCosts = financialCosts.filter((cost) => cost.status === "active");
+    if (activeCosts.length === 0) {
+      return [{
+        id: "financial-cost-foundation",
+        tone: "opportunity",
+        label: "Financiële basis",
+        title: "Vul uw vaste kosten aan om uw werkelijke resultaat te zien",
+        metricLabel: "Omzet excl. btw deze maand",
+        metricValue: formatEUR(financialMonthSnapshot.netRevenueCents),
+        secondaryLabel: "Geregistreerde bedrijfskosten",
+        secondaryValue: "Nog geen",
+        destination: { section: "financial", page: "financial-costs", label: "Financiële basis openen" },
+      }];
+    }
+    const reliable =
+      financialMonthSnapshot.completeCostTransactions ===
+      financialMonthSnapshot.transactionCount;
+    if (reliable && financialMonthSnapshot.operatingResultCents < 0) {
+      return [{
+        id: "financial-negative-operating-result",
+        tone: "attention",
+        label: "Winstgevendheid",
+        title: "Uw geregistreerde kosten liggen deze maand boven uw brutowinst",
+        metricLabel: "Managementresultaat",
+        metricValue: formatEUR(financialMonthSnapshot.operatingResultCents),
+        secondaryLabel: "Bedrijfskosten",
+        secondaryValue: formatEUR(financialMonthSnapshot.operatingCostsCents),
+        destination: { section: "financial", page: "financial-result", label: "Bekijk de resultaatbrug" },
+      }];
+    }
+    if (
+      reliable &&
+      financialMonthSnapshot.breakEvenGapCents != null &&
+      financialMonthSnapshot.breakEvenGapCents < 0
+    ) {
+      return [{
+        id: "financial-break-even-gap",
+        tone: "attention",
+        label: "Break-even",
+        title: "Het huidige omzetniveau draagt nog niet alle geregistreerde vaste kosten",
+        metricLabel: "Nog nodig tot break-even",
+        metricValue: formatEUR(Math.abs(financialMonthSnapshot.breakEvenGapCents)),
+        secondaryLabel: "Omzet excl. btw",
+        secondaryValue: formatEUR(financialMonthSnapshot.netRevenueCents),
+        destination: { section: "financial", page: "financial-break-even", label: "Bekijk break-even en scenario’s" },
+      }];
+    }
+    return [];
+  }, [currentRole, financialCosts, financialMonthSnapshot]);
+  const actions = useMemo(
+    () => [...financialActions, ...operationalActions],
+    [financialActions, operationalActions],
   );
   const activeActionCount = actions.filter(
     (action) => !isSnoozed(workflow, action.id, workflowClock),
@@ -418,6 +507,7 @@ export const Insights = () => {
         onNavigate={navigate}
         badges={badges}
         qualityLabel={qualityLabel}
+        showFinancial={currentRole === "owner"}
       />
       <main className="app-page-content min-w-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
         <div className="mx-auto max-w-[1320px]">
@@ -427,6 +517,7 @@ export const Insights = () => {
             onNavigate={navigate}
             badges={badges}
             qualityLabel={qualityLabel}
+            showFinancial={currentRole === "owner"}
           />
           {loading ? (
             <InsightsLoading />
@@ -583,6 +674,23 @@ export const Insights = () => {
                   headerActions={periodActions}
                 />
               )}
+              {currentRole === "owner" &&
+                (location.page === "financial-result" ||
+                  location.page === "financial-costs" ||
+                  location.page === "financial-break-even") && (
+                  <FinancialInsights
+                    page={location.page}
+                    transactions={analysisTransactions}
+                    costs={financialCosts}
+                    period={period}
+                    rangeStart={periodBounds(period, now).currentStart}
+                    rangeEnd={periodBounds(period, now).currentEnd}
+                    previousRangeStart={periodBounds(period, now).previousStart}
+                    previousRangeEnd={periodBounds(period, now).previousEnd}
+                    now={now}
+                    periodActions={periodActions}
+                  />
+                )}
               {location.page === "quality" && (
                 <DataQualityPage snapshot={dataQuality} />
               )}
@@ -816,7 +924,7 @@ const PerformanceOverview = ({
             snapshot.revenueCents,
             previousSnapshot.revenueCents,
           )}
-          detail={`Na ${formatEUR(discountCents)} korting`}
+          detail={`Na ${formatEUR(discountCents)} korting excl. btw`}
         />
         <MetricCard
           label="Brutowinst"
@@ -905,7 +1013,7 @@ const PerformanceOverview = ({
           />
         </SectionCard>
         <SectionCard
-          title="Omzet per betaalwijze"
+          title="Betalingen per betaalwijze"
           subtitle={periodRangeLabel(period, now)}
         >
           <DonutBreakdown
@@ -914,8 +1022,8 @@ const PerformanceOverview = ({
               label: row.method,
               value: row.amountCents,
             }))}
-            centerLabel="Netto-omzet"
-            ariaLabel="Netto-omzet verdeeld per betaalwijze"
+            centerLabel="Ontvangen"
+            ariaLabel="Ontvangen bedragen verdeeld per betaalwijze"
           />
         </SectionCard>
       </div>
@@ -1183,19 +1291,19 @@ const DiscountPerformancePage = ({
   <>
     <PageHeader
       title="Kortingsanalyse"
-      subtitle={`Gegeven korting en brutomarge op afgeprijsde verkopen · ${periodRangeLabel(period, now)}`}
+      subtitle={`Gegeven korting excl. btw en brutomarge op afgeprijsde verkopen · ${periodRangeLabel(period, now)}`}
       actions={headerActions}
     />
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <MetricCard
-        label="Totaal gegeven korting"
+        label="Gegeven korting excl. btw"
         value={formatEUR(snapshot.discountCents)}
         detail={periodRangeLabel(period, now)}
       />
       <MetricCard
-        label="Korting als aandeel van brutoverkoop"
+        label="Korting als aandeel van omzet"
         value={`${snapshot.discountRate.toFixed(1).replace(".", ",")}%`}
-        detail={`Brutoverkoop vóór korting: ${formatEUR(snapshot.grossSalesBeforeDiscountCents)}`}
+        detail={`Omzet excl. btw vóór korting: ${formatEUR(snapshot.netSalesBeforeDiscountCents)}`}
       />
       <MetricCard
         label="Verkopen met korting"
