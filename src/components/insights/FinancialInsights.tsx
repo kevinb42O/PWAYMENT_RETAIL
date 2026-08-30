@@ -20,11 +20,14 @@ import {
 import { formatEUR } from "../../utils/money";
 import type { InsightPeriod } from "../../utils/retailCharts";
 import {
+  ChartTooltip,
   DonutBreakdown,
   HorizontalBars,
   MetricCard,
   PageHeader,
   SectionCard,
+  tooltipPositionFromElement,
+  type ChartTooltipPosition,
 } from "./InsightPrimitives";
 
 export type FinancialInsightsPage =
@@ -111,16 +114,21 @@ const FinancialTrendChart = ({
   rows: ReturnType<typeof buildMonthlyProfitability>;
 }) => {
   const [metric, setMetric] = useState<"gross" | "operating">("operating");
+  const [active, setActive] = useState<{
+    key: string;
+    position: ChartTooltipPosition;
+  } | null>(null);
   const values = rows.map((row) =>
     metric === "gross" ? row.grossProfitCents : row.operatingResultCents,
   );
   const maximum = Math.max(1, ...values.map((value) => Math.abs(value)));
+  const metricLabel = metric === "gross" ? "Brutowinst" : "Managementresultaat";
   return (
     <div>
       <div className="mb-5 flex justify-end">
         <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1" aria-label="Resultaatgrafiek">
           {([['operating', 'Managementresultaat'], ['gross', 'Brutowinst']] as const).map(([id, label]) => (
-            <button key={id} type="button" onClick={() => setMetric(id)} aria-pressed={metric === id} className={`insights-control rounded-md px-3 py-1.5 text-xs font-bold ${metric === id ? "insights-control--active" : ""}`}>{label}</button>
+            <button key={id} type="button" onClick={() => { setMetric(id); setActive(null); }} aria-pressed={metric === id} className={`insights-control rounded-md px-3 py-1.5 text-xs font-bold ${metric === id ? "insights-control--active" : ""}`}>{label}</button>
           ))}
         </div>
       </div>
@@ -130,17 +138,40 @@ const FinancialTrendChart = ({
             const value = values[index];
             const positive = value >= 0;
             const height = Math.max(3, (Math.abs(value) / maximum) * 108);
+            const isActive = active?.key === row.key;
+            const monthLabel = new Intl.DateTimeFormat("nl-BE", {
+              month: "long",
+              year: "numeric",
+            }).format(new Date(`${row.key}-01T12:00:00`));
             return (
-              <div key={row.key} className="group flex min-w-0 flex-1 flex-col">
+              <button
+                key={row.key}
+                type="button"
+                onPointerEnter={(event) => setActive({ key: row.key, position: { x: event.clientX, y: event.clientY } })}
+                onPointerMove={(event) => setActive({ key: row.key, position: { x: event.clientX, y: event.clientY } })}
+                onPointerLeave={() => setActive(null)}
+                onFocus={(event) => setActive({ key: row.key, position: tooltipPositionFromElement(event.currentTarget) })}
+                onBlur={() => setActive(null)}
+                aria-label={`${monthLabel}: ${metricLabel} ${formatEUR(value)}`}
+                className={`group relative flex min-w-0 flex-1 flex-col rounded-lg outline-none transition-colors focus-visible:ring-2 focus-visible:ring-cyan-600 ${isActive ? "bg-slate-50/80" : "hover:bg-slate-50/60"}`}
+              >
+                {isActive && active && (
+                  <ChartTooltip
+                    label={monthLabel}
+                    value={formatEUR(value)}
+                    detail={`${metricLabel} · ${positive ? "positief" : "negatief"}`}
+                    position={active.position}
+                  />
+                )}
                 <div className="flex h-[124px] flex-col justify-end">
-                  {positive && <div title={`${row.label}: ${formatEUR(value)}`} className="mx-auto w-full max-w-10 rounded-t-md bg-emerald-600 transition-colors group-hover:bg-emerald-700" style={{ height }} />}
+                  {positive && <span className={`mx-auto w-full max-w-10 rounded-t-md bg-emerald-600 transition-all group-hover:bg-emerald-700 ${isActive ? "scale-x-110 shadow-sm ring-2 ring-emerald-200" : ""}`} style={{ height }} />}
                 </div>
                 <div className="h-px bg-slate-300" />
                 <div className="h-[124px]">
-                  {!positive && <div title={`${row.label}: ${formatEUR(value)}`} className="mx-auto w-full max-w-10 rounded-b-md bg-rose-500 transition-colors group-hover:bg-rose-600" style={{ height }} />}
+                  {!positive && <span className={`mx-auto block w-full max-w-10 rounded-b-md bg-rose-500 transition-all group-hover:bg-rose-600 ${isActive ? "scale-x-110 shadow-sm ring-2 ring-rose-200" : ""}`} style={{ height }} />}
                 </div>
-                <div className="truncate text-center text-[11px] font-semibold text-slate-500">{row.label}</div>
-              </div>
+                <span className={`truncate text-center text-[11px] font-semibold ${isActive ? "text-slate-900" : "text-slate-500"}`}>{row.label}</span>
+              </button>
             );
           })}
         </div>

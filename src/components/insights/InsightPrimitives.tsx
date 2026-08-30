@@ -237,12 +237,14 @@ export const DonutBreakdown = ({
                 r={radius}
                 fill="none"
                 stroke={colors[index % colors.length]}
-                strokeWidth="18"
+                strokeWidth={active?.key === row.key ? 22 : 18}
                 strokeDasharray={`${visible ? length : 0} ${circumference}`}
                 strokeDashoffset={-offset}
                 style={{
-                  transition: 'stroke-dasharray 760ms cubic-bezier(0.22, 1, 0.36, 1)',
-                  transitionDelay: `${index * 110}ms`,
+                  cursor: 'pointer',
+                  opacity: active && active.key !== row.key ? 0.42 : 1,
+                  filter: active?.key === row.key ? 'drop-shadow(0 2px 3px rgb(15 23 42 / 0.22))' : 'none',
+                  transition: `stroke-dasharray 760ms cubic-bezier(0.22, 1, 0.36, 1) ${index * 110}ms, stroke-width 160ms ease, opacity 160ms ease, filter 160ms ease`,
                 }}
                 tabIndex={0}
                 role="button"
@@ -259,7 +261,7 @@ export const DonutBreakdown = ({
           })}
         </svg>
         {activeRow && active && <ChartTooltip label={activeRow.label} value={valueFormatter(activeRow.value)} detail={`${Math.round((activeRow.value / total) * 100)}% van ${valueFormatter(total)}`} position={active.position} />}
-        <div className={`absolute inset-0 flex flex-col items-center justify-center text-center px-4 transition duration-500 ${visible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}>
+        <div className={`pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center px-4 transition duration-500 ${visible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}>
           <span className="max-w-[100px] text-[10px] sm:text-[11px] font-bold leading-tight uppercase tracking-[0.12em] text-slate-400 [word-break:break-word]">{activeRow?.label ?? centerLabel}</span>
           <strong className="mt-1 max-w-[100px] truncate text-xl font-bold tracking-tight text-slate-950">{valueFormatter(activeRow?.value ?? total)}</strong>
           {activeRow && <span className="mt-1 text-[10px] font-bold text-slate-500">{Math.round((activeRow.value / total) * 100)}%</span>}
@@ -267,8 +269,8 @@ export const DonutBreakdown = ({
       </div>
       <div className="w-full max-w-sm space-y-3">
         {visibleRows.map((row, index) => (
-          <button key={row.key} type="button" onPointerEnter={(event) => setActive({ key: row.key, position: { x: event.clientX, y: event.clientY } })} onPointerMove={(event) => setActive({ key: row.key, position: { x: event.clientX, y: event.clientY } })} onPointerLeave={() => setActive(null)} onFocus={(event) => setActive({ key: row.key, position: tooltipPositionFromElement(event.currentTarget) })} onBlur={() => setActive(null)} className={`grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border-b border-slate-100 pb-3 text-left outline-none transition duration-500 last:border-0 last:pb-0 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-cyan-600 ${visible ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0'}`} style={{ transitionDelay: `${180 + index * 80}ms` }}>
-            <span className="h-3 w-3 rounded-full" style={{ backgroundColor: colors[index % colors.length] }} />
+          <button key={row.key} type="button" onPointerEnter={(event) => setActive({ key: row.key, position: { x: event.clientX, y: event.clientY } })} onPointerMove={(event) => setActive({ key: row.key, position: { x: event.clientX, y: event.clientY } })} onPointerLeave={() => setActive(null)} onFocus={(event) => setActive({ key: row.key, position: tooltipPositionFromElement(event.currentTarget) })} onBlur={() => setActive(null)} className={`grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border-b border-slate-100 px-1 pb-3 text-left outline-none transition duration-500 last:border-0 last:pb-0 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-cyan-600 ${active?.key === row.key ? 'bg-slate-50' : ''} ${visible ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0'}`} style={{ transitionDelay: `${180 + index * 80}ms` }}>
+            <span className={`h-3 w-3 rounded-full transition-transform ${active?.key === row.key ? 'scale-125 ring-2 ring-slate-200' : ''}`} style={{ backgroundColor: colors[index % colors.length] }} />
             <div className="min-w-0"><div className="truncate text-sm font-semibold text-slate-700">{row.label}</div><div className="mt-0.5 text-xs text-slate-500">{valueFormatter(row.value)}</div></div>
             <strong className="text-base text-slate-950">{Math.round((row.value / total) * 100)}%</strong>
           </button>
