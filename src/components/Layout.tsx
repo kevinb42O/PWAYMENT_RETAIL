@@ -1430,7 +1430,7 @@ export const Layout: React.FC = () => {
               description="Uw verkoop- en voorraaddata blijft veilig bewaard. Upgrade om prognoses, marges, klantinzichten en actieadviezen opnieuw te openen."
               onUpgrade={() => openProfile("billing")}
             >
-              <Insights />
+              <Insights onOpenFinancialSettings={() => openProfile("financial")} />
             </FeatureGate>
           )}
           {(mainView === "profile" || mainView === "admin") &&

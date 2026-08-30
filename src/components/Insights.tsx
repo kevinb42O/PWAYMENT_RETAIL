@@ -189,7 +189,11 @@ const initialLocation = () => {
   return { section, page };
 };
 
-export const Insights = () => {
+export const Insights = ({
+  onOpenFinancialSettings,
+}: {
+  onOpenFinancialSettings: () => void;
+}) => {
   const presentationMode =
     new URLSearchParams(window.location.search).get("presentation") === "1" &&
     (import.meta.env.DEV || import.meta.env.VITE_PRESENTATION_BUILD === "true");
@@ -689,6 +693,7 @@ export const Insights = () => {
                     previousRangeEnd={periodBounds(period, now).previousEnd}
                     now={now}
                     periodActions={periodActions}
+                    onOpenFinancialSettings={onOpenFinancialSettings}
                   />
                 )}
               {location.page === "quality" && (

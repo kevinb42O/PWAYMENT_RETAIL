@@ -8,7 +8,6 @@ import {
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
-import { useStore } from "../../store/useStore";
 import type { FinancialCost, Transaction } from "../../types";
 import {
   allocateFinancialCostCents,
@@ -41,17 +40,10 @@ const percentageChange = (current: number, previous: number) =>
 const percentageLabel = (value: number | null) =>
   value == null ? "—" : `${value.toFixed(1).replace(".", ",")}%`;
 
-const openFinancialSettings = () => {
-  const url = new URL(window.location.href);
-  url.searchParams.set("settings", "financial");
-  window.history.replaceState(window.history.state, "", url);
-  useStore.getState().setMainView("profile");
-};
-
-const ManageCostsButton = () => (
+const ManageCostsButton = ({ onClick }: { onClick: () => void }) => (
   <button
     type="button"
-    onClick={openFinancialSettings}
+    onClick={onClick}
     className="insights-primary-action inline-flex items-center gap-2 rounded-lg px-3.5 py-2.5 text-xs font-extrabold"
   >
     Kosten beheren <ExternalLink size={14} />
@@ -122,12 +114,13 @@ const FinancialTrendChart = ({
     metric === "gross" ? row.grossProfitCents : row.operatingResultCents,
   );
   const maximum = Math.max(1, ...values.map((value) => Math.abs(value)));
-  const metricLabel = metric === "gross" ? "Brutowinst" : "Managementresultaat";
+  const metricLabel = metric === "gross" ? "Over na productkosten" : "Over na alle kosten";
+  const accountingLabel = metric === "gross" ? "brutowinst" : "managementresultaat";
   return (
     <div>
       <div className="mb-5 flex justify-end">
         <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1" aria-label="Resultaatgrafiek">
-          {([['operating', 'Managementresultaat'], ['gross', 'Brutowinst']] as const).map(([id, label]) => (
+          {([['operating', 'Na alle kosten'], ['gross', 'Na productkosten']] as const).map(([id, label]) => (
             <button key={id} type="button" onClick={() => { setMetric(id); setActive(null); }} aria-pressed={metric === id} className={`insights-control rounded-md px-3 py-1.5 text-xs font-bold ${metric === id ? "insights-control--active" : ""}`}>{label}</button>
           ))}
         </div>
@@ -159,7 +152,7 @@ const FinancialTrendChart = ({
                   <ChartTooltip
                     label={monthLabel}
                     value={formatEUR(value)}
-                    detail={`${metricLabel} · ${positive ? "positief" : "negatief"}`}
+                    detail={`${accountingLabel} · ${positive ? "over" : "tekort"}`}
                     position={active.position}
                   />
                 )}
@@ -183,11 +176,11 @@ const FinancialTrendChart = ({
 
 const ResultBridge = ({ snapshot }: { snapshot: ProfitabilitySnapshot }) => {
   const rows = [
-    { label: "Omzet excl. btw", value: snapshot.netRevenueCents, tone: "text-slate-950" },
-    { label: "Productkost", value: -snapshot.costOfGoodsCents, tone: "text-rose-700" },
-    { label: "Brutowinst", value: snapshot.grossProfitCents, tone: "text-cyan-800" },
-    { label: "Bedrijfskosten", value: -snapshot.operatingCostsCents, tone: "text-rose-700" },
-    { label: "Managementresultaat", value: snapshot.operatingResultCents, tone: snapshot.operatingResultCents >= 0 ? "text-emerald-700" : "text-rose-700" },
+    { label: "Verkoopomzet zonder btw", explanation: "Uw omzet", value: snapshot.netRevenueCents, tone: "text-slate-950" },
+    { label: "Min: productkosten", explanation: "Inkoopkost van verkochte producten", value: -snapshot.costOfGoodsCents, tone: "text-rose-700" },
+    { label: "Over na productkosten", explanation: "Brutowinst", value: snapshot.grossProfitCents, tone: "text-cyan-800" },
+    { label: "Min: andere bedrijfskosten", explanation: "Huur, personeel, energie…", value: -snapshot.operatingCostsCents, tone: "text-rose-700" },
+    { label: "Over na alle kosten", explanation: "Managementresultaat", value: snapshot.operatingResultCents, tone: snapshot.operatingResultCents >= 0 ? "text-emerald-700" : "text-rose-700" },
   ];
   return (
     <div className="grid gap-2 sm:grid-cols-5">
@@ -196,6 +189,7 @@ const ResultBridge = ({ snapshot }: { snapshot: ProfitabilitySnapshot }) => {
           {index > 0 && <ArrowRight size={14} className="absolute -left-[11px] top-1/2 hidden -translate-y-1/2 rounded-full bg-white text-slate-400 sm:block" />}
           <div className="text-[11px] font-semibold text-slate-500">{row.label}</div>
           <div className={`mt-1 text-base font-extrabold tabular-nums ${row.tone}`}>{formatEUR(row.value)}</div>
+          <div className="mt-1 text-[10px] leading-4 text-slate-400">{row.explanation}</div>
         </div>
       ))}
     </div>
@@ -213,6 +207,7 @@ export const FinancialInsights = ({
   previousRangeEnd,
   now,
   periodActions,
+  onOpenFinancialSettings,
 }: {
   page: FinancialInsightsPage;
   transactions: Transaction[];
@@ -224,6 +219,7 @@ export const FinancialInsights = ({
   previousRangeEnd: number;
   now: number;
   periodActions: ReactNode;
+  onOpenFinancialSettings: () => void;
 }) => {
   const activeCosts = costs.filter((cost) => cost.status === "active");
   const periodCosts = costs.filter(
@@ -253,18 +249,27 @@ export const FinancialInsights = ({
   if (page === "financial-result") {
     return (
       <>
-        <PageHeader title="Managementresultaat van uw zaak" subtitle={`Omzet exclusief btw, productkost en alle geregistreerde kosten · ${rangeLabel}`} actions={<div className="flex flex-wrap gap-2">{periodActions}<ManageCostsButton /></div>} />
+        <PageHeader title="Wat houdt uw zaak over?" subtitle={`Van uw verkopen trekken we btw, productkosten en bedrijfskosten af · ${rangeLabel}`} actions={<div className="flex flex-wrap gap-2">{periodActions}<ManageCostsButton onClick={onOpenFinancialSettings} /></div>} />
         <ReliabilityNotice snapshot={snapshot} activeCostCount={periodCosts.length} />
+        <section className="mb-3 rounded-xl border border-cyan-200 bg-cyan-50/70 p-4" aria-label="Uitleg financiële begrippen">
+          <h2 className="text-xs font-extrabold text-cyan-950">Wat betekent wat?</h2>
+          <div className="mt-3 grid gap-3 text-xs leading-5 text-slate-600 sm:grid-cols-2 xl:grid-cols-4">
+            <p><strong className="block text-slate-900">Verkoopomzet zonder btw</strong>Het bedrag van uw verkopen dat werkelijk als omzet telt.</p>
+            <p><strong className="block text-slate-900">Productkosten</strong>Wat de producten kostten die u in deze periode verkocht.</p>
+            <p><strong className="block text-slate-900">Andere bedrijfskosten</strong>Onder meer huur, personeel, energie, verzekeringen en marketing.</p>
+            <p><strong className="block text-slate-900">Over na alle kosten</strong>Uw berekende managementresultaat. Dit is geen officiële jaarrekening.</p>
+          </div>
+        </section>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard label="Omzet exclusief btw" value={formatEUR(snapshot.netRevenueCents)} change={percentageChange(snapshot.netRevenueCents, previous.netRevenueCents)} detail={`${formatEUR(snapshot.vatCents)} btw buiten omzet gehouden`} />
-          <MetricCard label="Brutowinst" value={formatEUR(snapshot.grossProfitCents)} change={percentageChange(snapshot.grossProfitCents, previous.grossProfitCents)} detail={`${percentageLabel(snapshot.grossMarginPercent)} brutomarge`} />
-          <MetricCard label="Bedrijfskosten" value={formatEUR(snapshot.operatingCostsCents)} change={percentageChange(snapshot.operatingCostsCents, previous.operatingCostsCents)} detail={`${formatEUR(snapshot.fixedCostsCents)} vast · ${formatEUR(snapshot.variableCostsCents)} variabel`} />
-          <MetricCard label="Managementresultaat" value={reliable ? formatEUR(snapshot.operatingResultCents) : "Voorlopig"} change={reliable ? percentageChange(snapshot.operatingResultCents, previous.operatingResultCents) : null} detail={reliable ? `${percentageLabel(snapshot.operatingMarginPercent)} van omzet excl. btw` : "Vervolledig kosten en productkostprijzen"} />
+          <MetricCard label="Verkoopomzet zonder btw" value={formatEUR(snapshot.netRevenueCents)} change={percentageChange(snapshot.netRevenueCents, previous.netRevenueCents)} detail={`${formatEUR(snapshot.vatCents)} btw apart gehouden`} />
+          <MetricCard label="Over na productkosten" value={formatEUR(snapshot.grossProfitCents)} change={percentageChange(snapshot.grossProfitCents, previous.grossProfitCents)} detail={`Brutowinst · ${percentageLabel(snapshot.grossMarginPercent)} van uw omzet`} />
+          <MetricCard label="Andere bedrijfskosten" value={formatEUR(snapshot.operatingCostsCents)} change={percentageChange(snapshot.operatingCostsCents, previous.operatingCostsCents)} detail={`${formatEUR(snapshot.fixedCostsCents)} vast · ${formatEUR(snapshot.variableCostsCents)} variabel`} />
+          <MetricCard label="Over na alle kosten" value={reliable ? formatEUR(snapshot.operatingResultCents) : "Voorlopig"} change={reliable ? percentageChange(snapshot.operatingResultCents, previous.operatingResultCents) : null} detail={reliable ? `Managementresultaat · ${percentageLabel(snapshot.operatingMarginPercent)} van uw omzet` : "Vul eerst alle kosten en productkostprijzen aan"} />
         </div>
-        <div className="mt-4"><SectionCard title="Van verkoop naar managementresultaat" subtitle="Elke stap gebruikt dezelfde btw-, retour- en kostregels"><ResultBridge snapshot={snapshot} /></SectionCard></div>
+        <div className="mt-4"><SectionCard title="Zo wordt berekend wat u overhoudt" subtitle="Begin bij uw verkoopomzet en trek de kosten stap voor stap af"><ResultBridge snapshot={snapshot} /></SectionCard></div>
         <div className="mt-4 grid gap-4 xl:grid-cols-[1.35fr_.65fr]">
-          <SectionCard title="Resultaat per maand" subtitle="Lopende maand tot vandaag; retouren worden als omkering verwerkt"><FinancialTrendChart rows={monthly} /></SectionCard>
-          <SectionCard title="Kostenverdeling" subtitle={`Toegerekend over ${rangeLabel}`}><DonutBreakdown rows={snapshot.categoryCosts.map((row) => ({ key: row.key, label: row.label, value: row.valueCents }))} centerLabel="Bedrijfskosten" ariaLabel="Bedrijfskosten per categorie" /></SectionCard>
+          <SectionCard title="Wat u per maand overhoudt" subtitle="Groen is over, rood is tekort. De lopende maand is nog onvolledig."><FinancialTrendChart rows={monthly} /></SectionCard>
+          <SectionCard title="Waar uw bedrijfskosten naartoe gaan" subtitle={`Verdeling over ${rangeLabel}`}><DonutBreakdown rows={snapshot.categoryCosts.map((row) => ({ key: row.key, label: row.label, value: row.valueCents }))} centerLabel="Alle kosten" ariaLabel="Bedrijfskosten per categorie" /></SectionCard>
         </div>
       </>
     );
@@ -278,12 +283,12 @@ export const FinancialInsights = ({
       .sort((left, right) => right.value - left.value);
     return (
       <>
-        <PageHeader title="Waar uw geld naartoe gaat" subtitle={`Alle geregistreerde bedrijfskosten, correct toegerekend over ${rangeLabel}`} actions={<div className="flex flex-wrap gap-2">{periodActions}<ManageCostsButton /></div>} />
+        <PageHeader title="Uw bedrijfskosten" subtitle={`Huur, personeel en alle andere kosten die u registreerde · ${rangeLabel}`} actions={<div className="flex flex-wrap gap-2">{periodActions}<ManageCostsButton onClick={onOpenFinancialSettings} /></div>} />
         <ReliabilityNotice snapshot={snapshot} activeCostCount={periodCosts.length} />
         <div className="grid gap-3 sm:grid-cols-3">
-          <MetricCard label="Totale bedrijfskosten" value={formatEUR(snapshot.operatingCostsCents)} detail={`${periodCosts.length} ${periodCosts.length === 1 ? "kost" : "kosten"} in deze periode · ${activeCosts.length} actief`} />
-          <MetricCard label="Vaste kosten" value={formatEUR(snapshot.fixedCostsCents)} detail={snapshot.operatingCostsCents > 0 ? `${Math.round((snapshot.fixedCostsCents / snapshot.operatingCostsCents) * 100)}% van bedrijfskosten` : "Nog geen kosten"} />
-          <MetricCard label="Variabele kosten" value={formatEUR(snapshot.variableCostsCents)} detail={snapshot.operatingCostsCents > 0 ? `${Math.round((snapshot.variableCostsCents / snapshot.operatingCostsCents) * 100)}% van bedrijfskosten` : "Nog geen kosten"} />
+          <MetricCard label="Alle kosten samen" value={formatEUR(snapshot.operatingCostsCents)} detail={`${periodCosts.length} ${periodCosts.length === 1 ? "kost" : "kosten"} meegerekend · ${activeCosts.length} actief`} />
+          <MetricCard label="Vaste kosten" value={formatEUR(snapshot.fixedCostsCents)} detail={snapshot.operatingCostsCents > 0 ? `Veranderen niet rechtstreeks mee met uw verkoop · ${Math.round((snapshot.fixedCostsCents / snapshot.operatingCostsCents) * 100)}%` : "Nog geen vaste kosten"} />
+          <MetricCard label="Variabele kosten" value={formatEUR(snapshot.variableCostsCents)} detail={snapshot.operatingCostsCents > 0 ? `Kunnen stijgen of dalen met uw activiteit · ${Math.round((snapshot.variableCostsCents / snapshot.operatingCostsCents) * 100)}%` : "Nog geen variabele kosten"} />
         </div>
         <div className="mt-4 grid gap-4 xl:grid-cols-2">
           <SectionCard title="Kosten per categorie" subtitle="Grootste impact eerst"><HorizontalBars rows={snapshot.categoryCosts.map((row) => ({ key: row.key, label: row.label, value: row.valueCents }))} formatValue={formatEUR} emptyLabel="Voeg kosten toe om de verdeling te zien." /></SectionCard>
@@ -305,15 +310,15 @@ export const FinancialInsights = ({
     : 0;
   return (
     <>
-      <PageHeader title="Uw break-evenpunt" subtitle="Hoeveel omzet exclusief btw nodig is om productkost, variabele kosten en vaste lasten te dragen" actions={<div className="flex flex-wrap gap-2">{periodActions}<ManageCostsButton /></div>} />
+      <PageHeader title="Hoeveel moet u verkopen om uit de kosten te komen?" subtitle="Op dit omzetniveau is uw berekende resultaat precies nul" actions={<div className="flex flex-wrap gap-2">{periodActions}<ManageCostsButton onClick={onOpenFinancialSettings} /></div>} />
       <ReliabilityNotice snapshot={snapshot} activeCostCount={periodCosts.length} />
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Break-evenomzet" value={reliable && snapshot.breakEvenRevenueCents != null ? formatEUR(snapshot.breakEvenRevenueCents) : "Nog niet betrouwbaar"} detail="Omzet exclusief btw in deze periode" />
-        <MetricCard label="Gerealiseerde omzet" value={formatEUR(snapshot.netRevenueCents)} detail={`${reached.toFixed(0)}% van berekend break-evenpunt`} />
+        <MetricCard label="Omzet nodig om alle kosten te dragen" value={reliable && snapshot.breakEvenRevenueCents != null ? formatEUR(snapshot.breakEvenRevenueCents) : "Nog niet betrouwbaar"} detail="Dit is uw break-evenomzet zonder btw" />
+        <MetricCard label="Omzet die u al realiseerde" value={formatEUR(snapshot.netRevenueCents)} detail={`${reached.toFixed(0)}% van de benodigde omzet`} />
         <MetricCard label={snapshot.breakEvenGapCents != null && snapshot.breakEvenGapCents >= 0 ? "Boven break-even" : "Nog nodig"} value={snapshot.breakEvenGapCents == null ? "—" : formatEUR(Math.abs(snapshot.breakEvenGapCents))} detail={snapshot.breakEvenGapCents != null && snapshot.breakEvenGapCents >= 0 ? "Operationele ruimte vóór overige niet-geregistreerde posten" : "Bij gelijkblijvende margestructuur"} />
-        <MetricCard label="Bijdragemarge" value={percentageLabel(snapshot.contributionMarginPercent)} detail="Na productkost en variabele kosten" />
+        <MetricCard label="Deel dat vaste kosten kan betalen" value={percentageLabel(snapshot.contributionMarginPercent)} detail="Ook wel bijdragemarge: na product- en variabele kosten" />
       </div>
-      <div className="mt-4"><SectionCard title="Voortgang naar break-even" subtitle="Geen faillissementsvoorspelling: dit vergelijkt uitsluitend geregistreerde operationele kosten"><div className="py-4"><div className="mb-2 flex justify-between text-xs font-bold text-slate-600"><span>{formatEUR(snapshot.netRevenueCents)} gerealiseerd</span><span>{snapshot.breakEvenRevenueCents == null ? "Onvoldoende data" : `${formatEUR(snapshot.breakEvenRevenueCents)} nodig`}</span></div><div className="h-5 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full transition-all ${reached >= 100 ? "bg-emerald-600" : reached >= 75 ? "bg-amber-500" : "bg-cyan-700"}`} style={{ width: `${reached}%` }} /></div><div className="mt-2 text-right text-xs font-semibold text-slate-500">{reached.toFixed(0)}%</div></div></SectionCard></div>
+      <div className="mt-4"><SectionCard title="Hoe dicht bent u bij kostendekking?" subtitle="Dit gebruikt alleen de kosten die u in PWAYMENT registreerde; het is geen faillissementsvoorspelling"><div className="py-4"><div className="mb-2 flex justify-between text-xs font-bold text-slate-600"><span>{formatEUR(snapshot.netRevenueCents)} gerealiseerd</span><span>{snapshot.breakEvenRevenueCents == null ? "Onvoldoende data" : `${formatEUR(snapshot.breakEvenRevenueCents)} nodig`}</span></div><div className="h-5 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full transition-all ${reached >= 100 ? "bg-emerald-600" : reached >= 75 ? "bg-amber-500" : "bg-cyan-700"}`} style={{ width: `${reached}%` }} /></div><div className="mt-2 text-right text-xs font-semibold text-slate-500">{reached.toFixed(0)}%</div></div></SectionCard></div>
       <div className="mt-4"><SectionCard title="Wat als uw omzet verandert?" subtitle="Eenvoudige managementscenario’s; product- en variabele kost bewegen evenredig mee"><div className="grid gap-3 sm:grid-cols-3">{scenarios.map((scenario) => <article key={scenario.change} className={`rounded-xl border p-4 ${scenario.change === 0 ? "border-cyan-200 bg-cyan-50" : "border-slate-200 bg-slate-50"}`}><div className="flex items-center justify-between"><span className="text-xs font-bold text-slate-600">{scenario.change === 0 ? "Huidig tempo" : `Omzet ${scenario.change > 0 ? "+" : ""}${scenario.change}%`}</span>{scenario.result >= 0 ? <TrendingUp size={16} className="text-emerald-700" /> : <TrendingDown size={16} className="text-rose-700" />}</div><div className={`mt-3 text-xl font-black ${scenario.result >= 0 ? "text-emerald-700" : "text-rose-700"}`}>{formatEUR(scenario.result)}</div><div className="mt-1 text-xs text-slate-500">resultaat bij {formatEUR(scenario.revenue)} omzet</div></article>)}</div></SectionCard></div>
       <div className="mt-4 flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 text-xs leading-5 text-slate-600"><Calculator size={18} className="mt-0.5 shrink-0 text-cyan-700" /><span>Break-even gebruikt de brutomarge na btw en productkost, verminderd met variabele bedrijfskosten. Vaste kosten worden volledig gedragen door de resterende bijdragemarge. Belastingen, investeringsafschrijvingen en niet-geregistreerde kosten tellen alleen mee wanneer de eigenaar ze invoert.</span></div>
     </>
