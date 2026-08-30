@@ -1613,7 +1613,7 @@ export const Layout: React.FC = () => {
                       aria-expanded={desktopCartVisible}
                       className="flex h-full w-full cursor-pointer flex-col items-center rounded-none bg-white px-2 py-3 text-slate-700 outline-none transition-colors hover:bg-sky-50 hover:text-sky-900 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500 disabled:cursor-default"
                     >
-                      <span className="flex w-full flex-col items-center rounded-2xl border border-slate-200 px-1.5 py-3">
+                      <span className="flex w-full flex-col items-center rounded-2xl border border-sky-100 bg-sky-50/70 px-1.5 py-3 text-sky-900 shadow-sm">
                         <span
                           ref={desktopCartDockTargetRef}
                           key={`arrival-${cartArrivalNonce}`}
@@ -1621,17 +1621,19 @@ export const Layout: React.FC = () => {
                         >
                           <ShoppingCart size={24} />
                           {cartCount > 0 && (
-                            <span className="absolute -right-3 -top-3 min-w-5 rounded-full bg-red-500 px-1.5 py-0.5 text-center text-[10px] font-black leading-4 text-white shadow-sm">
+                            <span className="absolute -right-3 -top-3 min-w-5 rounded-full bg-sky-600 px-1.5 py-0.5 text-center text-[10px] font-black leading-4 text-white shadow-sm ring-2 ring-white">
                               {cartCount > 99 ? "99+" : cartCount}
                             </span>
                           )}
                         </span>
-                        <span className="mt-3 text-[10px] font-black uppercase tracking-[0.12em]">Kassa</span>
+                        <span className="mt-3 text-[10px] font-black uppercase tracking-[0.08em]">
+                          {cartCount === 0 ? "Leeg" : `${cartCount > 99 ? "99+" : cartCount} ${cartCount === 1 ? "item" : "items"}`}
+                        </span>
                       </span>
 
                       <span className="mt-auto flex w-full flex-col items-center rounded-2xl border border-slate-200 bg-slate-50 px-1 py-3">
                         <span className="text-[9px] font-black uppercase tracking-wider text-slate-500">Totaal</span>
-                        <span className="mt-1 max-w-full text-[11px] font-black tabular-nums tracking-tight">
+                        <span className="mt-1 max-w-full text-[13px] font-black tabular-nums tracking-tight text-slate-800">
                           {formatEUR(compactCartTotal)}
                         </span>
                         <PanelRightOpen size={17} className="mt-2 text-sky-600" />
