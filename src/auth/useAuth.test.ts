@@ -70,7 +70,7 @@ describe("fixture authentication", () => {
       storeName: "Testwinkel",
       email: "owner@example.test",
       password: "CorrectHorseBattery12!",
-      pin: "654321",
+      pin: "486205",
       termsAccepted: true,
       businessUseConfirmed: true,
       onboardingConfiguration,

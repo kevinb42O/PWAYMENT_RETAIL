@@ -1,4 +1,4 @@
-import { expect, readStore, test } from "./fixtures";
+import { expect, readStore, test, unlockPos } from "./fixtures";
 import type { Page } from "@playwright/test";
 
 interface StoredProduct { id: string; name: string; sku?: string; barcode?: string; stockQty?: number }
@@ -14,6 +14,7 @@ const firstTrackedProduct = async (page: Parameters<typeof readStore>[0]) => {
 
 const openInventoryFixture = async (page: Page) => {
   await page.goto("/app?e2e=1");
+  await unlockPos(page);
   await expect(page.getByRole("searchbox", { name: "Scan barcode of zoek product" })).toBeVisible({ timeout: 20_000 });
   await expect(page.locator(".pos-product-card").first()).toBeVisible({ timeout: 20_000 });
 };
@@ -48,6 +49,7 @@ test("owner can disable inventory and direct navigation cannot bypass the module
   await expect(topNavigation.getByRole("button", { name: "Voorraad" })).toHaveCount(0);
 
   await appPage.goto("/app?e2e=1&view=inventory");
+  await unlockPos(appPage);
   await expect(appPage.getByRole("heading", { name: "Scannen, boeken, klaar" })).toHaveCount(0);
   await expect(appPage.getByRole("searchbox", { name: "Scan barcode of zoek product" })).toBeVisible();
 
@@ -71,6 +73,7 @@ test("persistent batch session validates CSV before any stock is booked", async 
   await expect(appPage.getByRole("button", { name: /Verwerk 1 SKU/ })).toBeVisible();
 
   await appPage.reload();
+  await unlockPos(appPage);
   await expect(appPage.locator(".pos-product-card").first()).toBeVisible({ timeout: 20_000 });
   await appPage.getByRole("button", { name: "Voorraad", exact: true }).click();
   await expect(appPage.getByRole("heading", { name: /Actieve sessie · 1 SKU/ })).toBeVisible();

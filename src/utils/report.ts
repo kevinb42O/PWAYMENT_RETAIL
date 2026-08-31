@@ -21,6 +21,7 @@ import { allocateCents } from "./money";
 import { calculateTotals, vatBreakdownForTransaction } from "./vat";
 import { settlementTotalCents } from "./cashRounding";
 import { synchronizeFinancialLedgerBeforeReport } from "../services/outboxWorker";
+import { getPosActionAttribution } from "../pos-access/usePosAccess";
 
 export class ReportIntegrityError extends Error {
   constructor(message: string) {
@@ -383,6 +384,7 @@ export const generateZReport = async (
         prevHash,
         closedByUserId: opts.closedByUserId,
         closedByUserName: opts.closedByUserName,
+        operatorIdentityVersion: 1,
         registerId,
         shiftId: opts.shiftId,
         openingFloatCents,
@@ -476,6 +478,7 @@ const generateSupabaseZReport = async (
   const { data, error } = await supabase.rpc("finalize_daily_report", {
     target_store_id: storeId,
     payload: {
+      ...getPosActionAttribution(opts.closedByUserId),
       register_id: registerId,
       report: {
         openingFloatCents: opts.openingFloatCents ?? 0,

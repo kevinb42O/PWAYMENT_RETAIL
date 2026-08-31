@@ -14,6 +14,7 @@ import { DEFAULT_REGISTER_ID, transactionTenders } from "../utils/financial";
 import { allocateCents } from "../utils/money";
 import { calculateTotals } from "../utils/vat";
 import { generateReceiptBarcode } from "../utils/receiptBarcode";
+import { getPosActionAttribution } from "../pos-access/usePosAccess";
 
 export class RefundError extends Error {
   constructor(message: string) {
@@ -98,6 +99,7 @@ const synchronizeNonSellableRefund = async (
   const { data, error } = await supabase.rpc("refund_sale", {
     target_store_id: storeId,
     payload: {
+      ...getPosActionAttribution(input.userId),
       client_request_id: input.clientRequestId,
       original_client_request_id: original.clientRequestId,
       lines: input.lines.map((line) => ({
@@ -267,6 +269,7 @@ export const createRefund = async (
         isFinalized: 0,
         userId: input.userId,
         userName: input.userName,
+        operatorIdentityVersion: 1,
         customerId: original.customerId,
         source: "live",
         kind: "refund",

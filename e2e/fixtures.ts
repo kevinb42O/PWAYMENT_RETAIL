@@ -24,8 +24,22 @@ export const test = base.extend<AppFixtures>({
 
 export { expect } from "@playwright/test";
 
+export const unlockPos = async (page: Page, pin = "123456"): Promise<void> => {
+  const gate = page.getByRole("heading", { name: "Voer je PIN in" });
+  const catalog = page.getByRole("searchbox", { name: "Scan barcode of zoek product" });
+  await Promise.race([
+    gate.waitFor({ state: "visible", timeout: 20_000 }),
+    catalog.waitFor({ state: "visible", timeout: 20_000 }),
+  ]);
+  if (await gate.isVisible()) {
+    await page.keyboard.type(pin);
+    await expect(gate).toBeHidden({ timeout: 20_000 });
+  }
+};
+
 export const openApp = async (page: Page): Promise<void> => {
   await page.goto("/app?e2e=1");
+  await unlockPos(page);
   await expect(
     page.getByRole("searchbox", { name: "Scan barcode of zoek product" }),
   ).toBeVisible();
@@ -44,8 +58,10 @@ export const addProduct = async (
 
 export const openDesktopCart = async (page: Page): Promise<void> => {
   const opener = page.getByRole("button", { name: /Winkelwagen openen/ });
-  if (await opener.isVisible()) await opener.click();
-  await expect(page.getByRole("heading", { name: "Winkelwagen" })).toBeVisible();
+  const heading = page.getByRole("heading", { name: "Winkelwagen" });
+  await expect(opener.or(heading).first()).toBeVisible();
+  if (!(await heading.isVisible())) await opener.click();
+  await expect(heading).toBeVisible();
 };
 
 export const checkoutPin = async (page: Page): Promise<void> => {

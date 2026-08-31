@@ -20,8 +20,12 @@ import {
 import { useStoreConfiguration } from "../store/useStoreConfiguration";
 import { useWorkforce } from "../store/useWorkforce";
 import { LEGAL_VERSION } from "../config/legal";
+import { posPinPolicyError } from "../pos-access/pinPolicy";
 
 interface AuthState {
+  accountUserId: string | null;
+  accountUserName: string | null;
+  accountRole: Role | null;
   currentUserId: string | null;
   currentUserName: string | null;
   currentRole: Role | null;
@@ -29,6 +33,8 @@ interface AuthState {
   currentStoreName: string | null;
   currentStoreIsDemo: boolean;
   unlocked: boolean;
+  activateOperator: (operator: { id: string; name: string; role: Role }) => void;
+  clearOperator: () => void;
   initialize: () => Promise<void>;
   login: (userId: string, pin: string) => Promise<boolean>;
   loginWithEmail: (
@@ -63,6 +69,17 @@ const hashPin = (pin: string): Promise<string> => hashCredential(pin, "pin");
 /** Used only by explicitly flagged E2E fixture accounts. */
 const hashPassword = (password: string): Promise<string> =>
   hashCredential(password, "password");
+
+// Deterministic hashes are restricted to the public E2E fixture credentials.
+// Precomputing them prevents each parallel browser worker from spending the
+// complete boot timeout deriving the same five known test-only secrets.
+const E2E_PASSWORD_HASH = "pbkdf2-sha256$120000$e2756d023a3211d9dcbbc2c3911923aa$2cea87f06d14b841ad6876e2c5eed94a4774de034297d19e4247d4c1d45a64d7";
+const E2E_PIN_HASHES: Record<string, string> = {
+  "123456": "pbkdf2-sha256$120000$c035b1330b1c67ad08c3fae78b158e48$abbdeac23e8a8529e29f2e5bdcc947b196f111b1634a11f9b315c5343d4c206e",
+  "234567": "pbkdf2-sha256$120000$08146e12ea12b613b74fe7a1496315bc$c34ff036f36bcdd53d6c64db799d90581070d660b2381307dcbf5b74905914d3",
+  "111111": "pbkdf2-sha256$120000$7561f868822991dee855cddd87fa074a$28e60dffdd72bdfc924b16a5fff519096547bf6f11500d858d5453612429d553",
+  "222222": "pbkdf2-sha256$120000$f22c53ce34b133f06b0efe940a249419$9b47ee6970ac7f4f141d3b1e3824156c821efa9fb6f0e327697d4f262900da78",
+};
 
 export const DEMO_ACCOUNT_ID = "u-demo-kevin";
 const DEMO_ACCOUNT_EMAIL = "kevin@webaanzee.be";
@@ -175,10 +192,15 @@ export const audit = async (
   }
   if (currentStoreId) {
     try {
+      const { getPosActionAttribution } = await import("../pos-access/usePosAccess");
+      const attribution = getPosActionAttribution(currentUserId);
+      const remoteDetail = detail == null
+        ? (Object.keys(attribution).length > 0 ? attribution : null)
+        : { ...(detail as Record<string, unknown>), ...attribution };
       const { error } = await supabase.rpc("append_audit", {
         target_store_id: currentStoreId,
         event_action: action,
-        event_detail: detail == null ? null : (detail as unknown as Json),
+        event_detail: remoteDetail as unknown as Json,
       });
       if (error) throw error;
     } catch (err) {
@@ -196,6 +218,7 @@ export const ensureSeedUsers = async (): Promise<void> => {
     import.meta.env.VITE_PRESENTATION_BUILD === "true" ||
     import.meta.env.VITE_E2E_BUILD === "true";
   if (!fixtureMode) return;
+  const deterministicE2E = import.meta.env.VITE_E2E_BUILD === "true";
 
   await ensureDemoAccount();
 
@@ -252,9 +275,11 @@ export const ensureSeedUsers = async (): Promise<void> => {
       id: u.id,
       name: u.name,
       role: u.role,
-      pinHash: await hashPin(u.pin),
+      pinHash: deterministicE2E ? E2E_PIN_HASHES[u.pin] : await hashPin(u.pin),
       email: u.email,
-      passwordHash: await hashCredential("password123", "password"),
+      passwordHash: deterministicE2E
+        ? E2E_PASSWORD_HASH
+        : await hashCredential("password123", "password"),
       storeName: u.storeName,
       createdAt: new Date().toISOString(),
     };
@@ -267,6 +292,9 @@ export const ensureSeedUsers = async (): Promise<void> => {
 export const useAuth = create<AuthState>()(
   persist(
     (set, get) => ({
+      accountUserId: null,
+      accountUserName: null,
+      accountRole: null,
       currentUserId: null,
       currentUserName: null,
       currentRole: null,
@@ -314,6 +342,10 @@ export const useAuth = create<AuthState>()(
             ? membership.stores[0]?.is_demo
             : membership.stores?.is_demo;
           set({
+            accountUserId: data.session.user.id,
+            accountUserName:
+              profile?.display_name ?? data.session.user.email ?? "Gebruiker",
+            accountRole: membership.role as Role,
             currentUserId: data.session.user.id,
             currentUserName:
               profile?.display_name ?? data.session.user.email ?? "Gebruiker",
@@ -349,6 +381,9 @@ export const useAuth = create<AuthState>()(
         }
         clearFailures(attemptKey);
         set({
+          accountUserId: user.id,
+          accountUserName: user.name,
+          accountRole: user.role,
           currentUserId: user.id,
           currentUserName: user.name,
           currentRole: user.role,
@@ -388,6 +423,9 @@ export const useAuth = create<AuthState>()(
             return { success: false, message: "Ongeldige inloggegevens" };
           }
           set({
+            accountUserId: user.id,
+            accountUserName: user.name,
+            accountRole: user.role,
             currentUserId: user.id,
             currentUserName: user.name,
             currentRole: user.role,
@@ -479,13 +517,11 @@ export const useAuth = create<AuthState>()(
             message: "Kies en bevestig eerst het type retailwinkel.",
           };
         }
-        if (
-          import.meta.env.VITE_E2E_BUILD === "true" &&
-          !/^\d{6}$/.test(pin)
-        ) {
+        const pinError = posPinPolicyError(pin);
+        if (pinError) {
           return {
             success: false,
-            message: "De snel-PIN moet exact 6 cijfers bevatten",
+            message: pinError,
           };
         }
         if (import.meta.env.VITE_E2E_BUILD === "true") {
@@ -510,6 +546,9 @@ export const useAuth = create<AuthState>()(
             .getState()
             .setMainView(recommendedStartView(onboardingConfiguration));
           set({
+            accountUserId: newUser.id,
+            accountUserName: newUser.name,
+            accountRole: newUser.role,
             currentUserId: newUser.id,
             currentUserName: newUser.name,
             currentRole: newUser.role,
@@ -548,6 +587,19 @@ export const useAuth = create<AuthState>()(
           }
           if (data.session) {
             await get().initialize();
+            const activeStoreId = get().currentStoreId;
+            if (activeStoreId) {
+              const [{ setupOwnerPosAccess }, { getPosInstallationId }] = await Promise.all([
+                import("../pos-access/service"),
+                import("../pos-access/usePosAccess"),
+              ]);
+              await setupOwnerPosAccess({
+                storeId: activeStoreId,
+                installationId: getPosInstallationId(),
+                deviceName: "Eerste kassa",
+                pin,
+              });
+            }
             await audit("register", { email: cleanEmail, storeName: cleanStore });
             return { success: true };
           }
@@ -580,6 +632,9 @@ export const useAuth = create<AuthState>()(
           // In-memory logout remains complete when storage is unavailable.
         }
         set({
+          accountUserId: null,
+          accountUserName: null,
+          accountRole: null,
           currentUserId: null,
           currentUserName: null,
           currentRole: null,
@@ -592,6 +647,20 @@ export const useAuth = create<AuthState>()(
         useWorkforce.getState().reset();
         const { useFinancialWorkspace } = await import("../store/useFinancialWorkspace");
         useFinancialWorkspace.getState().reset();
+      },
+      activateOperator(operator) {
+        set({
+          currentUserId: operator.id,
+          currentUserName: operator.name,
+          currentRole: operator.role,
+        });
+      },
+      clearOperator() {
+        set({
+          currentUserId: null,
+          currentUserName: null,
+          currentRole: null,
+        });
       },
       hasRole(...roles) {
         const r = get().currentRole;
@@ -645,6 +714,9 @@ export const useAuth = create<AuthState>()(
       name: "pwayment-auth-v1",
       version: 2,
       partialize: (s) => ({
+        accountUserId: s.accountUserId,
+        accountUserName: s.accountUserName,
+        accountRole: s.accountRole,
         currentUserId: s.currentUserId,
         currentUserName: s.currentUserName,
         currentRole: s.currentRole,
@@ -655,6 +727,9 @@ export const useAuth = create<AuthState>()(
       }),
       migrate: (persisted: unknown) => ({
         ...(persisted as object),
+        accountUserId: null,
+        accountUserName: null,
+        accountRole: null,
         currentStoreIsDemo: false,
         unlocked: false,
       }),

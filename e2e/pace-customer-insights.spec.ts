@@ -1,4 +1,4 @@
-import { expect, openApp, openDesktopCart, test } from "./fixtures";
+import { expect, openApp, openDesktopCart, test, unlockPos } from "./fixtures";
 
 test("customer context stays inside Pace and never covers the cart", async ({ appPage }) => {
   await openApp(appPage);
@@ -70,6 +70,7 @@ test("customer context stays inside Pace and never covers the cart", async ({ ap
   });
 
   await appPage.reload();
+  await unlockPos(appPage);
   await openDesktopCart(appPage);
   await appPage.getByRole("button", { name: "Klant koppelen", exact: true }).click();
   await appPage.getByRole("button", { name: /Annekee Pace/ }).click();

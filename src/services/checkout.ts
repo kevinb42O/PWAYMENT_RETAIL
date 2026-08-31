@@ -670,6 +670,7 @@ const runCheckout = async (
         isFinalized: 0,
         userId: input.userId,
         userName: input.userName,
+        operatorIdentityVersion: 1,
         customerId: input.customerId,
         source: "live",
         kind: "sale",

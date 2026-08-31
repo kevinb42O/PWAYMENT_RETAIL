@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { useStore, type MainView } from "../store/useStore";
 import { useAuth } from "../auth/useAuth";
+import { usePosAccess } from "../pos-access/usePosAccess";
 import { useProducts } from "../store/useProducts";
 import { matchesCatalogQuery } from "../utils/productLookup";
 import { isValidReceiptBarcode, normalizeReceiptBarcode } from "../utils/receiptBarcode";
@@ -161,6 +162,11 @@ export const Layout: React.FC = () => {
     scanCodeToCart,
   } = useStore();
   const { currentUserId, currentUserName, currentRole, currentStoreId, logout, verifyCurrentOwnerPin } = useAuth();
+  const lockPos = usePosAccess((state) => state.lock);
+  const posSessionToken = usePosAccess((state) => state.sessionToken);
+  const canAccessOwnerSettings = currentRole === "owner"
+    && Boolean(posSessionToken)
+    && !posSessionToken?.startsWith("offline:");
   const verifyApprovalPin = useWorkforce((state) => state.verifyApprovalPin);
   const workforceMutating = useWorkforce((state) => state.mutating);
   const refreshEntitlements = useEntitlements((state) => state.load);
@@ -486,6 +492,17 @@ export const Layout: React.FC = () => {
   const openProfile = (
     tab: "billing" | "webshop-general" | "modules" | "pace" | "workforce" | "financial" | "leave-approvals" | "catalog-products" | "catalog-categories" | "labels" | "integrations" | "general" | "merchant" = "billing",
   ) => {
+    if (!canAccessOwnerSettings) {
+      setScanFeedback({
+        tone: "warning",
+        title: currentRole === "owner" ? "Online verificatie vereist" : "Alleen voor de eigenaar",
+        detail: currentRole === "owner"
+          ? "Instellingen blijven gesloten tijdens een offline sessie. Maak verbinding en meld opnieuw aan."
+          : "Vergrendel de kassa en laat de eigenaar aanmelden om instellingen te beheren.",
+      });
+      setMainView("pos");
+      return;
+    }
     setProfileInitialTarget((current) => ({
       tab,
       requestKey: current.requestKey + 1,
@@ -600,7 +617,7 @@ export const Layout: React.FC = () => {
       ...(modulePreferences.insights && canOpenFeature(FEATURE_KEYS.insights)
         ? [{ view: "insights" as const, label: "Inzichten", Icon: Lightbulb, title: "Inzichten (Alt+5)" }]
         : []),
-      ...(modulePreferences.webshop && canOpenFeature(FEATURE_KEYS.webshopPublish)
+      ...(currentRole === "owner" && modulePreferences.webshop && canOpenFeature(FEATURE_KEYS.webshopPublish)
         ? [{ view: "profile" as const, label: "Webshop", Icon: ShoppingBag, title: "Webshopbeheer", profileTab: "webshop-general" as const }]
         : []),
     ],
@@ -979,7 +996,7 @@ export const Layout: React.FC = () => {
           setIsNavDropdownOpen(false);
         } else if (
           event.key === "6" &&
-          (currentRole === "owner" || currentRole === "manager")
+          currentRole === "owner"
         ) {
           event.preventDefault();
           setMainView("admin");
@@ -1230,7 +1247,7 @@ export const Layout: React.FC = () => {
                 Gebruiker & Apparaat
               </div>
 
-              {currentRole === "owner" && (
+              {canAccessOwnerSettings && (
                 <button
                   role="menuitem"
                   onClick={() => {
@@ -1255,8 +1272,8 @@ export const Layout: React.FC = () => {
                 </button>
               )}
 
-              {/* Instellingen Pagina Link */}
-              <button
+              {/* Instellingen zijn een harde owner-only beveiligingsgrens. */}
+              {canAccessOwnerSettings && <button
                 role="menuitem"
                 onClick={() => {
                   openProfile("billing");
@@ -1266,6 +1283,18 @@ export const Layout: React.FC = () => {
               >
                 <Settings size={15} className="text-slate-500" />
                 <span>Instellingen</span>
+              </button>}
+
+              <button
+                role="menuitem"
+                onClick={() => {
+                  setIsUserMenuOpen(false);
+                  void lockPos("user-switch");
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-cyan-800 hover:bg-cyan-50 transition-colors"
+              >
+                <LockKeyhole size={15} className="text-cyan-700" />
+                <span>Vergrendel / wissel medewerker</span>
               </button>
 
               {/* Volledig Scherm Toggle */}
@@ -1305,8 +1334,8 @@ export const Layout: React.FC = () => {
 
               <div className="border-t border-slate-100 my-1" />
 
-              {/* Afmelden / Logout */}
-              <button
+              {/* Alleen de eigenaar kan de onderliggende winkelaccount afmelden. */}
+              {currentRole === "owner" && <button
                 role="menuitem"
                 onClick={() => {
                   setIsUserMenuOpen(false);
@@ -1316,7 +1345,7 @@ export const Layout: React.FC = () => {
               >
                 <LogOut size={15} className="text-red-500" />
                 <span>Afmelden</span>
-              </button>
+              </button>}
             </div>
           )}
         </div>
@@ -1434,7 +1463,7 @@ export const Layout: React.FC = () => {
             </FeatureGate>
           )}
           {(mainView === "profile" || mainView === "admin") &&
-            (currentRole === "owner" || currentRole === "manager" ? (
+            (canAccessOwnerSettings ? (
               <ProfileView
                 initialTab={profileInitialTarget.tab}
                 initialTabRequestKey={profileInitialTarget.requestKey}
@@ -1666,7 +1695,7 @@ export const Layout: React.FC = () => {
           </span>
         </div>
       ))}
-      {(currentRole === "owner" || currentRole === "manager") && (
+      {canAccessOwnerSettings && (
         <StoreSetupGuide
           open={storeSetupOpen}
           startAt={storeSetupStartAt}

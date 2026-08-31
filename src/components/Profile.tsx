@@ -18,6 +18,8 @@ import { ModuleSettings } from './ModuleSettings';
 import { WorkforceSettings } from './WorkforceSettings';
 import { SoundSettings } from './SoundSettings';
 import { FinancialSettings } from './FinancialSettings';
+import { PosAccessSettings } from './PosAccessSettings';
+import { usePosAccess } from '../pos-access/usePosAccess';
 import { LeaveApprovalCenter } from './LeaveApprovalCenter';
 import { FeatureGate } from '../billing/FeatureGate';
 import { FEATURE_KEYS } from '../billing/entitlements';
@@ -86,9 +88,11 @@ import {
   BellRing,
   UserRound,
   Landmark,
+  LockKeyhole,
 } from 'lucide-react';
 
 type WorkspaceTab =
+  | 'access'
   | 'billing'
   | 'billing-plan'
   | 'billing-invoices'
@@ -147,7 +151,7 @@ const SetupTargetCue = () => (
   </span>
 );
 
-export const ProfileView: React.FC<ProfileViewProps> = ({
+const OwnerProfileView: React.FC<ProfileViewProps> = ({
   initialTab,
   initialTabRequestKey,
   openNewProductRequestKey,
@@ -218,6 +222,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     ];
     if (requested === 'integrations') return 'integrations';
     if (requested === 'modules') return 'modules';
+    if (requested === 'access') return 'access';
     if (requested === 'pace' || requested?.startsWith('pace-')) return requested as WorkspaceTab;
     if (requested === 'workforce') return 'workforce';
     if (requested === 'financial' && currentRole === 'owner') return 'financial';
@@ -258,7 +263,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   useEffect(() => {
     if (!initialTab || appliedInitialTabRequestRef.current === initialTabRequestKey) return;
     appliedInitialTabRequestRef.current = initialTabRequestKey;
-    setActiveTab(initialTab);
+    const safeInitialTab: WorkspaceTab = initialTab === 'security' || initialTab === 'team' ? 'access' : initialTab;
+    setActiveTab(safeInitialTab);
     setBillingExpanded(initialTab.startsWith('billing'));
     setPaceExpanded(initialTab.startsWith('pace'));
     setCatalogExpanded(initialTab.startsWith('catalog'));
@@ -307,8 +313,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const saveManagerApprovalPin = async (event: React.FormEvent) => {
     event.preventDefault();
     setSecurityError(null);
-    if (!currentUserId || !currentRole || !['owner', 'manager'].includes(currentRole)) {
-      setSecurityError('Alleen een eigenaar of manager kan een goedkeurings-PIN instellen.');
+    if (!currentUserId || currentRole !== 'owner') {
+      setSecurityError('Alleen de eigenaar kan beveiligingsinstellingen wijzigen.');
       return;
     }
     if (!/^\d{6}$/.test(managerPin)) {
@@ -343,6 +349,20 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           <div className="hidden md:block px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
             Instellingen & Licentie
           </div>
+
+          <button
+            onClick={() => setActiveTab('access')}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'access'
+                ? 'border border-cyan-200 bg-cyan-50 text-cyan-900 shadow-xs'
+                : 'border border-transparent text-slate-600 hover:border-cyan-100 hover:bg-cyan-50 hover:text-cyan-900'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <LockKeyhole size={16} className={activeTab === 'access' ? 'text-cyan-700' : 'text-slate-500'} />
+              <span>Kassatoegang</span>
+            </div>
+          </button>
 
           {currentRole === 'owner' && (
             <button
@@ -736,35 +756,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             )}
           </div>
 
-          {/* 10. BEVEILIGING & MANAGER PIN */}
-          <button
-            onClick={() => setActiveTab('security')}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'security'
-                ? 'border border-sky-200 bg-sky-50 text-sky-800 shadow-xs'
-                : 'border border-transparent text-slate-600 hover:border-sky-100 hover:bg-sky-50 hover:text-sky-800 font-semibold'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <Shield size={16} className={activeTab === 'security' ? 'text-sky-600' : 'text-slate-500'} />
-              <span>Beveiliging & PIN</span>
-            </div>
-          </button>
-
-          {/* 11. TEAM & PERMISSIES */}
-          <button
-            onClick={() => setActiveTab('team')}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'team'
-                ? 'border border-sky-200 bg-sky-50 text-sky-800 shadow-xs'
-                : 'border border-transparent text-slate-600 hover:border-sky-100 hover:bg-sky-50 hover:text-sky-800 font-semibold'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <Users size={16} className={activeTab === 'team' ? 'text-sky-600' : 'text-slate-500'} />
-              <span>Team & Permissies</span>
-            </div>
-          </button>
         </div>
 
         {/* User Profile Mini Badge at bottom of sidebar */}
@@ -786,6 +777,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           <div>
             <h1 className="text-xl font-black text-slate-900 tracking-tight">
               {activeTab === 'billing-plan' && 'Licentieplan & Upgrades'}
+              {activeTab === 'access' && 'Kassatoegang & medewerkers'}
               {activeTab === 'modules' && 'Modules & navigatie'}
               {activeTab.startsWith('pace') && 'Pace-instellingen'}
               {activeTab === 'workforce' && 'Personeel, verlof & bezetting'}
@@ -811,6 +803,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <p className="text-xs text-slate-500 font-medium mt-0.5">
               {activeTab.startsWith('billing')
                 ? 'Transparante tarieven per winkelpunt. Onbeperkte kassa-omzet zonder verborgen transactiekosten.'
+                : activeTab === 'access'
+                ? 'Beheer persoonlijke PINs, rollen, gekoppelde toestellen, actieve sessies en beveiligingsaudit.'
                 : activeTab === 'modules'
                 ? 'Zet werkmodules rechtstreeks aan of uit. Uw navigatie volgt onmiddellijk en bewaren gebeurt automatisch.'
                 : activeTab.startsWith('pace')
@@ -847,6 +841,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         )}
 
         {activeTab === 'modules' && <ModuleSettings />}
+        {activeTab === 'access' && <PosAccessSettings />}
         {activeTab.startsWith('pace') && (
           <PaceSettings
             subTab={getPaceSubTab(activeTab)}
@@ -2042,4 +2037,32 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       </main>
     </div>
   );
+};
+
+export const ProfileView: React.FC<ProfileViewProps> = (props) => {
+  const currentRole = useAuth((state) => state.currentRole);
+  const posSessionToken = usePosAccess((state) => state.sessionToken);
+  const setMainView = useStore((state) => state.setMainView);
+  const canAccessSettings = currentRole === 'owner'
+    && Boolean(posSessionToken)
+    && !posSessionToken?.startsWith('offline:');
+
+  useEffect(() => {
+    if (!canAccessSettings) setMainView('pos');
+  }, [canAccessSettings, setMainView]);
+
+  if (!canAccessSettings) {
+    return (
+      <div className="flex flex-1 items-center justify-center bg-slate-50 p-6">
+        <div className="max-w-md rounded-3xl border border-amber-200 bg-white p-7 text-center shadow-sm">
+          <LockKeyhole size={28} className="mx-auto text-amber-700" />
+          <h1 className="mt-4 text-lg font-black text-slate-950">{currentRole === 'owner' ? 'Online verificatie vereist' : 'Alleen voor de eigenaar'}</h1>
+          <p className="mt-2 text-sm leading-6 text-slate-600">{currentRole === 'owner' ? 'Instellingen blijven gesloten tijdens een offline kassasessie. Maak verbinding en meld opnieuw aan.' : 'Vergrendel de kassa en laat de eigenaar met de persoonlijke PIN aanmelden om instellingen te beheren.'}</p>
+          <button type="button" onClick={() => setMainView('pos')} className="mt-5 rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-extrabold text-white">Terug naar de kassa</button>
+        </div>
+      </div>
+    );
+  }
+
+  return <OwnerProfileView {...props} />;
 };

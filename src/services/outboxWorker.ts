@@ -20,6 +20,7 @@ import {
 } from "./platformTelemetry";
 import { settlementTotalCents } from "../utils/cashRounding";
 import { pushFinancialWorkspaceMutation } from "./financialWorkspace";
+import { getPosActionAttribution } from "../pos-access/usePosAccess";
 
 /**
  * New checkouts carry an explicit tender ledger.  The fallback keeps historic
@@ -283,6 +284,7 @@ const pushTransactionToSupabase = async (
       ?? await resolveRemoteOriginalRequestId(storeId, tx);
 
     const payload = {
+      ...(tx.operatorIdentityVersion === 1 ? getPosActionAttribution(tx.userId) : {}),
       client_request_id: tx.clientRequestId,
       original_client_request_id: originalRequestId,
       lines: tx.items.map((line) => ({
@@ -335,6 +337,7 @@ const pushTransactionToSupabase = async (
     const isGiftCardCheckout = tx.items.length > 0 && tx.items.every((item) => Boolean(item.giftCardOperation));
     const isSimulatorPayment = isLocalMollieSimulatorReference(tx.paymentProviderReference);
     const payload = {
+      ...(tx.operatorIdentityVersion === 1 ? getPosActionAttribution(tx.userId) : {}),
       client_request_id: tx.clientRequestId,
       cart_id: tx.tableId,
       items,
@@ -446,6 +449,9 @@ const pushLegacyDailyReportToSupabase = async (
   const { error } = await supabase.rpc("finalize_daily_report", {
     target_store_id: storeId,
     payload: {
+      ...(report.operatorIdentityVersion === 1
+        ? getPosActionAttribution(report.closedByUserId)
+        : {}),
       register_id: report.registerId,
       report: {
         openingFloatCents: report.openingFloatCents ?? 0,

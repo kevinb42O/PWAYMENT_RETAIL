@@ -23,6 +23,11 @@ const CustomerDisplayPublisher = lazy(() =>
     default: module.CustomerDisplayPublisher,
   })),
 );
+const PosAccessBoundary = lazy(() =>
+  import("./pos-access/PosAccessBoundary").then((module) => ({
+    default: module.PosAccessBoundary,
+  })),
+);
 
 const AppLoading = () => <LoadingExperience progress={getLoadingProgress()} />;
 
@@ -109,6 +114,9 @@ export default function App() {
   useEffect(() => {
     if ((presentationMode || e2eMode) && !unlocked) {
       useAuth.setState({
+        accountUserId: "u-owner",
+        accountUserName: "Eigenaar",
+        accountRole: "owner",
         currentUserId: "u-owner",
         currentUserName: "Eigenaar",
         currentRole: "owner",
@@ -159,11 +167,11 @@ export default function App() {
   return (
     <Suspense fallback={<AppLoading />}>
       {unlocked ? (
-        <>
+        <PosAccessBoundary>
           <CustomerDisplayPublisher />
           <Layout />
           {recordingMode && <RecordingCursor />}
-        </>
+        </PosAccessBoundary>
       ) : (
         <LoginScreen />
       )}

@@ -314,6 +314,8 @@ export interface Transaction {
   isFinalized: 0 | 1;
   userId?: string;
   userName?: string;
+  /** Distinguishes new operator IDs from historic auth.users transport IDs. */
+  operatorIdentityVersion?: 1;
   customerId?: string;
   /** Demo transactions are explicitly marked so they can be removed without touching live sales. */
   source?: "live" | "demo" | "webshop" | "import";
@@ -646,6 +648,8 @@ export interface DailyReport {
   prevHash: string | null;
   closedByUserId?: string;
   closedByUserName?: string;
+  /** Identifies closedByUserId as a POS operator rather than auth.users. */
+  operatorIdentityVersion?: 1;
   registerId?: string;
   shiftId?: number;
   openingFloatCents?: number;

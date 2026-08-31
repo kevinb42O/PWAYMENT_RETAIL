@@ -1,6 +1,7 @@
 import { useAuth } from "../auth/useAuth";
 import type { Json } from "../types/database.generated";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
+import { getPosActionAttribution } from "../pos-access/usePosAccess";
 
 export interface DiscountApprovalIntent {
   cartId: number;
@@ -31,6 +32,8 @@ const approvalError = (code?: string): string => {
       return "Te veel onjuiste PIN-pogingen. Probeer na 15 minuten opnieuw.";
     case "invalid-pin":
       return "Ongeldige manager-PIN.";
+    case "online-session-required":
+      return "Managergoedkeuring vereist een actieve online kassasessie.";
     default:
       return "Managergoedkeuring kon niet worden bevestigd.";
   }
@@ -75,6 +78,7 @@ export const requestServerDiscountApproval = async (
   const { data, error } = await supabase.rpc("approve_pos_discount", {
     target_store_id: currentStoreId,
     payload: {
+      ...getPosActionAttribution(useAuth.getState().currentUserId),
       cartId: intent.cartId,
       discountCents: intent.discountCents,
       reason: intent.reason.trim(),

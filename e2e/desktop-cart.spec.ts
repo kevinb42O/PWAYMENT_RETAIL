@@ -1,4 +1,4 @@
-import { addProduct, expect, openApp, test } from "./fixtures";
+import { addProduct, expect, openApp, test, unlockPos } from "./fixtures";
 
 test("desktop cart starts compact, opens beside the catalog and remembers pinning", async ({
   appPage,
@@ -55,6 +55,7 @@ test("desktop cart starts compact, opens beside the catalog and remembers pinnin
   ).toBeVisible();
 
   await appPage.reload();
+  await unlockPos(appPage);
   await expect(
     appPage.getByRole("button", { name: "Winkelwagen losmaken" }),
   ).toBeVisible();

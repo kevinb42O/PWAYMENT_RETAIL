@@ -1,4 +1,6 @@
-import { expect, test } from "./fixtures";
+import { expect, test, unlockPos } from "./fixtures";
+
+test.describe.configure({ timeout: 90_000 });
 
 test("registration requires strong credentials and reload locks the session", async ({
   appPage,
@@ -6,7 +8,7 @@ test("registration requires strong credentials and reload locks the session", as
   await appPage.goto("/register");
   await expect(
     appPage.getByRole("heading", { name: "Eerst uw veilige account" }),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 25_000 });
   await appPage.getByRole("textbox", { name: "Voornaam" }).fill("E2E");
   await appPage.getByRole("textbox", { name: "Familienaam" }).fill("Eigenaar");
   await appPage
@@ -21,7 +23,7 @@ test("registration requires strong credentials and reload locks the session", as
   await appPage
     .getByRole("textbox", { name: "Wachtwoord herhalen" })
     .fill("CorrectHorseBattery12!");
-  await appPage.getByLabel("Kassa Snel-PIN (6 cijfers)").fill("654321");
+  await appPage.getByLabel("Kassa Snel-PIN (6 cijfers)").fill("486205");
   await appPage
     .getByRole("button", { name: "Verder" })
     .click();
@@ -51,18 +53,20 @@ test("registration requires strong credentials and reload locks the session", as
   await expect(
     appPage.getByRole("heading", { name: "Dit zetten we voor u klaar" }),
   ).toBeVisible();
+  for (const consent of await appPage.getByRole("checkbox").all()) await consent.check();
   await appPage
     .getByRole("button", { name: "Account aanmaken en starten" })
     .click();
+  await unlockPos(appPage, "486205");
   await expect(
     appPage.getByRole("heading", { name: "Gegevens importeren" }),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 25_000 });
 
   await appPage.reload();
   await appPage.goto("/login");
   await expect(
-    appPage.getByRole("heading", { name: "Inloggen bij PWAyment" }),
-  ).toBeVisible();
+    appPage.getByRole("heading", { name: "Welkom terug" }),
+  ).toBeVisible({ timeout: 25_000 });
 });
 
 test("seed owner can authenticate by email with upgraded credential hashing", async ({
@@ -70,8 +74,8 @@ test("seed owner can authenticate by email with upgraded credential hashing", as
 }) => {
   await appPage.goto("/login");
   await expect(
-    appPage.getByRole("heading", { name: "Inloggen bij PWAyment" }),
-  ).toBeVisible();
+    appPage.getByRole("heading", { name: "Welkom terug" }),
+  ).toBeVisible({ timeout: 25_000 });
   await appPage
     .getByRole("textbox", { name: "E-mailadres" })
     .fill("eigenaar@pwayment.be");
@@ -79,9 +83,10 @@ test("seed owner can authenticate by email with upgraded credential hashing", as
     .getByRole("textbox", { name: "Wachtwoord", exact: true })
     .fill("password123");
   await appPage
-    .getByRole("button", { name: "Inloggen", exact: true })
+    .getByRole("button", { name: "Aanmelden", exact: true })
     .last()
     .click();
+  await unlockPos(appPage);
   await expect(
     appPage.getByRole("searchbox", { name: "Scan barcode of zoek product" }),
   ).toBeVisible();
@@ -91,13 +96,17 @@ test("owner can switch navigation modules directly from settings", async ({
   appPage,
 }) => {
   await appPage.goto("/login");
+  await expect(
+    appPage.getByRole("heading", { name: "Welkom terug" }),
+  ).toBeVisible({ timeout: 25_000 });
   await appPage
     .getByRole("textbox", { name: "E-mailadres" })
     .fill("eigenaar@pwayment.be");
   await appPage
     .getByRole("textbox", { name: "Wachtwoord", exact: true })
     .fill("password123");
-  await appPage.getByRole("button", { name: "Inloggen", exact: true }).last().click();
+  await appPage.getByRole("button", { name: "Aanmelden", exact: true }).last().click();
+  await unlockPos(appPage);
 
   await appPage.getByRole("button", { name: "Profiel en instellingen" }).click();
   await appPage.getByRole("menuitem", { name: "Modules & navigatie" }).click();

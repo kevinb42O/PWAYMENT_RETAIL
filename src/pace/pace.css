@@ -284,14 +284,16 @@
   font-size: 0.72rem;
   font-weight: 900;
   letter-spacing: 0.085em;
-  animation: pace-label-brand 7.2s cubic-bezier(.4,0,.2,1) infinite;
+  /* Discrete visibility avoids low-opacity text states that fail WCAG
+     contrast while the compact label alternates. */
+  animation: pace-label-brand 7.2s steps(1, end) infinite;
 }
 
 .pace-trigger-action {
   color: #0e7490;
   font-weight: 850;
   letter-spacing: -0.012em;
-  animation: pace-label-action 7.2s cubic-bezier(.4,0,.2,1) infinite;
+  animation: pace-label-action 7.2s steps(1, end) infinite;
 }
 
 @keyframes pace-label-brand {

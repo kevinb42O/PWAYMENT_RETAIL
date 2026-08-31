@@ -1,6 +1,7 @@
 import { supabase } from "../lib/supabase";
 import type { VoidEntry } from "../types";
 import type { Json } from "../types/database.generated";
+import { getPosActionAttribution } from "../pos-access/usePosAccess";
 
 export const recordSupabaseVoid = async (
   storeId: string,
@@ -10,6 +11,7 @@ export const recordSupabaseVoid = async (
   const { error } = await supabase.rpc("record_void", {
     target_store_id: storeId,
     payload: {
+      ...getPosActionAttribution(entry.byUserId),
       client_request_id: requestId,
       table_id: entry.tableId,
       product_id: entry.productId,

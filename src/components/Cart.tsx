@@ -711,7 +711,10 @@ export const Cart: React.FC<CartProps> = ({
       return;
     }
     setMollieFlow({ ...flow, phase: "waiting", payment, error: undefined });
-    if (payment.simulator) return;
+    if (payment.simulator) {
+      if (payment.status === "paid") await bookConfirmedMolliePayment(flow, payment);
+      return;
+    }
     for (let attempt = 0; attempt < 150; attempt += 1) {
       if (ignoredMolliePayments.current.has(payment.id)) return;
       if (payment.status === "paid") {
@@ -763,6 +766,15 @@ export const Cart: React.FC<CartProps> = ({
   };
 
   const createMolliePaymentWithTestFallback = async (flow: MollieFlow) => {
+    // The dedicated public E2E bundle has no Supabase auth session or payment
+    // API. Keep production behaviour untouched while making checkout tests use
+    // the same deterministic terminal simulator as the server test-mode path.
+    if (import.meta.env.VITE_E2E_BUILD === "true") {
+      return {
+        ...createMollieTestSimulatorPayment(flow.amountCents),
+        status: "paid" as const,
+      };
+    }
     try {
       return await createMollieTerminalPayment({
         amountCents: flow.amountCents,

@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "../auth/useAuth";
+import { posPinPolicyError } from "../pos-access/pinPolicy";
 import { useStoreConfiguration } from "../store/useStoreConfiguration";
 import {
   CATALOG_SOURCES,
@@ -114,8 +115,9 @@ const accountError = (
   if (account.password !== account.confirmPassword) {
     return "De wachtwoorden komen niet overeen.";
   }
-  if (pinLoginEnabled && !/^\d{6}$/.test(account.pin)) {
-    return "Kies een snel-PIN van exact 6 cijfers.";
+  if (pinLoginEnabled) {
+    const pinError = posPinPolicyError(account.pin);
+    if (pinError) return pinError;
   }
   return null;
 };

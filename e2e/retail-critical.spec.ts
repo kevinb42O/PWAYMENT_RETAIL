@@ -7,6 +7,7 @@ import {
   openDesktopCart,
   readStore,
   test,
+  unlockPos,
 } from "./fixtures";
 
 interface StoredTransaction {
@@ -181,11 +182,13 @@ test("gift-card issuance is a liability and redemption uses its own tender", asy
   const issueInputs = issueDialog.getByRole("textbox");
   await issueInputs.nth(0).fill("E2E-GIFT-0001");
   await issueInputs.nth(1).fill("25,00");
-  await issueDialog
-    .getByRole("combobox", { name: /Ontvangen via/ })
-    .selectOption("PIN");
-  await issueDialog.getByRole("button", { name: "Uitgeven" }).click();
+  await issueDialog.getByRole("button", { name: "Naar kassa" }).click();
   await expect(issueDialog).toBeHidden();
+
+  await openDesktopCart(appPage);
+  await appPage.getByRole("button", { name: "Kaart", exact: true }).click();
+  await expect(appPage.getByText("Betaling gelukt")).toBeVisible();
+  await closeReceipt(appPage);
 
   await appPage.getByRole("button", { name: "Kassa" }).click();
   await addProduct(appPage, /Allen Hardware Bolts 1 inch/);
@@ -218,7 +221,12 @@ test("gift-card issuance is a liability and redemption uses its own tender", asy
     appPage,
     "transactions",
   );
-  expect(transactions[0]).toMatchObject({
+  expect(transactions).toHaveLength(2);
+  expect(transactions.find((transaction) => transaction.totalCents === 2500)).toMatchObject({
+    paymentMethod: "PIN",
+    tenders: [{ method: "PIN", amountCents: 2500 }],
+  });
+  expect(transactions.find((transaction) => transaction.totalCents === 595)).toMatchObject({
     totalCents: 595,
     paymentMethod: "Cadeaubon",
     tenders: [{ method: "Cadeaubon", amountCents: 595 }],
@@ -273,10 +281,10 @@ test("Z-closing finalizes the sale and records cash reconciliation", async ({
 
   await appPage.getByRole("button", { name: "Dagafsluiting" }).click();
   await expect(
-    appPage.getByRole("heading", { name: "Klaar om de dag af te sluiten" }),
+    appPage.getByRole("heading", { name: "Controleer en sluit de dag af" }),
   ).toBeVisible();
   await appPage
-    .getByRole("button", { name: "Dag afsluiten", exact: true })
+    .getByRole("button", { name: "Naar afsluiten", exact: true })
     .click();
   const dialog = appPage.getByRole("dialog", {
     name: "Dag definitief afsluiten",
@@ -348,6 +356,7 @@ test("open cart survives a full reload without duplicating lines", async ({
   await openApp(appPage);
   await addProduct(appPage, /Allen Hardware Bolts 1 inch/, 2);
   await appPage.reload();
+  await unlockPos(appPage);
   await expect(
     appPage.getByRole("searchbox", { name: "Scan barcode of zoek product" }),
   ).toBeVisible();

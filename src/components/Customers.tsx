@@ -525,6 +525,9 @@ export const Customers: React.FC = () => {
                   setEditingGiftCard({
                     code: generateGiftCardCode(),
                     initialText: "0,00",
+                    expiresAt: new Date(Date.now() + 365 * 86_400_000)
+                      .toISOString()
+                      .slice(0, 10),
                   });
                 }}
                 className="customer-primary-action flex items-center gap-2 px-4 py-2 rounded-lg font-semibold"
@@ -1431,6 +1434,21 @@ export const Customers: React.FC = () => {
                   })
                 }
                 className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 tabular-nums"
+              />
+            </Field>
+            <Field label="Vervaldatum">
+              <input
+                type="date"
+                required
+                min={new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)}
+                value={editingGiftCard.expiresAt || ""}
+                onChange={(e) =>
+                  setEditingGiftCard({
+                    ...editingGiftCard,
+                    expiresAt: e.target.value || undefined,
+                  })
+                }
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2"
               />
             </Field>
             <p className="rounded-lg border border-cyan-800 bg-cyan-950/40 px-3 py-2 text-xs leading-5 text-cyan-100">Deze cadeaubon gaat eerst naar de kassa. Het saldo wijzigt alleen na een geslaagde Cash-, PIN- of gesplitste betaling.</p>

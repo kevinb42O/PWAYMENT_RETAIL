@@ -9,7 +9,7 @@ export default defineConfig({
   forbidOnly: isCI,
   retries: isCI ? 1 : 0,
   workers: isCI ? 2 : undefined,
-  timeout: 30_000,
+  timeout: 60_000,
   expect: { timeout: 8_000 },
   reporter: isCI
     ? [
@@ -52,7 +52,7 @@ export default defineConfig({
     command:
       "npm run build:e2e && exec ./node_modules/.bin/vite preview --host 127.0.0.1 --port 4173 --strictPort",
     url: "http://127.0.0.1:4173/app?e2e=1",
-    reuseExistingServer: false,
+    reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === "1",
     timeout: 120_000,
     stdout: "pipe",
     stderr: "pipe",

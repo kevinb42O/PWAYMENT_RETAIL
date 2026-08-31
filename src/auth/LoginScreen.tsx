@@ -80,7 +80,7 @@ export const LoginScreen: React.FC = () => {
   };
 
   if (mode === "register" && !showPinDrawer) {
-    return <OnboardingWizard mode="registration" pinLoginEnabled={pinLoginEnabled} onExit={(registrationNotice) => {
+    return <OnboardingWizard mode="registration" pinLoginEnabled onExit={(registrationNotice) => {
       setMode("login"); setError(null); setNotice(registrationNotice ?? null);
       window.history.replaceState(window.history.state, "", "/login");
     }} />;
