@@ -6,6 +6,7 @@ test("PIN-first gate identifies operators and keeps settings owner-only", async 
   await appPage.goto("/app?e2e=1");
   const gate = appPage.getByRole("heading", { name: "Voer je PIN in" });
   await expect(gate).toBeVisible({ timeout: 20_000 });
+  await expect(appPage.getByText("Voer je persoonlijke PIN van exact 6 cijfers in")).toBeVisible();
   await expect(appPage.getByRole("searchbox", { name: "Scan barcode of zoek product" })).toHaveCount(0);
   expect(await appPage.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toContain("light");
 

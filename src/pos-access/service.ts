@@ -13,6 +13,15 @@ type PosAccessRpc = {
 
 const rpc = supabase as unknown as PosAccessRpc;
 
+export const posAccessErrorMessage = (message: string): string => {
+  const domainMessage = message.match(/pos-access:[^:]+:([^\n]+)/i)?.[1]?.trim();
+  if (domainMessage) return domainMessage;
+  if (/no unique or exclusion constraint matching the on conflict specification/i.test(message)) {
+    return "De kassabeveiliging kon niet worden geactiveerd. Vernieuw de pagina en probeer opnieuw.";
+  }
+  return message;
+};
+
 const assertObject = (value: unknown, message: string): Record<string, unknown> => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error(message);
@@ -22,7 +31,7 @@ const assertObject = (value: unknown, message: string): Record<string, unknown> 
 
 const call = async (name: string, args: Record<string, unknown>) => {
   const { data, error } = await rpc.rpc(name, args);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(posAccessErrorMessage(error.message));
   return assertObject(data, "De kassatoegangsserver gaf geen geldig antwoord.");
 };
 

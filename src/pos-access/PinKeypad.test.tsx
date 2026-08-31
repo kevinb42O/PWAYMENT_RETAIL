@@ -34,6 +34,13 @@ describe("PinKeypad", () => {
     expect(container.querySelector('[aria-label="6 van 6 cijfers ingevoerd"]')).not.toBeNull();
   });
 
+  it("shows the required PIN length visibly", async () => {
+    await act(async () => root.render(
+      <PinKeypad value="" onChange={() => undefined} onComplete={() => undefined} />,
+    ));
+    expect(container.textContent).toContain("Voer je persoonlijke PIN van exact 6 cijfers in");
+  });
+
   it("supports the physical numeric keyboard and backspace", async () => {
     const complete = vi.fn();
     let value = "";

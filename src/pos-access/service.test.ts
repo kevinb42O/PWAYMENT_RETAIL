@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { isPosAccessNetworkError } from "./service";
+import { isPosAccessNetworkError, posAccessErrorMessage } from "./service";
 
 describe("POS access network fallback classification", () => {
   afterEach(() => vi.restoreAllMocks());
@@ -17,5 +17,19 @@ describe("POS access network fallback classification", () => {
   it("honours an explicitly offline browser", () => {
     vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(false);
     expect(isPosAccessNetworkError(new Error("unknown transport failure"))).toBe(true);
+  });
+});
+
+describe("POS access error presentation", () => {
+  it("extracts safe domain messages", () => {
+    expect(posAccessErrorMessage("pos-access:owner-required:Alleen de eigenaar kan dit doen.")).toBe(
+      "Alleen de eigenaar kan dit doen.",
+    );
+  });
+
+  it("does not expose the database conflict error in the UI", () => {
+    expect(posAccessErrorMessage(
+      "there is no unique or exclusion constraint matching the ON CONFLICT specification",
+    )).toBe("De kassabeveiliging kon niet worden geactiveerd. Vernieuw de pagina en probeer opnieuw.");
   });
 });

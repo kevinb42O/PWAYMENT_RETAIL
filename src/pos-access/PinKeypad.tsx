@@ -51,6 +51,9 @@ export const PinKeypad = ({
 
   return (
     <div className="w-full" aria-label={label}>
+      <p className="mb-4 text-center text-sm font-extrabold text-slate-700">
+        Voer je persoonlijke PIN van exact 6 cijfers in
+      </p>
       <div
         className="mb-7 flex min-h-8 items-center justify-center gap-3"
         role="status"
