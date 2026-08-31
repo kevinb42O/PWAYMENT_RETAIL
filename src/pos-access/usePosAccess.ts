@@ -92,6 +92,13 @@ export const usePosAccess = create<PosAccessState>((set, get) => ({
     useAuth.getState().clearOperator();
     set({ ...initialState, status: "loading", storeId, initializedFor: key });
     if (fixtureRuntime() || !storeId) {
+      if (
+        import.meta.env.VITE_E2E_BUILD === "true"
+        && new URLSearchParams(window.location.search).get("posAccessSetup") === "1"
+      ) {
+        set({ status: "setup-required", device: null });
+        return;
+      }
       set({
         status: "locked",
         device: { id: "fixture-device", name: "Deze kassa", status: "active", offlineGraceHours: 24 },

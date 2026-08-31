@@ -9,21 +9,24 @@ import { posPinPolicyError } from "./pinPolicy";
 
 const Brand = () => (
   <div className="inline-flex items-center gap-3" aria-label="PWAYMENT">
-    <span className="pace-boot-mark h-10 w-10" aria-hidden="true" />
-    <span className="text-xl font-black tracking-[-0.05em] text-slate-950">PWAYMENT</span>
+    <span className="pace-boot-mark h-9 w-9" aria-hidden="true" />
+    <span className="text-lg font-extrabold tracking-[-0.04em] text-slate-950">PWAYMENT</span>
   </div>
 );
 
+const surfaceClass = "w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_20px_55px_-36px_rgba(15,23,42,0.38)]";
+const inputClass = "mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3.5 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-700 focus:ring-3 focus:ring-cyan-100";
+const pinInputClass = `${inputClass} text-center text-lg tracking-[0.32em] tabular-nums`;
+
 const Shell = ({ children }: { children: React.ReactNode }) => (
-  <div className="pos-access-light relative min-h-dvh overflow-hidden bg-[#f5f8fa] text-slate-950" style={{ colorScheme: "light" }}>
-    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_-10%,rgba(6,182,212,0.12),transparent_42%)]" aria-hidden="true" />
-    <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-5 sm:px-8 sm:py-7">
+  <div className="pos-access-light min-h-dvh bg-slate-50 text-slate-950" style={{ colorScheme: "light" }}>
+    <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-5 sm:px-8 sm:py-6">
       <Brand />
-      <span className="hidden items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-[11px] font-extrabold text-emerald-700 shadow-sm sm:inline-flex">
-        <ShieldCheck size={14} /> Beveiligde kassatoegang
+      <span className="hidden items-center gap-2 text-xs font-semibold text-slate-500 sm:inline-flex">
+        <ShieldCheck size={15} className="text-cyan-800" /> Beveiligde kassatoegang
       </span>
     </header>
-    <main className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-center px-4 pb-10 pt-2 sm:px-8 sm:pb-14">
+    <main className="mx-auto flex w-full max-w-6xl items-center justify-center px-4 pb-12 pt-3 sm:px-8 sm:pb-16 sm:pt-6">
       {children}
     </main>
   </div>
@@ -43,19 +46,31 @@ const PinChange = () => {
     await changePin(pin);
   };
   return (
-    <section className="w-full max-w-lg rounded-[2rem] border border-white bg-white/95 p-6 shadow-[0_28px_80px_-40px_rgba(15,23,42,0.35)] sm:p-9">
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-100 bg-cyan-50 text-cyan-800"><KeyRound size={22} /></div>
-      <h1 className="mt-5 text-2xl font-black tracking-tight">Kies je persoonlijke PIN</h1>
-      <p className="mt-2 text-sm leading-6 text-slate-500">De tijdelijke code was eenmalig. Kies nu een geheime PIN van exact 6 cijfers die alleen jij kent.</p>
-      {(localError || error) && <p className="mt-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800" role="alert">{localError || error}</p>}
-      <form onSubmit={submit} className="mt-6 space-y-4">
-        <label className="block text-xs font-extrabold text-slate-700"><span className="flex items-center justify-between gap-3"><span>Nieuwe PIN · 6 cijfers</span><span className="tabular-nums text-slate-400">{pin.length}/6</span></span>
-          <input type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} placeholder="6 cijfers" value={pin} onChange={(event) => { setPin(event.target.value.replace(/\D/g, "")); setLocalError(null); }} className="mt-2 h-12 w-full rounded-xl border border-slate-200 px-4 text-center text-lg font-black tracking-[0.4em] outline-none placeholder:tracking-normal placeholder:text-slate-400 focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" />
-        </label>
-        <label className="block text-xs font-extrabold text-slate-700"><span className="flex items-center justify-between gap-3"><span>Herhaal PIN · 6 cijfers</span><span className="tabular-nums text-slate-400">{confirm.length}/6</span></span>
-          <input type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} placeholder="6 cijfers" value={confirm} onChange={(event) => { setConfirm(event.target.value.replace(/\D/g, "")); setLocalError(null); }} className="mt-2 h-12 w-full rounded-xl border border-slate-200 px-4 text-center text-lg font-black tracking-[0.4em] outline-none placeholder:tracking-normal placeholder:text-slate-400 focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" />
-        </label>
-        <button type="submit" disabled={pin.length !== 6 || confirm.length !== 6} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-cyan-800 text-sm font-extrabold text-white hover:bg-cyan-900 disabled:opacity-45"><Check size={17} /> PIN instellen en opnieuw aanmelden</button>
+    <section className={`${surfaceClass} max-w-lg`}>
+      <header className="px-6 py-6 sm:px-8">
+        <div className="flex items-start gap-3.5">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-cyan-800"><KeyRound size={19} /></span>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-slate-950">Nieuwe PIN instellen</h1>
+            <p className="mt-1 text-sm leading-5 text-slate-500">Vervang de tijdelijke code door je persoonlijke kassacode.</p>
+          </div>
+        </div>
+      </header>
+      <form onSubmit={submit} className="space-y-5 border-t border-slate-200 bg-slate-50/60 px-6 py-6 sm:px-8">
+        {(localError || error) && <p className="rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-3 text-sm font-semibold text-rose-800" role="alert">{localError || error}</p>}
+        <fieldset>
+          <legend className="text-sm font-semibold text-slate-800">Persoonlijke PIN</legend>
+          <p className="mt-1 text-xs leading-5 text-slate-500">Kies een unieke code van 6 cijfers die alleen jij gebruikt.</p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <label className="block text-xs font-semibold text-slate-700">Nieuwe PIN
+              <input aria-label="Nieuwe persoonlijke PIN" type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} value={pin} onChange={(event) => { setPin(event.target.value.replace(/\D/g, "")); setLocalError(null); }} className={pinInputClass} />
+            </label>
+            <label className="block text-xs font-semibold text-slate-700">Bevestiging
+              <input aria-label="Bevestig nieuwe persoonlijke PIN" type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} value={confirm} onChange={(event) => { setConfirm(event.target.value.replace(/\D/g, "")); setLocalError(null); }} className={pinInputClass} />
+            </label>
+          </div>
+        </fieldset>
+        <button type="submit" disabled={pin.length !== 6 || confirm.length !== 6} className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-cyan-800 px-4 text-sm font-semibold text-white transition hover:bg-cyan-900 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-cyan-200 disabled:cursor-not-allowed disabled:bg-slate-300"><Check size={16} /> PIN opslaan</button>
       </form>
     </section>
   );
@@ -97,49 +112,64 @@ export const PosAccessGate = () => {
       setSetupPin(""); setSetupConfirm("");
     };
     return <Shell>
-      <section className="w-full max-w-xl rounded-[2rem] border border-white bg-white/95 p-6 shadow-[0_28px_80px_-40px_rgba(15,23,42,0.35)] sm:p-9">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-100 bg-cyan-50 text-cyan-800"><LockKeyhole size={22} /></div>
-        <p className="mt-5 text-[10px] font-black uppercase tracking-[0.18em] text-cyan-700">Veilige toestelkoppeling</p>
-        <h1 className="mt-2 text-2xl font-black tracking-tight">Koppel deze kassa met je owner-PIN</h1>
-        <p className="mt-2 text-sm leading-6 text-slate-500">Voor een nieuwe winkel wordt hiermee de eerste owner-PIN van exact 6 cijfers ingesteld. Bij extra of herstelde toestellen moet de bestaande owner-PIN worden bevestigd.</p>
-        {(setupError || error) && <p className="mt-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800" role="alert">{setupError || error}</p>}
-        <form onSubmit={submitSetup} className="mt-6 space-y-4">
-          <label className="block text-xs font-extrabold text-slate-700">Naam van dit toestel
-            <input value={deviceName} onChange={(event) => setDeviceName(event.target.value)} maxLength={120} className="mt-2 h-12 w-full rounded-xl border border-slate-200 px-4 text-sm font-bold outline-none focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" />
-          </label>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block text-xs font-extrabold text-slate-700"><span className="flex items-center justify-between gap-3"><span>Owner-PIN · 6 cijfers</span><span className="tabular-nums text-slate-400">{setupPin.length}/6</span></span>
-              <input type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} placeholder="6 cijfers" value={setupPin} onChange={(event) => { setSetupPin(event.target.value.replace(/\D/g, "")); setSetupError(null); if (error) clearError(); }} className="mt-2 h-12 w-full rounded-xl border border-slate-200 px-4 text-center text-lg font-black tracking-[0.35em] outline-none placeholder:tracking-normal placeholder:text-slate-400 focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" />
-            </label>
-            <label className="block text-xs font-extrabold text-slate-700"><span className="flex items-center justify-between gap-3"><span>Herhaal PIN · 6 cijfers</span><span className="tabular-nums text-slate-400">{setupConfirm.length}/6</span></span>
-              <input type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} placeholder="6 cijfers" value={setupConfirm} onChange={(event) => { setSetupConfirm(event.target.value.replace(/\D/g, "")); setSetupError(null); if (error) clearError(); }} className="mt-2 h-12 w-full rounded-xl border border-slate-200 px-4 text-center text-lg font-black tracking-[0.35em] outline-none placeholder:tracking-normal placeholder:text-slate-400 focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" />
-            </label>
+      <section className={`${surfaceClass} max-w-xl`}>
+        <header className="px-6 py-6 sm:px-8 sm:py-7">
+          <div className="flex items-start gap-3.5">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-cyan-800"><LockKeyhole size={19} /></span>
+            <div>
+              <p className="text-xs font-semibold text-cyan-800">Toestelconfiguratie</p>
+              <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">Kassa activeren</h1>
+            </div>
           </div>
-          <p className="text-xs leading-5 text-slate-500">Gebruik zes moeilijk te raden cijfers. Eenvoudige reeksen zoals 123456 en herhalingen zoals 111111 worden geweigerd.</p>
-          <button type="submit" disabled={setupPin.length !== 6 || setupConfirm.length !== 6} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-cyan-800 text-sm font-extrabold text-white shadow-sm hover:bg-cyan-900 disabled:opacity-45"><ShieldCheck size={17} /> Kassa veilig activeren</button>
+          <p className="mt-4 max-w-lg text-sm leading-6 text-slate-600">Koppel dit toestel aan {currentStoreName ?? "je winkel"}. Op een eerste toestel stel je de eigenaarspincode in; op een extra toestel bevestig je de bestaande code.</p>
+        </header>
+        <form onSubmit={submitSetup} className="space-y-5 border-t border-slate-200 bg-slate-50/60 px-6 py-6 sm:px-8">
+          {(setupError || error) && <p className="rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-3 text-sm font-semibold text-rose-800" role="alert">{setupError || error}</p>}
+          <label className="block text-xs font-semibold text-slate-700">Toestelnaam
+            <input aria-label="Toestelnaam" value={deviceName} onChange={(event) => setDeviceName(event.target.value)} maxLength={120} className={inputClass} />
+          </label>
+          <fieldset>
+            <legend className="text-sm font-semibold text-slate-800">Eigenaarspincode</legend>
+            <p className="mt-1 text-xs leading-5 text-slate-500">Persoonlijke code van 6 cijfers. Gebruik geen eenvoudige reeks of herhaling.</p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <label className="block text-xs font-semibold text-slate-700">PIN
+                <input aria-label="Eigenaarspincode" type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} value={setupPin} onChange={(event) => { setSetupPin(event.target.value.replace(/\D/g, "")); setSetupError(null); if (error) clearError(); }} className={pinInputClass} />
+              </label>
+              <label className="block text-xs font-semibold text-slate-700">Bevestiging
+                <input aria-label="Bevestig eigenaarspincode" type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} value={setupConfirm} onChange={(event) => { setSetupConfirm(event.target.value.replace(/\D/g, "")); setSetupError(null); if (error) clearError(); }} className={pinInputClass} />
+              </label>
+            </div>
+          </fieldset>
+          <button type="submit" disabled={setupPin.length !== 6 || setupConfirm.length !== 6} className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-cyan-800 px-4 text-sm font-semibold text-white transition hover:bg-cyan-900 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-cyan-200 disabled:cursor-not-allowed disabled:bg-slate-300"><ShieldCheck size={16} /> Toestel activeren</button>
         </form>
-        <button type="button" onClick={() => void logout()} className="mt-5 flex min-h-10 items-center gap-2 text-xs font-bold text-slate-500 hover:text-slate-900"><LogOut size={14} /> Ander account gebruiken</button>
+        <footer className="border-t border-slate-200 px-6 py-4 sm:px-8">
+          <button type="button" onClick={() => void logout()} className="flex min-h-9 items-center gap-2 rounded-md px-1 text-xs font-semibold text-slate-500 transition hover:text-slate-900"><LogOut size={14} /> Afmelden en ander account gebruiken</button>
+        </footer>
       </section>
     </Shell>;
   }
 
   return <Shell>
-    <section className="w-full max-w-[500px] rounded-[2rem] border border-white bg-white/95 p-6 shadow-[0_28px_80px_-40px_rgba(15,23,42,0.35)] backdrop-blur sm:p-9">
-      <div className="text-center">
-        <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-100 bg-cyan-50 text-cyan-800"><LockKeyhole size={22} /></span>
-        <p className="mt-5 text-[10px] font-black uppercase tracking-[0.18em] text-cyan-700">{currentStoreName ?? "PWAYMENT kassa"}</p>
-        <h1 className="mt-2 text-3xl font-black tracking-[-0.04em]">Voer je PIN in</h1>
-        <p className="mt-2 text-sm leading-6 text-slate-500">Je persoonlijke code bepaalt automatisch wie deze kassa opent.</p>
-        {device?.name && <p className="mt-2 text-[11px] font-bold text-slate-400">{device.name}</p>}
+    <section className={`${surfaceClass} max-w-[460px]`}>
+      <header className="border-b border-slate-200 px-6 py-6 text-center sm:px-8">
+        <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-50 text-cyan-800"><LockKeyhole size={19} /></span>
+        <p className="mt-4 text-xs font-semibold text-cyan-800">{currentStoreName ?? "PWAYMENT kassa"}</p>
+        <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-slate-950">Aanmelden op de kassa</h1>
+        <p className="mt-2 text-sm leading-5 text-slate-500">Gebruik je persoonlijke PIN om je kassasessie te starten.</p>
+        {device?.name && <p className="mt-2 text-xs font-medium text-slate-400">{device.name}</p>}
+      </header>
+      <div className="px-6 py-6 sm:px-8">
+        {status === "device-revoked" && <p className="rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-3 text-sm font-semibold text-rose-800" role="alert">{error ?? "Deze kassa is ingetrokken. Neem contact op met de eigenaar."}</p>}
+        {error && status !== "device-revoked" && <p className="mb-5 rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-3 text-center text-sm font-semibold text-rose-800" role="alert">{error}</p>}
+        {status !== "device-revoked" && <PinKeypad value={pin} onChange={(value) => { setPin(value); if (error) clearError(); }} onComplete={(completePin) => { setPin(""); void unlock(completePin); }} disabled={status === "verifying"} error={error} />}
       </div>
-      {status === "device-revoked" && <p className="mt-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800" role="alert">{error ?? "Deze kassa is ingetrokken. Neem contact op met de eigenaar."}</p>}
-      {error && status !== "device-revoked" && <p className="mt-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-center text-sm font-bold text-rose-800" role="alert">{error}</p>}
-      {status !== "device-revoked" && <div className="mt-7"><PinKeypad value={pin} onChange={(value) => { setPin(value); if (error) clearError(); }} onComplete={(completePin) => { setPin(""); void unlock(completePin); }} disabled={status === "verifying"} error={error} /></div>}
-      <div className="mt-7 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t border-slate-100 pt-5 text-[11px] font-bold text-slate-400">
+      <footer className="border-t border-slate-200 px-6 py-4 sm:px-8">
+        <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[11px] font-medium text-slate-400">
         {!navigator.onLine && <span className="inline-flex items-center gap-1.5 text-amber-700"><WifiOff size={13} /> Offline — veilige toegang kan beperkt zijn</span>}
         <span>Touch · toetsenbord · numeriek keypad</span>
-      </div>
-      <button type="button" onClick={() => void logout()} className="mx-auto mt-3 flex min-h-9 items-center gap-2 rounded-lg px-2 text-[11px] font-bold text-slate-400 hover:bg-slate-50 hover:text-slate-700"><LogOut size={13} /> Account- en toestelbeheer</button>
+        </div>
+        <button type="button" onClick={() => void logout()} className="mx-auto mt-2 flex min-h-9 items-center gap-2 rounded-md px-2 text-[11px] font-semibold text-slate-500 transition hover:bg-slate-50 hover:text-slate-800"><LogOut size={13} /> Account- en toestelbeheer</button>
+      </footer>
     </section>
   </Shell>;
 };

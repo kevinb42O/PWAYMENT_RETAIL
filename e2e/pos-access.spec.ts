@@ -2,11 +2,20 @@ import { expect, test } from "./fixtures";
 
 test.describe.configure({ timeout: 90_000 });
 
+test("device setup uses a restrained professional PIN form", async ({ appPage }) => {
+  await appPage.goto("/app?e2e=1&posAccessSetup=1");
+  await expect(appPage.getByRole("heading", { name: "Kassa activeren" })).toBeVisible({ timeout: 20_000 });
+  await expect(appPage.getByText("Persoonlijke code van 6 cijfers. Gebruik geen eenvoudige reeks of herhaling.")).toBeVisible();
+  await expect(appPage.getByText(/6 cijfers/)).toHaveCount(1);
+  await expect(appPage.getByLabel("Eigenaarspincode", { exact: true })).not.toHaveAttribute("placeholder");
+  await expect(appPage.getByLabel("Bevestig eigenaarspincode", { exact: true })).not.toHaveAttribute("placeholder");
+});
+
 test("PIN-first gate identifies operators and keeps settings owner-only", async ({ appPage }) => {
   await appPage.goto("/app?e2e=1");
-  const gate = appPage.getByRole("heading", { name: "Voer je PIN in" });
+  const gate = appPage.getByRole("heading", { name: "Aanmelden op de kassa" });
   await expect(gate).toBeVisible({ timeout: 20_000 });
-  await expect(appPage.getByText("Voer je persoonlijke PIN van exact 6 cijfers in")).toBeVisible();
+  await expect(appPage.getByText("6 cijfers", { exact: true })).toBeVisible();
   await expect(appPage.getByRole("searchbox", { name: "Scan barcode of zoek product" })).toHaveCount(0);
   expect(await appPage.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toContain("light");
 

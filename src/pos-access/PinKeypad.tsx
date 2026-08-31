@@ -51,11 +51,12 @@ export const PinKeypad = ({
 
   return (
     <div className="w-full" aria-label={label}>
-      <p className="mb-4 text-center text-sm font-extrabold text-slate-700">
-        Voer je persoonlijke PIN van exact 6 cijfers in
-      </p>
+      <div className="mb-3 flex items-center justify-between text-xs font-semibold text-slate-600">
+        <span>Persoonlijke PIN</span>
+        <span className="text-slate-400">6 cijfers</span>
+      </div>
       <div
-        className="mb-7 flex min-h-8 items-center justify-center gap-3"
+        className="mb-5 flex min-h-8 items-center justify-center gap-3 rounded-lg border border-slate-200 bg-slate-50 py-3"
         role="status"
         aria-live="polite"
         aria-label={`${value.length} van 6 cijfers ingevoerd`}
@@ -63,9 +64,9 @@ export const PinKeypad = ({
         {Array.from({ length: 6 }).map((_, index) => (
           <span
             key={index}
-            className={`h-3.5 w-3.5 rounded-full border-2 transition-[background-color,border-color,transform] motion-reduce:transition-none ${
+            className={`h-3 w-3 rounded-full border transition-[background-color,border-color] motion-reduce:transition-none ${
               index < value.length
-                ? "scale-105 border-cyan-700 bg-cyan-700"
+                ? "border-cyan-800 bg-cyan-800"
                 : "border-slate-300 bg-white"
             }`}
           />
@@ -73,7 +74,7 @@ export const PinKeypad = ({
         {disabled && <LoaderCircle size={19} className="ml-1 animate-spin text-cyan-700 motion-reduce:animate-none" aria-label="PIN controleren" />}
       </div>
 
-      <div className="mx-auto grid w-full max-w-[330px] grid-cols-3 gap-3 sm:gap-3.5">
+      <div className="mx-auto grid w-full max-w-[310px] grid-cols-3 gap-2.5">
         {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((digit) => (
           <button
             key={digit}
@@ -81,7 +82,7 @@ export const PinKeypad = ({
             disabled={disabled}
             onClick={() => append(digit)}
             aria-label={`Cijfer ${digit}`}
-            className="flex h-16 min-h-14 touch-manipulation items-center justify-center rounded-2xl border border-slate-200 bg-white text-2xl font-black tabular-nums text-slate-950 shadow-sm outline-none transition hover:border-cyan-300 hover:bg-cyan-50 active:scale-[0.97] focus-visible:border-cyan-600 focus-visible:ring-4 focus-visible:ring-cyan-100 disabled:cursor-wait disabled:opacity-55 motion-reduce:transition-none sm:h-[4.5rem]"
+            className="flex h-14 min-h-14 touch-manipulation items-center justify-center rounded-xl border border-slate-300 bg-white text-xl font-semibold tabular-nums text-slate-950 outline-none transition hover:border-cyan-600 hover:bg-cyan-50 active:bg-cyan-100 focus-visible:border-cyan-700 focus-visible:ring-3 focus-visible:ring-cyan-100 disabled:cursor-wait disabled:opacity-55 motion-reduce:transition-none sm:h-16"
           >
             {digit}
           </button>
@@ -90,7 +91,7 @@ export const PinKeypad = ({
           type="button"
           disabled={disabled || value.length === 0}
           onClick={() => onChange("")}
-          className="flex h-16 min-h-14 touch-manipulation items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-xs font-extrabold text-slate-600 outline-none transition hover:border-slate-300 hover:bg-slate-100 focus-visible:ring-4 focus-visible:ring-cyan-100 disabled:opacity-35 motion-reduce:transition-none sm:h-[4.5rem]"
+          className="flex h-14 min-h-14 touch-manipulation items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-600 outline-none transition hover:border-slate-300 hover:bg-slate-100 focus-visible:ring-3 focus-visible:ring-cyan-100 disabled:opacity-35 motion-reduce:transition-none sm:h-16"
         >
           Wis
         </button>
@@ -99,7 +100,7 @@ export const PinKeypad = ({
           disabled={disabled}
           onClick={() => append("0")}
           aria-label="Cijfer 0"
-          className="flex h-16 min-h-14 touch-manipulation items-center justify-center rounded-2xl border border-slate-200 bg-white text-2xl font-black tabular-nums text-slate-950 shadow-sm outline-none transition hover:border-cyan-300 hover:bg-cyan-50 active:scale-[0.97] focus-visible:border-cyan-600 focus-visible:ring-4 focus-visible:ring-cyan-100 disabled:cursor-wait disabled:opacity-55 motion-reduce:transition-none sm:h-[4.5rem]"
+          className="flex h-14 min-h-14 touch-manipulation items-center justify-center rounded-xl border border-slate-300 bg-white text-xl font-semibold tabular-nums text-slate-950 outline-none transition hover:border-cyan-600 hover:bg-cyan-50 active:bg-cyan-100 focus-visible:border-cyan-700 focus-visible:ring-3 focus-visible:ring-cyan-100 disabled:cursor-wait disabled:opacity-55 motion-reduce:transition-none sm:h-16"
         >
           0
         </button>
@@ -108,7 +109,7 @@ export const PinKeypad = ({
           disabled={disabled || value.length === 0}
           onClick={() => onChange(value.slice(0, -1))}
           aria-label="Laatste cijfer wissen"
-          className="flex h-16 min-h-14 touch-manipulation items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 outline-none transition hover:border-slate-300 hover:bg-slate-100 focus-visible:ring-4 focus-visible:ring-cyan-100 disabled:opacity-35 motion-reduce:transition-none sm:h-[4.5rem]"
+          className="flex h-14 min-h-14 touch-manipulation items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600 outline-none transition hover:border-slate-300 hover:bg-slate-100 focus-visible:ring-3 focus-visible:ring-cyan-100 disabled:opacity-35 motion-reduce:transition-none sm:h-16"
         >
           <Delete size={23} />
         </button>
