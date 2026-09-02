@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./settings-dark.css";
 
 @keyframes pwayment-loading-sweep {
   0% { transform: translateX(-100%); }
