@@ -79,9 +79,9 @@ const isDueForClaim = (entry: OutboxEntry, now: number): boolean => {
 export const enqueueOutbox = async (
   kind: OutboxEntry["kind"],
   payload: unknown,
-): Promise<void> => {
+): Promise<number> => {
   const timestamp = Date.now();
-  await db.outbox.add({
+  return db.outbox.add({
     timestamp,
     kind,
     payload,

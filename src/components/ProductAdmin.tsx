@@ -108,6 +108,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
   const [iconPickerFor, setIconPickerFor] = useState<string | null>(null);
   const [iconSearch, setIconSearch] = useState('');
   const [iconGroupId, setIconGroupId] = useState(CATEGORY_ICON_GROUPS[0].id);
+  const [categoryIconNotice, setCategoryIconNotice] = useState<{ tone: 'success' | 'warning'; text: string } | null>(null);
   const [editing, setEditing] = useState<Product | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [priceText, setPriceText] = useState('0,00');
@@ -812,6 +813,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                 Onboarding-default: {configuredDefaultVat}%
               </span>
             </div>
+            {categoryIconNotice && <div className={`mx-4 mt-4 rounded-xl border px-3 py-2 text-xs font-bold ${categoryIconNotice.tone === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-900'}`} role="status">{categoryIconNotice.text}</div>}
 
             <div className="divide-y divide-slate-100">
               {rootCategories.map((c) => {
@@ -969,7 +971,13 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                       <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-9 lg:grid-cols-12">
                         {shownIcons.map(([name, label, Icon]) => {
                           const selected = c.icon === name;
-                          return <button key={name} type="button" onClick={() => { void setCategoryIcon(c.id, name); setIconPickerFor(null); }} title={label} aria-label={`${label} selecteren`} aria-pressed={selected} className={`flex aspect-square items-center justify-center rounded-lg border transition ${selected ? 'border-sky-600 bg-sky-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700'}`}><Icon size={18} strokeWidth={2} /></button>;
+                          return <button key={name} type="button" onClick={async () => {
+                            const result = await setCategoryIcon(c.id, name);
+                            setIconPickerFor(null);
+                            setCategoryIconNotice(result.synced
+                              ? { tone: 'success', text: `Icoon voor ${c.name} is opgeslagen en gesynchroniseerd.` }
+                              : { tone: 'warning', text: `Icoon voor ${c.name} is lokaal bewaard. Serverbevestiging wacht: ${result.error ?? 'probeert automatisch opnieuw.'}` });
+                          }} title={label} aria-label={`${label} selecteren`} aria-pressed={selected} className={`flex aspect-square items-center justify-center rounded-lg border transition ${selected ? 'border-sky-600 bg-sky-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700'}`}><Icon size={18} strokeWidth={2} /></button>;
                         })}
                       </div>
                       {shownIcons.length === 0 && <p className="py-3 text-xs font-semibold text-slate-500">Geen icoon gevonden. Probeer bijvoorbeeld “sport”, “eten” of “auto”.</p>}

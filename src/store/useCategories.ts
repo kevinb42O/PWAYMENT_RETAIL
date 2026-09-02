@@ -4,6 +4,8 @@ import { ProductCategory } from '../types';
 import { FEATURES } from '../config/features';
 import { BELGIAN_RETAIL_VAT_RATE, productCategories } from '../data/categories';
 import { useAuth } from '../auth/useAuth';
+import { isSupabaseConfigured } from '../lib/supabase';
+import { upsertSupabaseCategories } from '../services/supabaseMutations';
 import { enqueueOutbox } from '../db/outbox';
 import { FEATURE_KEYS, featureLimit } from '../billing/entitlements';
 import { isSupportedVatRate } from '../utils/vat';
@@ -19,9 +21,15 @@ interface CategoriesState {
   addCategory: (name: string, vatRate?: number) => Promise<ProductCategory | null>;
   addSubcategory: (parentId: string, name: string) => Promise<ProductCategory | null>;
   renameCategory: (id: string, name: string) => Promise<void>;
-  setCategoryIcon: (id: string, icon: string) => Promise<void>;
+  setCategoryIcon: (id: string, icon: string) => Promise<CategoryIconSaveResult>;
   setCategoryVatRate: (id: string, vatRate: number) => Promise<void>;
   removeCategory: (id: string) => Promise<boolean>;
+}
+
+export interface CategoryIconSaveResult {
+  synced: boolean;
+  queued: boolean;
+  error?: string;
 }
 
 const slugify = (s: string) =>
@@ -237,15 +245,37 @@ export const useCategories = create<CategoriesState>((set, get) => ({
 
   setCategoryIcon: async (id, icon) => {
     const current = await db.categories.get(id);
-    if (!current || current.icon === icon) return;
+    if (!current) return { synced: false, queued: false, error: 'Categorie niet gevonden.' };
+    if (current.icon === icon) return { synced: true, queued: false };
     const next = { ...current, icon };
+    let outboxId: number | undefined;
     await db.transaction('rw', db.categories, db.outbox, async () => {
-      await enqueueOutbox('upsert_category', [next]);
+      outboxId = await enqueueOutbox('upsert_category', [next]);
       await db.categories.put(next);
     });
     set((state) => ({
       list: state.list.map((category) => category.id === id ? next : category),
     }));
+
+    const storeId = useAuth.getState().currentStoreId;
+    const online = typeof navigator === 'undefined' || navigator.onLine !== false;
+    if (!storeId || !isSupabaseConfigured || !online) {
+      return { synced: false, queued: true, error: 'Opgeslagen op dit toestel; synchronisatie wacht op een serververbinding.' };
+    }
+
+    try {
+      // Confirm the category setting immediately. The outbox remains a durable
+      // fallback only; it must not be the sole path for this owner action.
+      await upsertSupabaseCategories(storeId, [next]);
+      if (outboxId != null) await db.outbox.delete(outboxId);
+      return { synced: true, queued: false };
+    } catch (error) {
+      return {
+        synced: false,
+        queued: true,
+        error: error instanceof Error ? error.message : 'De server kon het icoon nog niet bevestigen.',
+      };
+    }
   },
 
   setCategoryVatRate: async (id, vatRate) => {

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useAuth } from "../auth/useAuth";
 import { productCategories } from "../data/categories";
 import { db } from "../db/db";
+import { supabase } from "../lib/supabase";
 import { useCategories } from "./useCategories";
 import { useProducts } from "./useProducts";
 
@@ -10,7 +11,7 @@ describe("category repository store", () => {
   beforeEach(async () => {
     if (!db.isOpen()) await db.open();
     await Promise.all([db.categories.clear(), db.products.clear(), db.outbox.clear()]);
-    useAuth.setState({ currentStoreIsDemo: false });
+    useAuth.setState({ currentStoreId: null, currentStoreIsDemo: false });
     useCategories.setState({ list: [], hydrated: false });
     useProducts.setState({ list: [], hydrated: false });
     vi.restoreAllMocks();
@@ -74,6 +75,22 @@ describe("category repository store", () => {
     expect(await db.categories.get(created!.id)).toMatchObject({ icon: "book" });
     expect(useCategories.getState().list.find((category) => category.id === created!.id)).toMatchObject({ icon: "book" });
     expect((await db.outbox.toArray()).filter((entry) => entry.kind === "upsert_category")).toHaveLength(2);
+  });
+
+  it("confirms an icon directly with Supabase and clears its acknowledged outbox row", async () => {
+    useAuth.setState({ currentStoreId: "store-1" });
+    const rpc = vi.spyOn(supabase, "rpc").mockResolvedValue({ data: {}, error: null } as never);
+    const created = await useCategories.getState().addCategory("Boeken", 6);
+    await db.outbox.clear();
+
+    const result = await useCategories.getState().setCategoryIcon(created!.id, "book");
+
+    expect(result).toEqual({ synced: true, queued: false });
+    expect(rpc).toHaveBeenCalledWith("upsert_catalog_category", expect.objectContaining({
+      target_store_id: "store-1",
+      category_payload: expect.objectContaining({ id: created!.id, icon: "book" }),
+    }));
+    expect(await db.outbox.count()).toBe(0);
   });
 
   it("creates subcategories below a main category and prevents deleting a non-empty branch", async () => {
