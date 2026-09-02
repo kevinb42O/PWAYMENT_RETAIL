@@ -121,10 +121,10 @@ export const CashPaymentModal: React.FC<Props> = ({
       bodyClassName="p-4 sm:p-6"
       footer={
         <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <span className="hidden text-[11px] font-medium text-slate-500 sm:block">
-            <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 font-sans">Esc</kbd> annuleren
-            <span className="mx-2 text-slate-300">·</span>
-            <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 font-sans">Enter</kbd> bevestigen
+          <span className="cash-payment-shortcuts hidden text-[11px] font-medium sm:block">
+            <kbd className="cash-payment-shortcut rounded px-1.5 py-0.5 font-sans">Esc</kbd> annuleren
+            <span className="cash-payment-shortcuts__separator mx-2">·</span>
+            <kbd className="cash-payment-shortcut rounded px-1.5 py-0.5 font-sans">Enter</kbd> bevestigen
           </span>
           <div className="grid grid-cols-2 gap-2 sm:flex">
             <Button variant="secondary" onClick={onClose} className="h-11 px-5 text-sm">Annuleren</Button>
@@ -142,11 +142,11 @@ export const CashPaymentModal: React.FC<Props> = ({
               <div className="cash-payment-label text-[10px] font-extrabold uppercase tracking-[0.13em]">Te betalen</div>
               <div className="cash-payment-value mt-1 text-xl font-black tabular-nums">{formatEUR(totalCents)}</div>
             </div>
-            <div className={`cash-payment-change rounded-2xl border p-3.5 ${insufficient ? "border-amber-200 bg-amber-50" : exceedsCashLimit ? "border-rose-200 bg-rose-50" : "border-emerald-200 bg-emerald-50"}`}>
-              <div className={`text-[10px] font-extrabold uppercase tracking-[0.13em] ${insufficient ? "text-amber-700" : exceedsCashLimit ? "text-rose-700" : "text-emerald-700"}`}>
+            <div className={`cash-payment-change cash-payment-change--${exceedsCashLimit ? "limit" : insufficient ? "needed" : "ready"} rounded-2xl border p-3.5`}>
+              <div className="cash-payment-change-label text-[10px] font-extrabold uppercase tracking-[0.13em]">
                 {exceedsCashLimit ? "Cashlimiet" : insufficient ? "Nog nodig" : changeCents === 0 ? "Wisselgeld" : "Terug te geven"}
               </div>
-              <div aria-live="polite" className={`mt-1 text-xl font-black tabular-nums ${insufficient ? "text-amber-900" : exceedsCashLimit ? "text-rose-900" : "text-emerald-900"}`}>
+              <div aria-live="polite" className="cash-payment-change-value mt-1 text-xl font-black tabular-nums">
                 {formatEUR(Math.abs(changeCents))}
               </div>
             </div>
@@ -184,14 +184,14 @@ export const CashPaymentModal: React.FC<Props> = ({
           </div>
 
           {roundingAdjustmentCents !== 0 && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-[11px] text-amber-950">
+            <div className="cash-payment-rounding rounded-xl border px-3.5 py-3 text-[11px]">
               <div className="flex justify-between gap-3"><span>Commercieel cashbedrag</span><span className="font-bold tabular-nums">{formatEUR(commercialTotalCents)}</span></div>
               <div className="mt-1 flex justify-between gap-3 font-bold"><span>Wettelijke cashafronding</span><span className="tabular-nums">{roundingAdjustmentCents > 0 ? "+" : ""}{formatEUR(roundingAdjustmentCents)}</span></div>
             </div>
           )}
 
           {exceedsCashLimit && (
-            <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-3 text-xs font-semibold leading-5 text-rose-800">
+            <p role="alert" className="cash-payment-limit-alert rounded-xl border px-3.5 py-3 text-xs font-semibold leading-5">
               Cashbetalingen zijn beperkt tot {formatEUR(MAX_CASH_PAYMENT_CENTS)}. Laat het restant elektronisch betalen.
             </p>
           )}

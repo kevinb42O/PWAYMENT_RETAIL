@@ -1330,7 +1330,7 @@ export const Cart: React.FC<CartProps> = ({
 
       <div className="pos-checkout p-4">
         {vatBlockers.length > 0 && (
-          <div className="mb-3 flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-800">
+          <div className="pos-checkout-alert mb-3 flex items-start gap-2 rounded-lg border p-3 text-xs">
             <AlertTriangle size={16} className="mt-px flex-shrink-0" />
             <div>
               <div className="font-semibold">
@@ -1359,7 +1359,7 @@ export const Cart: React.FC<CartProps> = ({
               onClick={() => setDiscountOpen(true)}
               disabled={!hasItemsToCheckout}
               className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-                cartDiscount ? "bg-amber-50 text-amber-700" : "pos-accent-link"
+                cartDiscount ? "pos-checkout-discount" : "pos-accent-link"
               } disabled:opacity-40`}
             >
               <Percent size={13} />
@@ -1381,7 +1381,7 @@ export const Cart: React.FC<CartProps> = ({
             </div>
           ))}
           {cartGiftCards.map((gc) => (
-            <div key={gc.id} className="flex justify-between text-[#667619]">
+            <div key={gc.id} className="pos-checkout-gift-card flex justify-between">
               <div className="flex items-center gap-1">
                 <button
                   type="button"

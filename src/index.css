@@ -3707,3 +3707,100 @@ body {
   color: #c9ecff !important;
   box-shadow: inset 0 1px 0 rgba(220, 246, 255, 0.07), 0 1px 2px rgba(0, 0, 0, 0.26) !important;
 }
+
+/* Checkout exceptions retain their meaning without dropping a light card into
+   the dark payment surface. */
+.pos-checkout-alert {
+  border-color: #fca5a5;
+  background: #fef2f2;
+  color: #991b1b;
+}
+.pos-checkout-discount {
+  background: #fffbeb;
+  color: #b45309;
+}
+.pos-checkout-gift-card { color: #58711f; }
+
+.cash-payment-shortcuts { color: #64748b; }
+.cash-payment-shortcut {
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+}
+.cash-payment-shortcuts__separator { color: #cbd5e1; }
+
+.cash-payment-change--needed {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+.cash-payment-change--needed .cash-payment-change-label { color: #b45309; }
+.cash-payment-change--needed .cash-payment-change-value { color: #78350f; }
+.cash-payment-change--limit {
+  border-color: #fecdd3;
+  background: #fff1f2;
+}
+.cash-payment-change--limit .cash-payment-change-label { color: #be123c; }
+.cash-payment-change--limit .cash-payment-change-value { color: #881337; }
+.cash-payment-change--ready {
+  border-color: #a7f3d0;
+  background: #ecfdf5;
+}
+.cash-payment-change--ready .cash-payment-change-label { color: #047857; }
+.cash-payment-change--ready .cash-payment-change-value { color: #065f46; }
+.cash-payment-rounding {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #78350f;
+}
+.cash-payment-limit-alert {
+  border-color: #fecdd3;
+  background: #fff1f2;
+  color: #9f1239;
+}
+
+.theme-dark .pos-checkout-alert {
+  border-color: #864152 !important;
+  background: rgba(101, 30, 45, 0.3) !important;
+  color: #ffd2da !important;
+}
+.theme-dark .pos-checkout-discount {
+  background: rgba(121, 83, 18, 0.28) !important;
+  color: #ffd882 !important;
+}
+.theme-dark .pos-checkout-gift-card { color: #b6df79 !important; }
+
+.theme-dark .cash-payment-shortcuts { color: #94aabd !important; }
+.theme-dark .cash-payment-shortcut {
+  border-color: #31516d !important;
+  background: #091827 !important;
+  color: #c8d8e7 !important;
+}
+.theme-dark .cash-payment-shortcuts__separator { color: #557089 !important; }
+.theme-dark .cash-payment-change--needed {
+  border-color: #735d28 !important;
+  background: rgba(107, 78, 22, 0.28) !important;
+}
+.theme-dark .cash-payment-change--needed .cash-payment-change-label { color: #ffd477 !important; }
+.theme-dark .cash-payment-change--needed .cash-payment-change-value { color: #fff0bf !important; }
+.theme-dark .cash-payment-change--limit {
+  border-color: #794354 !important;
+  background: rgba(104, 32, 49, 0.3) !important;
+}
+.theme-dark .cash-payment-change--limit .cash-payment-change-label { color: #ff9dac !important; }
+.theme-dark .cash-payment-change--limit .cash-payment-change-value { color: #ffd3da !important; }
+.theme-dark .cash-payment-change--ready {
+  border-color: #2d6a57 !important;
+  background: rgba(19, 92, 67, 0.28) !important;
+}
+.theme-dark .cash-payment-change--ready .cash-payment-change-label { color: #86e2be !important; }
+.theme-dark .cash-payment-change--ready .cash-payment-change-value { color: #c8f4df !important; }
+.theme-dark .cash-payment-rounding {
+  border-color: #735d28 !important;
+  background: rgba(107, 78, 22, 0.25) !important;
+  color: #ffebaf !important;
+}
+.theme-dark .cash-payment-limit-alert {
+  border-color: #794354 !important;
+  background: rgba(104, 32, 49, 0.3) !important;
+  color: #ffd1d9 !important;
+}
