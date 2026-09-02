@@ -182,26 +182,14 @@ body {
   color: #0f172a;
 }
 
-/* Dagafsluiting deelt de rustige, lichte visuele taal van Inzichten. */
-.day-close-light {
+/* Dagafsluiting shares the measured card rhythm of Insights in light mode. */
+.day-close-workspace {
   background: #f8fafc;
   color: #0f172a;
 }
 
-.theme-dark .day-close-light,
-.theme-dark .day-close-light main,
-.theme-dark .day-close-light aside {
-  background-color: #f8fafc;
-  color: #0f172a;
-}
-
-.theme-dark .day-close-light .insights-panel,
-.theme-dark .day-close-light .bg-white {
-  background-color: #ffffff !important;
-}
-
-.day-close-light button:focus-visible,
-.day-close-light input:focus-visible {
+.day-close-workspace button:focus-visible,
+.day-close-workspace input:focus-visible {
   outline: 2px solid #0891b2;
   outline-offset: 2px;
 }
@@ -4395,3 +4383,77 @@ body {
   color: #ffffff !important;
   box-shadow: 0 5px 16px rgba(0, 0, 0, 0.25) !important;
 }
+
+/* Dagafsluiting is a financial workspace, not an exception to dark mode.
+   Its empty, active and completed states all share the same restrained
+   midnight surfaces so a report can be checked without contrast surprises. */
+.theme-dark .pos-app-shell .day-close-workspace {
+  background:
+    radial-gradient(circle at 50% -30%, rgba(36, 153, 255, 0.1), transparent 38%),
+    #07111f !important;
+  color: #e5f0fa !important;
+  min-height: 100%;
+}
+/* The root also carries Tailwind's bg-slate-50 utility. Keep this explicit
+   compound selector so that utility cannot repaint the workspace white. */
+.theme-dark .pos-app-shell .day-close-workspace.bg-slate-50 {
+  background-color: #07111f !important;
+}
+.theme-dark .day-close-workspace .insights-panel {
+  border-color: #224663 !important;
+  background: linear-gradient(145deg, #10263a, #0d2033) !important;
+  box-shadow: inset 0 1px 0 rgba(197, 233, 255, 0.035), 0 8px 22px rgba(0, 0, 0, 0.13) !important;
+}
+.theme-dark .day-close-workspace .bg-white { background: #10263a !important; }
+.theme-dark .day-close-workspace .bg-slate-50,
+.theme-dark .day-close-workspace .bg-slate-50\/70 { background: #0b1a2a !important; }
+.theme-dark .day-close-workspace .bg-slate-100,
+.theme-dark .day-close-workspace .hover\:bg-slate-100:hover { background: #173149 !important; }
+.theme-dark .day-close-workspace .hover\:bg-slate-50:hover { background: #173149 !important; }
+.theme-dark .day-close-workspace .hover\:bg-cyan-50\/50:hover { background: rgba(35, 113, 164, 0.22) !important; }
+.theme-dark .day-close-workspace :is(.border-slate-100, .border-slate-200, .border-slate-300),
+.theme-dark .day-close-workspace .divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #1c3d59 !important;
+}
+.theme-dark .day-close-workspace :is(.text-slate-950, .text-slate-900, .text-slate-800) { color: #f4f9fe !important; }
+.theme-dark .day-close-workspace .text-slate-700 { color: #d5e2ee !important; }
+.theme-dark .day-close-workspace :is(.text-slate-600, .text-slate-500) { color: #9fb5c9 !important; }
+.theme-dark .day-close-workspace .text-slate-400 { color: #7892a9 !important; }
+.theme-dark .day-close-workspace .text-cyan-700 { color: #69c8ff !important; }
+.theme-dark .day-close-workspace .bg-cyan-50 { background: #123b59 !important; }
+.theme-dark .day-close-workspace .text-emerald-600,
+.theme-dark .day-close-workspace .text-emerald-700 { color: #8ee3bd !important; }
+.theme-dark .day-close-workspace .text-emerald-800,
+.theme-dark .day-close-workspace .text-emerald-900 { color: #b9f1d6 !important; }
+.theme-dark .day-close-workspace .bg-emerald-50,
+.theme-dark .day-close-workspace .bg-emerald-50\/70 { background: rgba(19, 92, 67, 0.34) !important; }
+.theme-dark .day-close-workspace .border-emerald-100 { border-color: #2b6b58 !important; }
+.theme-dark .day-close-workspace .bg-amber-50 { background: rgba(113, 76, 20, 0.3) !important; }
+.theme-dark .day-close-workspace .border-amber-200 { border-color: #80652f !important; }
+.theme-dark .day-close-workspace .text-amber-600,
+.theme-dark .day-close-workspace .text-amber-900 { color: #ffd37b !important; }
+.theme-dark .day-close-workspace .bg-rose-50 { background: rgba(113, 34, 54, 0.3) !important; }
+.theme-dark .day-close-workspace .border-rose-200 { border-color: #814252 !important; }
+.theme-dark .day-close-workspace .text-rose-600,
+.theme-dark .day-close-workspace .text-rose-800 { color: #ffb7c2 !important; }
+.theme-dark .day-close-workspace .bg-emerald-600 { background: #117a5f !important; }
+.theme-dark .day-close-workspace .insights-primary-action {
+  border: 1px solid #1687ad !important;
+  background: #087f9d !important;
+  color: #f7fcff !important;
+  box-shadow: inset 0 1px 0 rgba(214, 249, 255, 0.14), 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+.theme-dark .day-close-workspace .insights-primary-action:hover {
+  border-color: #38bce5 !important;
+  background: #0b98b8 !important;
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.25) !important;
+  transform: translateY(-1px);
+}
+.theme-dark .day-close-workspace :is(input, textarea) {
+  border-color: #315a79 !important;
+  background: #091827 !important;
+  color: #f4f9fe !important;
+  color-scheme: dark;
+}
+.theme-dark .day-close-workspace :is(input, textarea)::placeholder { color: #7892a9 !important; }

@@ -524,7 +524,7 @@ export const ZReportView: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="day-close-light flex flex-1 items-center justify-center bg-slate-50 text-slate-600">
+      <div className="day-close-workspace flex flex-1 items-center justify-center bg-slate-50 text-slate-600">
         <RefreshCw size={22} className="mr-3 animate-spin text-cyan-700" />{" "}
         Daggegevens controleren…
       </div>
@@ -533,7 +533,7 @@ export const ZReportView: React.FC = () => {
 
   if (loadError) {
     return (
-      <div className="day-close-light flex flex-1 items-center justify-center overflow-y-auto bg-slate-50 p-6">
+      <div className="day-close-workspace flex flex-1 items-center justify-center overflow-y-auto bg-slate-50 p-6">
         <section className="insights-panel max-w-xl p-8 text-center">
           <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-rose-50 text-rose-600">
             <AlertTriangle size={24} />
@@ -561,7 +561,7 @@ export const ZReportView: React.FC = () => {
 
   if (finalReport) {
     return (
-      <div className="day-close-light flex-1 overflow-y-auto bg-slate-50 print:bg-white">
+      <div className="day-close-workspace flex-1 overflow-y-auto bg-slate-50 print:bg-white">
         <ReportPrintout report={finalReport} transactions={transactions} />
         <main className="mx-auto max-w-5xl p-5 sm:p-8 print:hidden">
           <section className="insights-panel overflow-hidden">
@@ -623,7 +623,7 @@ export const ZReportView: React.FC = () => {
 
   if (!reportData) {
     return (
-      <div className="day-close-light flex-1 overflow-y-auto bg-slate-50">
+      <div className="day-close-workspace flex-1 overflow-y-auto bg-slate-50">
         <main className="mx-auto max-w-5xl p-5 sm:p-8">
           <header>
             <p className="text-xs font-bold uppercase tracking-[0.14em] text-cyan-700">
@@ -715,7 +715,7 @@ export const ZReportView: React.FC = () => {
     !closing;
 
   return (
-    <div className="day-close-light flex-1 overflow-y-auto bg-slate-50 text-slate-900 print:bg-white">
+    <div className="day-close-workspace flex-1 overflow-y-auto bg-slate-50 text-slate-900 print:bg-white">
       <ReportPrintout report={reportData} transactions={transactions} />
 
       <Modal
