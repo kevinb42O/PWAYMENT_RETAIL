@@ -53,7 +53,10 @@ const publicWebsiteRoute =
   !presentationMode &&
   !presentationBuild;
 const serviceWorkerCleanupKey = "pwayment-service-worker-cleanup-v1";
-const productionCacheRefreshKey = "pwayment-production-cache-pace-choreography-v3";
+// Bump this release key when a client-side correctness fix must take effect
+// immediately, even for tills that already completed an earlier cache reset.
+// In particular, category icon saves now require a confirmed Supabase write.
+const productionCacheRefreshKey = "pwayment-production-cache-category-icon-save-v4";
 
 const removeServiceWorkers = async () => {
   if (!("serviceWorker" in navigator)) return false;
