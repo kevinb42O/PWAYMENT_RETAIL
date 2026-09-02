@@ -104,6 +104,13 @@ describe("Supabase store bootstrap", () => {
       attempts: 0,
     });
     await tenantDb.categories.put({
+      id: "hardware",
+      name: "Hardware",
+      icon: "hammer",
+      vatRate: 21,
+      isActive: true,
+    });
+    await tenantDb.categories.put({
       id: "hardware-local-leaf",
       parentId: "hardware",
       name: "Lokale leaf",
@@ -201,6 +208,11 @@ describe("Supabase store bootstrap", () => {
     });
     expect(await activeDb.categories.get("decks")).toMatchObject({
       parentId: "hardware",
+    });
+    expect(await activeDb.categories.get("hardware")).toMatchObject({
+      // A legacy server response without the icon column must not erase the
+      // owner's selected local icon during a rolling deployment.
+      icon: "hammer",
     });
     expect(await activeDb.categories.get("hardware-local-leaf")).toMatchObject({
       parentId: "hardware",

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, Barcode, Boxes, Building2, Check, CheckCircle2, CornerDownRight, Download, Package, PackageSearch, Palette, Pencil, Plus, RotateCcw, Search, Tag, Trash2, TrendingUp, Upload, X } from 'lucide-react';
+import { AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, Barcode, Boxes, Building2, Check, CheckCircle2, ChevronDown, ChevronRight, CornerDownRight, Download, Package, PackageSearch, Palette, Pencil, Plus, RotateCcw, Search, Tag, Trash2, TrendingUp, Upload, X } from 'lucide-react';
 import { useProducts } from '../store/useProducts';
 import { useStore } from '../store/useStore';
 import { InventoryAdjustmentReason, ManualCatalogFamilyPayload, Product } from '../types';
@@ -22,7 +22,7 @@ import { configuredVatFallback } from '../onboarding/storeConfiguration';
 import { CatalogBuilder } from './CatalogBuilder';
 import { useAuth } from '../auth/useAuth';
 import { resolveProductCategoryPath } from '../catalog/categoryTaxonomy';
-import { CATEGORY_ICON_OPTIONS, categoryIcon, categoryIconLabel } from '../catalog/categoryIcons';
+import { CATEGORY_ICON_GROUPS, CATEGORY_ICON_OPTIONS, categoryIcon, categoryIconLabel } from '../catalog/categoryIcons';
 
 const COLOR_PRESETS: { label: string; cls: string }[] = [
   { label: 'Deck blauw', cls: 'bg-sky-700' },
@@ -104,8 +104,10 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
   const [newSubcategoryByParent, setNewSubcategoryByParent] = useState<Record<string, string>>({});
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
   const [editingCatName, setEditingCatName] = useState<string>('');
+  const [expandedCategoryIds, setExpandedCategoryIds] = useState<Set<string>>(() => new Set());
   const [iconPickerFor, setIconPickerFor] = useState<string | null>(null);
   const [iconSearch, setIconSearch] = useState('');
+  const [iconGroupId, setIconGroupId] = useState(CATEGORY_ICON_GROUPS[0].id);
   const [editing, setEditing] = useState<Product | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [priceText, setPriceText] = useState('0,00');
@@ -815,21 +817,49 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
               {rootCategories.map((c) => {
                 const productCount = productCountByCat.get(c.id) || 0;
                 const isEditingThis = editingCatId === c.id;
+                const isExpanded = expandedCategoryIds.has(c.id);
                 const subcategories = subcategoriesByParent.get(c.id) ?? [];
                 const CategoryIcon = categoryIcon(c.icon);
-                const shownIcons = CATEGORY_ICON_OPTIONS.filter(([name, label]) =>
-                  `${name} ${label}`.toLocaleLowerCase('nl-BE').includes(iconSearch.trim().toLocaleLowerCase('nl-BE')),
-                );
+                const selectedIconGroup = CATEGORY_ICON_GROUPS.find((group) => group.id === iconGroupId);
+                const shownIcons = iconSearch.trim()
+                  ? CATEGORY_ICON_OPTIONS.filter(([name, label]) =>
+                    `${name} ${label}`.toLocaleLowerCase('nl-BE').includes(iconSearch.trim().toLocaleLowerCase('nl-BE')),
+                  )
+                  : selectedIconGroup?.icons ?? CATEGORY_ICON_OPTIONS;
 
                 return (
                   <div key={c.id}>
-                  <div className="p-4 flex items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors">
+                  <div
+                    className="cursor-pointer p-4 flex items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setExpandedCategoryIds((current) => {
+                      const next = new Set(current);
+                      next.has(c.id) ? next.delete(c.id) : next.add(c.id);
+                      return next;
+                    })}
+                    onKeyDown={(event) => {
+                      if (event.key !== 'Enter' && event.key !== ' ') return;
+                      event.preventDefault();
+                      setExpandedCategoryIds((current) => {
+                        const next = new Set(current);
+                        next.has(c.id) ? next.delete(c.id) : next.add(c.id);
+                        return next;
+                      });
+                    }}
+                    aria-expanded={isExpanded}
+                  >
                     <div className="flex-1 min-w-0 flex items-center gap-3">
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={(event) => {
+                          event.stopPropagation();
                           setIconPickerFor(iconPickerFor === c.id ? null : c.id);
                           setIconSearch('');
+                          const group = CATEGORY_ICON_GROUPS.find((candidate) =>
+                            candidate.icons.some(([name]) => name === c.icon),
+                          );
+                          setIconGroupId(group?.id ?? CATEGORY_ICON_GROUPS[0].id);
                         }}
                         className="group flex shrink-0 items-center justify-center rounded-xl bg-slate-100 p-2.5 text-slate-700 transition hover:bg-sky-100 hover:text-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500"
                         title={`Icoon wijzigen (${categoryIconLabel(c.icon)})`}
@@ -839,7 +869,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                         <CategoryIcon size={18} strokeWidth={2} />
                       </button>
                       {isEditingThis ? (
-                        <div className="flex items-center gap-2 flex-1 max-w-md">
+                        <div className="flex items-center gap-2 flex-1 max-w-md" onClick={(event) => event.stopPropagation()}>
                           <input
                             value={editingCatName}
                             onChange={(e) => setEditingCatName(e.target.value)}
@@ -877,7 +907,8 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                           <div className="flex items-center gap-2">
                             <span className="font-extrabold text-sm text-slate-900">{c.name}</span>
                             <button
-                              onClick={() => {
+                              onClick={(event) => {
+                                event.stopPropagation();
                                 setEditingCatId(c.id);
                                 setEditingCatName(c.name);
                               }}
@@ -899,6 +930,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                         <span className="sr-only">BTW-tarief voor {c.name}</span>
                         <select
                           value={c.vatRate ?? configuredDefaultVat}
+                          onClick={(event) => event.stopPropagation()}
                           onChange={(event) => void setCategoryVatRate(c.id, Number(event.target.value))}
                           className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900"
                         >
@@ -910,12 +942,13 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                       </span>
 
                       <button
-                        onClick={() => void deleteCategory(c.id)}
+                        onClick={(event) => { event.stopPropagation(); void deleteCategory(c.id); }}
                         className="p-2 rounded-xl text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100 transition-colors cursor-pointer"
                         title="Categorie Verwijderen"
                       >
                         <Trash2 size={16} />
                       </button>
+                      {isExpanded ? <ChevronDown size={17} className="text-slate-400" /> : <ChevronRight size={17} className="text-slate-400" />}
                     </div>
                   </div>
                   {iconPickerFor === c.id && (
@@ -930,6 +963,9 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                           <input value={iconSearch} onChange={(event) => setIconSearch(event.target.value)} placeholder="Zoek een icoon" className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-8 pr-3 text-xs font-semibold text-slate-900 outline-none focus:ring-2 focus:ring-sky-500 sm:w-48" />
                         </label>
                       </div>
+                      <div className="mb-3 flex gap-1.5 overflow-x-auto pb-1">
+                        {CATEGORY_ICON_GROUPS.map((group) => <button key={group.id} type="button" onClick={() => { setIconGroupId(group.id); setIconSearch(''); }} className={`shrink-0 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition ${iconGroupId === group.id ? 'border-sky-600 bg-sky-600 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-sky-300 hover:text-sky-700'}`}>{group.label}</button>)}
+                      </div>
                       <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-9 lg:grid-cols-12">
                         {shownIcons.map(([name, label, Icon]) => {
                           const selected = c.icon === name;
@@ -939,7 +975,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                       {shownIcons.length === 0 && <p className="py-3 text-xs font-semibold text-slate-500">Geen icoon gevonden. Probeer bijvoorbeeld “sport”, “eten” of “auto”.</p>}
                     </div>
                   )}
-                  <div className="border-t border-slate-100 bg-slate-50/50 px-4 py-3 sm:pl-16">
+                  {isExpanded && <div className="border-t border-slate-100 bg-slate-50/50 px-4 py-3 sm:pl-16">
                     <div className="space-y-2">
                       {subcategories.map((subcategory) => {
                         const isEditingSubcategory = editingCatId === subcategory.id;
@@ -993,7 +1029,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                         <button type="button" onClick={() => void createSubcategory(c.id)} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-extrabold text-sky-800 hover:bg-sky-100"><Plus size={14} /> Subcategorie toevoegen</button>
                       </div>
                     </div>
-                  </div>
+                  </div>}
                   </div>
                 );
               })}

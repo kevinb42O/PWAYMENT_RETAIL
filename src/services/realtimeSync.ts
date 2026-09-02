@@ -110,13 +110,18 @@ const mapCustomer = (row: Row<"customers">): Customer => ({
 });
 
 const mapCategory = async (row: Row<"categories">): Promise<ProductCategory> => {
+  const categoryId = row.external_id ?? row.id;
+  const existing = await db.categories.get(categoryId);
   let parent = row.parent_id
     ? (await db.categories.toArray()).find((category) => category.serverId === row.parent_id)
     : undefined;
   if (row.parent_id && !parent) {
     const { data: remoteParent } = await supabase
       .from("categories")
-      .select("id, external_id, name, icon, vat_rate, sort_order, is_active")
+      // Keep this narrow projection compatible with a backend that is still
+      // applying the icon migration; the incoming category event itself
+      // carries the icon once that rollout is complete.
+      .select("id, external_id, name, vat_rate, sort_order, is_active")
       .eq("store_id", row.store_id)
       .eq("id", row.parent_id)
       .maybeSingle();
@@ -125,7 +130,6 @@ const mapCategory = async (row: Row<"categories">): Promise<ProductCategory> => 
         id: remoteParent.external_id ?? remoteParent.id,
         serverId: remoteParent.id,
         name: remoteParent.name,
-        icon: remoteParent.icon ?? undefined,
         vatRate: Number(remoteParent.vat_rate),
         sortOrder: remoteParent.sort_order ?? undefined,
         isActive: remoteParent.is_active,
@@ -134,11 +138,13 @@ const mapCategory = async (row: Row<"categories">): Promise<ProductCategory> => 
     }
   }
   return {
-    id: row.external_id ?? row.id,
+    id: categoryId,
     serverId: row.id,
     parentId: parent?.id,
     name: row.name,
-    icon: row.icon ?? undefined,
+    // Keep an icon selected locally while a rolling backend deployment has
+    // not started returning the new column yet.
+    icon: row.icon ?? existing?.icon,
     vatRate: row.vat_rate == null ? undefined : Number(row.vat_rate),
     sortOrder: row.sort_order ?? undefined,
     isActive: row.is_active,

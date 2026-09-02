@@ -170,12 +170,14 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
   // the module starts on the neutral database; reading first would snapshot
   // the wrong tenant and make an incoming hydrate destructive by default.
   activateTenantDatabase(storeId);
-  const [previousProducts, previousCustomers] = await Promise.all([
+  const [previousProducts, previousCustomers, previousCategories] = await Promise.all([
     db.products.toArray(),
     db.customers.toArray(),
+    db.categories.toArray(),
   ]);
   const previousProductById = new Map(previousProducts.map((product) => [product.id, product]));
   const previousCustomerById = new Map(previousCustomers.map((customer) => [customer.id, customer]));
+  const previousCategoryById = new Map(previousCategories.map((category) => [category.id, category]));
   const pendingOutbox = await db.outbox.toArray();
   // A checkout is committed locally first so the POS remains usable offline.
   // Never let a server snapshot erase a sale that is still in this tenant's
@@ -494,7 +496,11 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
       ? categoryExternalIdByDatabaseId.get(row.parent_id)
       : undefined,
     name: row.name,
-    icon: row.icon ?? undefined,
+    // During a rolling deployment an old RPC can accept a category payload
+    // while silently omitting its new icon field. Keep the owner's local
+    // choice until the server begins returning the explicit column instead
+    // of immediately replacing it with a blank snapshot.
+    icon: row.icon ?? previousCategoryById.get(row.external_id ?? row.id)?.icon,
     vatRate: Number(row.vat_rate),
     sortOrder: row.sort_order ?? undefined,
     isActive: row.is_active,
