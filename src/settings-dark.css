@@ -4,6 +4,24 @@
    Keep this as a named scope rather than a global utility inversion so public
    pages, receipts and deliberate light previews retain their own appearance. */
 .theme-dark :is(.settings-workspace, .admin-workspace) {
+  /* .app-standard intentionally declares its own light tokens. Re-declare the
+     full contract on the settings root so every existing child component that
+     consumes var(--app-*) resolves dark values instead of inheriting its
+     surrounding light workspace skin. */
+  --app-page-bg: #07111f;
+  --app-surface: #10263a;
+  --app-surface-raised: #0b1a2a;
+  --app-surface-interactive: #173149;
+  --app-border: #1c3d59;
+  --app-border-strong: #315a79;
+  --app-text: #f4f9fe;
+  --app-muted: #9fb5c9;
+  --app-subtle: #7892a9;
+  --app-primary: #087f9d;
+  --app-primary-hover: #0b98b8;
+  --app-primary-soft: #123b59;
+  --app-primary-border: #286490;
+  --app-focus: #38bce5;
   background:
     radial-gradient(circle at 58% -30%, rgba(36, 153, 255, 0.1), transparent 38%),
     #07111f !important;
@@ -140,6 +158,12 @@
 .theme-dark .settings-workspace .insights-light :is(main, aside) {
   background: transparent !important;
   color: #e5f0fa !important;
+}
+.theme-dark .settings-workspace .insights-light .insights-panel {
+  border-color: #1c3d59 !important;
+  background: #10263a !important;
+  color: #e5f0fa !important;
+  box-shadow: inset 0 1px 0 rgba(197, 233, 255, 0.035), 0 8px 22px rgba(0, 0, 0, 0.13) !important;
 }
 .theme-dark .settings-workspace .insights-light :is(.bg-white, .bg-zinc-950, .bg-zinc-900) { background-color: #10263a !important; }
 .theme-dark .settings-workspace .insights-light :is(.bg-zinc-800, .bg-slate-50) { background-color: #0b1a2a !important; }
