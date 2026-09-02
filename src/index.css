@@ -5425,3 +5425,21 @@ body {
 .theme-dark .pos-app-shell .pos-cart-header.border-slate-200 {
   border-bottom-color: #18344e !important;
 }
+
+/* Discount fields are intentionally dark in both themes. Inputs do not
+   reliably inherit a dialog's text colour, so set the text, caret and native
+   selection explicitly rather than letting manually typed values turn black. */
+.discount-modal-input {
+  color: #f5f9fd !important;
+  caret-color: #69c8ff;
+  -webkit-text-fill-color: #f5f9fd !important;
+}
+.discount-modal-input::selection {
+  background: #087f9d;
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+}
+.theme-dark .discount-modal-input {
+  border-color: #315a79 !important;
+  background: #091827 !important;
+}

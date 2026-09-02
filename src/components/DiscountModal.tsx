@@ -179,7 +179,7 @@ export const DiscountModal: React.FC<Props> = ({ open, onClose, cartId, subtotal
               inputMode="decimal"
               value={percent}
               onChange={(e) => setPercent(e.target.value)}
-              className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-xl font-bold text-right tabular-nums"
+              className="discount-modal-input w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-xl font-bold text-right tabular-nums text-zinc-100"
             />
           </div>
         ) : (
@@ -189,7 +189,7 @@ export const DiscountModal: React.FC<Props> = ({ open, onClose, cartId, subtotal
               inputMode="decimal"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-xl font-bold text-right tabular-nums"
+              className="discount-modal-input w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-xl font-bold text-right tabular-nums text-zinc-100"
             />
           </div>
         )}
@@ -216,7 +216,7 @@ export const DiscountModal: React.FC<Props> = ({ open, onClose, cartId, subtotal
               value={customReason}
               onChange={(e) => setCustomReason(e.target.value)}
               placeholder="Reden specificeren..."
-              className="w-full mt-2 px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-sm"
+              className="discount-modal-input w-full mt-2 px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-sm text-zinc-100"
             />
           )}
         </div>
@@ -232,7 +232,7 @@ export const DiscountModal: React.FC<Props> = ({ open, onClose, cartId, subtotal
               value={pin}
               onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
               placeholder="••••••"
-              className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-center text-xl tracking-[0.5em]"
+              className="discount-modal-input w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-center text-xl tracking-[0.5em] text-zinc-100"
             />
           </div>
         )}
