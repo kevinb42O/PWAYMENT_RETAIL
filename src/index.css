@@ -4457,3 +4457,112 @@ body {
   color-scheme: dark;
 }
 .theme-dark .day-close-workspace :is(input, textarea)::placeholder { color: #7892a9 !important; }
+
+/* Customers is a data-dense operational workspace. Its legacy zinc classes
+   receive named dark surfaces here, rather than letting a light table and
+   dark shell compete in the cascade. The same mapping covers customer and
+   gift-card tabs, filters, rows, actions and their modal forms. */
+.theme-dark .pos-app-shell .customers-page {
+  background:
+    radial-gradient(circle at 52% -32%, rgba(36, 153, 255, 0.1), transparent 38%),
+    #07111f !important;
+  color: #e5f0fa !important;
+}
+.theme-dark .customers-page .bg-zinc-950,
+.theme-dark .customers-page .bg-zinc-950\/60,
+.theme-dark .customers-page .bg-zinc-950\/70 {
+  background: #091827 !important;
+}
+.theme-dark .customers-page .bg-zinc-900,
+.theme-dark .customers-page .bg-zinc-900\/40,
+.theme-dark .customers-page .bg-zinc-900\/60 {
+  background: #10263a !important;
+}
+.theme-dark .customers-page .bg-zinc-800,
+.theme-dark .customers-page .bg-zinc-800\/60 {
+  background: #173149 !important;
+}
+.theme-dark .customers-page .bg-white { background: #10263a !important; }
+.theme-dark .customers-page .bg-slate-50 { background: #0b1a2a !important; }
+.theme-dark .customers-page :is(.border-zinc-700, .border-zinc-800, .border-slate-100, .border-slate-200, .border-slate-300),
+.theme-dark .customers-page .divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #1d405d !important;
+}
+.theme-dark .customers-page :is(.text-white, .text-zinc-100, .text-zinc-200, .text-slate-950, .text-slate-900, .text-slate-800) {
+  color: #f4f9fe !important;
+}
+.theme-dark .customers-page :is(.text-zinc-300, .text-zinc-400, .text-zinc-500, .text-zinc-600, .text-slate-700) {
+  color: #c4d4e2 !important;
+}
+.theme-dark .customers-page :is(.text-slate-600, .text-slate-500) { color: #9fb5c9 !important; }
+.theme-dark .customers-page .text-slate-400 { color: #7892a9 !important; }
+.theme-dark .customers-page :is(input, select, textarea) {
+  border-color: #315a79 !important;
+  background: #091827 !important;
+  color: #f4f9fe !important;
+  color-scheme: dark;
+}
+.theme-dark .customers-page :is(input, select, textarea)::placeholder { color: #7892a9 !important; }
+
+/* Tab selection and filter controls use the same surface hierarchy as Kassa. */
+.theme-dark .customers-page .border-slate-200.bg-slate-50 {
+  border-color: #244765 !important;
+  background: #0b1a2a !important;
+  box-shadow: inset 0 1px 0 rgba(190, 232, 255, 0.035), 0 3px 10px rgba(0, 0, 0, 0.12) !important;
+}
+.theme-dark .customers-page .customer-admin-tab { color: #9fb5c9 !important; }
+.theme-dark .customers-page .customer-admin-tab--active {
+  border-color: #286490 !important;
+  background: #163e5c !important;
+  color: #bce6ff !important;
+  box-shadow: inset 0 0 0 1px rgba(105, 200, 255, 0.1) !important;
+}
+.theme-dark .customers-page .customer-admin-tab:not(.customer-admin-tab--active):hover {
+  background: #173149 !important;
+  color: #edf7ff !important;
+}
+.theme-dark .customers-page button[aria-pressed="true"] {
+  border-color: #286490 !important;
+  background: #163e5c !important;
+  color: #bce6ff !important;
+  box-shadow: inset 0 0 0 1px rgba(105, 200, 255, 0.1) !important;
+}
+.theme-dark .customers-page button[aria-pressed="false"] { color: #9fb5c9 !important; }
+.theme-dark .customers-page button[aria-pressed="false"]:hover {
+  background: #173149 !important;
+  color: #edf7ff !important;
+}
+.theme-dark .customers-page .customer-primary-action {
+  border-color: #1687ad !important;
+  background: #087f9d !important;
+  color: #f7fcff !important;
+  box-shadow: inset 0 1px 0 rgba(214, 249, 255, 0.14), 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+.theme-dark .customers-page .customer-primary-action:hover {
+  border-color: #38bce5 !important;
+  background: #0b98b8 !important;
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.25) !important;
+  transform: translateY(-1px);
+}
+
+/* A table row is interactive; its hover must read as a row state, never as a
+   high-contrast divider. Icons get the same restrained action hover. */
+.theme-dark .customers-page tr.hover\:bg-zinc-800\/60:hover,
+.theme-dark .customers-page .hover\:bg-zinc-800:hover {
+  background: rgba(35, 113, 164, 0.22) !important;
+}
+.theme-dark .customers-page button.hover\:bg-zinc-700:hover {
+  background: #1b425f !important;
+  color: #eef7ff !important;
+}
+.theme-dark .customers-page .hover\:text-white:hover,
+.theme-dark .customers-page .hover\:text-zinc-300:hover { color: #eef7ff !important; }
+.theme-dark .customers-page .hover\:text-slate-800:hover { color: #edf7ff !important; }
+.theme-dark .customers-page .hover\:text-\[\#0e7490\]:hover { color: #69c8ff !important; }
+.theme-dark .customers-page .hover\:bg-white:hover { background: #173149 !important; }
+.theme-dark .customers-page .bg-emerald-600 { background: #117a5f !important; }
+.theme-dark .customers-page .hover\:bg-emerald-500:hover { background: #159673 !important; }
+.theme-dark .customers-page .text-emerald-700 { color: #8ee3bd !important; }
+.theme-dark .customers-page .bg-amber-50 { background: rgba(113, 76, 20, 0.3) !important; }
+.theme-dark .customers-page .text-amber-700 { color: #ffd37b !important; }

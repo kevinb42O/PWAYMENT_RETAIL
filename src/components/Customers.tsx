@@ -2484,9 +2484,9 @@ const AdminTab: React.FC<{
 }> = ({ icon, label, active, onClick }) => (
   <button
     onClick={onClick}
-    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold ${
+    className={`customer-admin-tab flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold ${
       active
-        ? "border border-[#bae6fd] bg-[#f0f9ff] text-[#0e7490]"
+        ? "customer-admin-tab--active border border-[#bae6fd] bg-[#f0f9ff] text-[#0e7490]"
         : "text-slate-500 hover:bg-white hover:text-slate-800"
     }`}
   >
