@@ -1977,7 +1977,7 @@ export const Customers: React.FC = () => {
                               expanded ? null : transactionKey,
                             )
                           }
-                          className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 py-4 text-left hover:bg-slate-50 sm:grid-cols-[150px_minmax(0,1fr)_auto_auto]"
+                          className="customer-transaction-row grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-slate-50 sm:grid-cols-[150px_minmax(0,1fr)_auto_auto]"
                         >
                           <span>
                             <span className="block text-sm font-semibold text-slate-800">

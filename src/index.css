@@ -4552,6 +4552,9 @@ body {
 .theme-dark .customers-page .hover\:bg-zinc-800:hover {
   background: rgba(35, 113, 164, 0.22) !important;
 }
+.theme-dark .customers-page .customer-transaction-row:hover {
+  background: rgba(35, 113, 164, 0.22) !important;
+}
 .theme-dark .customers-page button.hover\:bg-zinc-700:hover {
   background: #1b425f !important;
   color: #eef7ff !important;
