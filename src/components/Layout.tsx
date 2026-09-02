@@ -103,7 +103,7 @@ const Cart = React.lazy(() =>
 
 const ViewLoading = () => (
   <div
-    className="flex flex-1 items-center justify-center bg-slate-50 text-sm font-semibold text-slate-500"
+    className="app-view-loading flex flex-1 items-center justify-center text-sm font-semibold"
     role="status"
     aria-live="polite"
   >

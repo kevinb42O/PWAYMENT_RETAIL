@@ -4,6 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#fbfbfa" />
+    <style>
+      /* This is intentionally in the document shell rather than the app bundle.
+         It paints the persisted canvas before stylesheets and React are ready. */
+      html, body, #root { min-height: 100%; margin: 0; background: #f4f8fb; color: #0f172a; }
+      html[data-theme="dark"], html[data-theme="dark"] body, html[data-theme="dark"] #root {
+        background: #07111f;
+        color: #f3f7fc;
+      }
+    </style>
     <script>
       (() => {
         const appRoute = /^(?:\/app|\/login|\/register|\/settings)(?:\/|$)/.test(window.location.pathname);

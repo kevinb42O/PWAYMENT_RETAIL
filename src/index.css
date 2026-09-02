@@ -1178,6 +1178,14 @@ body {
   background: var(--app-page-bg);
 }
 
+/* Lazy-loaded workspaces replace the main panel for a moment. Keep that
+   hand-off on the active application canvas instead of a hard-coded light
+   Tailwind surface. */
+.app-view-loading {
+  background: var(--app-page-bg);
+  color: var(--app-muted);
+}
+
 /* Slate 500 is a fraction below WCAG AA on the application canvas (#f4f8fb).
    Keep muted copy visually secondary while preserving the required 4.5:1
    contrast ratio everywhere a page uses the shared shell. */
@@ -2580,6 +2588,14 @@ body {
     radial-gradient(circle at 53% -30%, rgba(36, 153, 255, 0.12), transparent 39%),
     var(--app-page-bg) !important;
   color: var(--app-text);
+}
+
+/* `.app-standard` keeps light-mode defaults for the design system. The lazy
+   fallback is mounted inside it, so make its loading canvas explicitly dark
+   rather than inheriting those local defaults during a tab switch. */
+.theme-dark .pos-app-shell .app-view-loading {
+  background: #0d1e31;
+  color: #aabbd0;
 }
 
 /* The application shell contains some mature feature modules that still use
