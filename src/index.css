@@ -5417,3 +5417,11 @@ body {
 .theme-dark .pos-app-shell .receipt-ticket-preview .border-zinc-400 {
   border-color: #a1a1aa !important;
 }
+
+/* The checkout header also carries Tailwind's border-slate-200 utility. The
+   POS compatibility bridge has equal-or-higher specificity, so make this
+   structural divider explicit after that bridge instead of letting it resolve
+   through the light app token. */
+.theme-dark .pos-app-shell .pos-cart-header.border-slate-200 {
+  border-bottom-color: #18344e !important;
+}
