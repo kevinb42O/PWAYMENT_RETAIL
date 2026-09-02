@@ -229,10 +229,18 @@ export const PurchaseOrderWorkflow = ({ refreshKey, onInventoryChanged, view = '
     setFeedback(null);
   };
 
-  if (orders.length === 0) return null;
+  if (orders.length === 0) return (
+    <section className="purchase-workflow purchase-workflow-enter mt-1">
+      <div className="purchase-workflow__empty rounded-2xl border border-zinc-800 px-6 py-12 text-center">
+        <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-zinc-900 text-sky-300"><PackageCheck size={22} /></span>
+        <h3 className="mt-4 text-base font-semibold text-white">Geen inkooporders</h3>
+        <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-zinc-500">Zodra er een bestelling wordt aangemaakt, volgt u hier elke stap van concept tot ontvangst.</p>
+      </div>
+    </section>
+  );
 
   return (
-    <section className="purchase-workflow-enter mt-6 border-t border-zinc-800 pt-6">
+    <section className="purchase-workflow-enter purchase-workflow mt-6 border-t border-zinc-800 pt-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="flex items-center gap-2 text-zinc-300">

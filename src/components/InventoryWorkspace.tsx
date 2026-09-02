@@ -360,7 +360,7 @@ export const InventoryWorkspace = () => {
     : batchLines, [batchLines, changedLinesOnly, mode]);
 
   return (
-    <div className="h-full overflow-y-auto bg-slate-50">
+    <div className="inventory-workspace h-full overflow-y-auto bg-slate-50">
       <div className="mx-auto max-w-7xl space-y-5 p-4 sm:p-6 lg:p-8">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -368,9 +368,9 @@ export const InventoryWorkspace = () => {
             <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-950">Scannen, boeken, klaar</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">Leveringen, fysieke tellingen en correcties krijgen elk hun eigen controleerbare betekenis.</p>
           </div>
-          <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
-            <button type="button" onClick={() => setTab("operations")} className={`rounded-lg px-4 py-2 text-sm font-extrabold ${tab === "operations" ? "bg-slate-950 text-white" : "text-slate-600"}`}>Bijwerken</button>
-            <button type="button" onClick={() => { setTab("orders"); setOrderView("all"); }} className={`rounded-lg px-4 py-2 text-sm font-extrabold ${tab === "orders" ? "bg-slate-950 text-white" : "text-slate-600"}`}>Inkooporders</button>
+          <div className="inventory-workspace__tabs inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+            <button type="button" onClick={() => setTab("operations")} className={`inventory-workspace__tab rounded-lg px-4 py-2 text-sm font-extrabold ${tab === "operations" ? "inventory-workspace__tab--active bg-slate-950 text-white" : "text-slate-600"}`}>Bijwerken</button>
+            <button type="button" onClick={() => { setTab("orders"); setOrderView("all"); }} className={`inventory-workspace__tab rounded-lg px-4 py-2 text-sm font-extrabold ${tab === "orders" ? "inventory-workspace__tab--active bg-slate-950 text-white" : "text-slate-600"}`}>Inkooporders</button>
           </div>
         </header>
 
@@ -386,7 +386,7 @@ export const InventoryWorkspace = () => {
               type="button"
               onClick={item.onClick}
               aria-pressed={item.active}
-              className={`group relative flex min-h-28 cursor-pointer items-center gap-3 overflow-hidden rounded-2xl border bg-white p-4 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] outline-none transition duration-150 active:scale-[0.99] active:bg-[#f3fbfc] focus-visible:ring-2 focus-visible:ring-[#38bdf8] focus-visible:ring-offset-2 ${item.active ? "border-[#8bdce8] ring-1 ring-[#bae6fd]" : "border-slate-200 hover:border-[#8bdce8] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]"}`}
+              className={`inventory-workspace__signal group relative flex min-h-28 cursor-pointer items-center gap-3 overflow-hidden rounded-2xl border bg-white p-4 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] outline-none transition duration-150 active:scale-[0.99] active:bg-[#f3fbfc] focus-visible:ring-2 focus-visible:ring-[#38bdf8] focus-visible:ring-offset-2 ${item.active ? "inventory-workspace__signal--active border-[#8bdce8] ring-1 ring-[#bae6fd]" : "border-slate-200 hover:border-[#8bdce8] hover:shadow-[0_8px_20px_rgba(15,23,42,0.08)]"}`}
             >
               <span aria-hidden="true" className={`h-9 w-1 shrink-0 rounded-full ${item.accent}`} />
               <span className="min-w-0 flex-1">
@@ -402,19 +402,19 @@ export const InventoryWorkspace = () => {
           <>
             <div className="grid gap-3 md:grid-cols-3">
               {modes.map(({ key, label, detail, Icon }) => (
-                <button key={key} type="button" onClick={() => changeMode(key)} aria-pressed={mode === key} className={`flex cursor-pointer items-center gap-3 rounded-2xl border bg-white p-4 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] outline-none transition active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-[#38bdf8] focus-visible:ring-offset-2 ${mode === key ? "border-[#0e7490] ring-1 ring-[#bae6fd]" : "border-slate-200 hover:border-[#8bdce8] hover:shadow-sm"}`}>
+                <button key={key} type="button" onClick={() => changeMode(key)} aria-pressed={mode === key} className={`inventory-workspace__mode flex cursor-pointer items-center gap-3 rounded-2xl border bg-white p-4 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] outline-none transition active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-[#38bdf8] focus-visible:ring-offset-2 ${mode === key ? "inventory-workspace__mode--active border-[#0e7490] ring-1 ring-[#bae6fd]" : "border-slate-200 hover:border-[#8bdce8] hover:shadow-sm"}`}>
                   <span className={`rounded-xl p-2.5 transition ${mode === key ? "bg-[#0e7490] text-white" : "bg-slate-100 text-slate-600"}`}><Icon size={20} /></span>
                   <span><strong className="block text-sm text-slate-950">{label}</strong><span className="mt-0.5 block text-xs text-slate-500">{detail}</span></span>
                 </button>
               ))}
             </div>
-            <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <div className="inventory-workspace__batch flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
               <div><p className="flex items-center gap-2 text-sm font-black text-slate-900"><Layers3 size={17} className="text-sky-700" /> Persistente batchsessie</p><p className="mt-1 text-xs text-slate-500">Scans blijven bewaard na refresh. De volledige sessie slaagt of faalt als één transactie.</p></div>
               <div className="flex flex-wrap gap-2"><button type="button" onClick={() => downloadText("voorraad-import-template.csv", inventoryCsvTemplate())} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700"><Download size={14} /> Template</button><label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700"><Upload size={14} /> CSV preview<input type="file" accept=".csv,text/csv" className="sr-only" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importInventoryFile(file); event.target.value = ""; }} /></label><button type="button" role="switch" aria-checked={batchActive} onClick={() => { if (batchActive && batchLines.length > 0) { setFeedback({ tone: "error", text: "Wis of verwerk de actieve sessie voordat u batchmodus afsluit." }); return; } if (!batchActive) { setBatchStartedAt(Date.now()); setBatchSource("scan"); } setBatchActive((active) => !active); }} className={`rounded-xl px-4 py-2 text-sm font-extrabold ${batchActive ? "bg-sky-700 text-white" : "border border-slate-300 bg-white text-slate-700"}`}>{batchActive ? `Batch actief · ${batchLines.length}` : "Batch starten"}</button></div>
             </div>
 
             <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
-              <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+              <section className="inventory-workspace__panel inventory-workspace__scan-panel rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                 <label className="block text-sm font-extrabold text-slate-800" htmlFor="inventory-search"><span className="flex items-center gap-2"><ScanLine size={18} className="text-sky-700" /> Scan barcode of zoek product</span></label>
                 <div className="mt-2 flex gap-2">
                   <div className="relative min-w-0 flex-1">
@@ -454,14 +454,14 @@ export const InventoryWorkspace = () => {
                 {batchActive && batchLines.length > 0 && <section className="mt-5 border-t border-slate-100 pt-5"><div className="flex items-start justify-between gap-3"><div><h2 className="text-sm font-black text-slate-900">Actieve sessie · {batchLines.length} SKU's</h2><p className="mt-1 text-[11px] font-semibold text-slate-500">{batchSource === "csv" ? "CSV-preview" : "Scansessie"} · gestart {new Intl.DateTimeFormat("nl-BE", { dateStyle: "short", timeStyle: "short" }).format(batchStartedAt)}</p></div><div className="flex flex-col items-end gap-1"><button type="button" onClick={() => setChangedLinesOnly((current) => !current)} className="text-xs font-bold text-sky-700">{changedLinesOnly ? "Toon alle lijnen" : "Alleen gewijzigd"}</button><button type="button" onClick={() => setBatchLines([])} className="inline-flex items-center gap-1 text-xs font-bold text-rose-700"><Trash2 size={14} /> Wissen</button></div></div><div className="mt-3 space-y-2">{visibleBatchLines.map((line) => { const product = batchProducts.get(line.productId); return <div key={line.productId} className="grid gap-2 rounded-xl border border-slate-200 p-3 sm:grid-cols-[minmax(0,1fr)_110px_36px] sm:items-center"><div><strong className="block truncate text-sm text-slate-900">{product?.name ?? line.productId}</strong><span className="text-xs text-slate-500">Startstand {line.expectedStockQty}</span></div><input aria-label={`Sessieaantal voor ${product?.name ?? line.productId}`} type="number" value={line.quantity} onChange={(event) => setBatchLines((current) => current.map((item) => item.productId === line.productId ? { ...item, quantity: Number(event.target.value) } : item))} className="h-9 rounded-lg border border-slate-300 px-2 text-center font-bold" /><button type="button" aria-label={`${product?.name ?? line.productId} uit sessie verwijderen`} onClick={() => setBatchLines((current) => current.filter((item) => item.productId !== line.productId))} className="text-slate-400 hover:text-rose-700"><Trash2 size={16} /></button></div>; })}{visibleBatchLines.length === 0 && <p className="rounded-xl bg-slate-50 p-3 text-xs font-semibold text-slate-500">Geen gewijzigde lijnen in deze telling.</p>}</div><button type="button" disabled={!canMutate || busy} onClick={() => void saveBatch()} className="mt-4 h-12 w-full rounded-xl bg-slate-950 text-sm font-black text-white disabled:opacity-50">{busy ? "Volledige batch valideren…" : `Verwerk ${batchLines.length} SKU's atomisch`}</button></section>}
               </section>
 
-              <aside className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <aside className="inventory-workspace__panel inventory-workspace__ledger rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-center justify-between gap-2"><h2 className="flex items-center gap-2 text-sm font-black text-slate-900"><History size={17} className="text-sky-700" /> Voorraadspoor</h2>{selected && allMovements.length > 0 && <button type="button" onClick={exportSelectedLedger} className="inline-flex items-center gap-1 text-xs font-bold text-sky-700"><Download size={13} /> Alles als CSV</button>}</div>
                 {!selected ? <p className="mt-4 text-sm leading-6 text-slate-500">Selecteer een product om zijn controleerbare voorraadspoor te zien.</p> : allMovements.length === 0 ? <p className="mt-4 text-sm text-slate-500">Nog geen bewegingen voor dit product.</p> : <><ol className="mt-4 space-y-3">{allMovements.slice(0, 20).map((movement, index) => <li key={movement.id ?? `${movement.timestamp}-${index}`} className="rounded-xl border border-slate-100 bg-slate-50 p-3"><div className="flex items-center justify-between gap-3"><span className="text-xs font-extrabold text-slate-700">{movementLabels[movement.reason]}</span><strong className={movement.quantityDelta >= 0 ? "text-emerald-700" : "text-rose-700"}>{movement.quantityDelta >= 0 ? "+" : ""}{movement.quantityDelta}</strong></div><p className="mt-1 text-[11px] text-slate-500">{new Intl.DateTimeFormat("nl-BE", { dateStyle: "short", timeStyle: "short" }).format(movement.timestamp)}{movement.adjustmentReason ? ` · ${reasonLabels[movement.adjustmentReason]}` : ""}</p>{movement.quantityAfter != null && <p className="mt-1 text-xs font-semibold text-slate-600">Stand na boeking: {movement.quantityAfter}</p>}</li>)}</ol>{allMovements.length > 20 && <p className="mt-3 text-xs font-semibold text-slate-500">{allMovements.length - 20} oudere bewegingen staan mee in de volledige CSV-export.</p>}</>}
               </aside>
             </div>
           </>
         ) : canManageOrders ? (
-          <section className="rounded-3xl bg-zinc-950 p-5 shadow-sm sm:p-7"><PurchaseOrderWorkflow refreshKey={0} onInventoryChanged={refresh} view={orderView} /></section>
+          <section className="inventory-workspace__orders rounded-3xl bg-zinc-950 p-5 shadow-sm sm:p-7"><PurchaseOrderWorkflow refreshKey={0} onInventoryChanged={refresh} view={orderView} /></section>
         ) : (
           <section className="rounded-3xl border border-amber-200 bg-amber-50 p-8 text-center"><h2 className="font-black text-amber-950">Inkooporders zijn niet actief in dit abonnement</h2><p className="mt-2 text-sm text-amber-800">De operationele voorraadmodule blijft beschikbaar voor leveringen, tellingen en correcties.</p></section>
         )}

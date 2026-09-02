@@ -4569,3 +4569,178 @@ body {
 .theme-dark .customers-page .text-emerald-700 { color: #8ee3bd !important; }
 .theme-dark .customers-page .bg-amber-50 { background: rgba(113, 76, 20, 0.3) !important; }
 .theme-dark .customers-page .text-amber-700 { color: #ffd37b !important; }
+
+/* Voorraad is an operational workspace with a large number of legacy light
+   utility classes. Scope its dark contract to the workspace so every state —
+   scanning, counting, corrections, batch work and purchase orders — uses one
+   calm midnight hierarchy without changing the finished light experience. */
+.theme-dark .pos-app-shell .inventory-workspace {
+  min-height: 100%;
+  background:
+    radial-gradient(circle at 50% -30%, rgba(36, 153, 255, 0.1), transparent 38%),
+    #07111f !important;
+  color: #e5f0fa !important;
+}
+.theme-dark .pos-app-shell .inventory-workspace.bg-slate-50 {
+  background-color: #07111f !important;
+}
+.theme-dark .inventory-workspace .bg-white { background: #10263a !important; }
+.theme-dark .inventory-workspace .bg-slate-50,
+.theme-dark .inventory-workspace .bg-slate-50\/70 { background: #0b1a2a !important; }
+.theme-dark .inventory-workspace .bg-slate-100 { background: #173149 !important; }
+.theme-dark .inventory-workspace .bg-sky-50,
+.theme-dark .inventory-workspace .bg-sky-50\/70,
+.theme-dark .inventory-workspace .bg-\[\#f0f9ff\] { background: #123b59 !important; }
+.theme-dark .inventory-workspace .bg-emerald-50 { background: rgba(19, 92, 67, 0.34) !important; }
+.theme-dark .inventory-workspace .bg-rose-50 { background: rgba(113, 34, 54, 0.3) !important; }
+.theme-dark .inventory-workspace .bg-amber-50 { background: rgba(113, 76, 20, 0.3) !important; }
+.theme-dark .inventory-workspace .bg-slate-950 {
+  border-color: #1687ad !important;
+  background: #087f9d !important;
+  color: #f7fcff !important;
+}
+.theme-dark .inventory-workspace .bg-sky-700 { background: #087f9d !important; }
+.theme-dark .inventory-workspace :is(.border-slate-100, .border-slate-200, .border-slate-300, .border-sky-100, .border-\[\#bae6fd\]) {
+  border-color: #1c3d59 !important;
+}
+.theme-dark .inventory-workspace .border-emerald-200 { border-color: #2b6b58 !important; }
+.theme-dark .inventory-workspace .border-rose-200 { border-color: #814252 !important; }
+.theme-dark .inventory-workspace .border-amber-200 { border-color: #80652f !important; }
+.theme-dark .inventory-workspace :is(.text-slate-950, .text-slate-900, .text-slate-800) { color: #f4f9fe !important; }
+.theme-dark .inventory-workspace .text-slate-700 { color: #d5e2ee !important; }
+.theme-dark .inventory-workspace :is(.text-slate-600, .text-slate-500) { color: #9fb5c9 !important; }
+.theme-dark .inventory-workspace .text-slate-400 { color: #7892a9 !important; }
+.theme-dark .inventory-workspace .text-sky-700,
+.theme-dark .inventory-workspace .text-\[\#0e7490\] { color: #69c8ff !important; }
+.theme-dark .inventory-workspace .text-emerald-700,
+.theme-dark .inventory-workspace .text-emerald-800 { color: #8ee3bd !important; }
+.theme-dark .inventory-workspace .text-rose-700,
+.theme-dark .inventory-workspace .text-rose-800 { color: #ffafbd !important; }
+.theme-dark .inventory-workspace .text-amber-900 { color: #ffd37b !important; }
+.theme-dark .inventory-workspace :is(input, select, textarea) {
+  border-color: #315a79 !important;
+  background: #091827 !important;
+  color: #f4f9fe !important;
+  color-scheme: dark;
+}
+.theme-dark .inventory-workspace :is(input, textarea)::placeholder { color: #7892a9 !important; }
+.theme-dark .inventory-workspace option { background: #10263a; color: #f4f9fe; }
+.theme-dark .inventory-workspace :is(input, select, textarea):focus {
+  border-color: #38bce5 !important;
+  box-shadow: 0 0 0 3px rgba(56, 188, 229, 0.16) !important;
+}
+
+/* Tabs, signal cards and mode cards share a single selectable-control state. */
+.theme-dark .inventory-workspace__tabs {
+  border-color: #244765 !important;
+  background: #0b1a2a !important;
+  box-shadow: inset 0 1px 0 rgba(190, 232, 255, 0.035), 0 3px 10px rgba(0, 0, 0, 0.12) !important;
+}
+.theme-dark .inventory-workspace__tab { color: #9fb5c9 !important; transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease; }
+.theme-dark .inventory-workspace__tab:hover { background: #173149 !important; color: #edf7ff !important; }
+.theme-dark .inventory-workspace__tab--active {
+  background: #163e5c !important;
+  color: #bce6ff !important;
+  box-shadow: inset 0 0 0 1px rgba(105, 200, 255, 0.13) !important;
+}
+.theme-dark .inventory-workspace__signal,
+.theme-dark .inventory-workspace__mode,
+.theme-dark .inventory-workspace__batch,
+.theme-dark .inventory-workspace__panel {
+  border-color: #224663 !important;
+  background: linear-gradient(145deg, #10263a, #0d2033) !important;
+  box-shadow: inset 0 1px 0 rgba(197, 233, 255, 0.035), 0 8px 22px rgba(0, 0, 0, 0.13) !important;
+}
+.theme-dark .inventory-workspace__signal,
+.theme-dark .inventory-workspace__mode {
+  transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+.theme-dark .inventory-workspace__signal:hover,
+.theme-dark .inventory-workspace__mode:hover {
+  border-color: #3a7197 !important;
+  background: #173149 !important;
+  box-shadow: inset 0 1px 0 rgba(197, 233, 255, 0.05), 0 8px 20px rgba(0, 0, 0, 0.21) !important;
+  transform: translateY(-1px);
+}
+.theme-dark .inventory-workspace__signal--active,
+.theme-dark .inventory-workspace__mode--active {
+  border-color: #286490 !important;
+  background: linear-gradient(145deg, #163e5c, #102b42) !important;
+  box-shadow: inset 0 0 0 1px rgba(105, 200, 255, 0.12), 0 8px 22px rgba(0, 0, 0, 0.16) !important;
+}
+.theme-dark .inventory-workspace__signal--active:hover,
+.theme-dark .inventory-workspace__mode--active:hover { border-color: #4b8ab3 !important; background: #194662 !important; }
+.theme-dark .inventory-workspace__mode[aria-pressed="true"] > span:first-child { background: #087f9d !important; color: #f7fcff !important; }
+.theme-dark .inventory-workspace__mode[aria-pressed="false"] > span:first-child { background: #173149 !important; color: #9fb5c9 !important; }
+
+/* Secondary controls remain visibly actionable; primary booking actions carry
+   the cyan confirmation affordance used in Kassa and Dagafsluiting. */
+.theme-dark .inventory-workspace :is(button, label)[class*="border-slate-300"] {
+  border-color: #315a79 !important;
+  background: #10263a !important;
+  color: #d5e2ee !important;
+  transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+.theme-dark .inventory-workspace :is(button, label)[class*="border-slate-300"]:hover {
+  border-color: #4a82aa !important;
+  background: #193d58 !important;
+  color: #f6fbff !important;
+  box-shadow: 0 4px 13px rgba(0, 0, 0, 0.2) !important;
+  transform: translateY(-1px);
+}
+.theme-dark .inventory-workspace button.bg-slate-950,
+.theme-dark .inventory-workspace button.bg-sky-700 {
+  border: 1px solid #1687ad !important;
+  background: #087f9d !important;
+  color: #f7fcff !important;
+  box-shadow: inset 0 1px 0 rgba(214, 249, 255, 0.14), 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+.theme-dark .inventory-workspace button.bg-slate-950:hover,
+.theme-dark .inventory-workspace button.bg-sky-700:hover {
+  border-color: #38bce5 !important;
+  background: #0b98b8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.25) !important;
+  transform: translateY(-1px);
+}
+.theme-dark .inventory-workspace button[role="switch"][aria-checked="true"] { border: 1px solid #1687ad !important; background: #087f9d !important; color: #f7fcff !important; }
+.theme-dark .inventory-workspace button[role="switch"][aria-checked="false"] { border-color: #315a79 !important; background: #10263a !important; color: #d5e2ee !important; }
+.theme-dark .inventory-workspace .hover\:bg-sky-50:hover,
+.theme-dark .inventory-workspace .hover\:bg-slate-50:hover { background: #173149 !important; }
+.theme-dark .inventory-workspace .hover\:text-rose-700:hover { color: #ffafbd !important; }
+
+/* Inkooporders lives inside Voorraad but has its own zinc palette. Give its
+   cards, order rows, fields and receive actions the same exact dark tokens. */
+.theme-dark .inventory-workspace__orders {
+  background: linear-gradient(145deg, #0d2033, #091827) !important;
+  box-shadow: inset 0 1px 0 rgba(197, 233, 255, 0.035), 0 8px 22px rgba(0, 0, 0, 0.16) !important;
+}
+.theme-dark .purchase-workflow__empty {
+  border-color: #1c3d59 !important;
+  background: linear-gradient(145deg, #10263a, #0d2033) !important;
+  box-shadow: inset 0 1px 0 rgba(197, 233, 255, 0.035) !important;
+}
+.theme-dark .purchase-workflow :is(.bg-zinc-950, .bg-zinc-950\/55, .bg-zinc-950\/60) { background: #091827 !important; }
+.theme-dark .purchase-workflow :is(.bg-zinc-900, .bg-zinc-900\/40, .bg-zinc-900\/60) { background: #10263a !important; }
+.theme-dark .purchase-workflow :is(.border-zinc-700, .border-zinc-800) { border-color: #1c3d59 !important; }
+.theme-dark .purchase-workflow :is(.text-white, .text-zinc-300) { color: #f4f9fe !important; }
+.theme-dark .purchase-workflow :is(.text-zinc-500, .text-zinc-600) { color: #9fb5c9 !important; }
+.theme-dark .purchase-workflow .hover\:bg-zinc-900\/60:hover { background: #173149 !important; }
+.theme-dark .purchase-workflow :is(input, select) { border-color: #315a79 !important; background: #091827 !important; color: #f4f9fe !important; }
+.theme-dark .purchase-workflow button:not(:disabled) { transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease, box-shadow 150ms ease, transform 150ms ease; }
+.theme-dark .purchase-workflow button.border-emerald-400\/30:hover { border-color: #54bf96 !important; background: rgba(30, 118, 86, 0.32) !important; color: #d0f8e2 !important; transform: translateY(-1px); }
+.theme-dark .purchase-workflow button.bg-emerald-400 { background: #117a5f !important; color: #f2fffa !important; }
+.theme-dark .purchase-workflow button.bg-emerald-400:hover { background: #159673 !important; transform: translateY(-1px); box-shadow: 0 5px 16px rgba(0, 0, 0, 0.25) !important; }
+
+/* Keep a selected workspace tab distinct from a confirm/commit action. */
+.theme-dark .inventory-workspace button.inventory-workspace__tab--active {
+  border-color: transparent !important;
+  background: #163e5c !important;
+  color: #bce6ff !important;
+  box-shadow: inset 0 0 0 1px rgba(105, 200, 255, 0.13) !important;
+}
+.theme-dark .inventory-workspace button.inventory-workspace__tab--active:hover {
+  background: #194662 !important;
+  color: #e8f7ff !important;
+}
