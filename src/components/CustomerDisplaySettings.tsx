@@ -155,7 +155,7 @@ export const CustomerDisplaySettings = () => {
   return (
     <div className="space-y-7">
       <section
-        className={`overflow-hidden rounded-3xl border ${
+        className={`customer-display-hero overflow-hidden rounded-3xl border ${
           config.enabled
             ? "border-cyan-200 bg-gradient-to-br from-cyan-50 via-white to-slate-50"
             : "border-slate-200 bg-slate-50"

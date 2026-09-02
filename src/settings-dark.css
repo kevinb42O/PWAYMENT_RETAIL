@@ -130,6 +130,29 @@
 .theme-dark .settings-workspace .pace-settings-hero :is(.ring-emerald-200, .ring-slate-200) { --tw-ring-color: #3d8a7c !important; }
 .theme-dark .settings-workspace .pace-settings-hero :is(.text-emerald-700, .text-emerald-600) { color: #8ee3bd !important; }
 
+/* The customer-display module has a deliberately bright setup card in light
+   mode. Give that named surface a full dark treatment rather than leaving its
+   cyan-to-white gradient behind the dark-mode text colours. */
+.theme-dark .settings-workspace .customer-display-hero {
+  border-color: #286490 !important;
+  background:
+    radial-gradient(circle at 88% 8%, rgba(54, 188, 229, 0.17), transparent 34%),
+    linear-gradient(135deg, #102d45 0%, #10263a 52%, #0c1d30 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(197, 233, 255, 0.06), 0 14px 30px rgba(0, 0, 0, 0.15) !important;
+}
+.theme-dark .settings-workspace .customer-display-hero > div:last-child {
+  border-color: #1c3d59 !important;
+  background: rgba(7, 17, 31, 0.58) !important;
+}
+.theme-dark .settings-workspace .customer-display-hero :is(.text-slate-950, .text-slate-900) { color: #f4f9fe !important; }
+.theme-dark .settings-workspace .customer-display-hero .text-slate-600 { color: #b7cbdd !important; }
+.theme-dark .settings-workspace .customer-display-hero .text-slate-500 { color: #91abc1 !important; }
+.theme-dark .settings-workspace .customer-display-hero .text-slate-400 { color: #789cb0 !important; }
+.theme-dark .settings-workspace .customer-display-hero :is(.bg-white, .bg-white\/70) {
+  border-color: #315a79 !important;
+  background-color: rgba(13, 35, 53, 0.9) !important;
+}
+
 /* Forms, navigation and actions ----------------------------------------- */
 .theme-dark :is(.settings-workspace, .admin-workspace) :is(input, select, textarea) {
   border-color: #315a79 !important;
