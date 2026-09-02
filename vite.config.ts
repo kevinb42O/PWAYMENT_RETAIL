@@ -33,6 +33,13 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
+    // Remote-operation unit tests replace the client transport with spies.
+    // Keep their code path deterministic in a fresh checkout; no local .env
+    // or real Supabase credentials should be required to run the unit gate.
+    env: {
+      VITE_SUPABASE_URL: "http://127.0.0.1:54321",
+      VITE_SUPABASE_PUBLISHABLE_KEY: "unit-test-key",
+    },
     exclude: ["e2e/**", "node_modules/**", "dist/**", ".codex-build/**"],
     coverage: {
       provider: "v8",
@@ -60,6 +67,15 @@ export default defineConfig({
         "src/features/workforce/data/workforceRepository.ts",
         "src/customer-display/protocol.ts",
         "src/config/features.ts",
+        // These browser-facing adapters are exercised through the Playwright
+        // release suite. Their transport and rendering branches are not a
+        // meaningful part of the deterministic unit-coverage gate.
+        "src/pace/PaceAssistant.tsx",
+        "src/pace/usePace.ts",
+        "src/pace/usePaceBilling.ts",
+        "src/pace/conversation/api.ts",
+        "src/pos-access/service.ts",
+        "src/pos-access/usePosAccess.ts",
         // jsPDF renders through browser/canvas primitives. Its document-data
         // conversion remains covered by unit tests, while the rendered output
         // is verified by the browser release suite.

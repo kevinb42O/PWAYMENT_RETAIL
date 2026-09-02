@@ -25,7 +25,7 @@ export const test = base.extend<AppFixtures>({
 export { expect } from "@playwright/test";
 
 export const unlockPos = async (page: Page, pin = "123456"): Promise<void> => {
-  const gate = page.getByRole("heading", { name: "Voer je PIN in" });
+  const gate = page.getByRole("heading", { name: "Aanmelden op de kassa" });
   const catalog = page.getByRole("searchbox", { name: "Scan barcode of zoek product" });
   await Promise.race([
     gate.waitFor({ state: "visible", timeout: 20_000 }),

@@ -26,6 +26,21 @@ const resolveCategoryId = async (
       .filter((candidate) => candidate.serverId === row.category_id)
       .first();
     if (category) return category.id;
+
+    // A cache from before `serverId` was introduced already has the correct
+    // local category identity. Repair it locally instead of waiting on an
+    // unnecessary network lookup, which also keeps Realtime updates usable
+    // while the device is offline.
+    const legacyCategory = await db.categories
+      .filter(
+        (candidate) =>
+          !candidate.serverId
+          && normalizedCategoryName(candidate.name)
+            === normalizedCategoryName(row.category_name),
+      )
+      .first();
+    if (legacyCategory) return legacyCategory.id;
+
     const { data: remoteCategory } = await supabase
       .from("categories")
       .select("external_id")
