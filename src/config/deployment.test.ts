@@ -20,8 +20,8 @@ const config = JSON.parse(
 ) as VercelConfig;
 
 describe("Vercel deployment routing", () => {
-  it("leaves production publishing to the verified GitHub Actions workflow", () => {
-    expect(config.git.deploymentEnabled.main).toBe(false);
+  it("allows Vercel to publish production from main", () => {
+    expect(config.git.deploymentEnabled.main).toBe(true);
   });
 
   it("serves prerendered HTML on canonical extensionless URLs", () => {
