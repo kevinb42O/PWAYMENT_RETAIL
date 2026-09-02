@@ -1601,7 +1601,7 @@ export const Layout: React.FC = () => {
               ) : (
                 <div className="relative flex min-w-0 w-full h-full overflow-hidden">
                   <div
-                    className={`pos-product-stage-frame min-w-0 flex-1 h-full ${desktopCartPinned || desktopCartOpen ? "border-r border-slate-200" : ""}`}
+                    className={`pos-product-stage-frame min-w-0 flex-1 h-full ${desktopCartPinned || desktopCartOpen ? "pos-product-stage-frame--with-cart" : ""}`}
                   >
                     <Menu
                       query={productQuery}
@@ -1614,7 +1614,7 @@ export const Layout: React.FC = () => {
                   </div>
                   <div
                     ref={desktopCartPanelRef}
-                    className={`pos-cart-panel-frame ${desktopCartVisible ? "pos-cart-panel-frame--open" : "pos-cart-panel-frame--closed"} h-full bg-white`}
+                    className={`pos-cart-panel-frame ${desktopCartVisible ? "pos-cart-panel-frame--open" : "pos-cart-panel-frame--closed"} h-full`}
                     aria-hidden={!desktopCartVisible}
                     inert={!desktopCartVisible ? true : undefined}
                     role="region"
@@ -1642,7 +1642,7 @@ export const Layout: React.FC = () => {
                   <aside
                     aria-label="Compacte winkelwagen"
                     aria-hidden={desktopCartVisible}
-                    className={`pos-cart-dock relative z-40 h-full shrink-0 bg-white shadow-[-4px_0_18px_rgba(15,23,42,0.06)] print:hidden ${desktopCartVisible ? "pos-cart-dock--hidden" : "pos-cart-dock--open"}`}
+                    className={`pos-cart-dock relative z-40 h-full shrink-0 print:hidden ${desktopCartVisible ? "pos-cart-dock--hidden" : "pos-cart-dock--open"}`}
                   >
                     <button
                       type="button"

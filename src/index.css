@@ -3548,3 +3548,162 @@ body {
 }
 .theme-dark .cash-payment-insufficient { color: #ffd17b !important; }
 .theme-dark .cash-payment-hint { color: #829ab1 !important; }
+
+/* Kassa surface contract --------------------------------------------------
+   The compact cart is a continuation of the POS canvas, never a detached
+   white sidebar. These rules deliberately avoid utility-class collisions. */
+.pos-product-stage-frame--with-cart {
+  border-right: 1px solid #dbe7f0;
+}
+
+.pos-cart-panel-frame {
+  background: #ffffff;
+}
+
+.pos-cart-dock {
+  border-left: 1px solid #dbe7f0;
+  background: #f8fbfd;
+  box-shadow: -10px 0 26px rgba(15, 23, 42, 0.045);
+}
+
+.pos-cart-dock-button {
+  background: transparent;
+}
+
+.pos-checkout {
+  border-top: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.theme-dark .pos-product-stage-frame--with-cart {
+  border-right-color: #17334c !important;
+}
+
+.theme-dark .pos-cart-panel-frame {
+  background: #0b1a2a !important;
+}
+
+.theme-dark .pos-cart-dock {
+  border-left-color: #17334c !important;
+  background: #0a1827 !important;
+  box-shadow: -14px 0 30px rgba(0, 0, 0, 0.16) !important;
+}
+
+.theme-dark .pos-cart-dock-button,
+.theme-dark .pos-cart-dock-button:hover {
+  background: transparent !important;
+}
+
+.theme-dark .pos-checkout {
+  border-top-color: #23435f !important;
+  background: #0c1c2d !important;
+  box-shadow: none !important;
+}
+
+/* The Kassa settings menu presents both modes as choices. The selected option
+   always names the mode currently in use, so light mode never masquerades as
+   a dark-mode control. */
+.theme-mode-picker {
+  border: 1px solid #dbe7f0;
+  border-radius: 12px;
+  background: #f8fbfd;
+  padding: 10px;
+}
+
+.theme-mode-picker__heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #1e293b;
+}
+
+.theme-mode-picker__icon {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 8px;
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.theme-mode-picker__title,
+.theme-mode-picker__description {
+  display: block;
+}
+
+.theme-mode-picker__title {
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.theme-mode-picker__description {
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.theme-mode-picker__choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 9px;
+  padding: 3px;
+  border-radius: 9px;
+  background: #e9f1f6;
+}
+
+.theme-mode-picker__choice {
+  display: inline-flex;
+  min-height: 31px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+
+.theme-mode-picker__choice:hover {
+  color: #1e293b;
+}
+
+.theme-mode-picker__choice--active {
+  border-color: #c9dce9;
+  background: #ffffff;
+  color: #0f4f77;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.1);
+}
+
+.theme-mode-picker__choice:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+.theme-dark .theme-mode-picker {
+  border-color: #294b6a !important;
+  background: #102438 !important;
+}
+
+.theme-dark .theme-mode-picker__heading { color: #eaf3fb !important; }
+.theme-dark .theme-mode-picker__icon {
+  background: #173a59 !important;
+  color: #7dd3fc !important;
+}
+.theme-dark .theme-mode-picker__description { color: #91a8bd !important; }
+.theme-dark .theme-mode-picker__choices { background: #091827 !important; }
+.theme-dark .theme-mode-picker__choice { color: #9fb4c7 !important; }
+.theme-dark .theme-mode-picker__choice:hover { color: #eef7ff !important; }
+.theme-dark .theme-mode-picker__choice--active {
+  border-color: #3a6a8e !important;
+  background: #173a59 !important;
+  color: #c9ecff !important;
+  box-shadow: inset 0 1px 0 rgba(220, 246, 255, 0.07), 0 1px 2px rgba(0, 0, 0, 0.26) !important;
+}

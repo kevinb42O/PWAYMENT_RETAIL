@@ -973,7 +973,7 @@ export const Cart: React.FC<CartProps> = ({
   };
 
   return (
-    <div className="pos-cart flex flex-col h-full border-l border-slate-200">
+    <div className="pos-cart flex flex-col h-full">
       <div className="pos-cart-header px-4 py-4 border-b border-slate-200 flex justify-between items-start">
         <div>
           <div className="flex items-center gap-2">
@@ -1328,7 +1328,7 @@ export const Cart: React.FC<CartProps> = ({
         )}
       </div>
 
-      <div className="pos-checkout border-t border-zinc-200 bg-white p-4">
+      <div className="pos-checkout p-4">
         {vatBlockers.length > 0 && (
           <div className="mb-3 flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-800">
             <AlertTriangle size={16} className="mt-px flex-shrink-0" />
