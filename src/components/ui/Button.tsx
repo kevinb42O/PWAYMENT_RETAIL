@@ -36,6 +36,7 @@ export const Button = ({
     // onClick inside a form is the form's primary action, so it must submit.
     // Callers can always override this explicitly with `type`.
     type={type ?? (props.onClick ? "button" : "submit")}
+    data-button-variant={variant}
     className={cn(
       "inline-flex items-center justify-center border font-semibold transition-colors",
       "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#38bdf8] focus-visible:ring-offset-2",

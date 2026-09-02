@@ -4190,6 +4190,45 @@ body {
   color: #f3f7fc !important;
 }
 
+/* Shared Button contract --------------------------------------------------
+   Components declare their intent, so dark mode never has to infer it from a
+   light Tailwind utility. This applies across every app workspace. */
+.theme-dark .pos-app-shell button[data-button-variant="secondary"] {
+  border-color: #315a79 !important;
+  background: #10263a !important;
+  color: #dbe9f5 !important;
+  box-shadow: inset 0 1px 0 rgba(210, 239, 255, 0.045), 0 1px 2px rgba(0, 0, 0, 0.22) !important;
+}
+.theme-dark .pos-app-shell button[data-button-variant="secondary"]:hover:not(:disabled) {
+  border-color: #4b82a8 !important;
+  background: #193d58 !important;
+  color: #f5faff !important;
+}
+.theme-dark .pos-app-shell button[data-button-variant="quiet"] {
+  color: #aabed0 !important;
+}
+.theme-dark .pos-app-shell button[data-button-variant="quiet"]:hover:not(:disabled) {
+  background: #173752 !important;
+  color: #eef7ff !important;
+}
+.theme-dark .pos-app-shell button[data-button-variant="danger"] {
+  border-color: #794354 !important;
+  background: #10263a !important;
+  color: #ffadb9 !important;
+}
+.theme-dark .pos-app-shell button[data-button-variant="danger"]:hover:not(:disabled) {
+  border-color: #a6576a !important;
+  background: rgba(104, 32, 49, 0.38) !important;
+  color: #ffd5dc !important;
+}
+.theme-dark .pos-app-shell button[data-button-variant]:disabled {
+  border-color: #25445f !important;
+  background: #0c1b2b !important;
+  color: #71889d !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+}
+
 /* Transaction actions have an intentionally tangible hover in dark mode. */
 .theme-dark .history-workspace .history-return-action,
 .theme-dark .history-workspace .history-view-action {

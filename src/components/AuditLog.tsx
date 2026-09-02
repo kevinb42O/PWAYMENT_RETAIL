@@ -393,22 +393,22 @@ export const AuditLog: React.FC<AuditLogProps> = ({
                 <ScanLine size={16} /> Retour via ticket
               </Button>
             )}
-            <button
+            <Button
               type="button"
               onClick={exportCSV}
               disabled={exportDisabled}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-cyan-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45"
+              className="min-h-10 px-3.5 text-sm"
             >
               <FileText size={16} /> CSV
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={exportJSON}
               disabled={exportDisabled}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-cyan-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45"
+              className="min-h-10 px-3.5 text-sm"
             >
               <FileJson size={16} /> JSON
-            </button>
+            </Button>
           </div>
         </header>
 
