@@ -162,6 +162,7 @@ export const InvoiceCustomerModal: React.FC<Props> = ({ open, linkedCustomer, on
     onClose={onClose}
     title="Factuur opmaken"
     size="lg"
+    className="pos-checkout-dialog pos-invoice-customer-modal"
     footer={editing ? <div className="flex justify-end gap-2">
       <Button variant="secondary" onClick={() => setMode("search")} disabled={saving}>Terug</Button>
       <Button variant="primary" onClick={() => void save()} disabled={saving}>{saving ? "Opslaan…" : selected ? "Bijwerken en koppelen" : "Klant toevoegen en koppelen"}</Button>

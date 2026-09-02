@@ -83,6 +83,7 @@ export const SplitPaymentModal: React.FC<Props> = ({
         subtitle="Voer alleen het kaartbedrag in; het cash-restant wordt automatisch berekend en volgens de 5-centregel afgerond."
       size="lg"
       variant="light"
+      className="pos-checkout-dialog pos-split-payment-modal"
       footer={
         <div className="flex flex-wrap justify-between gap-2">
           <button

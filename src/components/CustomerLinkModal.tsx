@@ -46,7 +46,7 @@ export const CustomerLinkModal: React.FC<Props> = ({ open, onClose, onLink }) =>
   }, [search, activeCustomers]);
 
   return (
-    <Modal open={open} onClose={onClose} title="Klant koppelen" size="lg">
+    <Modal className="pos-checkout-dialog pos-customer-link-modal" open={open} onClose={onClose} title="Klant koppelen" size="lg">
       <div className="space-y-4">
         <div className="relative">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />

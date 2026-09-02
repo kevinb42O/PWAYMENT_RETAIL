@@ -265,6 +265,7 @@ export const GiftCardPaymentModal: React.FC<Props> = ({
       title="Cadeaubonbetaling"
       size="lg"
       variant="light"
+      className="pos-checkout-dialog pos-gift-card-payment-modal"
     >
       <div className="space-y-5">
         {/* Header Summary */}

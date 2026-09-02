@@ -3493,18 +3493,18 @@ body {
 .cash-payment-hint { color: #94a3b8; }
 
 .theme-dark .cash-payment-modal {
-  border-color: #2a4b69 !important;
-  background: #0d1e31 !important;
+  border-color: #315a79 !important;
+  background: linear-gradient(145deg, #10263a, #0b1c2d) !important;
   color: #eaf3fb !important;
-  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.52) !important;
+  box-shadow: 0 28px 84px rgba(0, 0, 0, 0.62), inset 0 1px 0 rgba(205, 238, 255, 0.05) !important;
 }
 .theme-dark .cash-payment-modal > div:first-child {
-  border-color: #23405d !important;
-  background: #102438 !important;
+  border-color: #294b6a !important;
+  background: linear-gradient(180deg, #132d44, #10263a) !important;
 }
 .theme-dark .cash-payment-modal > div:last-child {
-  border-color: #23405d !important;
-  background: #102438 !important;
+  border-color: #294b6a !important;
+  background: #0f2539 !important;
 }
 .theme-dark .cash-payment-stat {
   border-color: #294b6a !important;
@@ -3521,8 +3521,17 @@ body {
 }
 .theme-dark .cash-payment-input-shell:focus-within { box-shadow: 0 0 0 4px rgba(111, 198, 255, 0.25) !important; }
 .theme-dark .cash-payment-currency { color: #7690aa !important; }
-.theme-dark .cash-payment-input { color: #f5f9fd !important; }
+.theme-dark .cash-payment-input {
+  color: #f7fbff !important;
+  -webkit-text-fill-color: #f7fbff;
+  caret-color: #7dd3fc;
+}
 .theme-dark .cash-payment-input::placeholder { color: #4e6680 !important; }
+.theme-dark .cash-payment-input::selection {
+  background: rgba(56, 189, 248, 0.36);
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+}
 .theme-dark .cash-payment-change {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
 }
@@ -3803,4 +3812,103 @@ body {
   border-color: #794354 !important;
   background: rgba(104, 32, 49, 0.3) !important;
   color: #ffd1d9 !important;
+}
+
+/* Checkout dialogs opened from Kassa share one dark form language. This keeps
+   customer, split-payment, gift-card and invoice flows from reintroducing
+   bright white fields after the main checkout has switched to dark mode. */
+.theme-dark .pos-checkout-dialog {
+  color: #eaf3fb !important;
+}
+
+.theme-dark .pos-checkout-dialog .bg-white,
+.theme-dark .pos-checkout-dialog .bg-slate-50,
+.theme-dark .pos-checkout-dialog .bg-zinc-50,
+.theme-dark .pos-checkout-dialog .bg-zinc-100,
+.theme-dark .pos-checkout-dialog .bg-zinc-200 {
+  background: #10263a !important;
+}
+
+.theme-dark .pos-checkout-dialog .bg-zinc-900 {
+  background: #123d5b !important;
+}
+
+.theme-dark .pos-checkout-dialog .hover\:bg-zinc-800:hover,
+.theme-dark .pos-checkout-dialog .hover\:bg-zinc-900:hover {
+  background: #194e70 !important;
+}
+
+.theme-dark .pos-checkout-dialog .disabled\:bg-zinc-200:disabled {
+  background: #20384c !important;
+}
+
+.theme-dark .pos-checkout-dialog input:not([type="checkbox"]),
+.theme-dark .pos-checkout-dialog select,
+.theme-dark .pos-checkout-dialog textarea {
+  border-color: #315a79 !important;
+  background: #091827 !important;
+  color: #f5f9fd !important;
+  -webkit-text-fill-color: #f5f9fd;
+  color-scheme: dark;
+}
+
+.theme-dark .pos-checkout-dialog input::placeholder,
+.theme-dark .pos-checkout-dialog textarea::placeholder {
+  color: #7891a8 !important;
+  -webkit-text-fill-color: #7891a8;
+}
+
+.theme-dark .pos-checkout-dialog .border-slate-200,
+.theme-dark .pos-checkout-dialog .border-slate-300,
+.theme-dark .pos-checkout-dialog .border-zinc-200,
+.theme-dark .pos-checkout-dialog .border-zinc-300 {
+  border-color: #294b6a !important;
+}
+
+.theme-dark .pos-checkout-dialog .text-slate-900,
+.theme-dark .pos-checkout-dialog .text-zinc-900,
+.theme-dark .pos-checkout-dialog .text-zinc-950 {
+  color: #f5f9fd !important;
+}
+
+.theme-dark .pos-checkout-dialog .text-slate-500,
+.theme-dark .pos-checkout-dialog .text-zinc-500,
+.theme-dark .pos-checkout-dialog .text-zinc-400 {
+  color: #9ab0c4 !important;
+}
+
+.theme-dark .pos-checkout-dialog .text-slate-600,
+.theme-dark .pos-checkout-dialog .text-zinc-700,
+.theme-dark .pos-checkout-dialog .text-zinc-800 {
+  color: #cbd9e6 !important;
+}
+
+.theme-dark .pos-checkout-dialog .hover\:bg-slate-100:hover,
+.theme-dark .pos-checkout-dialog .hover\:bg-zinc-100:hover,
+.theme-dark .pos-checkout-dialog .hover\:bg-zinc-200:hover {
+  background: #173752 !important;
+}
+
+.theme-dark .pos-checkout-dialog .bg-emerald-50 {
+  border-color: #2d6a57 !important;
+  background: rgba(19, 92, 67, 0.28) !important;
+}
+.theme-dark .pos-checkout-dialog .text-emerald-900,
+.theme-dark .pos-checkout-dialog .text-emerald-950 { color: #c8f4df !important; }
+.theme-dark .pos-checkout-dialog .bg-amber-50 {
+  border-color: #735d28 !important;
+  background: rgba(107, 78, 22, 0.28) !important;
+}
+.theme-dark .pos-checkout-dialog .text-amber-900 { color: #ffebaf !important; }
+.theme-dark .pos-checkout-dialog .bg-red-50 {
+  border-color: #794354 !important;
+  background: rgba(104, 32, 49, 0.3) !important;
+}
+.theme-dark .pos-checkout-dialog .text-red-700,
+.theme-dark .pos-checkout-dialog .text-red-800 { color: #ffd1d9 !important; }
+
+.theme-dark .pos-checkout-dialog .focus\:ring-zinc-900:focus,
+.theme-dark .pos-checkout-dialog .focus\:border-zinc-900:focus {
+  border-color: #58b8f3 !important;
+  box-shadow: 0 0 0 3px rgba(88, 184, 243, 0.18) !important;
 }

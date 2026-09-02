@@ -1,5 +1,6 @@
 import React, { useEffect, useId, useRef } from "react";
 import { X } from "lucide-react";
+import { useTheme } from "../store/useTheme";
 
 interface ModalProps {
   open: boolean;
@@ -45,6 +46,7 @@ export const Modal: React.FC<ModalProps> = ({
   closeOnBackdrop = false,
   initialFocusRef,
 }) => {
+  const themeMode = useTheme((state) => state.mode);
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
@@ -96,7 +98,9 @@ export const Modal: React.FC<ModalProps> = ({
   }, [open, initialFocusRef]);
 
   if (!open) return null;
-  const isLight = variant === "light";
+  // A light component variant is allowed to follow the app's active mode. This
+  // keeps every operational dialog legible when Kassa switches to dark mode.
+  const isLight = variant === "light" && themeMode !== "dark";
 
   return (
     <div
