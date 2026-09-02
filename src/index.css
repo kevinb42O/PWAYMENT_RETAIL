@@ -3199,3 +3199,352 @@ body {
   border-color: #4c9dd2;
   background: #163451;
 }
+
+/* Kassa basket and checkout: the transaction area deliberately has its own
+   high-contrast hierarchy so totals and payment choices remain readable at a
+   glance under retail lighting. */
+.pos-cart { color: #0f172a; background: #ffffff; }
+.pos-cart-title { color: #0f172a; }
+.pos-cart-icon-button {
+  border-color: transparent;
+  color: #475569;
+}
+.pos-cart-icon-button:hover {
+  border-color: #e2e8f0;
+  background: #f8fafc;
+  color: #0f172a;
+}
+.pos-cart-icon-button--active {
+  border-color: #bae6fd;
+  background: #f0f9ff;
+  color: #0e7490;
+}
+.pos-cart-actions {
+  border-color: #e2e8f0;
+  background: #ffffff;
+}
+.pos-cart-action-row { color: #334155; }
+.pos-cart-action-row:hover {
+  background: #f8fafc;
+  color: #0f172a;
+}
+.pos-cart-line {
+  border-color: #e4e4e7;
+  background: #ffffff;
+}
+.pos-cart-line:hover { border-color: #cbd5e1; }
+.pos-cart-line-title,
+.pos-cart-quantity-value { color: #18181b; }
+.pos-cart-line-price { color: #71717a; }
+.pos-cart-line-base-price { color: #52525b; }
+.pos-cart-modifier {
+  border: 1px solid #3f3f46;
+  background: #18181b;
+  color: #d4d4d8;
+}
+.pos-cart-quantity {
+  border-color: #e4e4e7;
+  background: #f8fafc;
+}
+.pos-cart-quantity-button {
+  background: #ffffff;
+  color: #52525b;
+}
+.pos-cart-quantity-button:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+.pos-cart-quantity-button--remove { color: #ef4444; }
+.pos-cart-quantity-button--remove:hover {
+  background: #fef2f2;
+  color: #dc2626;
+}
+.pos-checkout-row { color: #52525b; }
+.pos-checkout-row--muted { color: #a1a1aa; }
+.pos-checkout-total {
+  border-color: #e4e4e7;
+  color: #18181b;
+}
+.pos-checkout-split { color: #52525b; }
+.pos-checkout-split:hover {
+  background: #f4f4f5;
+  color: #18181b;
+}
+
+.theme-dark .pos-cart,
+.theme-dark .pos-cart-panel-frame,
+.theme-dark .pos-cart-dock,
+.theme-dark .pos-cart .bg-white,
+.theme-dark .pos-checkout {
+  background: #0c1c2d !important;
+}
+
+.theme-dark .pos-cart {
+  border-color: #1e3b57 !important;
+  color: #eaf3fb;
+}
+
+.theme-dark .pos-cart-header {
+  border-color: #1e3b57 !important;
+  background: rgba(13, 30, 49, 0.98) !important;
+}
+
+.theme-dark .pos-cart-title { color: #f5f9fd !important; }
+
+.theme-dark .pos-cart-icon-button {
+  border-color: transparent !important;
+  background: transparent !important;
+  color: #aabed1 !important;
+}
+
+.theme-dark .pos-cart-icon-button:hover {
+  border-color: #31516d !important;
+  background: #163451 !important;
+  color: #f5f9fd !important;
+}
+
+.theme-dark .pos-cart-icon-button--active {
+  border-color: #3e8fca !important;
+  background: #10395c !important;
+  color: #8bd0ff !important;
+}
+
+.theme-dark .pos-cart-actions {
+  border-color: #294b6a !important;
+  background: #102438 !important;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.35) !important;
+}
+
+.theme-dark .pos-cart-action-row {
+  color: #d6e4f1 !important;
+}
+
+.theme-dark .pos-cart-action-row:hover {
+  background: #173752 !important;
+  color: #ffffff !important;
+}
+
+.theme-dark .pos-cart-line {
+  border-color: #23405d !important;
+  background: linear-gradient(145deg, #102438, #0e2033) !important;
+  box-shadow: inset 0 1px 0 rgba(202, 235, 255, 0.035), 0 5px 14px rgba(0, 0, 0, 0.12) !important;
+}
+
+.theme-dark .pos-cart-line:hover {
+  border-color: #3d8fca !important;
+  background: linear-gradient(145deg, #132c44, #10253b) !important;
+}
+
+.theme-dark .pos-cart-line-title,
+.theme-dark .pos-cart-quantity-value { color: #f3f7fc !important; }
+.theme-dark .pos-cart-line-price { color: #b4c5d7 !important; }
+.theme-dark .pos-cart-line-base-price { color: #8fa5bc !important; }
+
+.theme-dark .pos-cart-modifier {
+  border-color: #31516d !important;
+  background: #091827 !important;
+  color: #c9d9e8 !important;
+}
+
+.theme-dark .pos-cart-quantity {
+  border-color: #294b6a !important;
+  background: #091827 !important;
+}
+
+.theme-dark .pos-cart-quantity-button {
+  background: #132b42 !important;
+  color: #c8d8e7 !important;
+}
+
+.theme-dark .pos-cart-quantity-button:hover {
+  background: #1a3c59 !important;
+  color: #ffffff !important;
+}
+
+.theme-dark .pos-cart-quantity-button--remove { color: #ff9cac !important; }
+.theme-dark .pos-cart-quantity-button--remove:hover {
+  background: rgba(134, 44, 62, 0.4) !important;
+  color: #ffd3da !important;
+}
+
+.theme-dark .pos-checkout {
+  border-color: #2a4b69 !important;
+  background:
+    linear-gradient(180deg, rgba(18, 42, 66, 0.97), rgba(12, 28, 45, 0.99)) !important;
+  box-shadow: 0 -12px 26px rgba(0, 0, 0, 0.14);
+}
+
+.theme-dark .pos-checkout-row { color: #b7c8d9 !important; }
+.theme-dark .pos-checkout-row--muted { color: #839ab1 !important; }
+
+.theme-dark .pos-checkout-total {
+  border-color: #31516d !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 12px rgba(95, 193, 255, 0.12);
+}
+
+.theme-dark .pos-payment-secondary {
+  border-color: #3a5d79 !important;
+  background: linear-gradient(145deg, #153049, #112840) !important;
+  color: #e7f1fa !important;
+  box-shadow: inset 0 1px 0 rgba(205, 238, 255, 0.05), 0 6px 14px rgba(0, 0, 0, 0.13);
+}
+
+.theme-dark .pos-payment-secondary:hover {
+  border-color: #58a9df !important;
+  background: linear-gradient(145deg, #1b3d5a, #17334e) !important;
+  color: #ffffff !important;
+}
+
+.theme-dark .pos-primary-action {
+  border: 1px solid #3da7f3 !important;
+  background: linear-gradient(135deg, #1689eb, #166cc0) !important;
+  color: #ffffff !important;
+  box-shadow: inset 0 1px 0 rgba(217, 242, 255, 0.25), 0 10px 24px rgba(0, 105, 196, 0.28) !important;
+}
+
+.theme-dark .pos-primary-action:hover {
+  background: linear-gradient(135deg, #42aaff, #238ce4) !important;
+}
+
+.theme-dark .pos-checkout-split { color: #9fc5e3 !important; }
+.theme-dark .pos-checkout-split:hover {
+  background: #15334e !important;
+  color: #e9f6ff !important;
+}
+
+.theme-dark .pos-cart-dock {
+  background: linear-gradient(180deg, #0d2033, #0a1929) !important;
+}
+
+.pos-mobile-nav {
+  border-color: #e2e8f0;
+  background: #ffffff;
+}
+.pos-mobile-nav-item { color: #94a3b8; }
+.pos-mobile-nav-item--active { color: #0284c7; }
+.pos-cart-dock-button {
+  background: #ffffff;
+  color: #334155;
+}
+.pos-cart-dock-button:hover {
+  background: #f0f9ff;
+  color: #0c4a6e;
+}
+.pos-cart-dock-summary {
+  border-color: #bae6fd;
+  background: rgba(240, 249, 255, 0.72);
+  color: #0c4a6e;
+}
+.pos-cart-dock-total {
+  border-color: #e2e8f0;
+  background: #f8fafc;
+}
+.pos-cart-dock-total-label { color: #64748b; }
+.pos-cart-dock-total-value { color: #1e293b; }
+
+.theme-dark .pos-mobile-nav {
+  border-color: #1e3b57 !important;
+  background: #0c1c2d !important;
+}
+.theme-dark .pos-mobile-nav-item { color: #7f96ad !important; }
+.theme-dark .pos-mobile-nav-item--active { color: #70c5ff !important; }
+.theme-dark .pos-cart-dock-button {
+  background: transparent !important;
+  color: #bdcede !important;
+}
+.theme-dark .pos-cart-dock-button:hover {
+  background: #102b44 !important;
+  color: #f5f9fd !important;
+}
+.theme-dark .pos-cart-dock-summary {
+  border-color: #2d668f !important;
+  background: linear-gradient(145deg, #10395c, #12304b) !important;
+  color: #9bd8ff !important;
+  box-shadow: inset 0 1px 0 rgba(210, 240, 255, 0.09), 0 8px 18px rgba(0, 0, 0, 0.15) !important;
+}
+.theme-dark .pos-cart-dock-total {
+  border-color: #294b6a !important;
+  background: #102438 !important;
+}
+.theme-dark .pos-cart-dock-total-label { color: #8fa5bc !important; }
+.theme-dark .pos-cart-dock-total-value { color: #f3f7fc !important; }
+
+/* Cash tendering is part of checkout, not a generic form: amount, change and
+   the physical keypad receive a clear counter-ready hierarchy in dark mode. */
+.cash-payment-stat {
+  border-color: #e2e8f0;
+  background: #f8fafc;
+}
+.cash-payment-label { color: #475569; }
+.cash-payment-value { color: #0f172a; }
+.cash-payment-clear { color: #64748b; }
+.cash-payment-clear:hover { background: #f1f5f9; color: #0f172a; }
+.cash-payment-input-shell {
+  border-color: #0e7490;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.12);
+}
+.cash-payment-input-shell:focus-within { box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.22); }
+.cash-payment-currency { color: #94a3b8; }
+.cash-payment-input { color: #0f172a; }
+.cash-payment-input::placeholder { color: #cbd5e1; }
+.cash-payment-insufficient { color: #92400e; }
+.cash-payment-hint { color: #94a3b8; }
+
+.theme-dark .cash-payment-modal {
+  border-color: #2a4b69 !important;
+  background: #0d1e31 !important;
+  color: #eaf3fb !important;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.52) !important;
+}
+.theme-dark .cash-payment-modal > div:first-child {
+  border-color: #23405d !important;
+  background: #102438 !important;
+}
+.theme-dark .cash-payment-modal > div:last-child {
+  border-color: #23405d !important;
+  background: #102438 !important;
+}
+.theme-dark .cash-payment-stat {
+  border-color: #294b6a !important;
+  background: #102438 !important;
+}
+.theme-dark .cash-payment-label { color: #9db1c6 !important; }
+.theme-dark .cash-payment-value { color: #f5f9fd !important; }
+.theme-dark .cash-payment-clear { color: #9bb0c4 !important; }
+.theme-dark .cash-payment-clear:hover { background: #17334e !important; color: #ffffff !important; }
+.theme-dark .cash-payment-input-shell {
+  border-color: #4bb4fb !important;
+  background: #091827 !important;
+  box-shadow: 0 0 0 4px rgba(75, 180, 251, 0.13) !important;
+}
+.theme-dark .cash-payment-input-shell:focus-within { box-shadow: 0 0 0 4px rgba(111, 198, 255, 0.25) !important; }
+.theme-dark .cash-payment-currency { color: #7690aa !important; }
+.theme-dark .cash-payment-input { color: #f5f9fd !important; }
+.theme-dark .cash-payment-input::placeholder { color: #4e6680 !important; }
+.theme-dark .cash-payment-change {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+.theme-dark .cash-payment-key {
+  border-color: #31516d !important;
+  background: linear-gradient(145deg, #153049, #112840) !important;
+  color: #e7f1fa !important;
+  box-shadow: inset 0 1px 0 rgba(205, 238, 255, 0.05), 0 4px 10px rgba(0, 0, 0, 0.12) !important;
+}
+.theme-dark .cash-payment-key:hover,
+.theme-dark .cash-payment-key:active {
+  border-color: #5aace2 !important;
+  background: #1a3c59 !important;
+  color: #ffffff !important;
+}
+.theme-dark .cash-payment-key--primary {
+  border-color: #3da7f3 !important;
+  background: linear-gradient(135deg, #1689eb, #166cc0) !important;
+  color: #ffffff !important;
+}
+.theme-dark .cash-payment-key--primary:hover {
+  background: linear-gradient(135deg, #42aaff, #238ce4) !important;
+}
+.theme-dark .cash-payment-insufficient { color: #ffd17b !important; }
+.theme-dark .cash-payment-hint { color: #829ab1 !important; }

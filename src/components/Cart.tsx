@@ -973,7 +973,7 @@ export const Cart: React.FC<CartProps> = ({
   };
 
   return (
-    <div className="pos-cart flex flex-col h-full border-l border-slate-200 text-slate-900">
+    <div className="pos-cart flex flex-col h-full border-l border-slate-200">
       <div className="pos-cart-header px-4 py-4 border-b border-slate-200 flex justify-between items-start">
         <div>
           <div className="flex items-center gap-2">
@@ -1043,7 +1043,7 @@ export const Cart: React.FC<CartProps> = ({
             <button
               type="button"
               onClick={onToggleDesktopPin}
-              className="rounded-xl border border-transparent p-2 text-slate-600 transition-colors hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900"
+              className="pos-cart-icon-button rounded-xl border border-transparent p-2 transition-colors"
               title={desktopPanelMode === "pinned" ? "Winkelwagen losmaken" : "Winkelwagen vastzetten"}
               aria-label={desktopPanelMode === "pinned" ? "Winkelwagen losmaken" : "Winkelwagen vastzetten"}
             >
@@ -1054,7 +1054,7 @@ export const Cart: React.FC<CartProps> = ({
             <button
               type="button"
               onClick={onCloseDesktopPanel}
-              className="rounded-xl border border-transparent p-2 text-slate-600 transition-colors hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900"
+              className="pos-cart-icon-button rounded-xl border border-transparent p-2 transition-colors"
               title="Winkelwagen sluiten"
               aria-label="Winkelwagen sluiten"
             >
@@ -1065,10 +1065,10 @@ export const Cart: React.FC<CartProps> = ({
             <button
               type="button"
               onClick={() => setCartActionsOpen((open) => !open)}
-              className={`rounded-xl border p-2 transition-colors ${
+              className={`pos-cart-icon-button rounded-xl border p-2 transition-colors ${
                 cartActionsOpen
-                  ? "border-sky-200 bg-sky-50 text-sky-800"
-                  : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900"
+                  ? "pos-cart-icon-button--active"
+                  : "border-transparent"
               }`}
               title="Winkelwagenacties"
               aria-label="Winkelwagenacties"
@@ -1081,7 +1081,7 @@ export const Cart: React.FC<CartProps> = ({
               <div
                 role="menu"
                 aria-label="Winkelwagenacties"
-                className="absolute right-0 top-11 z-40 w-64 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl"
+                className="pos-cart-actions absolute right-0 top-11 z-40 w-64 rounded-2xl border p-1.5 shadow-xl"
               >
               <button
                 type="button"
@@ -1099,7 +1099,7 @@ export const Cart: React.FC<CartProps> = ({
                   setCartActionsOpen(false);
                   setQueueOpen(true);
                 }}
-                className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
+                className="pos-cart-action-row flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold transition-colors"
               >
                 <span className="inline-flex items-center gap-2">
                   <Clock3 size={16} /> Wachtende klanten
@@ -1121,7 +1121,7 @@ export const Cart: React.FC<CartProps> = ({
                       ? "Open het tweede klantenscherm"
                       : "Schakel het klantenscherm eerst in via Instellingen → Hardware."
                   }
-                  className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="pos-cart-action-row flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <span className="inline-flex items-center gap-2">
                     <Monitor size={16} /> Open klantenscherm
@@ -1151,7 +1151,7 @@ export const Cart: React.FC<CartProps> = ({
                   setCartActionsOpen(false);
                   setInvoiceCustomerOpen(true);
                 }}
-                className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                className="pos-cart-action-row flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition-colors"
               >
                 <FileText size={16} />
                 {documentRequest.type === "receipt"
@@ -1165,7 +1165,7 @@ export const Cart: React.FC<CartProps> = ({
                   setCartActionsOpen(false);
                   setLinkOpen(true);
                 }}
-                className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                className="pos-cart-action-row flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition-colors"
               >
                 <User size={16} />
                 {linkedCustomer ? "Gekoppelde klant wijzigen" : "Klant koppelen"}
@@ -1227,17 +1227,17 @@ export const Cart: React.FC<CartProps> = ({
             return (
               <div
                 key={order.lineId}
-                className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm transition-colors hover:border-zinc-300"
+                className="pos-cart-line rounded-xl border p-3 shadow-sm transition-colors"
               >
                 <div className="flex items-center justify-between gap-2">
                   <button
                     onClick={() => setEditingLineId(order.lineId)}
                     className="flex-1 text-left pr-2"
                   >
-                    <div className="text-sm font-semibold leading-tight text-zinc-900 flex items-center gap-2">
+                    <div className="pos-cart-line-title flex items-center gap-2 text-sm font-semibold leading-tight">
                       <span>{order.product.name}</span>
                     </div>
-                    <div className="text-zinc-400 text-sm mt-0.5">
+                    <div className="pos-cart-line-price mt-0.5 text-sm">
                       {formatEUR(unit)}
                       {standardPrice !== order.product.priceCents && (
                         <span className="ml-1.5 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-bold text-sky-800">
@@ -1245,7 +1245,7 @@ export const Cart: React.FC<CartProps> = ({
                         </span>
                       )}
                       {unit !== order.product.priceCents && (
-                        <span className="text-zinc-500">
+                        <span className="pos-cart-line-base-price">
                           {" "}
                           · basis {formatEUR(order.product.priceCents)}
                         </span>
@@ -1256,7 +1256,7 @@ export const Cart: React.FC<CartProps> = ({
                         {order.modifiers!.map((m) => (
                           <span
                             key={m.id}
-                            className="text-[11px] px-1.5 py-0.5 rounded bg-zinc-950 text-zinc-300 border border-zinc-700"
+                            className="pos-cart-modifier rounded px-1.5 py-0.5 text-[11px]"
                           >
                             + {m.label}
                             {m.deltaCents > 0
@@ -1273,7 +1273,7 @@ export const Cart: React.FC<CartProps> = ({
                       </div>
                     )}
                   </button>
-                  <div className="flex items-center gap-1 bg-zinc-50 rounded-lg p-1 border border-zinc-200">
+                  <div className="pos-cart-quantity flex items-center gap-1 rounded-lg border p-1">
                     <button
                       type="button"
                       aria-label={
@@ -1296,15 +1296,15 @@ export const Cart: React.FC<CartProps> = ({
                           order.quantity - 1,
                         );
                       }}
-                      className={`w-8 h-8 flex items-center justify-center bg-white hover:bg-zinc-100 rounded-md transition-colors ${
+                      className={`pos-cart-quantity-button flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
                         order.quantity === 1
-                          ? "text-red-500 hover:bg-red-50 hover:text-red-600"
-                          : "text-zinc-600"
+                          ? "pos-cart-quantity-button--remove"
+                          : ""
                       }`}
                     >
                       <Minus size={16} />
                     </button>
-                    <span className="w-6 text-center font-semibold text-sm text-zinc-900">
+                    <span className="pos-cart-quantity-value w-6 text-center text-sm font-semibold">
                       {order.quantity}
                     </span>
                     <button
@@ -1316,7 +1316,7 @@ export const Cart: React.FC<CartProps> = ({
                           order.quantity + 1,
                         )
                       }
-                      className="w-8 h-8 flex items-center justify-center bg-white hover:bg-zinc-100 rounded-md text-zinc-600"
+                      className="pos-cart-quantity-button flex h-8 w-8 items-center justify-center rounded-md transition-colors"
                     >
                       <Plus size={16} />
                     </button>
@@ -1349,11 +1349,11 @@ export const Cart: React.FC<CartProps> = ({
           </div>
         )}
         <div className="space-y-1.5 mb-4 text-sm">
-          <div className="flex justify-between text-zinc-400">
+          <div className="pos-checkout-row pos-checkout-row--muted flex justify-between">
             <span>Subtotaal</span>
             <span className="tabular-nums">{formatEUR(totals.subtotal)}</span>
           </div>
-          <div className="flex items-center justify-between text-zinc-500">
+          <div className="pos-checkout-row flex items-center justify-between">
             <span>Korting</span>
             <button
               onClick={() => setDiscountOpen(true)}
@@ -1369,13 +1369,13 @@ export const Cart: React.FC<CartProps> = ({
             </button>
           </div>
           {manualDiscountCents > 0 && (
-            <div className="flex justify-between text-xs text-zinc-400">
+            <div className="pos-checkout-row pos-checkout-row--muted flex justify-between text-xs">
               <span>{cartDiscount?.reason ?? "Toegepaste korting"}</span>
               <span>In totaal verwerkt</span>
             </div>
           )}
           {totals.vatBreakdown.map((line) => (
-            <div key={line.rate} className="flex justify-between text-zinc-500 text-xs">
+            <div key={line.rate} className="pos-checkout-row flex justify-between text-xs">
               <span>BTW {line.rate}%</span>
               <span className="tabular-nums">{formatEUR(line.vatCents)}</span>
             </div>
@@ -1396,7 +1396,7 @@ export const Cart: React.FC<CartProps> = ({
               <span className="tabular-nums">−{formatEUR(gc.amountCents)}</span>
             </div>
           ))}
-          <div className="flex justify-between text-xl font-bold text-zinc-950 pt-3 mt-2 border-t border-zinc-200">
+          <div className="pos-checkout-total mt-2 flex justify-between border-t pt-3 text-xl font-bold">
             <span>
               {cartGiftCards.length > 0 ? "Nog te betalen" : "Totaal"}
             </span>
@@ -1408,7 +1408,7 @@ export const Cart: React.FC<CartProps> = ({
           <button
             onClick={() => handleCheckout("Cash")}
             disabled={checkoutBlocked}
-            className="pos-payment-secondary flex flex-col items-center justify-center gap-1.5 py-3 border border-zinc-200 bg-white text-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-semibold transition-colors"
+            className="pos-payment-secondary flex flex-col items-center justify-center gap-1.5 rounded-xl border py-3 font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Banknote size={24} />
             <span className="text-sm">Cash</span>
@@ -1428,7 +1428,7 @@ export const Cart: React.FC<CartProps> = ({
             if (!checkoutBlocked) setSplitOpen(true);
           }}
           disabled={checkoutBlocked}
-          className="mt-2 w-full rounded-lg px-3 py-2 text-xs font-bold text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50"
+          className="pos-checkout-split mt-2 w-full rounded-lg px-3 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50"
         >
           Deels betalen of cadeaubon gebruiken
         </button>

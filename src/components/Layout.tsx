@@ -1564,13 +1564,13 @@ export const Layout: React.FC = () => {
                     {mobileView === "cart" && <Cart />}
                   </div>
 
-                  <div className="flex bg-white border-t border-slate-200 pb-safe print:hidden shadow-lg">
+                  <div className="pos-mobile-nav flex border-t pb-safe print:hidden shadow-lg">
                     <button
                       onClick={() => setMobileView("menu")}
-                      className={`flex-1 py-3 flex flex-col items-center gap-1 ${
+                      className={`pos-mobile-nav-item flex flex-1 flex-col items-center gap-1 py-3 ${
                         mobileView === "menu"
-                          ? "text-sky-600 font-bold"
-                          : "text-slate-400"
+                          ? "pos-mobile-nav-item--active font-bold"
+                          : ""
                       }`}
                     >
                       <ScanLine size={20} />
@@ -1580,10 +1580,10 @@ export const Layout: React.FC = () => {
                     </button>
                     <button
                       onClick={() => setMobileView("cart")}
-                      className={`flex-1 py-3 flex flex-col items-center gap-1 relative ${
+                      className={`pos-mobile-nav-item relative flex flex-1 flex-col items-center gap-1 py-3 ${
                         mobileView === "cart"
-                          ? "text-sky-600 font-bold"
-                          : "text-slate-400"
+                          ? "pos-mobile-nav-item--active font-bold"
+                          : ""
                       }`}
                     >
                       <ShoppingCart size={20} />
@@ -1650,9 +1650,9 @@ export const Layout: React.FC = () => {
                       onClick={() => transitionDesktopCartLayout(() => setDesktopCartOpen(true))}
                       aria-label={`Winkelwagen openen, ${cartCount} ${cartCount === 1 ? "artikel" : "artikelen"}, ${formatEUR(compactCartTotal)}`}
                       aria-expanded={desktopCartVisible}
-                      className="flex h-full w-full cursor-pointer flex-col items-center rounded-none bg-white px-2 py-3 text-slate-700 outline-none transition-colors hover:bg-sky-50 hover:text-sky-900 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500 disabled:cursor-default"
+                      className="pos-cart-dock-button flex h-full w-full cursor-pointer flex-col items-center rounded-none px-2 py-3 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500 disabled:cursor-default"
                     >
-                      <span className="flex w-full flex-col items-center rounded-2xl border border-sky-100 bg-sky-50/70 px-1.5 py-3 text-sky-900 shadow-sm">
+                      <span className="pos-cart-dock-summary flex w-full flex-col items-center rounded-2xl border px-1.5 py-3 shadow-sm">
                         <span
                           ref={desktopCartDockTargetRef}
                           key={`arrival-${cartArrivalNonce}`}
@@ -1670,9 +1670,9 @@ export const Layout: React.FC = () => {
                         </span>
                       </span>
 
-                      <span className="mt-auto flex w-full flex-col items-center rounded-2xl border border-slate-200 bg-slate-50 px-1 py-3">
-                        <span className="text-[9px] font-black uppercase tracking-wider text-slate-500">Totaal</span>
-                        <span className="mt-1 max-w-full text-[13px] font-black tabular-nums tracking-tight text-slate-800">
+                      <span className="pos-cart-dock-total mt-auto flex w-full flex-col items-center rounded-2xl border px-1 py-3">
+                        <span className="pos-cart-dock-total-label text-[9px] font-black uppercase tracking-wider">Totaal</span>
+                        <span className="pos-cart-dock-total-value mt-1 max-w-full text-[13px] font-black tabular-nums tracking-tight">
                           {formatEUR(compactCartTotal)}
                         </span>
                         <PanelRightOpen size={17} className="mt-2 text-sky-600" />

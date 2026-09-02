@@ -117,7 +117,7 @@ export const CashPaymentModal: React.FC<Props> = ({
       icon={<Banknote size={19} />}
       size="2xl"
       initialFocusRef={inputRef}
-      className="max-h-[92dvh]"
+      className="cash-payment-modal max-h-[92dvh]"
       bodyClassName="p-4 sm:p-6"
       footer={
         <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -138,11 +138,11 @@ export const CashPaymentModal: React.FC<Props> = ({
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-[minmax(0,0.9fr)_minmax(280px,1.1fr)] md:gap-6">
         <div className="min-w-0 space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5">
-              <div className="text-[10px] font-extrabold uppercase tracking-[0.13em] text-slate-500">Te betalen</div>
-              <div className="mt-1 text-xl font-black tabular-nums text-slate-950">{formatEUR(totalCents)}</div>
+            <div className="cash-payment-stat rounded-2xl border p-3.5">
+              <div className="cash-payment-label text-[10px] font-extrabold uppercase tracking-[0.13em]">Te betalen</div>
+              <div className="cash-payment-value mt-1 text-xl font-black tabular-nums">{formatEUR(totalCents)}</div>
             </div>
-            <div className={`rounded-2xl border p-3.5 ${insufficient ? "border-amber-200 bg-amber-50" : exceedsCashLimit ? "border-rose-200 bg-rose-50" : "border-emerald-200 bg-emerald-50"}`}>
+            <div className={`cash-payment-change rounded-2xl border p-3.5 ${insufficient ? "border-amber-200 bg-amber-50" : exceedsCashLimit ? "border-rose-200 bg-rose-50" : "border-emerald-200 bg-emerald-50"}`}>
               <div className={`text-[10px] font-extrabold uppercase tracking-[0.13em] ${insufficient ? "text-amber-700" : exceedsCashLimit ? "text-rose-700" : "text-emerald-700"}`}>
                 {exceedsCashLimit ? "Cashlimiet" : insufficient ? "Nog nodig" : changeCents === 0 ? "Wisselgeld" : "Terug te geven"}
               </div>
@@ -154,13 +154,13 @@ export const CashPaymentModal: React.FC<Props> = ({
 
           <div>
             <span className="mb-2 flex items-center justify-between gap-3">
-              <label htmlFor="cash-tendered-amount" className="text-[11px] font-extrabold uppercase tracking-[0.13em] text-slate-600">Ontvangen</label>
-              <button type="button" onClick={clear} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#38bdf8]">
+              <label htmlFor="cash-tendered-amount" className="cash-payment-label text-[11px] font-extrabold uppercase tracking-[0.13em]">Ontvangen</label>
+              <button type="button" onClick={clear} className="cash-payment-clear inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#38bdf8]">
                 <Delete size={13} /> Wissen
               </button>
             </span>
-            <span className="flex min-h-16 items-center rounded-2xl border-2 border-[#0e7490] bg-white px-4 shadow-[0_0_0_4px_rgba(56,189,248,0.12)] transition focus-within:shadow-[0_0_0_4px_rgba(56,189,248,0.22)]">
-              <span className="mr-2 text-2xl font-black text-slate-400">€</span>
+            <span className="cash-payment-input-shell flex min-h-16 items-center rounded-2xl border-2 px-4 transition">
+              <span className="cash-payment-currency mr-2 text-2xl font-black">€</span>
               <input
                 id="cash-tendered-amount"
                 ref={inputRef}
@@ -178,7 +178,7 @@ export const CashPaymentModal: React.FC<Props> = ({
                 autoComplete="off"
                 spellCheck={false}
                 placeholder="0,00"
-                className="min-w-0 flex-1 bg-transparent text-right text-3xl font-black tabular-nums text-slate-950 outline-none placeholder:text-slate-300"
+                className="cash-payment-input min-w-0 flex-1 bg-transparent text-right text-3xl font-black tabular-nums outline-none"
               />
             </span>
           </div>
@@ -196,17 +196,17 @@ export const CashPaymentModal: React.FC<Props> = ({
             </p>
           )}
           {!exceedsCashLimit && insufficient && (
-            <p className="text-xs font-medium text-amber-800">Er ontbreekt nog {formatEUR(totalCents - tenderedCents)} om deze betaling te bevestigen.</p>
+            <p className="cash-payment-insufficient text-xs font-medium">Er ontbreekt nog {formatEUR(totalCents - tenderedCents)} om deze betaling te bevestigen.</p>
           )}
         </div>
 
         <div className="min-w-0 space-y-3">
           <div>
-            <div className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.13em] text-slate-600">Snel ontvangen</div>
+            <div className="cash-payment-label mb-2 text-[11px] font-extrabold uppercase tracking-[0.13em]">Snel ontvangen</div>
             <div className="grid grid-cols-3 gap-2">
-              <Button variant="primary" onClick={() => chooseAmount(totalCents)} className="h-11 px-2 text-sm font-extrabold">Exact</Button>
+              <Button variant="primary" onClick={() => chooseAmount(totalCents)} className="cash-payment-key cash-payment-key--primary h-11 px-2 text-sm font-extrabold">Exact</Button>
               {quickAmounts.slice(0, 2).map((amount) => (
-                <Button key={amount} variant="secondary" onClick={() => chooseAmount(amount)} className="h-11 px-2 text-sm font-extrabold tabular-nums">
+                <Button key={amount} variant="secondary" onClick={() => chooseAmount(amount)} className="cash-payment-key h-11 px-2 text-sm font-extrabold tabular-nums">
                   {formatEUR(amount).replace(",00", "")}
                 </Button>
               ))}
@@ -214,7 +214,7 @@ export const CashPaymentModal: React.FC<Props> = ({
             {quickAmounts.length > 2 && (
               <div className="mt-2 grid grid-cols-2 gap-2">
                 {quickAmounts.slice(2).map((amount) => (
-                  <Button key={amount} variant="secondary" onClick={() => chooseAmount(amount)} className="h-9 px-2 text-xs font-bold tabular-nums">
+                  <Button key={amount} variant="secondary" onClick={() => chooseAmount(amount)} className="cash-payment-key h-9 px-2 text-xs font-bold tabular-nums">
                     {formatEUR(amount).replace(",00", "")}
                   </Button>
                 ))}
@@ -224,15 +224,15 @@ export const CashPaymentModal: React.FC<Props> = ({
 
           <div className="grid grid-cols-3 gap-2" aria-label="Numeriek toetsenblok">
             {keypadRows.flat().map((digit) => (
-              <Button key={digit} variant="secondary" onClick={() => appendKey(digit)} aria-label={`Cijfer ${digit}`} className="h-12 px-2 text-xl font-black active:translate-y-px active:bg-slate-100 sm:h-14">
+              <Button key={digit} variant="secondary" onClick={() => appendKey(digit)} aria-label={`Cijfer ${digit}`} className="cash-payment-key h-12 px-2 text-xl font-black active:translate-y-px sm:h-14">
                 {digit}
               </Button>
             ))}
-            <Button variant="secondary" onClick={() => appendKey(",")} aria-label="Decimale komma" className="h-12 px-2 text-xl font-black active:translate-y-px sm:h-14">,</Button>
-            <Button variant="secondary" onClick={() => appendKey("0")} aria-label="Cijfer 0" className="h-12 px-2 text-xl font-black active:translate-y-px sm:h-14">0</Button>
-            <Button variant="secondary" onClick={backspace} aria-label="Laatste cijfer verwijderen" className="h-12 px-2 active:translate-y-px sm:h-14"><Undo2 size={20} /></Button>
+            <Button variant="secondary" onClick={() => appendKey(",")} aria-label="Decimale komma" className="cash-payment-key h-12 px-2 text-xl font-black active:translate-y-px sm:h-14">,</Button>
+            <Button variant="secondary" onClick={() => appendKey("0")} aria-label="Cijfer 0" className="cash-payment-key h-12 px-2 text-xl font-black active:translate-y-px sm:h-14">0</Button>
+            <Button variant="secondary" onClick={backspace} aria-label="Laatste cijfer verwijderen" className="cash-payment-key h-12 px-2 active:translate-y-px sm:h-14"><Undo2 size={20} /></Button>
           </div>
-          <p className="text-center text-[10px] font-medium text-slate-400">Typ rechtstreeks met uw toetsenbord of externe numerieke keypad.</p>
+          <p className="cash-payment-hint text-center text-[10px] font-medium">Typ rechtstreeks met uw toetsenbord of externe numerieke keypad.</p>
         </div>
       </div>
     </Modal>
