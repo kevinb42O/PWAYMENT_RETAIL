@@ -527,7 +527,7 @@ export const Menu: React.FC<MenuProps> = ({
                   Geen product gevonden. Controleer barcode, SKU, merk, subcategorie of maat.
                 </div>
               ) : activeProducts.length === 0 && onStartStoreSetup ? (
-                <section className="col-span-full mx-auto my-6 w-full max-w-3xl rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs sm:p-6">
+                <section className="store-setup-empty-state col-span-full mx-auto my-6 w-full max-w-3xl rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs sm:p-6">
                   <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
                       <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Nieuwe winkel</p>

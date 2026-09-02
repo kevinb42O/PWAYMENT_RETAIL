@@ -824,6 +824,19 @@
 .pace-onboarding-progress i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #0891b2, #22d3ee); transition: width 300ms ease; }
 .pace-onboarding-companion.is-compact { margin: 0.65rem 0 0; border-radius: 0.9rem; padding: 0.62rem 0.72rem; }
 .pace-onboarding-companion.is-compact .pace-onboarding-progress { margin-top: -0.25rem; }
+
+/* Registration and the first-store onboarding can surface this status card
+   while dark mode is active. It should remain part of the midnight canvas. */
+.theme-dark .pace-onboarding-companion {
+  border-color: #286490;
+  background: linear-gradient(145deg, rgba(18, 59, 89, 0.96), rgba(13, 30, 49, 0.98));
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.28);
+}
+.theme-dark .pace-onboarding-companion div > span { color: #8edbff; }
+.theme-dark .pace-onboarding-companion div > strong { color: #f3f7fc; }
+.theme-dark .pace-onboarding-companion p { color: #aabbd0; }
+.theme-dark .pace-onboarding-progress { background: #091827; }
+
 @media (prefers-reduced-motion: reduce) {
   .pace-onboarding-progress i, .pace-setup-progress-bar span { transition: none; }
 }
