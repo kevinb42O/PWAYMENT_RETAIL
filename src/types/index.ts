@@ -27,6 +27,8 @@ export interface ProductCategory {
   /** Optional parent category, expressed as the stable local/external ID. */
   parentId?: string;
   name: string;
+  /** A selected icon from the portable retail category icon catalogue. */
+  icon?: string;
   vatRate: number;
   sortOrder?: number;
   isActive?: boolean;

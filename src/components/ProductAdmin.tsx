@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, Barcode, Boxes, Building2, Check, CheckCircle2, CornerDownRight, Download, Package, PackageSearch, Palette, Pencil, Plus, RotateCcw, Search, Tag, Tags, Trash2, TrendingUp, Upload, X } from 'lucide-react';
+import { AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, Barcode, Boxes, Building2, Check, CheckCircle2, CornerDownRight, Download, Package, PackageSearch, Palette, Pencil, Plus, RotateCcw, Search, Tag, Trash2, TrendingUp, Upload, X } from 'lucide-react';
 import { useProducts } from '../store/useProducts';
 import { useStore } from '../store/useStore';
 import { InventoryAdjustmentReason, ManualCatalogFamilyPayload, Product } from '../types';
@@ -22,6 +22,7 @@ import { configuredVatFallback } from '../onboarding/storeConfiguration';
 import { CatalogBuilder } from './CatalogBuilder';
 import { useAuth } from '../auth/useAuth';
 import { resolveProductCategoryPath } from '../catalog/categoryTaxonomy';
+import { CATEGORY_ICON_OPTIONS, categoryIcon, categoryIconLabel } from '../catalog/categoryIcons';
 
 const COLOR_PRESETS: { label: string; cls: string }[] = [
   { label: 'Deck blauw', cls: 'bg-sky-700' },
@@ -83,6 +84,7 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
   const addSubcategory = useCategories((s) => s.addSubcategory);
   const removeCategory = useCategories((s) => s.removeCategory);
   const renameCategory = useCategories((s) => s.renameCategory);
+  const setCategoryIcon = useCategories((s) => s.setCategoryIcon);
   const setCategoryVatRate = useCategories((s) => s.setCategoryVatRate);
   const storeConfiguration = useStoreConfiguration((s) => s.configuration);
   const configuredDefaultVat = configuredVatFallback(storeConfiguration);
@@ -102,6 +104,8 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
   const [newSubcategoryByParent, setNewSubcategoryByParent] = useState<Record<string, string>>({});
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
   const [editingCatName, setEditingCatName] = useState<string>('');
+  const [iconPickerFor, setIconPickerFor] = useState<string | null>(null);
+  const [iconSearch, setIconSearch] = useState('');
   const [editing, setEditing] = useState<Product | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [priceText, setPriceText] = useState('0,00');
@@ -812,14 +816,28 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                 const productCount = productCountByCat.get(c.id) || 0;
                 const isEditingThis = editingCatId === c.id;
                 const subcategories = subcategoriesByParent.get(c.id) ?? [];
+                const CategoryIcon = categoryIcon(c.icon);
+                const shownIcons = CATEGORY_ICON_OPTIONS.filter(([name, label]) =>
+                  `${name} ${label}`.toLocaleLowerCase('nl-BE').includes(iconSearch.trim().toLocaleLowerCase('nl-BE')),
+                );
 
                 return (
                   <div key={c.id}>
                   <div className="p-4 flex items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors">
                     <div className="flex-1 min-w-0 flex items-center gap-3">
-                      <div className="p-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold shrink-0">
-                        <Tags size={16} />
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIconPickerFor(iconPickerFor === c.id ? null : c.id);
+                          setIconSearch('');
+                        }}
+                        className="group flex shrink-0 items-center justify-center rounded-xl bg-slate-100 p-2.5 text-slate-700 transition hover:bg-sky-100 hover:text-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                        title={`Icoon wijzigen (${categoryIconLabel(c.icon)})`}
+                        aria-label={`Icoon voor ${c.name} wijzigen`}
+                        aria-expanded={iconPickerFor === c.id}
+                      >
+                        <CategoryIcon size={18} strokeWidth={2} />
+                      </button>
                       {isEditingThis ? (
                         <div className="flex items-center gap-2 flex-1 max-w-md">
                           <input
@@ -900,6 +918,27 @@ export const ProductAdmin: React.FC<ProductAdminProps> = ({ initialTab = 'produc
                       </button>
                     </div>
                   </div>
+                  {iconPickerFor === c.id && (
+                    <div className="border-t border-sky-100 bg-sky-50/70 px-4 py-4 sm:pl-16">
+                      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-xs font-extrabold text-slate-900">Kies een categorie-icoon</p>
+                          <p className="mt-0.5 text-[11px] font-medium text-slate-500">Dit icoon verschijnt in de kassa en wordt opgeslagen voor alle toestellen.</p>
+                        </div>
+                        <label className="relative block">
+                          <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                          <input value={iconSearch} onChange={(event) => setIconSearch(event.target.value)} placeholder="Zoek een icoon" className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-8 pr-3 text-xs font-semibold text-slate-900 outline-none focus:ring-2 focus:ring-sky-500 sm:w-48" />
+                        </label>
+                      </div>
+                      <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-9 lg:grid-cols-12">
+                        {shownIcons.map(([name, label, Icon]) => {
+                          const selected = c.icon === name;
+                          return <button key={name} type="button" onClick={() => { void setCategoryIcon(c.id, name); setIconPickerFor(null); }} title={label} aria-label={`${label} selecteren`} aria-pressed={selected} className={`flex aspect-square items-center justify-center rounded-lg border transition ${selected ? 'border-sky-600 bg-sky-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700'}`}><Icon size={18} strokeWidth={2} /></button>;
+                        })}
+                      </div>
+                      {shownIcons.length === 0 && <p className="py-3 text-xs font-semibold text-slate-500">Geen icoon gevonden. Probeer bijvoorbeeld “sport”, “eten” of “auto”.</p>}
+                    </div>
+                  )}
                   <div className="border-t border-slate-100 bg-slate-50/50 px-4 py-3 sm:pl-16">
                     <div className="space-y-2">
                       {subcategories.map((subcategory) => {

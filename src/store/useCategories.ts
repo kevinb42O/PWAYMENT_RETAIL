@@ -19,6 +19,7 @@ interface CategoriesState {
   addCategory: (name: string, vatRate?: number) => Promise<ProductCategory | null>;
   addSubcategory: (parentId: string, name: string) => Promise<ProductCategory | null>;
   renameCategory: (id: string, name: string) => Promise<void>;
+  setCategoryIcon: (id: string, icon: string) => Promise<void>;
   setCategoryVatRate: (id: string, vatRate: number) => Promise<void>;
   removeCategory: (id: string) => Promise<boolean>;
 }
@@ -231,6 +232,19 @@ export const useCategories = create<CategoriesState>((set, get) => ({
     if (renamedProducts.length > 0) useProducts.getState().syncPersisted(renamedProducts);
     set((s) => ({
       list: sortByName(s.list.map((c) => (c.id === id ? next : c))),
+    }));
+  },
+
+  setCategoryIcon: async (id, icon) => {
+    const current = await db.categories.get(id);
+    if (!current || current.icon === icon) return;
+    const next = { ...current, icon };
+    await db.transaction('rw', db.categories, db.outbox, async () => {
+      await enqueueOutbox('upsert_category', [next]);
+      await db.categories.put(next);
+    });
+    set((state) => ({
+      list: state.list.map((category) => category.id === id ? next : category),
     }));
   },
 

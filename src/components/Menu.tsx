@@ -10,6 +10,7 @@ import {
 import { Box, Grid2X2, Layers3, FileSpreadsheet } from "lucide-react";
 import { isGiftCardProduct } from "../utils/financial";
 import { resolveProductCategoryPath } from "../catalog/categoryTaxonomy";
+import { categoryIcon } from "../catalog/categoryIcons";
 
 const stockLabel = (stockQty?: number): string => {
   if (stockQty == null) return "Geen voorraadtracking";
@@ -85,6 +86,7 @@ export const Menu: React.FC<MenuProps> = ({
         .map((category) => ({
           id: category.id,
           name: category.name,
+          icon: category.icon,
           count: activeProducts.filter(
             (product) => resolveProductCategoryPath(product, categories)?.root.id === category.id,
           ).length,
@@ -100,6 +102,7 @@ export const Menu: React.FC<MenuProps> = ({
     return fallback.map((name) => ({
       id: name,
       name,
+      icon: undefined,
       count: activeProducts.filter((product) => product.category === name)
         .length,
     }));
@@ -276,16 +279,18 @@ export const Menu: React.FC<MenuProps> = ({
                 : "border-l-transparent text-slate-600 hover:bg-white/60 hover:text-slate-900 font-medium"
             }`}
           >
-            <span className="block text-sm">Alles</span>
-            <span
-              className={`mt-0.5 block text-xs ${activeCategory === "all" && !term ? "text-sky-700 font-semibold" : "text-slate-600"}`}
-            >
-              {activeProducts.length} producten
+            <span className="flex items-center gap-3">
+              <Grid2X2 size={21} strokeWidth={2} className={activeCategory === "all" && !term ? "text-sky-600" : "text-slate-500"} />
+              <span>
+                <span className="block text-sm">Alles</span>
+                <span className={`mt-0.5 block text-xs ${activeCategory === "all" && !term ? "text-sky-700 font-semibold" : "text-slate-600"}`}>{activeProducts.length} producten</span>
+              </span>
             </span>
           </button>
 
           {categoryItems.map((category) => {
             const isActive = activeCategory === category.id && !term;
+            const CategoryIcon = categoryIcon(category.icon);
             return (
               <button
                 key={category.id}
@@ -301,13 +306,12 @@ export const Menu: React.FC<MenuProps> = ({
                     : "border-l-transparent text-slate-600 hover:bg-white/60 hover:text-slate-900 font-medium"
                 }`}
               >
-                <span className="block text-sm leading-tight">
-                  {category.name}
-                </span>
-                <span
-                  className={`mt-0.5 block text-xs ${isActive ? "text-sky-700 font-semibold" : "text-slate-600"}`}
-                >
-                  {category.count} producten
+                <span className="flex items-center gap-3">
+                  <CategoryIcon size={21} strokeWidth={2} className={isActive ? "text-sky-600" : "text-slate-500"} />
+                  <span className="min-w-0">
+                    <span className="block text-sm leading-tight">{category.name}</span>
+                    <span className={`mt-0.5 block text-xs ${isActive ? "text-sky-700 font-semibold" : "text-slate-600"}`}>{category.count} producten</span>
+                  </span>
                 </span>
               </button>
             );

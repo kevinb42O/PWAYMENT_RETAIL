@@ -101,7 +101,7 @@ const mapCategory = async (row: Row<"categories">): Promise<ProductCategory> => 
   if (row.parent_id && !parent) {
     const { data: remoteParent } = await supabase
       .from("categories")
-      .select("id, external_id, name, vat_rate, sort_order, is_active")
+      .select("id, external_id, name, icon, vat_rate, sort_order, is_active")
       .eq("store_id", row.store_id)
       .eq("id", row.parent_id)
       .maybeSingle();
@@ -110,6 +110,7 @@ const mapCategory = async (row: Row<"categories">): Promise<ProductCategory> => 
         id: remoteParent.external_id ?? remoteParent.id,
         serverId: remoteParent.id,
         name: remoteParent.name,
+        icon: remoteParent.icon ?? undefined,
         vatRate: Number(remoteParent.vat_rate),
         sortOrder: remoteParent.sort_order ?? undefined,
         isActive: remoteParent.is_active,
@@ -122,6 +123,7 @@ const mapCategory = async (row: Row<"categories">): Promise<ProductCategory> => 
     serverId: row.id,
     parentId: parent?.id,
     name: row.name,
+    icon: row.icon ?? undefined,
     vatRate: row.vat_rate == null ? undefined : Number(row.vat_rate),
     sortOrder: row.sort_order ?? undefined,
     isActive: row.is_active,

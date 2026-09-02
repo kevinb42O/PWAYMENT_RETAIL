@@ -227,6 +227,7 @@ export type Database = {
           created_at: string
           external_id: string | null
           id: string
+          icon: string | null
           is_active: boolean
           is_demo: boolean
           name: string
@@ -240,6 +241,7 @@ export type Database = {
           created_at?: string
           external_id?: string | null
           id?: string
+          icon?: string | null
           is_active?: boolean
           is_demo?: boolean
           name: string
@@ -253,6 +255,7 @@ export type Database = {
           created_at?: string
           external_id?: string | null
           id?: string
+          icon?: string | null
           is_active?: boolean
           is_demo?: boolean
           name?: string

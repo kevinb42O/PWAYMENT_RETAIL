@@ -67,6 +67,15 @@ describe("category repository store", () => {
     ]);
   });
 
+  it("persists an owner-selected category icon and queues it for sync", async () => {
+    const created = await useCategories.getState().addCategory("Boeken", 6);
+    await useCategories.getState().setCategoryIcon(created!.id, "book");
+
+    expect(await db.categories.get(created!.id)).toMatchObject({ icon: "book" });
+    expect(useCategories.getState().list.find((category) => category.id === created!.id)).toMatchObject({ icon: "book" });
+    expect((await db.outbox.toArray()).filter((entry) => entry.kind === "upsert_category")).toHaveLength(2);
+  });
+
   it("creates subcategories below a main category and prevents deleting a non-empty branch", async () => {
     const parent = await useCategories.getState().addCategory("Schoenen", 21);
     const child = await useCategories.getState().addSubcategory(parent!.id, "Sneakers");

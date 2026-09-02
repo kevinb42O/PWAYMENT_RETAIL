@@ -494,6 +494,7 @@ export const syncStoreFromSupabase = async (storeId: string): Promise<void> => {
       ? categoryExternalIdByDatabaseId.get(row.parent_id)
       : undefined,
     name: row.name,
+    icon: row.icon ?? undefined,
     vatRate: Number(row.vat_rate),
     sortOrder: row.sort_order ?? undefined,
     isActive: row.is_active,
