@@ -3951,3 +3951,110 @@ body {
   border-bottom-color: #18344e !important;
   border-top-color: #18344e !important;
 }
+
+/* Settings-menu interaction contract: neutral options share one quiet hover,
+   never the light-mode white surface. */
+.pos-menu-action:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.theme-dark .pos-menu-action {
+  color: #c5d5e4 !important;
+}
+
+.theme-dark .pos-menu-action:hover {
+  background: #17344f !important;
+  color: #f5f9fd !important;
+}
+
+.theme-dark .pos-menu-action:hover .text-slate-500,
+.theme-dark .pos-menu-action:hover .text-slate-400 {
+  color: #8bd2ff !important;
+}
+
+.theme-dark .pos-menu-action .text-cyan-700 {
+  color: #62c7ff !important;
+}
+
+/* The display preference is one tangible slider. Its label describes the
+   active mode, so light mode never reads like a dark-mode button. */
+.theme-mode-slider {
+  border: 1px solid #dbe7f0;
+  border-radius: 12px;
+  background: #f8fbfd;
+}
+
+.theme-mode-slider__control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #1e293b;
+  transition: background-color 140ms ease;
+}
+.theme-mode-slider__control:hover { background: #f0f7fb; }
+.theme-mode-slider__control:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
+.theme-mode-slider__heading {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+}
+.theme-mode-slider__icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  place-items: center;
+  border-radius: 9px;
+  background: #e0f2fe;
+  color: #0369a1;
+}
+.theme-mode-slider__title,
+.theme-mode-slider__description { display: block; }
+.theme-mode-slider__title { font-size: 11px; font-weight: 800; line-height: 1.2; }
+.theme-mode-slider__description { margin-top: 2px; color: #64748b; font-size: 10px; font-weight: 600; line-height: 1.2; }
+.theme-mode-slider__track {
+  display: flex;
+  width: 38px;
+  height: 22px;
+  flex: none;
+  align-items: center;
+  padding: 3px;
+  border: 1px solid #b8cedd;
+  border-radius: 999px;
+  background: #dbe9f1;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+.theme-mode-slider__track--on {
+  justify-content: flex-end;
+  border-color: #1685c7;
+  background: #1685c7;
+}
+.theme-mode-slider__thumb {
+  display: grid;
+  width: 14px;
+  height: 14px;
+  place-items: center;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #4b6b80;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.24);
+}
+.theme-mode-slider__track--on .theme-mode-slider__thumb { color: #0e7490; }
+
+.theme-dark .theme-mode-slider {
+  border-color: #294b6a !important;
+  background: #102438 !important;
+}
+.theme-dark .theme-mode-slider__control { color: #eaf3fb !important; }
+.theme-dark .theme-mode-slider__control:hover { background: #15324b !important; }
+.theme-dark .theme-mode-slider__icon { background: #173a59 !important; color: #7dd3fc !important; }
+.theme-dark .theme-mode-slider__description { color: #91a8bd !important; }
+.theme-dark .theme-mode-slider__track { border-color: #46647c !important; background: #0a1827 !important; }
+.theme-dark .theme-mode-slider__track--on { border-color: #2099df !important; background: #1685c7 !important; }
+.theme-dark .theme-mode-slider__thumb { background: #f7fbff !important; color: #315a79 !important; }

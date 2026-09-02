@@ -10,47 +10,38 @@ interface ThemeToggleProps {
 
 export const ThemeToggle: React.FC<ThemeToggleProps> = ({ compact = false, menu = false }) => {
   const mode = useTheme((state) => state.mode);
-  const setMode = useTheme((state) => state.setMode);
   const toggleMode = useTheme((state) => state.toggleMode);
   const isDark = mode === 'dark';
   const label = isDark ? 'Schakel naar lichte modus' : 'Schakel naar donkere modus';
 
   if (menu) {
     return (
-      <section className="theme-mode-picker" aria-label="Weergave kiezen">
-        <div className="theme-mode-picker__heading">
-          <span className="theme-mode-picker__icon" aria-hidden="true">
+      <section className="theme-mode-slider" aria-label="Weergave kiezen">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={isDark}
+          aria-label={label}
+          onClick={toggleMode}
+          className="theme-mode-slider__control w-full rounded-xl p-2.5 text-left"
+        >
+          <span className="theme-mode-slider__heading">
+            <span className="theme-mode-slider__icon" aria-hidden="true">
             {isDark ? <Moon size={15} /> : <Sun size={15} />}
-          </span>
-          <span>
-            <span className="theme-mode-picker__title">Weergave</span>
-            <span className="theme-mode-picker__description">
-              {isDark ? 'Donkere modus is actief' : 'Lichte modus is actief'}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="theme-mode-slider__title">{isDark ? 'Donkere modus' : 'Lichte modus'}</span>
+              <span className="theme-mode-slider__description">
+                {isDark ? 'Rustig voor gebruik bij weinig licht' : 'Heldere weergave voor overdag'}
+              </span>
             </span>
           </span>
-        </div>
-        <div className="theme-mode-picker__choices" role="group" aria-label="Kies lichte of donkere modus">
-          <button
-            type="button"
-            role="menuitemradio"
-            aria-checked={!isDark}
-            onClick={() => setMode('light')}
-            className={`theme-mode-picker__choice ${!isDark ? 'theme-mode-picker__choice--active' : ''}`}
-          >
-            <Sun size={14} aria-hidden="true" />
-            Licht
-          </button>
-          <button
-            type="button"
-            role="menuitemradio"
-            aria-checked={isDark}
-            onClick={() => setMode('dark')}
-            className={`theme-mode-picker__choice ${isDark ? 'theme-mode-picker__choice--active' : ''}`}
-          >
-            <Moon size={14} aria-hidden="true" />
-            Donker
-          </button>
-        </div>
+          <span className={`theme-mode-slider__track ${isDark ? 'theme-mode-slider__track--on' : ''}`} aria-hidden="true">
+            <span className="theme-mode-slider__thumb">
+              {isDark ? <Moon size={11} /> : <Sun size={11} />}
+            </span>
+          </span>
+        </button>
       </section>
     );
   }
