@@ -1148,7 +1148,7 @@ const SalesHistory = ({
                     <th className="px-6 py-3 text-right">Acties</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="history-transaction-table-body divide-y divide-slate-100">
                   {shownTransactions.map((transaction) => {
                     const invoice = convertTransactionToInvoiceData(
                       transaction,
@@ -1271,7 +1271,7 @@ const TransactionRow = ({
             <button
               type="button"
               onClick={() => onRefund(transaction)}
-              className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3 text-sm font-bold text-amber-800 hover:bg-amber-100"
+              className="history-return-action inline-flex h-10 items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3 text-sm font-bold text-amber-800 hover:bg-amber-100"
             >
               <RotateCcw size={15} />
               Retour
@@ -1361,7 +1361,7 @@ const InvoiceActions = ({
     <button
       type="button"
       onClick={() => onPreview(invoice)}
-      className={`inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-cyan-600 ${mobile ? "flex-1" : ""}`}
+      className={`history-view-action inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-cyan-600 ${mobile ? "flex-1" : ""}`}
       aria-label={`Bekijk factuur ${invoice.invoiceNumber}`}
     >
       <Eye size={16} /> Bekijken

@@ -4189,3 +4189,29 @@ body {
     #07111f !important;
   color: #f3f7fc !important;
 }
+
+/* Transaction actions have an intentionally tangible hover in dark mode. */
+.theme-dark .history-workspace .history-return-action,
+.theme-dark .history-workspace .history-view-action {
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+}
+.theme-dark .history-workspace .history-return-action:hover {
+  border-color: #b68a37 !important;
+  background: #493819 !important;
+  color: #ffecba !important;
+  box-shadow: 0 4px 13px rgba(0, 0, 0, 0.2) !important;
+  transform: translateY(-1px);
+}
+.theme-dark .history-workspace .history-view-action:hover {
+  border-color: #3a7197 !important;
+  background: #1b425f !important;
+  color: #eaf6ff !important;
+  box-shadow: 0 4px 13px rgba(0, 0, 0, 0.2) !important;
+  transform: translateY(-1px);
+}
+
+/* Table rules are structure, never a hover or focus signal. */
+.theme-dark .history-workspace .history-transaction-table-body > tr + tr {
+  border-top-color: #1c3d59 !important;
+  box-shadow: none !important;
+}
