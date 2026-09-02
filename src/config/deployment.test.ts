@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 
 type VercelConfig = {
   cleanUrls: boolean;
+  git: {
+    deploymentEnabled: Record<string, boolean>;
+  };
   headers: Array<{
     headers: Array<{ key: string; value: string }>;
     source: string;
@@ -17,6 +20,10 @@ const config = JSON.parse(
 ) as VercelConfig;
 
 describe("Vercel deployment routing", () => {
+  it("leaves production publishing to the verified GitHub Actions workflow", () => {
+    expect(config.git.deploymentEnabled.main).toBe(false);
+  });
+
   it("serves prerendered HTML on canonical extensionless URLs", () => {
     expect(config.cleanUrls).toBe(true);
     expect(config.trailingSlash).toBe(false);
