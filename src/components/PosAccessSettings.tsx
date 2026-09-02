@@ -449,7 +449,7 @@ export const PosAccessSettings = () => {
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 pb-12">
-      <section className="rounded-3xl border border-cyan-200 bg-gradient-to-br from-white via-cyan-50/50 to-sky-50/60 p-5 shadow-sm md:p-7">
+      <section className="pos-access-settings-hero rounded-3xl border border-cyan-200 bg-gradient-to-br from-white via-cyan-50/50 to-sky-50/60 p-5 shadow-sm md:p-7">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-cyan-100 bg-white text-cyan-800 shadow-sm">
             <LockKeyhole size={25} />

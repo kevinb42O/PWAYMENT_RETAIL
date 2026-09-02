@@ -67,7 +67,7 @@ export const SoundSettings = () => {
           </div>
           <div className="mt-2 flex items-center gap-3">
             <VolumeX size={14} className="text-slate-400" />
-            <input id="register-sound-volume" type="range" min="0" max="100" step="1" disabled={!settings.enabled} value={volumePercent} onChange={(event) => settings.update({ volume: Number(event.target.value) / 100 })} onPointerUp={() => void playRegisterSound("attention", { preview: true })} className="h-1.5 flex-1 cursor-pointer accent-slate-900 disabled:cursor-not-allowed" />
+            <input id="register-sound-volume" type="range" min="0" max="100" step="1" disabled={!settings.enabled} value={volumePercent} onChange={(event) => settings.update({ volume: Number(event.target.value) / 100 })} onPointerUp={() => void playRegisterSound("attention", { preview: true })} className="settings-range h-1.5 flex-1 cursor-pointer accent-slate-900 disabled:cursor-not-allowed" style={{ "--settings-range-progress": `${volumePercent}%` } as React.CSSProperties} />
             <Volume2 size={15} className="text-slate-600" />
           </div>
         </div>

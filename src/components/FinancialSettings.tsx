@@ -327,7 +327,7 @@ export const FinancialSettings = () => {
     : null;
 
   return (
-    <div className="insights-light -m-4 space-y-5 p-4 md:-m-8 md:p-8">
+    <div className="financial-settings insights-light -m-4 space-y-5 p-4 md:-m-8 md:p-8">
       {(error || message) && (
         <FeedbackBanner
           tone={error ? "error" : message?.tone ?? "success"}
@@ -337,7 +337,7 @@ export const FinancialSettings = () => {
         </FeedbackBanner>
       )}
 
-      <section className="overflow-hidden rounded-2xl border border-cyan-200 bg-gradient-to-br from-white via-white to-cyan-50 shadow-sm">
+      <section className="financial-settings-hero overflow-hidden rounded-2xl border border-cyan-200 bg-gradient-to-br from-white via-white to-cyan-50 shadow-sm">
         <div className="grid gap-6 p-5 sm:p-7 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,.8fr)] lg:items-center">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-extrabold text-cyan-800">

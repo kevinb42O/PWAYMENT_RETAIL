@@ -5320,6 +5320,80 @@ body {
 .theme-dark .auth-shell .border-emerald-200 { border-color: #2b6b58 !important; }
 .theme-dark .auth-shell .text-emerald-800 { color: #8ee3bd !important; }
 
+/* Settings final theme guard ------------------------------------------------
+   Settings components are mounted inside the POS shell, whose legacy utility
+   bridge is declared later than the settings stylesheet. Named setup surfaces
+   are kept here so their deliberate light-mode gradients never resurface in
+   dark mode through that bridge. */
+.theme-dark .settings-workspace .pos-access-settings-hero {
+  border-color: #286490 !important;
+  background:
+    radial-gradient(circle at 84% 12%, rgba(54, 188, 229, 0.15), transparent 34%),
+    linear-gradient(135deg, #102c44 0%, #10263a 52%, #0c1d30 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(197, 233, 255, 0.07), 0 14px 30px rgba(0, 0, 0, 0.16) !important;
+}
+.theme-dark .settings-workspace .pos-access-settings-hero :is(.bg-white, .bg-cyan-50) {
+  border-color: #315a79 !important;
+  background-color: rgba(12, 31, 48, 0.92) !important;
+}
+.theme-dark .settings-workspace .pos-access-settings-hero :is(.text-slate-950, .text-slate-900) { color: #f4f9fe !important; }
+.theme-dark .settings-workspace .pos-access-settings-hero .text-slate-600 { color: #b7cbdd !important; }
+
+/* Financial planning is embedded in settings but was intentionally built with
+   the legacy light insights skin. Scope the complete dark override to this
+   embedding, leaving the standalone Insights workspace unchanged. */
+.theme-dark .settings-workspace .financial-settings {
+  background: transparent !important;
+  color: #e5f0fa !important;
+}
+.theme-dark .settings-workspace .financial-settings .financial-settings-hero {
+  border-color: #286490 !important;
+  background:
+    radial-gradient(circle at 88% 12%, rgba(54, 188, 229, 0.15), transparent 33%),
+    linear-gradient(135deg, #102c44 0%, #10263a 52%, #0c1d30 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(197, 233, 255, 0.07), 0 14px 30px rgba(0, 0, 0, 0.16) !important;
+}
+.theme-dark .settings-workspace .financial-settings :is(.insights-panel, .bg-white, .bg-zinc-950, .bg-zinc-900) {
+  border-color: #1c3d59 !important;
+  background-color: #10263a !important;
+  color: #e5f0fa !important;
+}
+.theme-dark .settings-workspace .financial-settings :is(.bg-slate-50, .bg-zinc-800) { background-color: #0b1a2a !important; }
+.theme-dark .settings-workspace .financial-settings :is(.border-slate-100, .border-slate-200, .border-zinc-700, .border-zinc-800) { border-color: #1c3d59 !important; }
+.theme-dark .settings-workspace .financial-settings :is(.text-white, .text-zinc-100, .text-zinc-200, .text-zinc-300, .text-slate-950, .text-slate-900) { color: #f4f9fe !important; }
+.theme-dark .settings-workspace .financial-settings :is(.text-zinc-500, .text-zinc-600, .text-slate-600, .text-slate-500) { color: #9fb5c9 !important; }
+.theme-dark .settings-workspace .financial-settings .text-zinc-400 { color: #7892a9 !important; }
+
+/* Chromium otherwise leaves a white native range track in dark mode. The
+   CSS variable comes from the live value, so the cyan progress stays accurate
+   while light mode retains the browser's normal control. */
+.theme-dark .settings-workspace .settings-range {
+  appearance: none;
+  height: 8px;
+  border: 1px solid #315a79;
+  border-radius: 999px;
+  background: linear-gradient(to right, #19a8cf 0 var(--settings-range-progress), #0b1a2a var(--settings-range-progress) 100%);
+  accent-color: #19a8cf;
+}
+.theme-dark .settings-workspace .settings-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #07111f;
+  border-radius: 999px;
+  background: #38bce5;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.44);
+}
+.theme-dark .settings-workspace .settings-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #07111f;
+  border-radius: 999px;
+  background: #38bce5;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.44);
+}
+.theme-dark .settings-workspace .settings-range:disabled { opacity: .45; }
+
 /* A receipt is a real-world paper document, not an app surface. Keep every
    on-screen ticket preview white and black even while the surrounding POS or
    settings workspace uses the dark compatibility skin. This must live after
