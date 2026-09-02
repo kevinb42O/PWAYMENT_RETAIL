@@ -88,7 +88,7 @@ export const FloatingTooltip = ({
     <div
       ref={tooltipRef}
       role="tooltip"
-      className={`pointer-events-none fixed z-[100] w-max max-w-[min(22rem,calc(100vw-1.5rem))] rounded-xl border px-3.5 py-2.5 text-left shadow-lg ${
+      className={`insights-floating-tooltip pointer-events-none fixed z-[100] w-max max-w-[min(22rem,calc(100vw-1.5rem))] rounded-xl border px-3.5 py-2.5 text-left shadow-lg ${
         variant === 'light'
           ? 'border-slate-200 bg-white text-slate-900'
           : 'border-white/10 bg-slate-950 text-white'
@@ -100,7 +100,7 @@ export const FloatingTooltip = ({
       }}
     >
       {children}
-      <i className={`absolute left-1/2 h-2.5 w-2.5 -translate-x-1/2 rotate-45 border ${
+      <i className={`insights-floating-tooltip-arrow absolute left-1/2 h-2.5 w-2.5 -translate-x-1/2 rotate-45 border ${
         variant === 'light'
           ? 'border-slate-200 bg-white'
           : 'border-white/10 bg-slate-950'

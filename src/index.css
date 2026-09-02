@@ -4744,3 +4744,176 @@ body {
   background: #194662 !important;
   color: #e8f7ff !important;
 }
+
+/* Inzichten is a full analytical workspace, not a light exception. Its cards,
+   data views and SVG charts all live on the same dark analytical canvas, while
+   colour keeps its meaning for trends, urgency and financial health. */
+.theme-dark .pos-app-shell .insights-workspace {
+  min-height: 100%;
+  background:
+    radial-gradient(circle at 52% -28%, rgba(36, 153, 255, 0.1), transparent 38%),
+    #07111f !important;
+  color: #e5f0fa !important;
+}
+.theme-dark .insights-workspace :is(main, aside) { background: transparent !important; color: inherit !important; }
+.theme-dark .insights-workspace > aside,
+.theme-dark .insights-workspace .insights-mobile-navigation,
+.theme-dark .insights-workspace .insights-mobile-navigation > button { background: #0b1a2a !important; }
+.theme-dark .insights-workspace .bg-white,
+.theme-dark .insights-workspace .bg-zinc-950,
+.theme-dark .insights-workspace .bg-zinc-950\/40,
+.theme-dark .insights-workspace .bg-zinc-950\/50,
+.theme-dark .insights-workspace .bg-zinc-950\/55,
+.theme-dark .insights-workspace .bg-zinc-950\/70,
+.theme-dark .insights-workspace .bg-zinc-950\/95,
+.theme-dark .insights-workspace .bg-zinc-900,
+.theme-dark .insights-workspace .bg-zinc-900\/40,
+.theme-dark .insights-workspace .bg-zinc-900\/60,
+.theme-dark .insights-workspace .bg-zinc-900\/80,
+.theme-dark .insights-workspace .insights-panel,
+.theme-dark .insights-workspace .insight-detail-surface {
+  background: linear-gradient(145deg, #10263a, #0d2033) !important;
+}
+.theme-dark .insights-workspace .bg-slate-50,
+.theme-dark .insights-workspace .bg-slate-50\/50,
+.theme-dark .insights-workspace .bg-zinc-800,
+.theme-dark .insights-workspace .bg-zinc-800\/40,
+.theme-dark .insights-workspace .bg-zinc-800\/50,
+.theme-dark .insights-workspace .bg-zinc-800\/60 { background: #0b1a2a !important; }
+.theme-dark .insights-workspace .bg-slate-100,
+.theme-dark .insights-workspace .bg-slate-200 { background: #173149 !important; }
+.theme-dark .insights-workspace .bg-cyan-50,
+.theme-dark .insights-workspace .bg-cyan-50\/70 { background: #123b59 !important; }
+.theme-dark .insights-workspace .bg-amber-50 { background: rgba(113, 76, 20, 0.3) !important; }
+.theme-dark .insights-workspace .bg-emerald-50 { background: rgba(19, 92, 67, 0.34) !important; }
+.theme-dark .insights-workspace .bg-rose-50 { background: rgba(113, 34, 54, 0.3) !important; }
+.theme-dark .insights-workspace .insights-panel,
+.theme-dark .insights-workspace .rounded-2xl.border.bg-zinc-900 {
+  border-color: #224663 !important;
+  box-shadow: inset 0 1px 0 rgba(197, 233, 255, 0.035), 0 8px 22px rgba(0, 0, 0, 0.13) !important;
+}
+.theme-dark .insights-workspace :is(.border-slate-100, .border-slate-200, .border-slate-300, .border-slate-400, .border-zinc-700, .border-zinc-800, .border-zinc-800\/80, .border-cyan-100, .border-sky-100) {
+  border-color: #1c3d59 !important;
+}
+.theme-dark .insights-workspace .border-cyan-200 { border-color: #286490 !important; }
+.theme-dark .insights-workspace .border-amber-200 { border-color: #80652f !important; }
+.theme-dark .insights-workspace .border-sky-300\/30,
+.theme-dark .insights-workspace .border-sky-400\/20,
+.theme-dark .insights-workspace .border-sky-400\/25 { border-color: #286490 !important; }
+.theme-dark .insights-workspace :is(.text-slate-950, .text-slate-900, .text-slate-800, .text-white, .text-zinc-100, .text-zinc-200, .text-zinc-300) { color: #f4f9fe !important; }
+.theme-dark .insights-workspace :is(.text-slate-700, .text-zinc-400) { color: #d5e2ee !important; }
+.theme-dark .insights-workspace :is(.text-slate-600, .text-slate-500, .text-zinc-500, .text-zinc-600) { color: #9fb5c9 !important; }
+.theme-dark .insights-workspace :is(.text-slate-400, .text-slate-300) { color: #7892a9 !important; }
+.theme-dark .insights-workspace :is(.text-sky-300, .text-sky-400, .text-cyan-700, .text-cyan-800) { color: #69c8ff !important; }
+.theme-dark .insights-workspace .text-cyan-950 { color: #d8f2ff !important; }
+.theme-dark .insights-workspace :is(.text-emerald-600, .text-emerald-700) { color: #8ee3bd !important; }
+.theme-dark .insights-workspace :is(.text-amber-300, .text-amber-700, .text-amber-900) { color: #ffd37b !important; }
+.theme-dark .insights-workspace .text-rose-700 { color: #ffafbd !important; }
+.theme-dark .insights-workspace :is(input, select, textarea) {
+  border-color: #315a79 !important;
+  background: #091827 !important;
+  color: #f4f9fe !important;
+  color-scheme: dark;
+}
+.theme-dark .insights-workspace :is(input, textarea)::placeholder { color: #7892a9 !important; }
+.theme-dark .insights-workspace option { background: #10263a; color: #f4f9fe; }
+.theme-dark .insights-workspace :is(input, select, textarea):focus { border-color: #38bce5 !important; box-shadow: 0 0 0 3px rgba(56, 188, 229, 0.16) !important; }
+
+/* Navigation, periods and dense action queues. */
+.theme-dark .insights-workspace .insights-nav-item,
+.theme-dark .insights-workspace .insights-subnav-item,
+.theme-dark .insights-workspace .insights-control,
+.theme-dark .insights-workspace .insights-queue-item { color: #9fb5c9 !important; }
+.theme-dark .insights-workspace :is(.insights-nav-item, .insights-subnav-item, .insights-control, .insights-queue-item):hover {
+  background: #173149 !important;
+  color: #edf7ff !important;
+}
+.theme-dark .insights-workspace .insights-nav-item--active,
+.theme-dark .insights-workspace .insights-subnav-item--active,
+.theme-dark .insights-workspace .insights-control--active,
+.theme-dark .insights-workspace .insights-queue-item--active {
+  border-color: #286490 !important;
+  background: #163e5c !important;
+  color: #bce6ff !important;
+  box-shadow: inset 0 0 0 1px rgba(105, 200, 255, 0.11) !important;
+}
+.theme-dark .insights-workspace .insights-nav-item--active { box-shadow: inset 3px 0 0 #38bce5 !important; }
+.theme-dark .insights-workspace .insights-control--active { box-shadow: inset 0 0 0 1px #286490 !important; }
+.theme-dark .insights-workspace .insights-tabs,
+.theme-dark .insights-workspace [aria-label="Periode"],
+.theme-dark .insights-workspace [aria-label="Signalen"] { border-color: #244765 !important; background: #0b1a2a !important; }
+.theme-dark .insights-workspace .insights-primary-action {
+  border: 1px solid #1687ad !important;
+  background: #087f9d !important;
+  color: #f7fcff !important;
+  box-shadow: inset 0 1px 0 rgba(214, 249, 255, 0.14), 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+.theme-dark .insights-workspace .insights-primary-action:hover {
+  border-color: #38bce5 !important;
+  background: #0b98b8 !important;
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.25) !important;
+  transform: translateY(-1px);
+}
+.theme-dark .insights-workspace .insights-primary-action:disabled {
+  border-color: #25445f !important;
+  background: #0c1b2b !important;
+  color: #71889d !important;
+  box-shadow: none !important;
+}
+.theme-dark .insights-workspace :is(.hover\:bg-slate-50:hover, .hover\:bg-cyan-50:hover) { background: #173149 !important; }
+.theme-dark .insights-workspace .hover\:border-cyan-200:hover { border-color: #3a7197 !important; }
+.theme-dark .insights-workspace .hover\:text-cyan-950:hover,
+.theme-dark .insights-workspace .hover\:text-white:hover { color: #f4faff !important; }
+.theme-dark .insights-workspace .hover\:bg-slate-800:hover { background: #1b425f !important; }
+
+/* Forecast, urgency and velocity retain clear semantics without importing a
+   light surface behind the data. */
+.theme-dark .insights-workspace .inventory-forecast-light { border-color: #224663 !important; background: linear-gradient(145deg, #10263a, #0d2033) !important; }
+.theme-dark .insights-workspace .forecast-urgency--out,
+.theme-dark .insights-workspace .forecast-urgency--critical,
+.theme-dark .insights-workspace .stock-velocity-group--red { border-color: #814252 !important; background: rgba(113, 34, 54, 0.3) !important; color: #ffafbd !important; }
+.theme-dark .insights-workspace .forecast-urgency--soon,
+.theme-dark .insights-workspace .stock-velocity-group--orange { border-color: #80652f !important; background: rgba(113, 76, 20, 0.3) !important; color: #ffd37b !important; }
+.theme-dark .insights-workspace .forecast-urgency--watch { border-color: #286490 !important; background: #123b59 !important; color: #8ed5ff !important; }
+.theme-dark .insights-workspace .forecast-urgency--healthy,
+.theme-dark .insights-workspace .stock-velocity-group--green { border-color: #2b6b58 !important; background: rgba(19, 92, 67, 0.34) !important; color: #8ee3bd !important; }
+.theme-dark .insights-workspace .forecast-urgency--quiet { border-color: #315a79 !important; background: #173149 !important; color: #b8c9d8 !important; }
+.theme-dark .insights-workspace :is(.stock-velocity-row--red, .stock-velocity-row--orange, .stock-velocity-row--green) { border-color: #1c3d59 !important; background: #10263a !important; }
+
+/* Chart geometry is drawn with SVG attributes, so it needs explicit dark
+   tokens instead of relying on generic text/background utility remapping. */
+.theme-dark .insights-workspace .insight-chart-surface {
+  --insight-chart-grid: #244765;
+  --insight-chart-label: #9fb5c9;
+  --insight-chart-cursor: rgba(105, 200, 255, 0.65);
+  background: #0b1a2a !important;
+}
+.theme-dark .insights-workspace svg line[stroke="#e2e8f0"],
+.theme-dark .insights-workspace svg circle[stroke="#e2e8f0"] { stroke: #244765 !important; }
+.theme-dark .insights-workspace svg text[fill="#64748b"] { fill: #9fb5c9 !important; }
+.theme-dark .insights-workspace svg path[stroke="#94a3b8"] { stroke: #7892a9 !important; }
+.theme-dark .insights-workspace svg line[stroke="#0f172a"] { stroke: #9fb5c9 !important; }
+.theme-dark .insights-workspace .season-metric { border-color: #1c3d59; background: #0b1a2a; }
+.theme-dark .insights-workspace .season-metric span { color: #9fb5c9; }
+.theme-dark .insights-workspace .season-metric strong { color: #f4f9fe; }
+.theme-dark .insights-floating-tooltip {
+  border-color: #315a79 !important;
+  background: #10263a !important;
+  color: #f4f9fe !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.32) !important;
+}
+.theme-dark .insights-floating-tooltip-arrow { border-color: #315a79 !important; background: #10263a !important; }
+.theme-dark .insights-floating-tooltip .text-slate-300 { color: #9fb5c9 !important; }
+
+/* Customer drill-down is portalled outside the workspace tree. Give the modal
+   the same contract explicitly so opening a customer never reintroduces a
+   bright light-only card or unreadable copy. */
+.theme-dark .insights-customer-modal { border-color: #224663 !important; background: #10263a !important; color: #e5f0fa !important; }
+.theme-dark .insights-customer-modal .bg-white { background: #10263a !important; }
+.theme-dark .insights-customer-modal .bg-slate-50 { background: #0b1a2a !important; }
+.theme-dark .insights-customer-modal :is(.border-slate-100, .border-slate-200, .border-slate-300) { border-color: #1c3d59 !important; }
+.theme-dark .insights-customer-modal :is(.text-slate-950, .text-slate-900, .text-slate-800, .text-white) { color: #f4f9fe !important; }
+.theme-dark .insights-customer-modal :is(.text-slate-700, .text-slate-600, .text-slate-500, .text-slate-400) { color: #9fb5c9 !important; }
+.theme-dark .insights-customer-modal .bg-slate-900 { background: #087f9d !important; }
+.theme-dark .insights-customer-modal .hover\:bg-slate-800:hover { background: #0b98b8 !important; }

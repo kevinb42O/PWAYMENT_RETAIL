@@ -504,7 +504,7 @@ export const Insights = ({
   };
 
   return (
-    <div className="insights-light app-page-shell flex min-h-0 flex-1 overflow-hidden">
+    <div className="insights-workspace insights-light app-page-shell flex min-h-0 flex-1 overflow-hidden">
       <InsightsSidebar
         section={location.section}
         page={location.page}
@@ -2126,6 +2126,7 @@ const CustomerValuePage = ({
         subtitle="Klantfiche"
         size="3xl"
         variant="light"
+        className="insights-customer-modal"
         footer={
           <div className="flex justify-end">
             <button
