@@ -5319,3 +5319,27 @@ body {
 .theme-dark .auth-shell :is(.bg-emerald-50, .bg-emerald-100) { background-color: rgba(19, 92, 67, .3) !important; }
 .theme-dark .auth-shell .border-emerald-200 { border-color: #2b6b58 !important; }
 .theme-dark .auth-shell .text-emerald-800 { color: #8ee3bd !important; }
+
+/* A receipt is a real-world paper document, not an app surface. Keep every
+   on-screen ticket preview white and black even while the surrounding POS or
+   settings workspace uses the dark compatibility skin. This must live after
+   the shell's utility remapping, otherwise .bg-white and text helpers are
+   recoloured again in dark mode. */
+.theme-dark .pos-app-shell .receipt-ticket-preview {
+  color-scheme: light !important;
+  background: #ffffff !important;
+  border-color: #d4d4d8 !important;
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+.theme-dark .pos-app-shell .receipt-ticket-preview * {
+  color: inherit !important;
+  -webkit-text-fill-color: inherit !important;
+}
+.theme-dark .pos-app-shell .receipt-ticket-preview .text-zinc-600 {
+  color: #52525b !important;
+  -webkit-text-fill-color: #52525b !important;
+}
+.theme-dark .pos-app-shell .receipt-ticket-preview .border-zinc-400 {
+  border-color: #a1a1aa !important;
+}

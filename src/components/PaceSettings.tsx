@@ -122,9 +122,9 @@ export const PaceSettings = ({ subTab = "overview" }: PaceSettingsProps) => {
   };
 
   return <div className="mx-auto max-w-6xl space-y-5 pb-10">
-    <section className="overflow-hidden rounded-3xl border border-sky-200 bg-gradient-to-br from-white via-sky-50/60 to-cyan-50/40 p-5 shadow-sm md:p-7">
+    <section className="pace-settings-hero overflow-hidden rounded-3xl border border-sky-200 bg-gradient-to-br from-white via-sky-50/60 to-cyan-50/40 p-5 shadow-sm md:p-7">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl border border-sky-100 bg-white shadow-sm"><PaceMark size={62} active emotion="attentive" motionMode={preferences.motion} expressive={preferences.expressiveMorphs} /></div>
+        <div className="pace-settings-hero-mark flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl border border-sky-100 bg-white shadow-sm"><PaceMark size={62} active emotion="attentive" motionMode={preferences.motion} expressive={preferences.expressiveMorphs} /></div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-sky-700"><Sparkles size={13} /> Pace · jouw werkassistent</div>
           <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">{currentUserName ? `${currentUserName}, bepaal hoe Pace met je meewerkt.` : "Bepaal hoe Pace met je meewerkt."}</h2>
