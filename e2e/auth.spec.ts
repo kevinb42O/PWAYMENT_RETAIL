@@ -116,6 +116,12 @@ test("owner can switch navigation modules directly from settings", async ({
   await expect(topNavigation.getByRole("button", { name: "Herstellingen" })).toBeVisible();
   await expect(topNavigation.getByRole("button", { name: "Personeel & verlof" })).toBeVisible();
   await expect(topNavigation.getByRole("button", { name: "Integration Hub" })).toBeVisible();
+  await expect
+    .poll(() => topNavigation.getByRole("button", { name: "Personeel & verlof" }).evaluate((element) => element.innerText))
+    .toBe("Personeel");
+  await expect
+    .poll(() => topNavigation.getByRole("button", { name: "Integration Hub" }).evaluate((element) => element.innerText))
+    .toBe("Integration");
 
   await appPage.getByRole("switch", { name: "Personeel & verlof uitschakelen" }).click();
   await expect(topNavigation.getByRole("button", { name: "Personeel & verlof" })).toHaveCount(0);

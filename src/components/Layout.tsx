@@ -145,6 +145,7 @@ interface CartFlight {
 interface NavigationItem {
   view: MainView;
   label: string;
+  compactLabel?: string;
   Icon: LucideIcon;
   title: string;
   profileTab?: "webshop-general";
@@ -610,10 +611,10 @@ export const Layout: React.FC = () => {
         ? [{ view: "service" as const, label: "Herstellingen", Icon: Wrench, title: "Hersteldienst" }]
         : []),
       ...(modulePreferences.workforce && canOpenFeature(FEATURE_KEYS.workforce)
-        ? [{ view: "workforce" as const, label: "Personeel & verlof", Icon: CalendarClock, title: "Personeel, werkuren en verlof" }]
+        ? [{ view: "workforce" as const, label: "Personeel & verlof", compactLabel: "Personeel", Icon: CalendarClock, title: "Personeel, werkuren en verlof" }]
         : []),
       ...((currentRole === "owner" || currentRole === "manager") && modulePreferences.catalog && canOpenFeature(FEATURE_KEYS.integrations)
-        ? [{ view: "integration-hub" as const, label: "Integration Hub", Icon: Cable, title: "Integration Hub" }]
+        ? [{ view: "integration-hub" as const, label: "Integration Hub", compactLabel: "Integration", Icon: Cable, title: "Integration Hub" }]
         : []),
       ...(modulePreferences.insights && canOpenFeature(FEATURE_KEYS.insights)
         ? [{ view: "insights" as const, label: "Inzichten", Icon: Lightbulb, title: "Inzichten (Alt+5)" }]
@@ -1131,10 +1132,13 @@ export const Layout: React.FC = () => {
                 title={item.title}
                 aria-label={item.label}
                 aria-current={active ? "page" : undefined}
-                className={`pos-nav-item flex items-center gap-1.5 px-2.5 py-2 text-xs font-bold transition-colors duration-150 lg:px-3 ${active ? "pos-nav-item--active" : ""}`}
+                className={`pos-nav-item flex shrink-0 items-center gap-1.5 whitespace-nowrap px-2.5 py-2 text-xs font-bold transition-colors duration-150 lg:px-3 ${active ? "pos-nav-item--active" : ""}`}
               >
                 <item.Icon size={14} className="pos-nav-icon" />
-                <span className="hidden xl:inline">{item.label}</span>
+                <span className="hidden xl:inline">
+                  {item.compactLabel && <span className="2xl:hidden">{item.compactLabel}</span>}
+                  <span className={item.compactLabel ? "hidden 2xl:inline" : undefined}>{item.label}</span>
+                </span>
               </button>
             );
           })}
