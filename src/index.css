@@ -3324,6 +3324,25 @@ body {
   color: #ffffff !important;
 }
 
+/* The customer-link control is a compact secondary action, so it must not
+   inherit the old light button surface when the cart is dark. */
+.theme-dark .pos-cart .pos-neutral-action {
+  border-color: #315a79 !important;
+  background: #10263a !important;
+  color: #b7cadb !important;
+  box-shadow: inset 0 1px 0 rgba(210, 239, 255, 0.04) !important;
+}
+.theme-dark .pos-cart .pos-neutral-action:hover {
+  border-color: #4a88b5 !important;
+  background: #173b57 !important;
+  color: #eef7ff !important;
+  box-shadow: inset 0 1px 0 rgba(210, 239, 255, 0.07), 0 4px 12px rgba(0, 0, 0, 0.18) !important;
+}
+.theme-dark .pos-cart .pos-neutral-action:focus-visible {
+  outline: 2px solid #69c6ff;
+  outline-offset: 2px;
+}
+
 .theme-dark .pos-cart-line {
   border-color: #23405d !important;
   background: linear-gradient(145deg, #102438, #0e2033) !important;
@@ -4253,4 +4272,126 @@ body {
 .theme-dark .history-workspace .history-transaction-table-body > tr + tr {
   border-top-color: #1c3d59 !important;
   box-shadow: none !important;
+}
+
+/* Kept last so the Kassa return action intentionally wins over generic amber
+   utility mappings inherited by the application shell. */
+.theme-dark .pos-app-shell .pos-return-action {
+  border-color: #80652f !important;
+  background: rgba(113, 76, 20, 0.27) !important;
+  color: #ffd37b !important;
+  box-shadow: inset 0 1px 0 rgba(255, 229, 171, 0.045) !important;
+}
+.theme-dark .pos-app-shell .pos-return-action:hover {
+  border-color: #c2943b !important;
+  background: #513d18 !important;
+  color: #fff0bf !important;
+  box-shadow: inset 0 1px 0 rgba(255, 236, 184, 0.08), 0 6px 16px rgba(0, 0, 0, 0.22) !important;
+}
+
+/* A historical Z-report is a dedicated full-screen workspace. It used to
+   inherit light report cards and utility hovers after opening from Historiek.
+   Keep all of its display states in the same midnight system as Kassa. */
+.theme-dark .z-report-history-detail {
+  background:
+    radial-gradient(circle at 50% -28%, rgba(36, 153, 255, 0.11), transparent 38%),
+    #07111f !important;
+  color: #e5f0fa !important;
+}
+.theme-dark .z-report-history-detail-header {
+  border-color: #1c3d59 !important;
+  background: rgba(11, 27, 43, 0.96) !important;
+  box-shadow: 0 1px 0 rgba(147, 205, 241, 0.035), 0 8px 20px rgba(0, 0, 0, 0.16) !important;
+}
+.theme-dark .z-report-history-detail .bg-white,
+.theme-dark .z-report-history-detail .bg-white\/70 {
+  background: #10263a !important;
+}
+.theme-dark .z-report-history-detail .bg-slate-50,
+.theme-dark .z-report-history-detail thead.bg-slate-50,
+.theme-dark .z-report-history-detail .hover\:bg-slate-50:hover {
+  background: #0b1a2a !important;
+}
+.theme-dark .z-report-history-detail .bg-slate-100,
+.theme-dark .z-report-history-detail .hover\:bg-slate-100:hover {
+  background: #173149 !important;
+}
+.theme-dark .z-report-history-detail :is(.border-slate-100, .border-slate-200, .border-slate-700),
+.theme-dark .z-report-history-detail .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+.theme-dark .z-report-history-detail .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #1c3d59 !important;
+}
+.theme-dark .z-report-history-detail :is(.text-slate-950, .text-slate-900) { color: #f4f9fe !important; }
+.theme-dark .z-report-history-detail .text-slate-700 { color: #d5e2ee !important; }
+.theme-dark .z-report-history-detail :is(.text-slate-600, .text-slate-500) { color: #9fb5c9 !important; }
+.theme-dark .z-report-history-detail .text-slate-300 { color: #c3d2df !important; }
+.theme-dark .z-report-history-detail .text-cyan-700,
+.theme-dark .z-report-history-detail .text-cyan-800 { color: #69c8ff !important; }
+.theme-dark .z-report-history-detail .text-cyan-900 { color: #bfe9ff !important; }
+.theme-dark .z-report-history-detail .text-emerald-700 { color: #8ee3bd !important; }
+.theme-dark .z-report-history-detail .text-emerald-800,
+.theme-dark .z-report-history-detail .text-emerald-900 { color: #b9f1d6 !important; }
+.theme-dark .z-report-history-detail .text-amber-700 { color: #ffd37b !important; }
+.theme-dark .z-report-history-detail .text-rose-700 { color: #ffafbd !important; }
+.theme-dark .z-report-history-detail .text-violet-700 { color: #c9bcff !important; }
+.theme-dark .z-report-history-detail .bg-cyan-50 { background: #123b59 !important; }
+.theme-dark .z-report-history-detail .bg-violet-50 { background: #242046 !important; }
+.theme-dark .z-report-history-detail .bg-emerald-50 { background: rgba(19, 92, 67, 0.34) !important; }
+.theme-dark .z-report-history-detail .bg-rose-50 { background: rgba(113, 34, 54, 0.3) !important; }
+.theme-dark .z-report-history-detail .border-emerald-200 { border-color: #2b6b58 !important; }
+.theme-dark .z-report-history-detail .bg-emerald-50.text-emerald-800 { color: #b9f1d6 !important; }
+.theme-dark .z-report-history-hero {
+  background: linear-gradient(135deg, #0d2033, #081524) !important;
+  box-shadow: inset 0 1px 0 rgba(202, 235, 255, 0.04), 0 14px 34px rgba(0, 0, 0, 0.26) !important;
+}
+.theme-dark .z-report-history-stat,
+.theme-dark .z-report-history-detail .rounded-2xl.border {
+  border-color: #224663 !important;
+  box-shadow: inset 0 1px 0 rgba(197, 233, 255, 0.035), 0 8px 22px rgba(0, 0, 0, 0.13) !important;
+}
+.theme-dark .z-report-history-detail tr.hover\:bg-slate-50:hover {
+  background: rgba(35, 113, 164, 0.22) !important;
+}
+.theme-dark .z-report-history-nav-action,
+.theme-dark .z-report-history-close-action,
+.theme-dark .z-report-history-action {
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+.theme-dark .z-report-history-nav-action {
+  border-color: #315a79 !important;
+  background: #10263a !important;
+  color: #d8e8f5 !important;
+}
+.theme-dark .z-report-history-nav-action:hover {
+  border-color: #4c86ad !important;
+  background: #173b57 !important;
+  color: #f4faff !important;
+  box-shadow: 0 4px 13px rgba(0, 0, 0, 0.2) !important;
+}
+.theme-dark .z-report-history-close-action { color: #a8bed1 !important; }
+.theme-dark .z-report-history-close-action:hover { background: #173149 !important; color: #eef7ff !important; }
+.theme-dark .z-report-history-action:hover { transform: translateY(-1px); }
+.theme-dark .z-report-history-action--secondary {
+  border-color: #315a79 !important;
+  background: #10263a !important;
+  color: #dbeaf6 !important;
+  box-shadow: inset 0 1px 0 rgba(210, 239, 255, 0.045), 0 1px 2px rgba(0, 0, 0, 0.22) !important;
+}
+.theme-dark .z-report-history-action--secondary:hover {
+  border-color: #4a82aa !important;
+  background: #193d58 !important;
+  color: #f6fbff !important;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.24) !important;
+}
+.theme-dark .z-report-history-action--primary {
+  border-color: #1687ad !important;
+  background: #087f9d !important;
+  color: #f7fcff !important;
+  box-shadow: inset 0 1px 0 rgba(214, 249, 255, 0.14), 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+.theme-dark .z-report-history-action--primary:hover {
+  border-color: #38bce5 !important;
+  background: #0b98b8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.25) !important;
 }

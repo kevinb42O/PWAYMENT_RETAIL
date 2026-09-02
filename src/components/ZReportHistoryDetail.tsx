@@ -53,7 +53,7 @@ const tenderSummary = (
   .join(" · ");
 
 const Stat = ({ label, value, tone = "default" }: { label: string; value: string; tone?: "default" | "good" | "warn" }) => (
-  <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+  <div className="z-report-history-stat rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
     <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">{label}</div>
     <div className={`mt-1.5 text-xl font-extrabold tabular-nums ${tone === "good" ? "text-emerald-700" : tone === "warn" ? "text-rose-700" : "text-slate-950"}`}>
       {value}
@@ -192,13 +192,13 @@ export const ZReportHistoryDetail = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-50 text-slate-950" role="dialog" aria-modal="true" aria-label={`Z-rapport ${report.reportNumber}`}>
+    <div className="z-report-history-detail fixed inset-0 z-[100] overflow-y-auto bg-slate-50 text-slate-950" role="dialog" aria-modal="true" aria-label={`Z-rapport ${report.reportNumber}`}>
       <div className="print:hidden">
-        <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur sm:px-6">
+        <header className="z-report-history-detail-header sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur sm:px-6">
           <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-4">
-            <button type="button" onClick={onClose} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-cyan-600"><ArrowLeft size={17} /> Terug naar historiek</button>
+            <button type="button" onClick={onClose} className="z-report-history-nav-action inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-cyan-600"><ArrowLeft size={17} /> Terug naar historiek</button>
             <div className="hidden text-center sm:block"><div className="text-xs font-bold uppercase tracking-[0.1em] text-cyan-700">Officiële afsluiting</div><div className="font-extrabold">Z-rapport #{report.reportNumber}</div></div>
-            <button type="button" aria-label="Sluiten" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-600"><X size={21} /></button>
+            <button type="button" aria-label="Sluiten" onClick={onClose} className="z-report-history-close-action flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-600"><X size={21} /></button>
           </div>
         </header>
 
@@ -206,10 +206,10 @@ export const ZReportHistoryDetail = ({
         {error && <div className="mx-auto max-w-3xl px-5 py-24 text-center"><div className="rounded-xl border border-rose-200 bg-rose-50 p-6 font-semibold text-rose-800">{error}</div></div>}
 
         {detail && <main className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8">
-          <section className="rounded-2xl bg-slate-950 p-5 text-white shadow-xl sm:p-7">
+          <section className="z-report-history-hero rounded-2xl bg-slate-950 p-5 text-white shadow-xl sm:p-7">
             <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-start">
               <div><div className="flex flex-wrap items-center gap-2"><span className="rounded-md bg-cyan-500/15 px-2.5 py-1 text-xs font-bold text-cyan-200">Z-RAPPORT #{detail.report.reportNumber}</span>{detail.report.isDemo && <span className="rounded-md bg-violet-500/20 px-2.5 py-1 text-xs font-bold text-violet-200">DEMODATA</span>}<span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/15 px-2.5 py-1 text-xs font-bold text-emerald-200"><CheckCircle2 size={13} /> Definitief</span></div><h1 className="mt-4 text-3xl font-black tracking-tight">{format(detail.report.timestamp, "EEEE d MMMM yyyy", { locale: nl })}</h1><p className="mt-2 text-sm text-slate-300">{detail.report.registerName}{detail.report.shiftNumber ? ` · Shift ${detail.report.shiftNumber}` : ""} · gesloten om {format(detail.report.closedAt, "HH:mm:ss")} door {detail.report.closedByUserName ?? "Systeem"}</p></div>
-              <div className="flex flex-wrap gap-2"><button type="button" onClick={print} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-white px-3.5 py-2 text-sm font-bold !text-slate-900 hover:bg-slate-100"><Printer size={16} /> Print</button><button type="button" onClick={() => downloadZReportPdf(detail, merchant)} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-cyan-600 px-3.5 py-2 text-sm font-bold text-white hover:bg-cyan-500"><Download size={16} /> A4 PDF</button><button type="button" onClick={exportCsv} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-700 px-3.5 py-2 text-sm font-bold text-slate-100 hover:bg-slate-800"><ReceiptText size={16} /> CSV</button><button type="button" onClick={exportJson} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-700 px-3.5 py-2 text-sm font-bold text-slate-100 hover:bg-slate-800"><FileJson size={16} /> JSON</button></div>
+              <div className="flex flex-wrap gap-2"><button type="button" onClick={print} className="z-report-history-action z-report-history-action--secondary inline-flex min-h-10 items-center gap-2 rounded-lg bg-white px-3.5 py-2 text-sm font-bold !text-slate-900 hover:bg-slate-100"><Printer size={16} /> Print</button><button type="button" onClick={() => downloadZReportPdf(detail, merchant)} className="z-report-history-action z-report-history-action--primary inline-flex min-h-10 items-center gap-2 rounded-lg bg-cyan-600 px-3.5 py-2 text-sm font-bold text-white hover:bg-cyan-500"><Download size={16} /> A4 PDF</button><button type="button" onClick={exportCsv} className="z-report-history-action z-report-history-action--secondary inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-700 px-3.5 py-2 text-sm font-bold text-slate-100 hover:bg-slate-800"><ReceiptText size={16} /> CSV</button><button type="button" onClick={exportJson} className="z-report-history-action z-report-history-action--secondary inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-700 px-3.5 py-2 text-sm font-bold text-slate-100 hover:bg-slate-800"><FileJson size={16} /> JSON</button></div>
             </div>
           </section>
 

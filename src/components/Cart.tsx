@@ -1001,6 +1001,7 @@ export const Cart: React.FC<CartProps> = ({
                 </button>
               ) : (
                 <button
+                  type="button"
                   onClick={() => setLinkOpen(true)}
                   className="pos-neutral-action flex items-center gap-1.5 px-2 py-1 rounded-md border border-zinc-200 bg-white text-zinc-500 text-xs font-medium transition-colors"
                 >

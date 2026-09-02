@@ -1537,7 +1537,7 @@ export const Layout: React.FC = () => {
                       setOpenAuditLogAtReturnSearch(true);
                       setMainView("audit-log");
                     }}
-                    className="ml-2 inline-flex shrink-0 items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm font-bold text-amber-900 hover:bg-amber-100"
+                    className="pos-return-action ml-2 inline-flex shrink-0 items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm font-bold text-amber-900 hover:bg-amber-100"
                     title="Zoek een verkoop om manueel te retourneren"
                   >
                     <RotateCcw size={16} />
