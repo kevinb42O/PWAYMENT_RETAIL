@@ -3977,6 +3977,9 @@ body {
   color: #62c7ff !important;
 }
 
+.pos-menu-icon { color: #0284c7; }
+.theme-dark .pos-menu-icon { color: #62c7ff !important; }
+
 /* The display preference is one tangible slider. Its label describes the
    active mode, so light mode never reads like a dark-mode button. */
 .theme-mode-slider {

@@ -1266,7 +1266,7 @@ export const Layout: React.FC = () => {
                   }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-sky-50 hover:text-sky-800 transition-colors"
                 >
-                  <SlidersHorizontal size={15} className="text-sky-600" />
+                  <SlidersHorizontal size={15} className="pos-menu-icon" />
                   <span>Modules & navigatie</span>
                 </button>
               )}
@@ -1291,7 +1291,7 @@ export const Layout: React.FC = () => {
                 }}
                 className="pos-menu-action w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 transition-colors"
               >
-                <Settings size={15} className="text-slate-500" />
+                <Settings size={15} className="pos-menu-icon" />
                 <span>Instellingen</span>
               </button>}
 
@@ -1303,7 +1303,7 @@ export const Layout: React.FC = () => {
                 }}
                 className="pos-menu-action w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 transition-colors"
               >
-                <LockKeyhole size={15} className="text-cyan-700" />
+                <LockKeyhole size={15} className="pos-menu-icon" />
                 <span>Vergrendel / wissel medewerker</span>
               </button>
 
@@ -1331,9 +1331,9 @@ export const Layout: React.FC = () => {
               >
                 <div className="flex items-center gap-2.5">
                   {isFullscreen ? (
-                    <Minimize size={15} className="text-slate-500" />
+                    <Minimize size={15} className="pos-menu-icon" />
                   ) : (
-                    <Maximize size={15} className="text-slate-500" />
+                    <Maximize size={15} className="pos-menu-icon" />
                   )}
                   <span>Volledig Scherm</span>
                 </div>
