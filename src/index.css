@@ -4061,3 +4061,131 @@ body {
 .theme-dark .theme-mode-slider__track { border-color: #46647c !important; background: #0a1827 !important; }
 .theme-dark .theme-mode-slider__track--on { border-color: #2099df !important; background: #1685c7 !important; }
 .theme-dark .theme-mode-slider__thumb { background: #f7fbff !important; color: #315a79 !important; }
+
+/* Historiek & retouren -----------------------------------------------------
+   This is an operational workspace, not the intentionally light Insights
+   screen. It shares Kassa's midnight hierarchy: deep structural surfaces,
+   restrained dividers, and cyan only for state and action. */
+.theme-dark .history-workspace {
+  background:
+    radial-gradient(circle at 50% -34%, rgba(36, 153, 255, 0.11), transparent 36%),
+    var(--app-page-bg) !important;
+  color: var(--app-text) !important;
+}
+
+.theme-dark .history-workspace .insights-panel {
+  border-color: #1d405d !important;
+  background: linear-gradient(145deg, #10243a, #0d1e31) !important;
+  box-shadow: inset 0 1px 0 rgba(190, 232, 255, 0.035), 0 10px 28px rgba(0, 0, 0, 0.14) !important;
+}
+
+.theme-dark .history-workspace .insights-tabs {
+  border-color: #244765 !important;
+  background: #0b1a2a !important;
+  box-shadow: inset 0 1px 0 rgba(190, 232, 255, 0.035) !important;
+}
+.theme-dark .history-workspace .insights-tab { color: #9eb3c7 !important; }
+.theme-dark .history-workspace .insights-tab:hover {
+  background: #132f48 !important;
+  color: #edf7ff !important;
+}
+.theme-dark .history-workspace .insights-tab--active {
+  background: #123d5b !important;
+  color: #bce6ff !important;
+  box-shadow: inset 0 0 0 1px #286490, 0 1px 2px rgba(0, 0, 0, 0.24) !important;
+}
+.theme-dark .history-workspace .insights-tab--active .bg-white { background: #1b5277 !important; }
+.theme-dark .history-workspace .insights-tab .bg-slate-100 { background: #17324a !important; }
+
+.theme-dark .history-workspace .bg-slate-50,
+.theme-dark .history-workspace thead.bg-slate-50 { background: #0b1a2a !important; }
+.theme-dark .history-workspace .border-slate-100,
+.theme-dark .history-workspace .border-slate-200,
+.theme-dark .history-workspace .divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #1c3d59 !important;
+}
+.theme-dark .history-workspace tr.hover\:bg-slate-50:hover,
+.theme-dark .history-workspace tr.hover\:bg-sky-50\/50:hover,
+.theme-dark .history-workspace tr.hover\:bg-cyan-50\/50:hover,
+.theme-dark .history-workspace tr.focus-within\:bg-cyan-50\/50:focus-within {
+  background: rgba(36, 153, 255, 0.09) !important;
+}
+
+.theme-dark .history-workspace .bg-cyan-50,
+.theme-dark .history-workspace .bg-sky-50 { background: #123b59 !important; }
+.theme-dark .history-workspace .ring-cyan-100,
+.theme-dark .history-workspace .ring-sky-200 { --tw-ring-color: #285c81 !important; }
+.theme-dark .history-workspace .text-cyan-700,
+.theme-dark .history-workspace .text-cyan-800,
+.theme-dark .history-workspace .text-sky-700 { color: #69c8ff !important; }
+.theme-dark .history-workspace .text-cyan-950 { color: #c9ecff !important; }
+
+.theme-dark .history-workspace .bg-emerald-50 { background: rgba(19, 92, 67, 0.3) !important; }
+.theme-dark .history-workspace .ring-emerald-200 { --tw-ring-color: #2a6a57 !important; }
+.theme-dark .history-workspace .text-emerald-700 { color: #8ee3bd !important; }
+.theme-dark .history-workspace .bg-amber-50 { background: rgba(113, 76, 20, 0.27) !important; }
+.theme-dark .history-workspace .border-amber-300 { border-color: #80652f !important; }
+.theme-dark .history-workspace .text-amber-800 { color: #ffd37b !important; }
+.theme-dark .history-workspace .bg-rose-50 { background: rgba(113, 34, 54, 0.28) !important; }
+.theme-dark .history-workspace .text-rose-700 { color: #ffafbd !important; }
+
+.theme-dark .history-workspace .text-slate-950,
+.theme-dark .history-workspace .text-slate-900 { color: #f4f9fe !important; }
+.theme-dark .history-workspace .text-slate-700 { color: #d2dfeb !important; }
+.theme-dark .history-workspace .text-slate-600,
+.theme-dark .history-workspace .text-slate-500 { color: #9fb4c8 !important; }
+.theme-dark .history-workspace .text-slate-400 { color: #7991a8 !important; }
+.theme-dark .history-workspace .hover\:text-slate-900:hover { color: #f4f9fe !important; }
+
+.theme-dark .history-workspace .insights-panel .bg-white,
+.theme-dark .history-workspace .insights-panel .hover\:bg-white:hover { background: #15324b !important; }
+.theme-dark .history-workspace .insights-panel .bg-white.text-cyan-800 {
+  background: #174b6f !important;
+  color: #bde8ff !important;
+}
+
+/* Both ways into a return use the same dark dialog contract. */
+.theme-dark .history-return-dialog {
+  border-color: #315a79 !important;
+  background: #10263a !important;
+  color: #eaf3fb !important;
+  box-shadow: 0 28px 84px rgba(0, 0, 0, 0.62), inset 0 1px 0 rgba(205, 238, 255, 0.05) !important;
+}
+.theme-dark .history-return-dialog :is(input, select, textarea) {
+  border-color: #315a79 !important;
+  background: #091827 !important;
+  color: #f5f9fd !important;
+  -webkit-text-fill-color: #f5f9fd;
+  color-scheme: dark;
+}
+.theme-dark .history-return-dialog :is(input, select, textarea)::placeholder {
+  color: #7891a8 !important;
+  -webkit-text-fill-color: #7891a8;
+}
+.theme-dark .history-return-dialog .border-slate-200,
+.theme-dark .history-return-dialog .border-slate-300,
+.theme-dark .history-return-dialog .divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #294b6a !important;
+}
+.theme-dark .history-return-dialog .bg-slate-100 { background: #173149 !important; }
+.theme-dark .history-return-dialog .bg-cyan-50 { background: rgba(18, 73, 109, 0.46) !important; }
+.theme-dark .history-return-dialog .bg-amber-50 { background: rgba(107, 78, 22, 0.3) !important; }
+.theme-dark .history-return-dialog .bg-rose-50 { background: rgba(104, 32, 49, 0.3) !important; }
+.theme-dark .history-return-dialog .text-slate-900 { color: #f5f9fd !important; }
+.theme-dark .history-return-dialog .text-slate-700,
+.theme-dark .history-return-dialog .text-slate-600 { color: #cbd9e6 !important; }
+.theme-dark .history-return-dialog .text-slate-500 { color: #9ab0c4 !important; }
+.theme-dark .history-return-dialog .text-cyan-950 { color: #c9ecff !important; }
+.theme-dark .history-return-dialog .text-amber-900 { color: #ffebaf !important; }
+.theme-dark .history-return-dialog .text-rose-700 { color: #ffd1d9 !important; }
+.theme-dark .history-return-dialog .bg-amber-600 { background: #b66c18 !important; }
+.theme-dark .history-return-dialog .bg-amber-600:hover { background: #cf7e23 !important; }
+
+/* app-standard keeps light variables for its own views. Historiek is the
+   exception: when dark mode is selected its canvas must never inherit them. */
+.theme-dark .pos-app-shell .history-workspace {
+  background:
+    radial-gradient(circle at 50% -34%, rgba(36, 153, 255, 0.11), transparent 36%),
+    #07111f !important;
+  color: #f3f7fc !important;
+}

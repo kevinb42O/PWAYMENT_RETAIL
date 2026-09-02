@@ -294,6 +294,11 @@
   text-shadow: 0 1px 10px rgba(170, 220, 255, 0.12);
 }
 
+.theme-dark .pace-trigger-action {
+  color: #f8fbff;
+  text-shadow: 0 1px 10px rgba(170, 220, 255, 0.12);
+}
+
 .pace-trigger-action {
   color: #0e7490;
   font-weight: 850;

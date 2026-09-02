@@ -369,7 +369,7 @@ export const AuditLog: React.FC<AuditLogProps> = ({
         : auditRows.length === 0;
 
   return (
-    <div className="insights-light app-page-shell flex h-full flex-col overflow-y-auto text-slate-950">
+    <div className="history-workspace app-page-shell flex h-full flex-col overflow-y-auto text-slate-950">
       <main className="mx-auto w-full max-w-[1320px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
         <header className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -564,7 +564,13 @@ const ReturnTicketScanDialog = ({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Retour via ticket scannen" size="md">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Retour via ticket scannen"
+      size="md"
+      className="history-return-dialog"
+    >
       <div className="space-y-4 text-slate-900">
         <p className="rounded-lg bg-cyan-50 p-3 text-sm text-cyan-950">
           Scan de barcode op het oorspronkelijke kassaticket. De verkoop wordt eerst gecontroleerd; een scan boekt nooit meteen een terugbetaling.
@@ -1433,6 +1439,7 @@ const RefundDialog = ({
       onClose={onClose}
       title={`Retour boeken · ${transaction.documentNumber ?? `#${transaction.id}`}`}
       size="lg"
+      className="history-return-dialog"
       footer={
         <div className="flex justify-end gap-2">
           <button
