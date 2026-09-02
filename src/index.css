@@ -2552,3 +2552,650 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .pace-boot-mark { animation: none; }
 }
+
+/* -------------------------------------------------------------------------
+   Midnight retail theme
+
+   Kassa is intentionally the reference implementation for the dark theme.
+   These are semantic layers, not a colour-inversion filter: stock, payment
+   and navigation states remain distinguishable during a long register shift.
+   ------------------------------------------------------------------------- */
+.theme-dark {
+  color-scheme: dark;
+  --app-page-bg: #07111f;
+  --app-surface: #0d1e31;
+  --app-surface-raised: #122a42;
+  --app-surface-interactive: #163451;
+  --app-border: #23405d;
+  --app-border-strong: #315574;
+  --app-text: #f3f7fc;
+  --app-muted: #aabbd0;
+  --app-subtle: #8296ad;
+  --app-primary: #2499ff;
+  --app-primary-hover: #52b4ff;
+  --app-primary-soft: #10395c;
+  --app-primary-border: #2371aa;
+  --app-focus: #69c6ff;
+  --app-positive: #92d65b;
+  --app-warning: #ffb13b;
+  --app-danger: #fb7c92;
+}
+
+.theme-dark body {
+  background: var(--app-page-bg);
+  color: var(--app-text);
+}
+
+.theme-dark .pos-app-shell {
+  background:
+    radial-gradient(circle at 53% -30%, rgba(36, 153, 255, 0.12), transparent 39%),
+    var(--app-page-bg) !important;
+  color: var(--app-text);
+}
+
+/* The application shell contains some mature feature modules that still use
+   Tailwind surface utilities. Scope the compatibility bridge to the signed-in
+   retail app so public pages, receipts and store previews keep their own skin. */
+.theme-dark .pos-app-shell .bg-white,
+.theme-dark .pos-app-shell .bg-slate-50,
+.theme-dark .pos-app-shell .bg-zinc-50,
+.theme-dark .pos-app-shell .bg-zinc-100 {
+  background-color: var(--app-surface) !important;
+}
+
+.theme-dark .pos-app-shell .bg-slate-100,
+.theme-dark .pos-app-shell .bg-slate-200,
+.theme-dark .pos-app-shell .bg-zinc-200 {
+  background-color: var(--app-surface-raised) !important;
+}
+
+.theme-dark .pos-app-shell .border-slate-100,
+.theme-dark .pos-app-shell .border-slate-200,
+.theme-dark .pos-app-shell .border-slate-200\/70,
+.theme-dark .pos-app-shell .border-slate-200\/80,
+.theme-dark .pos-app-shell .border-slate-200\/90,
+.theme-dark .pos-app-shell .border-slate-300,
+.theme-dark .pos-app-shell .border-zinc-200,
+.theme-dark .pos-app-shell .border-zinc-300 {
+  border-color: var(--app-border) !important;
+}
+
+.theme-dark .pos-app-shell .text-slate-950,
+.theme-dark .pos-app-shell .text-slate-900,
+.theme-dark .pos-app-shell .text-slate-800,
+.theme-dark .pos-app-shell .text-zinc-950,
+.theme-dark .pos-app-shell .text-zinc-900,
+.theme-dark .pos-app-shell .text-zinc-800 {
+  color: var(--app-text) !important;
+}
+
+.theme-dark .pos-app-shell .text-slate-700,
+.theme-dark .pos-app-shell .text-zinc-700 {
+  color: #d4e0ed !important;
+}
+
+.theme-dark .pos-app-shell .text-slate-600,
+.theme-dark .pos-app-shell .text-zinc-600,
+.theme-dark .pos-app-shell .text-slate-500,
+.theme-dark .pos-app-shell .text-zinc-500 {
+  color: var(--app-muted) !important;
+}
+
+.theme-dark .pos-app-shell .text-slate-400,
+.theme-dark .pos-app-shell .text-zinc-400 {
+  color: var(--app-subtle) !important;
+}
+
+.theme-dark .pos-app-shell :is(input, textarea, select) {
+  border-color: var(--app-border) !important;
+  background-color: #0a1828 !important;
+  color: var(--app-text) !important;
+  color-scheme: dark;
+}
+
+.theme-dark .pos-app-shell :is(input, textarea, select)::placeholder {
+  color: var(--app-subtle) !important;
+}
+
+.theme-dark .pos-app-shell :is(input, textarea, select):focus {
+  border-color: var(--app-focus) !important;
+  box-shadow: 0 0 0 3px rgba(105, 198, 255, 0.16) !important;
+}
+
+.theme-dark .pos-app-shell select option {
+  background: #0d1e31;
+  color: #f3f7fc;
+}
+
+/* Kassa frame ------------------------------------------------------------- */
+.theme-dark .pos-topbar {
+  border-color: #183552;
+  background:
+    linear-gradient(180deg, rgba(13, 30, 49, 0.98), rgba(8, 20, 34, 0.98));
+  box-shadow: 0 1px 0 rgba(132, 193, 245, 0.06), 0 9px 28px rgba(0, 0, 0, 0.16);
+}
+
+.theme-dark .pos-nav-item {
+  color: var(--app-muted);
+}
+
+.theme-dark .pos-nav-item:hover {
+  background: rgba(36, 153, 255, 0.09);
+  color: #eaf5ff;
+}
+
+.theme-dark .pos-nav-item--active {
+  border-color: rgba(64, 172, 255, 0.62);
+  background: linear-gradient(180deg, rgba(27, 106, 173, 0.42), rgba(16, 57, 92, 0.78));
+  color: #75c6ff !important;
+  box-shadow: inset 0 1px 0 rgba(160, 221, 255, 0.11), 0 0 20px rgba(36, 153, 255, 0.08);
+}
+
+.theme-dark .pos-settings-button {
+  border-color: var(--app-border);
+  background: rgba(18, 42, 66, 0.76);
+  color: var(--app-muted);
+}
+
+.theme-dark .pos-settings-button:hover,
+.theme-dark .pos-settings-button--active {
+  border-color: #2c80bd;
+  background: #10395c;
+  color: #75c6ff;
+  box-shadow: 0 0 0 3px rgba(36, 153, 255, 0.1);
+}
+
+.theme-dark .pos-command-bar {
+  border-color: #173450;
+  background: #091827;
+}
+
+.theme-dark .pos-command-input {
+  border-color: #294b6a !important;
+  background: #0c1d2f !important;
+  color: #f3f7fc !important;
+  box-shadow: inset 0 1px 0 rgba(187, 226, 255, 0.035), 0 7px 18px rgba(0, 0, 0, 0.13);
+}
+
+.theme-dark .pos-command-input:focus {
+  border-color: #4eb7ff !important;
+  box-shadow: 0 0 0 4px rgba(78, 183, 255, 0.13), inset 0 1px 0 rgba(187, 226, 255, 0.06) !important;
+}
+
+.theme-dark .pos-command-icon,
+.theme-dark .pos-accent-text {
+  color: #55baff;
+}
+
+.theme-dark .pos-search-submit,
+.theme-dark .pos-primary-action,
+.theme-dark .app-standard button.bg-slate-900,
+.theme-dark .app-standard button.bg-slate-950 {
+  border-color: #2499ff !important;
+  background: linear-gradient(135deg, #1988eb, #1675ce) !important;
+  color: #ffffff !important;
+  box-shadow: inset 0 1px 0 rgba(210, 239, 255, 0.2), 0 8px 20px rgba(2, 106, 195, 0.25) !important;
+}
+
+.theme-dark .pos-search-submit:hover,
+.theme-dark .pos-primary-action:hover,
+.theme-dark .app-standard button.bg-slate-900:hover,
+.theme-dark .app-standard button.bg-slate-950:hover {
+  background: linear-gradient(135deg, #43aaff, #2189e5) !important;
+}
+
+.theme-dark .pos-workspace,
+.theme-dark .pos-catalog,
+.theme-dark .pos-product-stage {
+  background: #091827;
+  color: var(--app-text);
+}
+
+.theme-dark .pos-category-rail {
+  background: linear-gradient(180deg, #0b1b2c, #091827);
+  border-color: #1c3955 !important;
+}
+
+.theme-dark .pos-category-rail--secondary {
+  background: linear-gradient(180deg, #0d2033, #0a1929);
+}
+
+.theme-dark .pos-rail-heading {
+  background: rgba(11, 27, 44, 0.9);
+  border-color: #1c3955 !important;
+}
+
+.theme-dark .pos-rail-active {
+  background: linear-gradient(90deg, rgba(21, 107, 181, 0.38), rgba(16, 57, 92, 0.56));
+}
+
+.theme-dark .pos-catalog .hover\:bg-white\/60:hover,
+.theme-dark .pos-catalog .hover\:bg-slate-50:hover,
+.theme-dark .pos-catalog .hover\:bg-slate-100:hover {
+  background-color: rgba(36, 153, 255, 0.1) !important;
+}
+
+.theme-dark .pos-catalog .hover\:text-slate-900:hover {
+  color: #f3f7fc !important;
+}
+
+.theme-dark .pos-catalog .text-sky-900,
+.theme-dark .pos-catalog .text-sky-800,
+.theme-dark .pos-catalog .text-sky-700 {
+  color: #80ccff !important;
+}
+
+.theme-dark .pos-catalog .text-sky-600 {
+  color: #4db6ff !important;
+}
+
+.theme-dark .pos-catalog-toolbar {
+  border-color: #1c3955 !important;
+  background: rgba(13, 30, 49, 0.86);
+}
+
+.theme-dark .pos-product-grid {
+  background:
+    radial-gradient(circle at 52% -25%, rgba(31, 132, 220, 0.09), transparent 45%),
+    #081624;
+}
+
+.theme-dark .pos-product-card {
+  border-color: #213e5a !important;
+  background: linear-gradient(145deg, #102438, #0d1e31) !important;
+  box-shadow: inset 0 1px 0 rgba(197, 229, 255, 0.04), 0 8px 20px rgba(0, 0, 0, 0.13);
+}
+
+.theme-dark .pos-product-card:hover {
+  border-color: #3d8fca !important;
+  background: linear-gradient(145deg, #122b43, #102239) !important;
+  box-shadow: inset 0 1px 0 rgba(197, 229, 255, 0.07), 0 13px 30px rgba(0, 0, 0, 0.2);
+}
+
+.theme-dark .pos-product-card:disabled {
+  background: #0b1928 !important;
+}
+
+.theme-dark .pos-product-card .bg-slate-100,
+.theme-dark .pos-product-card .bg-slate-50 {
+  background: #17304a !important;
+}
+
+.theme-dark .pos-product-card .border-slate-100,
+.theme-dark .pos-product-card .border-slate-200 {
+  border-color: #23405d !important;
+}
+
+.theme-dark .pos-filter-active {
+  border-color: #318dce !important;
+  background: #10395c !important;
+  color: #91d2ff !important;
+  box-shadow: inset 0 1px 0 rgba(179, 227, 255, 0.1);
+}
+
+.theme-dark .pos-product-added-feedback {
+  border-color: #4cc0ff;
+  background: #10395c;
+  color: #b8e6ff;
+  box-shadow: 0 7px 18px rgba(2, 106, 195, 0.28);
+}
+
+/* Cart and checkout ------------------------------------------------------- */
+.theme-dark .pos-cart,
+.theme-dark .pos-cart-panel-frame,
+.theme-dark .pos-cart-dock,
+.theme-dark .pos-cart .bg-white,
+.theme-dark .pos-checkout {
+  background: #0c1c2d !important;
+}
+
+.theme-dark .pos-cart-dock {
+  border-color: #1e3b57;
+  box-shadow: -10px 0 28px rgba(0, 0, 0, 0.18);
+}
+
+.theme-dark .pos-cart-dock button {
+  background: #0c1c2d !important;
+  color: #c9d8e7 !important;
+}
+
+.theme-dark .pos-cart-dock button:hover {
+  background: #102a42 !important;
+  color: #f3f7fc !important;
+}
+
+.theme-dark .pos-cart-dock .bg-sky-50,
+.theme-dark .pos-cart-dock .bg-slate-50 {
+  background: #10395c !important;
+}
+
+.theme-dark .pos-cart-dock .border-sky-100,
+.theme-dark .pos-cart-dock .border-slate-200 {
+  border-color: #285376 !important;
+}
+
+.theme-dark .pos-cart-header {
+  background: rgba(13, 30, 49, 0.93);
+}
+
+.theme-dark .pos-cart .bg-zinc-50 {
+  background: #091827 !important;
+}
+
+.theme-dark .pos-cart .border-zinc-200,
+.theme-dark .pos-checkout,
+.theme-dark .pos-checkout.border-zinc-200,
+.theme-dark .pos-checkout .border-zinc-200 {
+  border-color: #23405d !important;
+}
+
+.theme-dark .pos-cart .hover\:bg-zinc-100:hover,
+.theme-dark .pos-checkout .hover\:bg-zinc-100:hover {
+  background-color: #163451 !important;
+}
+
+.theme-dark .pos-payment-secondary {
+  border-color: #31516d !important;
+  background: #102438 !important;
+  color: #e3edf7 !important;
+}
+
+.theme-dark .pos-payment-secondary:hover {
+  border-color: #4c9dd2 !important;
+  background: #163451 !important;
+  color: #ffffff !important;
+}
+
+.theme-dark .pos-empty-cart-icon {
+  border-color: #285376;
+  background: linear-gradient(145deg, #10395c, #0d2740);
+  box-shadow: 0 10px 26px rgba(0, 104, 190, 0.15), inset 0 1px 0 rgba(206, 239, 255, 0.08);
+}
+
+.theme-dark .pos-cart-flight {
+  border-color: #3a8ec6;
+  background: rgba(15, 36, 56, 0.96);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.34);
+}
+
+.theme-dark .pos-cart-flight-icon {
+  background: #10395c;
+  color: #7dcbff;
+}
+
+/* Kassa menu and common overlays ----------------------------------------- */
+.theme-dark .pos-theme-menu-section {
+  margin: 0 -1px;
+}
+
+.theme-toggle--menu {
+  color: #e7f1fa;
+}
+
+.theme-toggle--menu:hover {
+  background: #102b44;
+}
+
+.theme-toggle__icon {
+  background: #183654;
+  color: #6fc5ff;
+}
+
+.theme-toggle__hint {
+  color: var(--app-subtle);
+}
+
+.theme-toggle__switch {
+  display: inline-flex;
+  width: 34px;
+  height: 20px;
+  align-items: center;
+  padding: 2px;
+  border: 1px solid #3a536d;
+  border-radius: 999px;
+  background: #15293d;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.theme-toggle__switch--on {
+  justify-content: flex-end;
+  border-color: #3ea8ef;
+  background: #1c8de0;
+}
+
+.theme-toggle__thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #f6fbff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.32);
+}
+
+.theme-dark .pos-app-shell [role="menu"] {
+  border-color: #294966 !important;
+  background: #0d1e31 !important;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.32) !important;
+}
+
+.theme-dark .pos-app-shell .hover\:bg-sky-50:hover,
+.theme-dark .pos-app-shell .hover\:bg-cyan-50:hover {
+  background-color: #10395c !important;
+}
+
+.theme-dark .pos-app-shell .hover\:bg-red-50:hover {
+  background-color: rgba(190, 48, 76, 0.2) !important;
+}
+
+.theme-dark .pos-app-shell .text-sky-800,
+.theme-dark .pos-app-shell .text-sky-700 {
+  color: #80ccff !important;
+}
+
+.theme-dark .pos-app-shell .text-sky-600,
+.theme-dark .pos-app-shell .text-cyan-700 {
+  color: #53b9ff !important;
+}
+
+.theme-dark .pos-app-shell .bg-sky-50,
+.theme-dark .pos-app-shell .bg-cyan-50 {
+  background-color: #10395c !important;
+}
+
+.theme-dark .pos-app-shell .border-sky-100,
+.theme-dark .pos-app-shell .border-sky-200,
+.theme-dark .pos-app-shell .border-cyan-100,
+.theme-dark .pos-app-shell .border-cyan-200 {
+  border-color: #285b81 !important;
+}
+
+.theme-dark .pos-app-shell .bg-amber-50,
+.theme-dark .pos-app-shell .bg-amber-100 {
+  background-color: rgba(137, 88, 22, 0.22) !important;
+}
+
+.theme-dark .pos-app-shell .border-amber-200,
+.theme-dark .pos-app-shell .border-amber-300 {
+  border-color: #8a652b !important;
+}
+
+.theme-dark .pos-app-shell .text-amber-900,
+.theme-dark .pos-app-shell .text-amber-800,
+.theme-dark .pos-app-shell .text-amber-700 {
+  color: #ffd17b !important;
+}
+
+.theme-dark .pos-app-shell .bg-emerald-50,
+.theme-dark .pos-app-shell .bg-emerald-100 {
+  background-color: rgba(32, 104, 67, 0.22) !important;
+}
+
+.theme-dark .pos-app-shell .border-emerald-200 {
+  border-color: #2f7651 !important;
+}
+
+.theme-dark .pos-app-shell .text-emerald-900,
+.theme-dark .pos-app-shell .text-emerald-800,
+.theme-dark .pos-app-shell .text-emerald-700 {
+  color: #9ae7b6 !important;
+}
+
+.theme-dark .pos-app-shell .bg-red-50 {
+  background-color: rgba(137, 35, 58, 0.22) !important;
+}
+
+.theme-dark .pos-app-shell .border-red-200,
+.theme-dark .pos-app-shell .border-red-300 {
+  border-color: #864056 !important;
+}
+
+.theme-dark .pos-app-shell .text-red-800,
+.theme-dark .pos-app-shell .text-red-700,
+.theme-dark .pos-app-shell .text-red-600 {
+  color: #ff9cab !important;
+}
+
+.theme-dark .pos-app-shell .shadow-lg,
+.theme-dark .pos-app-shell .shadow-xl,
+.theme-dark .pos-app-shell .shadow-2xl,
+.theme-dark .pos-app-shell .shadow-sm {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22) !important;
+}
+
+.theme-dark .pos-app-shell .app-page-shell,
+.theme-dark .pos-app-shell .app-page-content {
+  background: var(--app-page-bg);
+  color: var(--app-text);
+}
+
+.theme-dark .pos-app-shell .app-page-header {
+  border-color: var(--app-border);
+  background: var(--app-surface);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.22);
+}
+
+.theme-dark .pos-app-shell .app-standard button:focus-visible,
+.theme-dark .pos-app-shell button:focus-visible,
+.theme-dark .pos-app-shell input:focus-visible,
+.theme-dark .pos-app-shell select:focus-visible,
+.theme-dark .pos-app-shell textarea:focus-visible {
+  outline-color: var(--app-focus);
+}
+
+.theme-dark .pos-app-shell ::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.theme-dark .pos-app-shell ::-webkit-scrollbar-track {
+  background: #091827;
+}
+
+.theme-dark .pos-app-shell ::-webkit-scrollbar-thumb {
+  border: 3px solid #091827;
+  border-radius: 999px;
+  background: #31516d;
+}
+
+.theme-dark .pos-app-shell ::-webkit-scrollbar-thumb:hover {
+  background: #49728f;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-toggle__switch {
+    transition: none;
+  }
+}
+
+/* Kassa catalog typography is semantic so it can never inherit a light-mode
+   utility color inside the midnight surfaces. */
+.pos-rail-label { color: #64748b; }
+.pos-rail-context,
+.pos-catalog-heading,
+.pos-product-title,
+.pos-product-price { color: #0f172a; }
+.pos-rail-item { color: #475569; }
+.pos-rail-count,
+.pos-catalog-summary,
+.pos-product-meta,
+.pos-product-stock,
+.pos-catalog-empty { color: #64748b; }
+.pos-rail-icon { color: #64748b; }
+.pos-rail-icon--active,
+.pos-rail-count--active,
+.pos-catalog-heading-icon { color: #0284c7; }
+.pos-filter-reset {
+  background: #e2e8f0;
+  color: #334155;
+}
+.pos-filter-reset:hover { background: #cbd5e1; }
+.pos-filter-button {
+  border-color: #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+}
+.pos-filter-button:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+.pos-product-category-badge {
+  border-color: #e2e8f0;
+  background: #f1f5f9;
+  color: #475569;
+}
+.pos-product-footer { border-color: #f1f5f9; }
+.pos-load-more {
+  border-color: #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+}
+.pos-load-more:hover {
+  border-color: #7dd3fc;
+  background: #f0f9ff;
+}
+
+.theme-dark .pos-rail-label { color: #7f9ab3; }
+.theme-dark .pos-rail-context,
+.theme-dark .pos-catalog-heading,
+.theme-dark .pos-product-title,
+.theme-dark .pos-product-price { color: #f3f7fc; }
+.theme-dark .pos-rail-item { color: #c4d3e2; }
+.theme-dark .pos-rail-item:hover { color: #f3f7fc; }
+.theme-dark .pos-rail-count,
+.theme-dark .pos-catalog-summary,
+.theme-dark .pos-product-meta,
+.theme-dark .pos-product-stock,
+.theme-dark .pos-catalog-empty { color: #9fb1c5; }
+.theme-dark .pos-rail-icon { color: #8ba2b9; }
+.theme-dark .pos-rail-icon--active,
+.theme-dark .pos-rail-count--active,
+.theme-dark .pos-catalog-heading-icon { color: #64beff; }
+.theme-dark .pos-filter-reset {
+  background: #17334e;
+  color: #d5e5f3;
+}
+.theme-dark .pos-filter-reset:hover { background: #214663; }
+.theme-dark .pos-filter-button {
+  border-color: #294b6a;
+  background: #102438;
+  color: #b7c8d9;
+}
+.theme-dark .pos-filter-button:hover {
+  border-color: #478ec1;
+  background: #17334e;
+  color: #f3f7fc;
+}
+.theme-dark .pos-product-category-badge {
+  border-color: #294b6a;
+  background: #17304a;
+  color: #afc7dc;
+}
+.theme-dark .pos-product-footer { border-color: #23405d; }
+.theme-dark .pos-load-more {
+  border-color: #31516d;
+  background: #102438;
+  color: #d5e5f3;
+}
+.theme-dark .pos-load-more:hover {
+  border-color: #4c9dd2;
+  background: #163451;
+}

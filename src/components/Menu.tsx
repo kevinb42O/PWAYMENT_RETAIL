@@ -255,12 +255,12 @@ export const Menu: React.FC<MenuProps> = ({
 
   return (
     <div
-      className={`pos-catalog grid h-full grid-cols-1 overflow-hidden text-slate-900 ${showSubCategory ? "lg:grid-cols-[210px_230px_minmax(0,1fr)]" : "lg:grid-cols-[210px_minmax(0,1fr)]"}`}
+      className={`pos-catalog grid h-full grid-cols-1 overflow-hidden ${showSubCategory ? "lg:grid-cols-[210px_230px_minmax(0,1fr)]" : "lg:grid-cols-[210px_minmax(0,1fr)]"}`}
     >
       {/* Hoofdcategorieën kolom */}
       <div className="pos-category-rail overflow-y-auto border-b border-slate-200 lg:border-b-0 lg:border-r">
         <div className="pos-rail-heading sticky top-0 z-10 border-b border-slate-200/70 px-4 py-3.5 backdrop-blur-md">
-          <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
+          <div className="pos-rail-label flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider">
             <Grid2X2 size={13} /> Hoofdcategorie
           </div>
         </div>
@@ -273,17 +273,17 @@ export const Menu: React.FC<MenuProps> = ({
               setActiveBrand("all");
               onQueryChange("");
             }}
-            className={`min-w-[150px] border-l-4 px-4 py-3.5 text-left transition-all lg:w-full lg:min-w-0 ${
+            className={`pos-rail-item min-w-[150px] border-l-4 px-4 py-3.5 text-left transition-all lg:w-full lg:min-w-0 ${
               activeCategory === "all" && !term
-                ? "pos-rail-active border-l-sky-600 text-slate-900 font-bold"
-                : "border-l-transparent text-slate-600 hover:bg-white/60 hover:text-slate-900 font-medium"
+                ? "pos-rail-active border-l-sky-600 font-bold"
+                : "border-l-transparent hover:bg-white/60 font-medium"
             }`}
           >
             <span className="flex items-center gap-3">
-              <Grid2X2 size={21} strokeWidth={2} className={activeCategory === "all" && !term ? "text-sky-600" : "text-slate-500"} />
+              <Grid2X2 size={21} strokeWidth={2} className={`pos-rail-icon ${activeCategory === "all" && !term ? "pos-rail-icon--active" : ""}`} />
               <span>
                 <span className="block text-sm">Alles</span>
-                <span className={`mt-0.5 block text-xs ${activeCategory === "all" && !term ? "text-sky-700 font-semibold" : "text-slate-600"}`}>{activeProducts.length} producten</span>
+                <span className={`pos-rail-count mt-0.5 block text-xs ${activeCategory === "all" && !term ? "pos-rail-count--active font-semibold" : ""}`}>{activeProducts.length} producten</span>
               </span>
             </span>
           </button>
@@ -300,17 +300,17 @@ export const Menu: React.FC<MenuProps> = ({
                   setActiveBrand("all");
                   onQueryChange("");
                 }}
-                className={`min-w-[170px] border-l-4 px-4 py-3.5 text-left transition-all lg:w-full lg:min-w-0 ${
+                className={`pos-rail-item min-w-[170px] border-l-4 px-4 py-3.5 text-left transition-all lg:w-full lg:min-w-0 ${
                   isActive
-                    ? "pos-rail-active border-l-sky-600 text-slate-900 font-bold"
-                    : "border-l-transparent text-slate-600 hover:bg-white/60 hover:text-slate-900 font-medium"
+                    ? "pos-rail-active border-l-sky-600 font-bold"
+                    : "border-l-transparent hover:bg-white/60 font-medium"
                 }`}
               >
                 <span className="flex items-center gap-3">
-                  <CategoryIcon size={21} strokeWidth={2} className={isActive ? "text-sky-600" : "text-slate-500"} />
+                  <CategoryIcon size={21} strokeWidth={2} className={`pos-rail-icon ${isActive ? "pos-rail-icon--active" : ""}`} />
                   <span className="min-w-0">
                     <span className="block text-sm leading-tight">{category.name}</span>
-                    <span className={`mt-0.5 block text-xs ${isActive ? "text-sky-700 font-semibold" : "text-slate-600"}`}>{category.count} producten</span>
+                    <span className={`pos-rail-count mt-0.5 block text-xs ${isActive ? "pos-rail-count--active font-semibold" : ""}`}>{category.count} producten</span>
                   </span>
                 </span>
               </button>
@@ -323,10 +323,10 @@ export const Menu: React.FC<MenuProps> = ({
       {showSubCategory && (
         <div className="pos-category-rail pos-category-rail--secondary overflow-y-auto border-b border-slate-200 lg:border-b-0 lg:border-r">
           <div className="pos-rail-heading sticky top-0 z-10 border-b border-slate-200/70 px-4 py-3 backdrop-blur-md">
-            <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
+          <div className="pos-rail-label flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider">
               <Layers3 size={13} /> Subcategorie
             </div>
-            <div className="mt-0.5 truncate text-xs font-bold text-slate-800">
+            <div className="pos-rail-context mt-0.5 truncate text-xs font-bold">
               {activeCategoryName}
             </div>
           </div>
@@ -338,15 +338,15 @@ export const Menu: React.FC<MenuProps> = ({
                 setActiveBrand("all");
                 onQueryChange("");
               }}
-              className={`min-w-[170px] border-l-4 px-4 py-3 text-left transition-all lg:w-full lg:min-w-0 ${
+              className={`pos-rail-item min-w-[170px] border-l-4 px-4 py-3 text-left transition-all lg:w-full lg:min-w-0 ${
                 activeSubCategory === "all" && !term
-                  ? "pos-rail-active border-l-sky-600 text-slate-900 font-bold"
-                  : "border-l-transparent text-slate-600 hover:bg-white/60 hover:text-slate-900 font-medium"
+                  ? "pos-rail-active border-l-sky-600 font-bold"
+                  : "border-l-transparent hover:bg-white/60 font-medium"
               }`}
             >
               <span className="block text-sm">Alle subcategorieën</span>
               <span
-                className={`mt-0.5 block text-xs ${activeSubCategory === "all" && !term ? "text-sky-700 font-semibold" : "text-slate-600"}`}
+                className={`pos-rail-count mt-0.5 block text-xs ${activeSubCategory === "all" && !term ? "pos-rail-count--active font-semibold" : ""}`}
               >
                 {categoryProducts.length} producten
               </span>
@@ -362,17 +362,17 @@ export const Menu: React.FC<MenuProps> = ({
                     setActiveBrand("all");
                     onQueryChange("");
                   }}
-                  className={`min-w-[180px] border-l-4 px-4 py-3 text-left transition-all lg:w-full lg:min-w-0 ${
+                  className={`pos-rail-item min-w-[180px] border-l-4 px-4 py-3 text-left transition-all lg:w-full lg:min-w-0 ${
                     isActive
-                      ? "pos-rail-active border-l-sky-600 text-slate-900 font-bold"
-                      : "border-l-transparent text-slate-600 hover:bg-white/60 hover:text-slate-900 font-medium"
+                      ? "pos-rail-active border-l-sky-600 font-bold"
+                      : "border-l-transparent hover:bg-white/60 font-medium"
                   }`}
                 >
                   <span className="block text-sm leading-tight">
                     {subCategory.name}
                   </span>
                   <span
-                    className={`mt-0.5 block text-xs ${isActive ? "text-sky-700 font-semibold" : "text-slate-600"}`}
+                    className={`pos-rail-count mt-0.5 block text-xs ${isActive ? "pos-rail-count--active font-semibold" : ""}`}
                   >
                     {subCategory.count} producten
                   </span>
@@ -388,13 +388,13 @@ export const Menu: React.FC<MenuProps> = ({
         <div className="pos-catalog-toolbar border-b border-slate-200/80 p-4">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
             <div className="min-w-0">
-              <div className="flex items-center gap-2 text-sm font-extrabold text-slate-900">
-                <Box size={16} className="text-sky-600" />
+              <div className="pos-catalog-heading flex items-center gap-2 text-sm font-extrabold">
+                <Box size={16} className="pos-catalog-heading-icon" />
                 {term
                   ? "Zoekresultaten"
                   : `${activeCategoryName} / ${activeSubCategoryName}`}
               </div>
-              <div className="mt-1 text-xs text-slate-500">
+              <div className="pos-catalog-summary mt-1 text-xs">
                 {term
                   ? exactCodeMatch
                     ? `${resultLabel}. Exacte ${exactCodeMatch.matchedOn === "barcode" ? "barcode" : exactCodeMatch.matchedOn === "identifier" ? "productidentificatie" : "SKU"}-match voor ${exactCodeMatch.product.name}.`
@@ -406,7 +406,7 @@ export const Menu: React.FC<MenuProps> = ({
             {term && (
               <button
                 onClick={() => onQueryChange("")}
-                className="self-start rounded-lg bg-slate-200 hover:bg-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors"
+                className="pos-filter-reset self-start rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors"
               >
                 Wis filter
               </button>
@@ -419,8 +419,8 @@ export const Menu: React.FC<MenuProps> = ({
                 onClick={() => setActiveBrand("all")}
                 className={`whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all ${
                   activeBrand === "all"
-                    ? "pos-filter-active"
-                    : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                  ? "pos-filter-active"
+                  : "pos-filter-button"
                 }`}
               >
                 Alle merken ({subCategoryProducts.length})
@@ -431,8 +431,8 @@ export const Menu: React.FC<MenuProps> = ({
                   onClick={() => setActiveBrand(brand.id)}
                   className={`whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all ${
                     activeBrand === brand.id
-                      ? "pos-filter-active"
-                      : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                    ? "pos-filter-active"
+                    : "pos-filter-button"
                   }`}
                 >
                   {brand.name} ({brand.count})
@@ -482,7 +482,7 @@ export const Menu: React.FC<MenuProps> = ({
                   )}
                   <div className="relative z-10 space-y-2">
                     <div className="flex items-start justify-between gap-2">
-                      <span className="rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                      <span className="pos-product-category-badge rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
                         {resolveProductCategoryPath(product, categories)?.leaf?.name
                           ?? resolveProductCategoryPath(product, categories)?.root.name
                           ?? product.subCategory
@@ -500,21 +500,21 @@ export const Menu: React.FC<MenuProps> = ({
                         </span>
                       )}
                     </div>
-                    <span className="block text-sm font-bold leading-snug text-slate-900">
+                    <span className="pos-product-title block text-sm font-bold leading-snug">
                       {product.name}
                     </span>
-                    <span className="block text-xs font-medium text-slate-500">
+                    <span className="pos-product-meta block text-xs font-medium">
                       {[product.brand, product.variant]
                         .filter(Boolean)
                         .join(" · ")}
                     </span>
                   </div>
 
-                  <div className="relative z-10 mt-3 flex items-end justify-between gap-3 pt-3 border-t border-slate-100">
-                    <span className="text-base font-extrabold tracking-tight text-slate-950">
+                  <div className="pos-product-footer relative z-10 mt-3 flex items-end justify-between gap-3 pt-3 border-t">
+                    <span className="pos-product-price text-base font-extrabold tracking-tight">
                       {formatEUR(product.priceCents)}
                     </span>
-                    <span className="max-w-28 text-right text-[10px] font-semibold leading-tight text-slate-600">
+                    <span className="pos-product-stock max-w-28 text-right text-[10px] font-semibold leading-tight">
                       {stockLabel(product.stockQty)}
                     </span>
                   </div>
@@ -523,7 +523,7 @@ export const Menu: React.FC<MenuProps> = ({
             })}
             {filteredProducts.length === 0 && (
               term ? (
-                <div className="col-span-full py-12 text-center text-slate-500 font-medium">
+                <div className="pos-catalog-empty col-span-full py-12 text-center font-medium">
                   Geen product gevonden. Controleer barcode, SKU, merk, subcategorie of maat.
                 </div>
               ) : activeProducts.length === 0 && onStartStoreSetup ? (
@@ -544,14 +544,14 @@ export const Menu: React.FC<MenuProps> = ({
                   </div>
                 </section>
               ) : (
-                <div className="col-span-full py-12 text-center text-slate-500 font-medium">Geen producten in deze selectie.</div>
+                <div className="pos-catalog-empty col-span-full py-12 text-center font-medium">Geen producten in deze selectie.</div>
               )
             )}
             {filteredProducts.length > visibleProducts.length && (
               <button
                 type="button"
                 onClick={() => setVisibleProductCount((count) => count + 40)}
-                className="col-span-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm hover:border-sky-300 hover:bg-sky-50 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                className="pos-load-more col-span-full rounded-xl border px-4 py-3 text-sm font-bold shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
               >
                 Toon volgende{" "}
                 {Math.min(40, filteredProducts.length - visibleProducts.length)}{" "}

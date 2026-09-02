@@ -26,7 +26,7 @@ export const applyThemeMode = (mode: ThemeMode): void => {
   root.classList.toggle('theme-dark', mode === 'dark');
   root.style.colorScheme = mode;
 
-  const themeColor = mode === 'light' ? '#f8fafc' : '#0a0a0a';
+  const themeColor = mode === 'light' ? '#f4f8fb' : '#07111f';
   const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
   if (meta) meta.content = themeColor;
 };

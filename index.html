@@ -4,6 +4,26 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#fbfbfa" />
+    <script>
+      (() => {
+        const appRoute = /^(?:\/app|\/login|\/register|\/settings)(?:\/|$)/.test(window.location.pathname);
+        const appPreview = new URLSearchParams(window.location.search).get('presentation') === '1'
+          || new URLSearchParams(window.location.search).get('e2e') === '1';
+        if (!appRoute && !appPreview) return;
+        try {
+          const stored = JSON.parse(window.localStorage.getItem('pwayment-theme') || 'null');
+          const mode = stored?.state?.mode === 'dark' ? 'dark' : 'light';
+          const root = document.documentElement;
+          root.dataset.theme = mode;
+          root.classList.add(`theme-${mode}`);
+          root.style.colorScheme = mode;
+          const themeColor = document.querySelector('meta[name="theme-color"]');
+          if (themeColor) themeColor.content = mode === 'dark' ? '#07111f' : '#f4f8fb';
+        } catch {
+          // A blocked or malformed local preference must never prevent startup.
+        }
+      })();
+    </script>
     <link rel="canonical" href="https://www.pwayment.be/" />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
     <meta name="description" content="Het moderne kassasysteem voor Belgische winkels. Verbind POS, voorraad, klanten, webshop en retail intelligence in één helder retailplatform." />

@@ -15,6 +15,7 @@ import { usePlatformFeatureFlag } from "../billing/usePlatformFeatureFlag";
 import { canOpenInventoryWorkspace, inventoryWorkspaceBuildDefault } from "../inventory/access";
 import { useWorkforce } from "../store/useWorkforce";
 import { Modal } from "./Modal";
+import { ThemeToggle } from "./ThemeToggle";
 import { StoreSetupGuide, type SetupGuideTarget } from "./StoreSetupGuide";
 import { FirstProductTour } from "./FirstProductTour";
 import { PaceAssistant } from "../pace/PaceAssistant";
@@ -1063,7 +1064,7 @@ export const Layout: React.FC = () => {
   }, [mainView, submitProductQuery]);
 
   return (
-    <div className="flex flex-col h-screen w-full bg-slate-100 overflow-hidden font-sans text-slate-900 selection:bg-sky-500/20">
+    <div className="pos-app-shell flex flex-col h-screen w-full bg-slate-100 overflow-hidden font-sans text-slate-900 selection:bg-sky-500/20">
       <header className="pos-topbar relative flex h-16 items-center justify-between px-3 sm:px-7 print:hidden shrink-0 gap-2 sm:gap-4 z-50">
         {/* Zone A: Pace is the living PWAYMENT mark and the assistant entry point. */}
         <div
@@ -1246,6 +1247,15 @@ export const Layout: React.FC = () => {
               <div className="px-2 py-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
                 Gebruiker & Apparaat
               </div>
+
+              <div className="pos-theme-menu-section">
+                <div className="px-2 pb-1 pt-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                  Weergave
+                </div>
+                <ThemeToggle menu />
+              </div>
+
+              <div className="my-1 border-t border-slate-100" />
 
               {canAccessOwnerSettings && (
                 <button
