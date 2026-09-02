@@ -73,7 +73,7 @@ const fieldClass = fieldClassName;
 const rosterCellWidth = 164;
 
 const Dialog = ({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) => (
-  <Modal open onClose={onClose} title={title} size="2xl" closeOnBackdrop>
+  <Modal open onClose={onClose} title={title} size="2xl" className="workforce-modal" closeOnBackdrop>
     {children}
   </Modal>
 );
@@ -454,7 +454,7 @@ export const Workforce: React.FC = () => {
   };
 
   return (
-    <AppPageShell data-testid="workforce-root">
+    <AppPageShell className="workforce-workspace" data-testid="workforce-root">
       <header className="border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-4">

@@ -5019,3 +5019,144 @@ body {
 .theme-dark .integration-hub-page .rounded-xl.bg-emerald-50,
 .theme-dark .integration-hub-page .rounded-xl.bg-sky-50,
 .theme-dark .integration-hub-page .rounded-xl.bg-violet-50 { box-shadow: inset 0 0 0 1px rgba(148, 193, 222, 0.08); }
+
+/* ServiceDesk -------------------------------------------------------------
+   A repair desk is deliberately dense: left-side queue, dossier workflow,
+   customer contact and price controls must share one low-glare hierarchy.
+   This scope also covers empty queues, statuses and the intake overlay. */
+.theme-dark .pos-app-shell .service-desk-workspace {
+  background:
+    radial-gradient(circle at 84% -18%, rgba(24, 120, 158, 0.15), transparent 31%),
+    #07111f !important;
+  color: #e5f0fa !important;
+}
+.theme-dark .service-desk-workspace :is(.bg-white, .bg-white\/10, .bg-white\/20) { background-color: #10263a !important; }
+.theme-dark .service-desk-workspace :is(.bg-slate-50, .bg-slate-50\/60, .bg-slate-50\/80) { background-color: #0b1a2a !important; }
+.theme-dark .service-desk-workspace :is(.border-slate-100, .border-slate-200, .border-slate-300) { border-color: #1c3d59 !important; }
+.theme-dark .service-desk-workspace :is(.border-white, .ring-slate-200) { border-color: #1c3d59 !important; --tw-ring-color: #1c3d59 !important; }
+.theme-dark .service-desk-workspace :is(.text-slate-950, .text-slate-900, .text-slate-800) { color: #f4f9fe !important; }
+.theme-dark .service-desk-workspace .text-slate-700 { color: #d5e2ee !important; }
+.theme-dark .service-desk-workspace :is(.text-slate-600, .text-slate-500) { color: #9fb5c9 !important; }
+.theme-dark .service-desk-workspace :is(.text-slate-400, .text-slate-300) { color: #7892a9 !important; }
+.theme-dark .service-desk-workspace :is(.border-\[\#bae6fd\], .border-\[\#8bdce8\]) { border-color: #315a79 !important; }
+.theme-dark .service-desk-workspace :is(.bg-\[\#f0f9ff\], .bg-\[\#f3fbfc\]) { background-color: #123b59 !important; }
+.theme-dark .service-desk-workspace :is(.text-\[\#0e7490\], .text-\[\#0f6f7e\], .text-sky-700, .text-sky-600) { color: #69c8ff !important; }
+.theme-dark .service-desk-workspace :is(.border-emerald-200, .border-amber-200) { border-color: #80652f !important; }
+.theme-dark .service-desk-workspace .border-emerald-200 { border-color: #327863 !important; }
+.theme-dark .service-desk-workspace .bg-emerald-50 { background-color: rgba(19, 92, 67, 0.34) !important; }
+.theme-dark .service-desk-workspace .text-emerald-900 { color: #c7f7df !important; }
+.theme-dark .service-desk-workspace .bg-amber-50 { background-color: rgba(126, 83, 22, 0.28) !important; }
+.theme-dark .service-desk-workspace .text-amber-900 { color: #ffe2a9 !important; }
+.theme-dark .service-desk-workspace :is(input, select, textarea) {
+  border-color: #315a79 !important;
+  background-color: #091827 !important;
+  color: #f4f9fe !important;
+  color-scheme: dark;
+}
+.theme-dark .service-desk-workspace :is(input, textarea)::placeholder { color: #7892a9 !important; }
+.theme-dark .service-desk-workspace :is(input, select, textarea):focus { border-color: #38bce5 !important; outline: none; box-shadow: 0 0 0 3px rgba(105, 200, 255, 0.13) !important; }
+.theme-dark .service-desk-workspace select option { background: #10263a; color: #f4f9fe; }
+.theme-dark .service-desk-workspace button:not(:disabled) { transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease; }
+.theme-dark .service-desk-workspace .hover\:bg-slate-50:hover { background-color: #173149 !important; }
+.theme-dark .service-desk-workspace .hover\:border-slate-200:hover { border-color: #315a79 !important; }
+.theme-dark .service-desk-workspace :is(button[class*="bg-[#0e7490]"], .service-total-action) {
+  border-color: #1687ad !important;
+  background-color: #087f9d !important;
+  color: #f7fcff !important;
+  box-shadow: inset 0 1px 0 rgba(214, 249, 255, 0.14), 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+.theme-dark .service-desk-workspace :is(button[class*="bg-[#0e7490]"], .service-total-action):hover { border-color: #38bce5 !important; background-color: #0b98b8 !important; transform: translateY(-1px); }
+.theme-dark .service-desk-workspace .service-total-action button:first-child { background-color: #173149 !important; color: #f4f9fe !important; }
+.theme-dark .service-desk-workspace .service-total-action button:first-child:hover { background-color: #244765 !important; }
+.theme-dark .service-desk-workspace .service-total-action button:last-child { background-color: #f4f9fe !important; color: #087f9d !important; }
+.theme-dark .service-desk-workspace .service-total-action button:last-child:hover { background-color: #d9f3ff !important; }
+/* The QR code needs a light optical field; keep it intentionally contained,
+   not as a stray page surface. */
+.theme-dark .service-desk-workspace .ring-slate-200.bg-white { background: #f4f9fe !important; border-color: #315a79 !important; }
+
+/* Modal content is portalled outside the ServiceDesk root. */
+.theme-dark .service-desk-modal { border-color: #315a79 !important; background: #10263a !important; color: #e5f0fa !important; }
+.theme-dark .service-desk-modal :is(.bg-white, .bg-white\/10, .bg-white\/20) { background: #10263a !important; }
+.theme-dark .service-desk-modal :is(.bg-slate-50, .bg-slate-50\/60, .bg-slate-50\/80) { background: #0b1a2a !important; }
+.theme-dark .service-desk-modal :is(.border-slate-100, .border-slate-200, .border-slate-300) { border-color: #1c3d59 !important; }
+.theme-dark .service-desk-modal :is(.text-slate-950, .text-slate-900, .text-slate-800) { color: #f4f9fe !important; }
+.theme-dark .service-desk-modal :is(.text-slate-700, .text-slate-600, .text-slate-500) { color: #9fb5c9 !important; }
+.theme-dark .service-desk-modal :is(input, select, textarea) { border-color: #315a79 !important; background: #091827 !important; color: #f4f9fe !important; color-scheme: dark; }
+.theme-dark .service-desk-modal :is(input, textarea)::placeholder { color: #7892a9 !important; }
+.theme-dark .service-desk-modal :is(input, select, textarea):focus { border-color: #38bce5 !important; box-shadow: 0 0 0 3px rgba(105, 200, 255, 0.13) !important; }
+.theme-dark .service-desk-modal select option { background: #10263a; color: #f4f9fe; }
+.theme-dark .service-desk-modal :is(.bg-\[\#f0f9ff\], .bg-\[\#f3fbfc\]) { background: #123b59 !important; }
+.theme-dark .service-desk-modal :is(.border-\[\#bae6fd\], .border-\[\#8bdce8\]) { border-color: #315a79 !important; }
+.theme-dark .service-desk-modal :is(.text-\[\#0e7490\], .text-sky-700) { color: #69c8ff !important; }
+.theme-dark .service-desk-modal button[class*="bg-[#0e7490]"] { border-color: #1687ad !important; background: #087f9d !important; color: #f7fcff !important; }
+.theme-dark .service-desk-modal button[class*="bg-[#0e7490]"]:hover { background: #0b98b8 !important; }
+
+/* Workforce --------------------------------------------------------------
+   Roster grids carry a lot of state (today, weekend, planned, leave,
+   coverage) and need dark-specific data colours rather than inverted white
+   tables. The rule applies equally to day, week, month, year and balances. */
+.theme-dark .pos-app-shell .workforce-workspace {
+  background:
+    radial-gradient(circle at 70% -22%, rgba(24, 120, 158, 0.13), transparent 31%),
+    #07111f !important;
+  color: #e5f0fa !important;
+}
+.theme-dark .workforce-workspace :is(.bg-white, .bg-white\/80) { background-color: #10263a !important; }
+.theme-dark .workforce-workspace :is(.bg-slate-50, .bg-slate-50\/60, .bg-slate-50\/70, .bg-slate-50\/80, .bg-slate-100) { background-color: #0b1a2a !important; }
+.theme-dark .workforce-workspace :is(.border-slate-100, .border-slate-200, .border-slate-300) { border-color: #1c3d59 !important; }
+.theme-dark .workforce-workspace .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #1c3d59 !important; }
+.theme-dark .workforce-workspace .divide-y > * {
+  border-top: 0 !important;
+  border-bottom: 1px solid #1c3d59 !important;
+}
+.theme-dark .workforce-workspace .divide-y > *:last-child { border-bottom: 0 !important; }
+.theme-dark .workforce-workspace :is(.text-slate-950, .text-slate-900, .text-slate-800) { color: #f4f9fe !important; }
+.theme-dark .workforce-workspace .text-slate-700 { color: #d5e2ee !important; }
+.theme-dark .workforce-workspace :is(.text-slate-600, .text-slate-500) { color: #9fb5c9 !important; }
+.theme-dark .workforce-workspace :is(.text-slate-400, .text-slate-300) { color: #7892a9 !important; }
+.theme-dark .workforce-workspace :is(.border-\[\#bae6fd\], .border-\[\#8bdce8\]) { border-color: #315a79 !important; }
+.theme-dark .workforce-workspace :is(.bg-\[\#f0f9ff\], .bg-\[\#f0f9ff\]\/60, .bg-\[\#f3fbfc\]) { background-color: #123b59 !important; }
+.theme-dark .workforce-workspace :is(.text-\[\#0e7490\], .text-\[\#0f6f7e\], .text-cyan-800, .text-cyan-700) { color: #69c8ff !important; }
+.theme-dark .workforce-workspace :is(.border-cyan-200, .border-cyan-300) { border-color: #286490 !important; }
+.theme-dark .workforce-workspace .bg-cyan-50 { background-color: #123b59 !important; }
+.theme-dark .workforce-workspace .hover\:bg-cyan-50:hover { background-color: #173f5c !important; }
+.theme-dark .workforce-workspace .border-amber-200 { border-color: #80652f !important; }
+.theme-dark .workforce-workspace .bg-amber-50 { background-color: rgba(126, 83, 22, 0.28) !important; }
+.theme-dark .workforce-workspace :is(.text-amber-950, .text-amber-900, .text-amber-800, .text-amber-700) { color: #ffd37b !important; }
+.theme-dark .workforce-workspace .text-emerald-700 { color: #8ee3bd !important; }
+.theme-dark .workforce-workspace .text-rose-700 { color: #ffafbd !important; }
+.theme-dark .workforce-workspace :is(input, select, textarea) { border-color: #315a79 !important; background: #091827 !important; color: #f4f9fe !important; color-scheme: dark; }
+.theme-dark .workforce-workspace :is(input, textarea)::placeholder { color: #7892a9 !important; }
+.theme-dark .workforce-workspace :is(input, select, textarea):focus { border-color: #38bce5 !important; box-shadow: 0 0 0 3px rgba(105, 200, 255, 0.13) !important; }
+.theme-dark .workforce-workspace select option { background: #10263a; color: #f4f9fe; }
+.theme-dark .workforce-workspace button[aria-pressed="true"] { border-color: #286490 !important; background: #123b59 !important; color: #bce6ff !important; }
+.theme-dark .workforce-workspace button[aria-pressed="false"] { color: #9fb5c9 !important; }
+.theme-dark .workforce-workspace button[aria-pressed="false"]:hover,
+.theme-dark .workforce-workspace .hover\:bg-white:hover,
+.theme-dark .workforce-workspace .hover\:bg-slate-50:hover { background-color: #173149 !important; color: #f4f9fe !important; }
+.theme-dark .workforce-workspace button[class*="bg-[#0e7490]"] { border-color: #1687ad !important; background: #087f9d !important; color: #f7fcff !important; }
+.theme-dark .workforce-workspace button[class*="bg-[#0e7490]"]:hover { border-color: #38bce5 !important; background: #0b98b8 !important; transform: translateY(-1px); }
+.theme-dark .workforce-workspace .hover\:border-slate-200:hover { border-color: #315a79 !important; }
+.theme-dark .workforce-workspace .focus-visible\:ring-cyan-600:focus-visible { --tw-ring-color: #69c8ff !important; }
+
+/* Shift and leave editors are portalled outside the roster workspace. */
+.theme-dark .workforce-modal { border-color: #315a79 !important; background: #10263a !important; color: #e5f0fa !important; }
+.theme-dark .workforce-modal :is(.bg-white, .bg-white\/80) { background: #10263a !important; }
+.theme-dark .workforce-modal :is(.bg-slate-50, .bg-slate-50\/60, .bg-slate-100) { background: #0b1a2a !important; }
+.theme-dark .workforce-modal :is(.border-slate-100, .border-slate-200, .border-slate-300) { border-color: #1c3d59 !important; }
+.theme-dark .workforce-modal :is(.text-slate-950, .text-slate-900, .text-slate-800) { color: #f4f9fe !important; }
+.theme-dark .workforce-modal :is(.text-slate-700, .text-slate-600, .text-slate-500) { color: #9fb5c9 !important; }
+.theme-dark .workforce-modal :is(input, select, textarea) { border-color: #315a79 !important; background: #091827 !important; color: #f4f9fe !important; color-scheme: dark; }
+.theme-dark .workforce-modal :is(input, textarea)::placeholder { color: #7892a9 !important; }
+.theme-dark .workforce-modal :is(input, select, textarea):focus { border-color: #38bce5 !important; box-shadow: 0 0 0 3px rgba(105, 200, 255, 0.13) !important; }
+.theme-dark .workforce-modal select option { background: #10263a; color: #f4f9fe; }
+.theme-dark .workforce-modal .bg-cyan-50 { background: #123b59 !important; }
+.theme-dark .workforce-modal :is(.text-cyan-950, .text-cyan-800, .text-cyan-700) { color: #9edfff !important; }
+.theme-dark .workforce-modal .border-cyan-200 { border-color: #286490 !important; }
+.theme-dark .workforce-modal .hover\:bg-cyan-100:hover { background: #173f5c !important; }
+.theme-dark .workforce-modal .border-amber-200 { border-color: #80652f !important; }
+.theme-dark .workforce-modal .bg-amber-50 { background: rgba(126, 83, 22, 0.28) !important; }
+.theme-dark .workforce-modal :is(.text-amber-950, .text-amber-900) { color: #ffe2a9 !important; }
+.theme-dark .workforce-modal .border-rose-200 { border-color: #814252 !important; }
+.theme-dark .workforce-modal .bg-rose-50 { background: rgba(113, 34, 54, 0.3) !important; }
+.theme-dark .workforce-modal :is(.text-rose-800, .text-rose-700) { color: #ffb7c2 !important; }
