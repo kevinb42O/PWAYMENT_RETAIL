@@ -50,13 +50,13 @@ export const PinKeypad = ({
   }, [disabled, value]);
 
   return (
-    <div className="w-full" aria-label={label}>
+    <div className="pos-access-keypad w-full" aria-label={label}>
       <div className="mb-3 flex items-center justify-between text-xs font-semibold text-slate-600">
         <span>Persoonlijke PIN</span>
         <span className="text-slate-400">6 cijfers</span>
       </div>
       <div
-        className="mb-5 flex min-h-8 items-center justify-center gap-3 rounded-lg border border-slate-200 bg-slate-50 py-3"
+        className="pos-access-pin-progress mb-5 flex min-h-8 items-center justify-center gap-3 rounded-lg border border-slate-200 bg-slate-50 py-3"
         role="status"
         aria-live="polite"
         aria-label={`${value.length} van 6 cijfers ingevoerd`}
@@ -82,7 +82,7 @@ export const PinKeypad = ({
             disabled={disabled}
             onClick={() => append(digit)}
             aria-label={`Cijfer ${digit}`}
-            className="flex h-14 min-h-14 touch-manipulation items-center justify-center rounded-xl border border-slate-300 bg-white text-xl font-semibold tabular-nums text-slate-950 outline-none transition hover:border-cyan-600 hover:bg-cyan-50 active:bg-cyan-100 focus-visible:border-cyan-700 focus-visible:ring-3 focus-visible:ring-cyan-100 disabled:cursor-wait disabled:opacity-55 motion-reduce:transition-none sm:h-16"
+            className="pos-access-key flex h-14 min-h-14 touch-manipulation items-center justify-center rounded-xl border border-slate-300 bg-white text-xl font-semibold tabular-nums text-slate-950 outline-none transition hover:border-cyan-600 hover:bg-cyan-50 active:bg-cyan-100 focus-visible:border-cyan-700 focus-visible:ring-3 focus-visible:ring-cyan-100 disabled:cursor-wait disabled:opacity-55 motion-reduce:transition-none sm:h-16"
           >
             {digit}
           </button>
@@ -91,7 +91,7 @@ export const PinKeypad = ({
           type="button"
           disabled={disabled || value.length === 0}
           onClick={() => onChange("")}
-          className="flex h-14 min-h-14 touch-manipulation items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-600 outline-none transition hover:border-slate-300 hover:bg-slate-100 focus-visible:ring-3 focus-visible:ring-cyan-100 disabled:opacity-35 motion-reduce:transition-none sm:h-16"
+          className="pos-access-key pos-access-key--utility flex h-14 min-h-14 touch-manipulation items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-600 outline-none transition hover:border-slate-300 hover:bg-slate-100 focus-visible:ring-3 focus-visible:ring-cyan-100 disabled:opacity-35 motion-reduce:transition-none sm:h-16"
         >
           Wis
         </button>
@@ -100,7 +100,7 @@ export const PinKeypad = ({
           disabled={disabled}
           onClick={() => append("0")}
           aria-label="Cijfer 0"
-          className="flex h-14 min-h-14 touch-manipulation items-center justify-center rounded-xl border border-slate-300 bg-white text-xl font-semibold tabular-nums text-slate-950 outline-none transition hover:border-cyan-600 hover:bg-cyan-50 active:bg-cyan-100 focus-visible:border-cyan-700 focus-visible:ring-3 focus-visible:ring-cyan-100 disabled:cursor-wait disabled:opacity-55 motion-reduce:transition-none sm:h-16"
+          className="pos-access-key flex h-14 min-h-14 touch-manipulation items-center justify-center rounded-xl border border-slate-300 bg-white text-xl font-semibold tabular-nums text-slate-950 outline-none transition hover:border-cyan-600 hover:bg-cyan-50 active:bg-cyan-100 focus-visible:border-cyan-700 focus-visible:ring-3 focus-visible:ring-cyan-100 disabled:cursor-wait disabled:opacity-55 motion-reduce:transition-none sm:h-16"
         >
           0
         </button>
@@ -109,7 +109,7 @@ export const PinKeypad = ({
           disabled={disabled || value.length === 0}
           onClick={() => onChange(value.slice(0, -1))}
           aria-label="Laatste cijfer wissen"
-          className="flex h-14 min-h-14 touch-manipulation items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600 outline-none transition hover:border-slate-300 hover:bg-slate-100 focus-visible:ring-3 focus-visible:ring-cyan-100 disabled:opacity-35 motion-reduce:transition-none sm:h-16"
+          className="pos-access-key pos-access-key--utility flex h-14 min-h-14 touch-manipulation items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600 outline-none transition hover:border-slate-300 hover:bg-slate-100 focus-visible:ring-3 focus-visible:ring-cyan-100 disabled:opacity-35 motion-reduce:transition-none sm:h-16"
         >
           <Delete size={23} />
         </button>

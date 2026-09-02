@@ -8,18 +8,18 @@ import { usePosAccess } from "./usePosAccess";
 import { posPinPolicyError } from "./pinPolicy";
 
 const Brand = () => (
-  <div className="inline-flex items-center gap-3" aria-label="PWAYMENT">
+  <div className="pos-access-brand inline-flex items-center gap-3" aria-label="PWAYMENT">
     <span className="pace-boot-mark h-9 w-9" aria-hidden="true" />
     <span className="text-lg font-extrabold tracking-[-0.04em] text-slate-950">PWAYMENT</span>
   </div>
 );
 
-const surfaceClass = "w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_20px_55px_-36px_rgba(15,23,42,0.38)]";
-const inputClass = "mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3.5 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-700 focus:ring-3 focus:ring-cyan-100";
+const surfaceClass = "pos-access-surface w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_20px_55px_-36px_rgba(15,23,42,0.38)]";
+const inputClass = "pos-access-input mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3.5 text-sm font-semibold text-slate-900 outline-none transition focus:border-cyan-700 focus:ring-3 focus:ring-cyan-100";
 const pinInputClass = `${inputClass} text-center text-lg tracking-[0.32em] tabular-nums`;
 
 const Shell = ({ children }: { children: React.ReactNode }) => (
-  <div className="pos-access-light min-h-dvh bg-slate-50 text-slate-950" style={{ colorScheme: "light" }}>
+  <div className="pos-access-shell min-h-dvh bg-slate-50 text-slate-950">
     <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-5 sm:px-8 sm:py-6">
       <Brand />
       <span className="hidden items-center gap-2 text-xs font-semibold text-slate-500 sm:inline-flex">
@@ -56,7 +56,7 @@ const PinChange = () => {
           </div>
         </div>
       </header>
-      <form onSubmit={submit} className="space-y-5 border-t border-slate-200 bg-slate-50/60 px-6 py-6 sm:px-8">
+      <form onSubmit={submit} className="pos-access-inset space-y-5 border-t border-slate-200 bg-slate-50/60 px-6 py-6 sm:px-8">
         {(localError || error) && <p className="rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-3 text-sm font-semibold text-rose-800" role="alert">{localError || error}</p>}
         <fieldset>
           <legend className="text-sm font-semibold text-slate-800">Persoonlijke PIN</legend>
@@ -70,7 +70,7 @@ const PinChange = () => {
             </label>
           </div>
         </fieldset>
-        <button type="submit" disabled={pin.length !== 6 || confirm.length !== 6} className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-cyan-800 px-4 text-sm font-semibold text-white transition hover:bg-cyan-900 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-cyan-200 disabled:cursor-not-allowed disabled:bg-slate-300"><Check size={16} /> PIN opslaan</button>
+        <button type="submit" disabled={pin.length !== 6 || confirm.length !== 6} className="pos-access-primary-action flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-cyan-800 px-4 text-sm font-semibold text-white transition hover:bg-cyan-900 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-cyan-200 disabled:cursor-not-allowed disabled:bg-slate-300"><Check size={16} /> PIN opslaan</button>
       </form>
     </section>
   );
@@ -123,7 +123,7 @@ export const PosAccessGate = () => {
           </div>
           <p className="mt-4 max-w-lg text-sm leading-6 text-slate-600">Koppel dit toestel aan {currentStoreName ?? "je winkel"}. Op een eerste toestel stel je de eigenaarspincode in; op een extra toestel bevestig je de bestaande code.</p>
         </header>
-        <form onSubmit={submitSetup} className="space-y-5 border-t border-slate-200 bg-slate-50/60 px-6 py-6 sm:px-8">
+        <form onSubmit={submitSetup} className="pos-access-inset space-y-5 border-t border-slate-200 bg-slate-50/60 px-6 py-6 sm:px-8">
           {(setupError || error) && <p className="rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-3 text-sm font-semibold text-rose-800" role="alert">{setupError || error}</p>}
           <label className="block text-xs font-semibold text-slate-700">Toestelnaam
             <input aria-label="Toestelnaam" value={deviceName} onChange={(event) => setDeviceName(event.target.value)} maxLength={120} className={inputClass} />
@@ -140,7 +140,7 @@ export const PosAccessGate = () => {
               </label>
             </div>
           </fieldset>
-          <button type="submit" disabled={setupPin.length !== 6 || setupConfirm.length !== 6} className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-cyan-800 px-4 text-sm font-semibold text-white transition hover:bg-cyan-900 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-cyan-200 disabled:cursor-not-allowed disabled:bg-slate-300"><ShieldCheck size={16} /> Toestel activeren</button>
+          <button type="submit" disabled={setupPin.length !== 6 || setupConfirm.length !== 6} className="pos-access-primary-action flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-cyan-800 px-4 text-sm font-semibold text-white transition hover:bg-cyan-900 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-cyan-200 disabled:cursor-not-allowed disabled:bg-slate-300"><ShieldCheck size={16} /> Toestel activeren</button>
         </form>
         <footer className="border-t border-slate-200 px-6 py-4 sm:px-8">
           <button type="button" onClick={() => void logout()} className="flex min-h-9 items-center gap-2 rounded-md px-1 text-xs font-semibold text-slate-500 transition hover:text-slate-900"><LogOut size={14} /> Afmelden en ander account gebruiken</button>

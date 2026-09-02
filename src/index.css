@@ -4904,7 +4904,14 @@ body {
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.32) !important;
 }
 .theme-dark .insights-floating-tooltip-arrow { border-color: #315a79 !important; background: #10263a !important; }
-.theme-dark .insights-floating-tooltip .text-slate-300 { color: #9fb5c9 !important; }
+/* Tooltips are portalled to document.body, so they cannot inherit the dark
+   workspace typography rules. Keep their utility-colour copy legible here. */
+.theme-dark .insights-floating-tooltip :is(.text-slate-950, .text-slate-900, .text-slate-800) { color: #f4f9fe !important; }
+.theme-dark .insights-floating-tooltip .text-slate-700 { color: #d5e2ee !important; }
+.theme-dark .insights-floating-tooltip :is(.text-slate-600, .text-slate-500, .text-slate-300) { color: #9fb5c9 !important; }
+.theme-dark .insights-floating-tooltip .text-slate-400 { color: #7892a9 !important; }
+.theme-dark .insights-floating-tooltip :is(.border-slate-100, .border-slate-200) { border-color: #1c3d59 !important; }
+.theme-dark .insights-floating-tooltip .text-amber-700 { color: #ffd37b !important; }
 
 /* Customer drill-down is portalled outside the workspace tree. Give the modal
    the same contract explicitly so opening a customer never reintroduces a
@@ -5160,3 +5167,154 @@ body {
 .theme-dark .workforce-modal .border-rose-200 { border-color: #814252 !important; }
 .theme-dark .workforce-modal .bg-rose-50 { background: rgba(113, 34, 54, 0.3) !important; }
 .theme-dark .workforce-modal :is(.text-rose-800, .text-rose-700) { color: #ffb7c2 !important; }
+
+
+/* Access and startup ------------------------------------------------------
+   The preference is restored synchronously in index.html. These surfaces use
+   the same token contract so a returning dark-mode operator never sees a
+   light loading or PIN gate before the application itself mounts. */
+.theme-dark .pwayment-loading-shell {
+  background: #07111f;
+  color: #f4f9fe;
+}
+.theme-dark .pwayment-loading-shell.is-overlay {
+  background: rgba(7, 17, 31, 0.94);
+}
+.theme-dark .pwayment-loading-ambient {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(39, 184, 229, 0.17), transparent 28%),
+    radial-gradient(circle at 88% 88%, rgba(25, 168, 207, 0.14), transparent 31%),
+    linear-gradient(135deg, #07111f, #0b1a2a 58%, #091827);
+}
+.theme-dark .pwayment-loading-ambient::after {
+  opacity: .28;
+  background-image: linear-gradient(rgba(105, 200, 255, .12) 1px, transparent 1px), linear-gradient(90deg, rgba(105, 200, 255, .12) 1px, transparent 1px);
+}
+.theme-dark .pwayment-loading-shell :is(.text-slate-950, .text-slate-900, .text-slate-800) { color: #f4f9fe !important; }
+.theme-dark .pwayment-loading-shell :is(.text-slate-700, .text-slate-600, .text-slate-500) { color: #9fb5c9 !important; }
+.theme-dark .pwayment-loading-shell .text-slate-400 { color: #7892a9 !important; }
+.theme-dark .pwayment-loading-shell .text-cyan-700 { color: #69c8ff !important; }
+.theme-dark .pwayment-flow-rail { background: #0b1a2a; box-shadow: inset 0 1px 2px rgba(0, 0, 0, .44); }
+.theme-dark .pwayment-flow-pulse { border-color: #10263a; }
+.theme-dark .pwayment-loading-shell :is(.bg-white, .bg-slate-50) { background-color: #10263a !important; }
+.theme-dark .pwayment-loading-shell :is(.border-slate-200, .border-slate-300) { border-color: #315a79 !important; }
+.theme-dark .pwayment-loading-shell button.bg-slate-950 {
+  border-color: #1687ad !important;
+  background: #087f9d !important;
+  color: #f7fcff !important;
+}
+.theme-dark .pwayment-loading-shell button.bg-slate-950:hover:not(:disabled) {
+  border-color: #38bce5 !important;
+  background: #0b98b8 !important;
+  transform: translateY(-1px);
+}
+.theme-dark .pwayment-loading-shell button.border-slate-200:hover:not(:disabled) {
+  border-color: #315a79 !important;
+  background: #173149 !important;
+  color: #f4f9fe !important;
+}
+
+.theme-dark .pos-access-shell {
+  min-height: 100dvh;
+  background:
+    radial-gradient(circle at 9% 7%, rgba(39, 184, 229, .11), transparent 28%),
+    radial-gradient(circle at 92% 88%, rgba(18, 123, 173, .12), transparent 31%),
+    #07111f !important;
+  color: #f4f9fe !important;
+  color-scheme: dark;
+}
+.theme-dark .pos-access-shell :is(.text-slate-950, .text-slate-900, .text-slate-800) { color: #f4f9fe !important; }
+.theme-dark .pos-access-shell :is(.text-slate-700, .text-slate-600, .text-slate-500) { color: #9fb5c9 !important; }
+.theme-dark .pos-access-shell .text-slate-400 { color: #7892a9 !important; }
+.theme-dark .pos-access-shell :is(.text-cyan-800, .text-cyan-700) { color: #69c8ff !important; }
+.theme-dark .pos-access-brand .text-slate-950 { color: #f4f9fe !important; }
+.theme-dark .pos-access-surface {
+  border-color: #315a79 !important;
+  background: #10263a !important;
+  box-shadow: 0 26px 64px -34px rgba(0, 0, 0, .74), inset 0 1px 0 rgba(197, 233, 255, .05) !important;
+}
+.theme-dark .pos-access-inset { border-color: #1c3d59 !important; background: #0b1a2a !important; }
+.theme-dark .pos-access-shell :is(.border-slate-200, .border-slate-300) { border-color: #1c3d59 !important; }
+.theme-dark .pos-access-shell :is(.bg-white, .bg-slate-50, .bg-slate-50\/60) { background-color: #10263a !important; }
+.theme-dark .pos-access-shell :is(.bg-cyan-50, .bg-cyan-100) { background-color: #123b59 !important; }
+.theme-dark .pos-access-input {
+  border-color: #315a79 !important;
+  background: #091827 !important;
+  color: #f4f9fe !important;
+  color-scheme: dark;
+}
+.theme-dark .pos-access-input:focus {
+  border-color: #38bce5 !important;
+  box-shadow: 0 0 0 3px rgba(105, 200, 255, .16) !important;
+}
+.theme-dark .pos-access-primary-action {
+  border-color: #1687ad !important;
+  background: #087f9d !important;
+  color: #f7fcff !important;
+  box-shadow: inset 0 1px 0 rgba(214, 249, 255, .14), 0 3px 8px rgba(0, 0, 0, .18) !important;
+}
+.theme-dark .pos-access-primary-action:hover:not(:disabled) {
+  border-color: #38bce5 !important;
+  background: #0b98b8 !important;
+  color: #fff !important;
+  transform: translateY(-1px);
+}
+.theme-dark .pos-access-primary-action:disabled { border-color: #27445d !important; background: #173149 !important; color: #7892a9 !important; }
+.theme-dark .pos-access-shell :is(.bg-rose-50, .bg-rose-100) { background-color: rgba(113, 34, 54, .3) !important; }
+.theme-dark .pos-access-shell :is(.border-rose-200, .border-rose-300) { border-color: #814252 !important; }
+.theme-dark .pos-access-shell :is(.text-rose-800, .text-rose-700) { color: #ffb7c2 !important; }
+.theme-dark .pos-access-keypad .text-slate-600 { color: #9fb5c9 !important; }
+.theme-dark .pos-access-pin-progress { border-color: #1c3d59 !important; background: #091827 !important; }
+.theme-dark .pos-access-pin-progress .border-slate-300 { border-color: #315a79 !important; }
+.theme-dark .pos-access-pin-progress .bg-white { background-color: #10263a !important; }
+.theme-dark .pos-access-key {
+  border-color: #315a79 !important;
+  background: #10263a !important;
+  color: #f4f9fe !important;
+  box-shadow: inset 0 1px 0 rgba(197, 233, 255, .045);
+}
+.theme-dark .pos-access-key:hover:not(:disabled) {
+  border-color: #38bce5 !important;
+  background: #173149 !important;
+  color: #fff !important;
+  transform: translateY(-1px);
+}
+.theme-dark .pos-access-key:active:not(:disabled) { background: #1b425f !important; transform: translateY(0); }
+.theme-dark .pos-access-key--utility { background: #0b1a2a !important; color: #9fb5c9 !important; }
+.theme-dark .pos-access-shell button:focus-visible { --tw-ring-color: #69c8ff !important; }
+.theme-dark .pos-access-shell footer { border-color: #1c3d59 !important; }
+.theme-dark .pos-access-shell footer button:hover:not(:disabled) { background: #173149 !important; color: #f4f9fe !important; }
+
+/* Account PIN entry uses the same stored preference as the POS gate. */
+.theme-dark .auth-shell {
+  background: #07111f !important;
+  color: #f4f9fe !important;
+  color-scheme: dark;
+}
+.theme-dark .auth-ambient {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(39, 184, 229, .16), transparent 28%),
+    radial-gradient(circle at 88% 88%, rgba(18, 123, 173, .13), transparent 31%),
+    linear-gradient(135deg, #07111f, #0b1a2a 62%, #091827) !important;
+}
+.theme-dark .auth-ambient::after { opacity: .26; background-image: linear-gradient(rgba(105, 200, 255, .1) 1px, transparent 1px), linear-gradient(90deg, rgba(105, 200, 255, .1) 1px, transparent 1px); }
+.theme-dark .auth-shell :is(.text-slate-950, .text-slate-900, .text-slate-800) { color: #f4f9fe !important; }
+.theme-dark .auth-shell :is(.text-slate-700, .text-slate-600, .text-slate-500) { color: #9fb5c9 !important; }
+.theme-dark .auth-shell .text-slate-400 { color: #7892a9 !important; }
+.theme-dark .auth-shell :is(.text-cyan-800, .text-cyan-700) { color: #69c8ff !important; }
+.theme-dark .auth-shell :is(.auth-card, .bg-white, .bg-white\/75, .bg-white\/88, .bg-slate-50, .bg-slate-50\/70) { background-color: #10263a !important; }
+.theme-dark .auth-shell .auth-card { border-color: #315a79 !important; box-shadow: 0 34px 82px -36px rgba(0, 0, 0, .74), inset 0 1px 0 rgba(197, 233, 255, .05) !important; }
+.theme-dark .auth-shell :is(.border-white\/90, .border-slate-100, .border-slate-200, .border-slate-200\/90, .border-slate-300) { border-color: #1c3d59 !important; }
+.theme-dark .auth-shell :is(input, select, textarea) { border-color: #315a79 !important; background: #091827 !important; color: #f4f9fe !important; color-scheme: dark; }
+.theme-dark .auth-shell :is(input, select, textarea)::placeholder { color: #7892a9 !important; }
+.theme-dark .auth-shell :is(input, select, textarea):focus { border-color: #38bce5 !important; box-shadow: 0 0 0 4px rgba(105, 200, 255, .14) !important; }
+.theme-dark .auth-shell :is(.hover\:bg-white:hover, .hover\:bg-slate-50:hover, .hover\:bg-cyan-50:hover) { background-color: #173149 !important; }
+.theme-dark .auth-shell :is(.hover\:text-slate-950:hover, .hover\:text-slate-800:hover, .hover\:text-slate-700:hover) { color: #f4f9fe !important; }
+.theme-dark .auth-shell button.bg-slate-950 { border-color: #1687ad !important; background: #087f9d !important; color: #f7fcff !important; }
+.theme-dark .auth-shell button.bg-slate-950:hover:not(:disabled) { border-color: #38bce5 !important; background: #0b98b8 !important; }
+.theme-dark .auth-shell :is(.bg-rose-50, .bg-rose-100) { background-color: rgba(113, 34, 54, .3) !important; }
+.theme-dark .auth-shell .border-rose-200 { border-color: #814252 !important; }
+.theme-dark .auth-shell .text-rose-800 { color: #ffb7c2 !important; }
+.theme-dark .auth-shell :is(.bg-emerald-50, .bg-emerald-100) { background-color: rgba(19, 92, 67, .3) !important; }
+.theme-dark .auth-shell .border-emerald-200 { border-color: #2b6b58 !important; }
+.theme-dark .auth-shell .text-emerald-800 { color: #8ee3bd !important; }
