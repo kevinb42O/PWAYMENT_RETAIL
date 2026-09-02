@@ -1,0 +1,160 @@
+/* Settings & platform administration -------------------------------------
+   Settings is the one place where every operational surface meets: access,
+   subscription, catalogue, fiscal setup, devices and platform governance.
+   Keep this as a named scope rather than a global utility inversion so public
+   pages, receipts and deliberate light previews retain their own appearance. */
+.theme-dark :is(.settings-workspace, .admin-workspace) {
+  background:
+    radial-gradient(circle at 58% -30%, rgba(36, 153, 255, 0.1), transparent 38%),
+    #07111f !important;
+  color: #e5f0fa !important;
+}
+.theme-dark .settings-workspace > aside,
+.theme-dark .settings-workspace > main,
+.theme-dark .admin-workspace > main,
+.theme-dark .admin-workspace > aside,
+.theme-dark .admin-workspace > main > header {
+  border-color: #1c3d59 !important;
+  background-color: #0d1e31 !important;
+}
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.bg-white, .bg-white\/70, .bg-white\/80, .bg-white\/90) {
+  background-color: #10263a !important;
+}
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.bg-slate-50, .bg-slate-50\/60, .bg-slate-50\/70, .bg-slate-50\/80, .bg-slate-100) {
+  background-color: #0b1a2a !important;
+}
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.bg-slate-200, .bg-slate-200\/60, .bg-slate-200\/70, .bg-slate-300, .bg-slate-300\/30, .bg-slate-300\/40, .bg-slate-400, .bg-slate-400\/40, .bg-zinc-200) {
+  background-color: #173149 !important;
+}
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.bg-slate-900, .bg-slate-900\/5, .bg-slate-950, .bg-slate-950\/70, .bg-zinc-950, .bg-zinc-950\/40, .bg-zinc-950\/55, .bg-zinc-950\/60, .bg-zinc-900, .bg-zinc-900\/40, .bg-zinc-900\/60) {
+  background-color: #091827 !important;
+}
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.bg-zinc-800, .bg-zinc-800\/40, .bg-zinc-800\/50, .bg-zinc-800\/60) {
+  background-color: #173149 !important;
+}
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.border-slate-100, .border-slate-200, .border-slate-200\/60, .border-slate-200\/80, .border-slate-200\/90, .border-slate-300, .border-slate-400, .border-slate-800, .border-slate-900, .border-slate-950, .border-zinc-700, .border-zinc-800, .border-zinc-800\/80) {
+  border-color: #1c3d59 !important;
+}
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.divide-slate-100, .divide-slate-200) > :not([hidden]) {
+  border-color: #1c3d59 !important;
+}
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.text-slate-950, .text-slate-900, .text-slate-800, .text-zinc-950, .text-zinc-900, .text-zinc-800) {
+  color: #f4f9fe !important;
+}
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.text-slate-700, .text-zinc-700, .text-zinc-300) {
+  color: #d5e2ee !important;
+}
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.text-slate-600, .text-slate-500, .text-zinc-600, .text-zinc-500) {
+  color: #9fb5c9 !important;
+}
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.text-slate-400, .text-slate-300, .text-zinc-400) {
+  color: #7892a9 !important;
+}
+.theme-dark :is(.settings-workspace, .admin-workspace) [class~="bg-[#f0f9ff]"] { background-color: #123b59 !important; }
+.theme-dark :is(.settings-workspace, .admin-workspace) [class~="border-[#bae6fd]"] { border-color: #286490 !important; }
+.theme-dark :is(.settings-workspace, .admin-workspace) [class~="text-[#0e7490]"] { color: #69c8ff !important; }
+.theme-dark :is(.settings-workspace, .admin-workspace) [class~="border-[#0e7490]"],
+.theme-dark :is(.settings-workspace, .admin-workspace) [class~="border-[#0f6677]"] { border-color: #286490 !important; }
+
+/* Informational, selection and semantic states stay readable without light
+   panels breaking the surrounding midnight surface. */
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.bg-cyan-50, .bg-cyan-50\/50, .bg-cyan-50\/60, .bg-cyan-50\/70, .bg-sky-50, .bg-sky-50\/50, .bg-sky-50\/60, .bg-sky-50\/70, .bg-sky-100) {
+  background-color: #123b59 !important;
+}
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.border-cyan-100, .border-cyan-200, .border-cyan-300, .border-sky-100, .border-sky-200, .border-sky-300) {
+  border-color: #286490 !important;
+}
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.text-cyan-950, .text-cyan-900, .text-cyan-800, .text-cyan-700, .text-sky-900, .text-sky-800, .text-sky-700, .text-sky-600) {
+  color: #69c8ff !important;
+}
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.bg-emerald-50, .bg-emerald-50\/70, .bg-emerald-100) { background-color: rgba(19, 92, 67, 0.34) !important; }
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.border-emerald-100, .border-emerald-200) { border-color: #2b6b58 !important; }
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.text-emerald-900, .text-emerald-800, .text-emerald-700, .text-emerald-600) { color: #8ee3bd !important; }
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.bg-amber-50, .bg-amber-100) { background-color: rgba(113, 76, 20, 0.3) !important; }
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.border-amber-200, .border-amber-300) { border-color: #80652f !important; }
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.text-amber-950, .text-amber-900, .text-amber-800, .text-amber-700, .text-amber-600) { color: #ffd37b !important; }
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.bg-rose-50, .bg-rose-100) { background-color: rgba(113, 34, 54, 0.3) !important; }
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.border-rose-100, .border-rose-200) { border-color: #814252 !important; }
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.text-rose-900, .text-rose-800, .text-rose-700, .text-rose-600) { color: #ffb7c2 !important; }
+.theme-dark :is(.settings-workspace, .admin-workspace) .bg-red-100 { background-color: rgba(113, 34, 54, 0.3) !important; }
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.bg-violet-50, .bg-violet-100) { background-color: rgba(78, 57, 131, 0.34) !important; }
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.border-violet-200, .border-violet-300) { border-color: #5a4f91 !important; }
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.text-violet-950, .text-violet-900, .text-violet-800, .text-violet-700) { color: #c9bcff !important; }
+
+/* Gradients are explicit background images, so they need a dark replacement
+   rather than the generic panel background-color rule above. */
+.theme-dark .settings-workspace .bg-gradient-to-br.from-white.via-white.to-sky-50 {
+  background: linear-gradient(145deg, #10263a 0%, #0d2033 56%, #103149 100%) !important;
+}
+.theme-dark .settings-workspace .bg-gradient-to-r.from-emerald-50.via-white.to-sky-50 {
+  background: linear-gradient(100deg, rgba(19, 92, 67, 0.42), #10263a 54%, #103149) !important;
+}
+
+/* Forms, navigation and actions ----------------------------------------- */
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(input, select, textarea) {
+  border-color: #315a79 !important;
+  background-color: #091827 !important;
+  color: #f4f9fe !important;
+  color-scheme: dark;
+}
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(input, textarea)::placeholder { color: #7892a9 !important; }
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(input, select, textarea):focus {
+  border-color: #38bce5 !important;
+  box-shadow: 0 0 0 3px rgba(105, 200, 255, 0.14) !important;
+}
+.theme-dark :is(.settings-workspace, .admin-workspace) select option,
+.theme-dark :is(.settings-workspace, .admin-workspace) select optgroup { background: #10263a; color: #f4f9fe; }
+.theme-dark :is(.settings-workspace, .admin-workspace) input[type="checkbox"],
+.theme-dark :is(.settings-workspace, .admin-workspace) input[type="radio"] { accent-color: #19a8cf; }
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.hover\:bg-white:hover, .hover\:bg-slate-50:hover, .hover\:bg-slate-100:hover, .hover\:bg-cyan-50:hover, .hover\:bg-sky-50:hover) {
+  background-color: #173149 !important;
+}
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.hover\:bg-slate-200:hover, .hover\:bg-cyan-100:hover, .hover\:bg-sky-100:hover) {
+  background-color: #1b425f !important;
+}
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.hover\:border-slate-200:hover, .hover\:border-slate-300:hover, .hover\:border-sky-100:hover, .hover\:border-cyan-100:hover) { border-color: #315a79 !important; }
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.hover\:text-slate-900:hover, .hover\:text-slate-800:hover, .hover\:text-cyan-900:hover, .hover\:text-sky-800:hover) { color: #f4faff !important; }
+.theme-dark :is(.settings-workspace, .admin-workspace) button:not(:disabled) { transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease; }
+.theme-dark :is(.settings-workspace, .admin-workspace) button:is(.bg-slate-900, .bg-slate-950, .bg-sky-700, .bg-cyan-700, .bg-\[\#0e7490\]) {
+  border-color: #1687ad !important;
+  background: #087f9d !important;
+  color: #f7fcff !important;
+  box-shadow: inset 0 1px 0 rgba(214, 249, 255, 0.14), 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+.theme-dark :is(.settings-workspace, .admin-workspace) button:is(.bg-slate-900, .bg-slate-950, .bg-sky-700, .bg-cyan-700, .bg-\[\#0e7490\]):hover:not(:disabled) {
+  border-color: #38bce5 !important;
+  background: #0b98b8 !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+}
+.theme-dark :is(.settings-workspace, .admin-workspace) button:disabled,
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(input, select, textarea):disabled {
+  border-color: #27445d !important;
+  color: #7892a9 !important;
+}
+.theme-dark :is(.settings-workspace, .admin-workspace) :is(.ring-sky-100, .ring-cyan-100, .ring-sky-200) { --tw-ring-color: #286490 !important; }
+
+/* Financial planning used the intentionally-light insights skin. Inside
+   Settings it is an operational screen, so it must obey the selected theme. */
+.theme-dark .settings-workspace .insights-light,
+.theme-dark .settings-workspace .insights-light :is(main, aside) {
+  background: transparent !important;
+  color: #e5f0fa !important;
+}
+.theme-dark .settings-workspace .insights-light :is(.bg-white, .bg-zinc-950, .bg-zinc-900) { background-color: #10263a !important; }
+.theme-dark .settings-workspace .insights-light :is(.bg-zinc-800, .bg-slate-50) { background-color: #0b1a2a !important; }
+.theme-dark .settings-workspace .insights-light :is(.border-zinc-700, .border-zinc-800) { border-color: #1c3d59 !important; }
+.theme-dark .settings-workspace .insights-light :is(.text-white, .text-zinc-100, .text-zinc-200, .text-zinc-300) { color: #f4f9fe !important; }
+
+/* Product editing is rendered through a portal, outside the settings shell. */
+.theme-dark .product-admin-modal {
+  border-color: #315a79 !important;
+  background: #10263a !important;
+  color: #e5f0fa !important;
+}
+.theme-dark .product-admin-modal .product-admin-section { border-color: #1c3d59 !important; background: #10263a !important; box-shadow: inset 0 1px 0 rgba(197, 233, 255, 0.035) !important; }
+.theme-dark .product-admin-modal .product-admin-section-title { border-color: #1c3d59 !important; color: #d5e2ee !important; }
+.theme-dark .product-admin-modal .product-admin-section-title svg { color: #69c8ff !important; }
+.theme-dark .product-admin-modal :is(input, select, textarea) { border-color: #315a79 !important; background: #091827 !important; color: #f4f9fe !important; color-scheme: dark; }
+.theme-dark .product-admin-modal .product-admin-tier-panel { border-color: #286490 !important; background: #123b59 !important; }
+.theme-dark .product-admin-modal .product-admin-tier-empty { border-color: #315a79 !important; background: #10263a !important; color: #d5e2ee !important; }

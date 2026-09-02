@@ -342,7 +342,7 @@ const OwnerProfileView: React.FC<ProfileViewProps> = ({
   };
 
   return (
-    <div className="app-page-shell flex-1 flex flex-col md:flex-row h-full font-sans selection:bg-sky-500/20 overflow-hidden">
+    <div className="settings-workspace app-page-shell flex-1 flex flex-col md:flex-row h-full font-sans selection:bg-sky-500/20 overflow-hidden">
       {/* VERCEL / SUPABASE STYLE SIDEBAR */}
       <aside className="w-full md:w-64 bg-white border-b md:border-b-0 md:border-r border-slate-200 p-2 md:p-4 shrink-0 block md:flex md:flex-col md:justify-between overflow-x-auto md:overflow-x-hidden md:overflow-y-auto">
         <div className="flex min-w-max gap-1 md:block md:min-w-0 md:space-y-1 [&>button]:!w-auto [&>button]:shrink-0 md:[&>button]:!w-full">

@@ -316,7 +316,7 @@ export default function AdminApp() {
   if (checking) return <main className="flex min-h-dvh items-center justify-center bg-slate-50 text-sm font-bold text-slate-500">Platformsessie controleren…</main>;
   if (!session) return <PlatformLogin onAuthenticated={authenticate} />;
   const routeKey = `${route.view}:${route.storeId ?? ""}`;
-  return <div className="flex min-h-dvh flex-col bg-slate-50 text-slate-900 lg:flex-row">
+  return <div className="admin-workspace flex min-h-dvh flex-col bg-slate-50 text-slate-900 lg:flex-row">
     <Sidebar view={route.view} onNavigate={navigate} onLogout={() => void logout()} />
     <main className="min-w-0 flex-1">
       <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 sm:px-6"><div><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">PWAYMENT · {session.role}</p><p className="mt-0.5 text-sm font-extrabold text-slate-900">{title}</p></div><div className="flex items-center gap-2">{mfaVerified && <span className="hidden items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-[10px] font-extrabold uppercase text-emerald-700 sm:inline-flex"><ShieldCheck size={13} /> MFA bevestigd</span>}<button type="button" onClick={() => void logout()} className="rounded-lg p-2 text-slate-500 hover:bg-slate-50 lg:hidden" aria-label="Afmelden"><LogOut size={17} /></button></div></header>
