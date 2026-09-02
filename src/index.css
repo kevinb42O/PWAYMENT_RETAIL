@@ -3912,3 +3912,42 @@ body {
   border-color: #58b8f3 !important;
   box-shadow: 0 0 0 3px rgba(88, 184, 243, 0.18) !important;
 }
+
+/* Kassa divider contract --------------------------------------------------
+   Structural boundaries are deliberately quieter than interactive borders.
+   A bright line is reserved for focus, selection and primary actions only. */
+.theme-dark .pos-catalog > .pos-category-rail {
+  border-right-color: #18344e !important;
+  border-bottom-color: #18344e !important;
+}
+
+.theme-dark .pos-catalog > .pos-category-rail > .pos-rail-heading {
+  border-bottom-color: #18344e !important;
+}
+
+.theme-dark .pos-product-stage > .pos-catalog-toolbar {
+  border-bottom-color: #18344e !important;
+  box-shadow: none !important;
+}
+
+.theme-dark .pos-product-stage-frame--with-cart {
+  border-right-color: #18344e !important;
+}
+
+.theme-dark .pos-product-footer {
+  border-top-color: #1b3954 !important;
+}
+
+.theme-dark .pos-cart,
+.theme-dark .pos-cart-header,
+.theme-dark .pos-checkout,
+.theme-dark .pos-cart-dock,
+.theme-dark .pos-cart-panel-frame {
+  border-color: #18344e !important;
+}
+
+.theme-dark .pos-cart-header,
+.theme-dark .pos-checkout {
+  border-bottom-color: #18344e !important;
+  border-top-color: #18344e !important;
+}
