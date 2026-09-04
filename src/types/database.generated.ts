@@ -4212,6 +4212,10 @@ export type Database = {
         Args: { target_store_id: string }
         Returns: Json
       }
+      get_pace_today_operational_queues: {
+        Args: { target_store_id: string }
+        Returns: Json
+      }
       get_pace_product_recommendations: {
         Args: {
           target_store_id: string

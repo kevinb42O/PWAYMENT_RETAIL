@@ -1,7 +1,7 @@
 import type { MainView } from "../store/useStore";
 
 export type PaceDestinationRole = "owner" | "manager" | "cashier";
-export type PaceProfileTab = "billing" | "modules" | "pace" | "catalog-products" | "catalog-categories" | "labels" | "webshop-general" | "integrations";
+export type PaceProfileTab = "billing" | "modules" | "pace" | "catalog-products" | "catalog-categories" | "labels" | "webshop-general" | "webshop-orders" | "integrations";
 export type PaceWorkspaceFocus = "product-search" | "cart" | "return-search";
 
 export type PaceDestination =

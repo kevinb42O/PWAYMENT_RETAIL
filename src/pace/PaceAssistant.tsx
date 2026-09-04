@@ -14,8 +14,10 @@ import {
   Send,
   Settings2,
   ShieldCheck,
+  ShoppingBag,
   Sparkles,
   Trash2,
+  Wrench,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -54,9 +56,11 @@ import {
 } from "./paceExperience";
 import {
   buildPaceReplenishmentProposal,
+  emptyPaceTodayOperationalQueues,
   paceTodaySignalId,
   parsePaceReplenishmentRows,
   parsePaceTodayBriefing,
+  parsePaceTodayOperationalQueues,
   type PaceTodayBriefing,
 } from "./paceToday";
 
@@ -183,6 +187,9 @@ export const shouldShowPaceSetupProgress = ({
   ready: boolean;
 }) => (role === "owner" || role === "manager") && !ready;
 
+const paceTodayCurrency = (cents: number) => new Intl.NumberFormat("nl-BE", { style: "currency", currency: "EUR" }).format(cents / 100);
+const paceTodayFulfillmentLabel = (status: string) => status === "processing" ? "wordt verwerkt" : "nog te verwerken";
+
 export const PaceAssistant = (props: PaceAssistantProps) => {
   const {
     open,
@@ -219,6 +226,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   const [todayEvidenceOpen, setTodayEvidenceOpen] = useState<string[]>([]);
   const [todayRefreshToken, setTodayRefreshToken] = useState(0);
   const [replenishmentRows, setReplenishmentRows] = useState<ReturnType<typeof parsePaceReplenishmentRows>>([]);
+  const [todayQueues, setTodayQueues] = useState(emptyPaceTodayOperationalQueues);
   const { quota, hardLimited, load: loadBilling, recordQuota, markExceeded } = usePaceBilling();
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const queryRunRef = useRef(0);
@@ -258,8 +266,10 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   const canLoadToday = Boolean(open && props.storeId && (props.role === "owner" || props.role === "manager") && preferences.liveStoreContext && preferences.insightGuidance);
   const visibleTodayItems = useMemo(() => todayBriefing?.items.filter((item) => {
     const id = paceTodaySignalId(item.id);
-    return !dismissedSignals.includes(id) && (snoozedSignals[id] ?? 0) <= Date.now();
-  }) ?? [], [todayBriefing, dismissedSignals, snoozedSignals]);
+    const representedByQueue = (item.id === "webshop.paid_waiting" && todayQueues.webshopOrders.length > 0)
+      || (item.id === "service.blocked" && todayQueues.blockedServiceOrders.length > 0);
+    return !representedByQueue && !dismissedSignals.includes(id) && (snoozedSignals[id] ?? 0) <= Date.now();
+  }) ?? [], [todayBriefing, todayQueues, dismissedSignals, snoozedSignals]);
   const replenishmentProposal = useMemo(() => buildPaceReplenishmentProposal(replenishmentRows), [replenishmentRows]);
   const usagePercent = quota ? (quota.tier === "basic" ? quota.daily_count / quota.quota : quota.monthly_count / quota.quota) * 100 : 0;
   const modeLabel = paceAssistantModeLabel({ aiEnabled: preferences.aiEnabled, liveStoreContext: preferences.liveStoreContext, thinking });
@@ -311,6 +321,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
     if (!canLoadToday || !props.storeId) {
       setTodayBriefing(null);
       setReplenishmentRows([]);
+      setTodayQueues(emptyPaceTodayOperationalQueues());
       setTodayUnavailable(false);
       return;
     }
@@ -324,15 +335,18 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
           query_spec: { version: "1", target: "products", minimumStock: "at_or_below", limit: 12 },
         })
         : Promise.resolve({ data: null, error: null });
-      const [briefingResult, replenishmentResult] = await Promise.all([briefingRequest, replenishmentRequest]);
+      const queuesRequest = supabase.rpc("get_pace_today_operational_queues", { target_store_id: props.storeId! });
+      const [briefingResult, replenishmentResult, queuesResult] = await Promise.all([briefingRequest, replenishmentRequest, queuesRequest]);
       if (cancelled) return;
       if (briefingResult.error) {
         setTodayBriefing(null);
         setReplenishmentRows([]);
+        setTodayQueues(emptyPaceTodayOperationalQueues());
         setTodayUnavailable(true);
       } else {
         setTodayBriefing(parsePaceTodayBriefing(briefingResult.data));
         setReplenishmentRows(replenishmentResult.error ? [] : parsePaceReplenishmentRows(replenishmentResult.data));
+        setTodayQueues(queuesResult.error ? emptyPaceTodayOperationalQueues() : parsePaceTodayOperationalQueues(queuesResult.data));
       }
       setTodayLoading(false);
     })();
@@ -684,6 +698,20 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                             </footer>
                           </article>;
                         })}
+                        {todayQueues.webshopOrders.length > 0 && !dismissedSignals.includes(paceTodaySignalId("webshop-review")) && (snoozedSignals[paceTodaySignalId("webshop-review")] ?? 0) <= Date.now() && <article className="pace-today-queue">
+                          <div><span><ShoppingBag size={13} /> Werkqueue · webshop</span><strong>{todayQueues.webshopOrders.length} {todayQueues.webshopOrders.length === 1 ? "betaalde order wacht" : "betaalde orders wachten"}</strong></div>
+                          <p>Deze orders zijn betaald en staan nog {todayQueues.webshopOrders.some((order) => order.fulfillmentStatus === "unfulfilled") ? "klaar om verwerkt te worden" : "in verwerking"}.</p>
+                          <ul>{todayQueues.webshopOrders.slice(0, 3).map((order) => <li key={order.id}><b>{order.number}</b><span>{paceTodayFulfillmentLabel(order.fulfillmentStatus)} · {order.deliveryMode === "pickup" ? "afhalen" : "verzenden"} · {paceTodayCurrency(order.totalCents)}</span></li>)}</ul>
+                          <footer><button type="button" className="is-primary" onClick={() => { props.onOpenProfile("webshop-orders"); setOpen(false); }}>Open orderwerkqueue <ArrowRight size={13} /></button><button type="button" className="is-quiet" onClick={() => snoozeSignal(paceTodaySignalId("webshop-review"))}>4 uur later</button><button type="button" className="is-quiet" onClick={() => dismissSignal(paceTodaySignalId("webshop-review"))}>Negeer</button></footer>
+                          <em>Alleen de orderstatus wordt getoond. Geen klant-, adres- of betaalreferentiegegevens komen in Pace.</em>
+                        </article>}
+                        {todayQueues.blockedServiceOrders.length > 0 && !dismissedSignals.includes(paceTodaySignalId("service-review")) && (snoozedSignals[paceTodaySignalId("service-review")] ?? 0) <= Date.now() && <article className="pace-today-queue is-service">
+                          <div><span><Wrench size={13} /> Werkqueue · service</span><strong>{todayQueues.blockedServiceOrders.length} {todayQueues.blockedServiceOrders.length === 1 ? "herstelling is geblokkeerd" : "herstellingen zijn geblokkeerd"}</strong></div>
+                          <p>Deze dossiers hebben de status geblokkeerd en vragen een bewuste interne, klant- of leveranciersopvolging.</p>
+                          <ul>{todayQueues.blockedServiceOrders.slice(0, 3).map((order) => <li key={order.id}><b>{order.number}</b><span>{order.assetType}{order.substatus ? ` · ${order.substatus}` : ""}</span></li>)}</ul>
+                          <footer><button type="button" className="is-primary" onClick={() => { props.onNavigate("service"); setOpen(false); }}>Open herstellingen <ArrowRight size={13} /></button><button type="button" className="is-quiet" onClick={() => snoozeSignal(paceTodaySignalId("service-review"))}>4 uur later</button><button type="button" className="is-quiet" onClick={() => dismissSignal(paceTodaySignalId("service-review"))}>Negeer</button></footer>
+                          <em>Alleen dossiernummer, toesteltype en blokkadestatus worden getoond. Contactgegevens en privé-dossierinhoud blijven uitgesloten.</em>
+                        </article>}
                         {preferences.actionProposalsEnabled && replenishmentProposal && !dismissedSignals.includes(paceTodaySignalId("replenishment-proposal")) && (snoozedSignals[paceTodaySignalId("replenishment-proposal")] ?? 0) <= Date.now() && <article className="pace-replenishment-proposal">
                           <div><span><PackageCheck size={13} /> Concept · voorraad</span><strong>Bestelcontrole voorbereiden</strong></div>
                           <p><b>{replenishmentProposal.productCount}</b> {replenishmentProposal.productCount === 1 ? "artikel staat" : "artikelen staan"} op of onder het ingestelde minimum. <b>{replenishmentProposal.quantityToMinimum}</b> {replenishmentProposal.quantityToMinimum === 1 ? "stuk" : "stuks"} brengt de voorraad minimaal terug tot die drempels.</p>
@@ -691,7 +719,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                           <footer><button type="button" className="is-primary" onClick={() => { props.onOpenCatalog({ productIds: replenishmentProposal.rows.map((row) => row.id), label: "Pace · voorraadcontrole" }); setOpen(false); }}>Controleer artikelen <ArrowRight size={13} /></button><button type="button" className="is-quiet" onClick={() => snoozeSignal(paceTodaySignalId("replenishment-proposal"))}>4 uur later</button><button type="button" className="is-quiet" onClick={() => dismissSignal(paceTodaySignalId("replenishment-proposal"))}>Negeer</button></footer>
                           <em>Dit is geen bestelling: aantallen, leverancier en verzending worden niet gewijzigd.</em>
                         </article>}
-                        {visibleTodayItems.length === 0 && !replenishmentProposal && <p className="pace-today-status is-clear"><Check size={13} /> Geen open aandachtspunten in de huidige briefing.</p>}
+                        {visibleTodayItems.length === 0 && todayQueues.webshopOrders.length === 0 && todayQueues.blockedServiceOrders.length === 0 && !replenishmentProposal && <p className="pace-today-status is-clear"><Check size={13} /> Geen open aandachtspunten in de huidige briefing.</p>}
                       </>}
                     </section>}
 

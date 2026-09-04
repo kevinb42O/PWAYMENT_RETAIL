@@ -617,6 +617,26 @@
 .pace-today-item p, .pace-replenishment-proposal p { margin: 0.33rem 0 0; color: #64748b; font-size: 0.61rem; font-weight: 620; line-height: 1.45; }
 .pace-replenishment-proposal { border-color: #a7f3d0; background: linear-gradient(145deg, #ecfdf5, #fff); }
 .pace-replenishment-proposal p b { color: #047857; font-weight: 900; }
+.pace-today-queue { margin-top: 0.5rem; border: 1px solid #d7e4ee; border-radius: 0.72rem; background: linear-gradient(145deg, #f8fbff, #fff); padding: 0.58rem; }
+.pace-today-queue.is-service { border-color: #fde68a; background: linear-gradient(145deg, #fffbeb, #fff); }
+.pace-today-queue > div:first-child { display: flex; align-items: center; gap: 0.42rem; }
+.pace-today-queue > div:first-child span { display: inline-flex; flex: none; align-items: center; gap: 0.25rem; color: #0e7490; font-size: 0.52rem; font-weight: 900; letter-spacing: 0.09em; text-transform: uppercase; }
+.pace-today-queue.is-service > div:first-child span { color: #b45309; }
+.pace-today-queue strong { min-width: 0; color: #1e293b; font-size: 0.69rem; font-weight: 850; line-height: 1.25; }
+.pace-today-queue p { margin: 0.33rem 0 0; color: #64748b; font-size: 0.61rem; font-weight: 620; line-height: 1.45; }
+.pace-today-queue ul { display: grid; gap: 0.22rem; margin: 0.42rem 0 0; padding: 0; list-style: none; }
+.pace-today-queue li { display: flex; min-width: 0; align-items: baseline; justify-content: space-between; gap: 0.5rem; border-top: 1px solid #e6eef3; padding-top: 0.28rem; }
+.pace-today-queue li b { color: #334155; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.57rem; font-weight: 850; }
+.pace-today-queue li span { overflow: hidden; color: #64748b; font-size: 0.55rem; font-weight: 700; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
+.pace-today-queue footer { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin-top: 0.48rem; }
+.pace-today-queue footer button { display: inline-flex; align-items: center; gap: 0.22rem; border: 0; border-radius: 0.5rem; padding: 0.29rem 0.38rem; font-size: 0.55rem; font-weight: 850; }
+.pace-today-queue footer .is-primary { background: #0e7490; color: #fff; }
+.pace-today-queue.is-service footer .is-primary { background: #b45309; }
+.pace-today-queue footer .is-primary:hover { background: #155e75; }
+.pace-today-queue.is-service footer .is-primary:hover { background: #92400e; }
+.pace-today-queue footer .is-quiet { background: transparent; color: #64748b; }
+.pace-today-queue footer .is-quiet:hover { background: #f1f5f9; color: #334155; }
+.pace-today-queue em { display: block; margin-top: 0.45rem; color: #64748b; font-size: 0.52rem; font-style: normal; font-weight: 700; line-height: 1.4; }
 .pace-replenishment-proposal small { display: block; margin-top: 0.38rem; color: #4d7367; font-size: 0.56rem; font-weight: 700; line-height: 1.4; }
 .pace-today-item footer, .pace-replenishment-proposal footer { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin-top: 0.48rem; }
 .pace-today-item footer button, .pace-replenishment-proposal footer button { display: inline-flex; align-items: center; gap: 0.22rem; border: 0; border-radius: 0.5rem; padding: 0.29rem 0.38rem; font-size: 0.55rem; font-weight: 850; }

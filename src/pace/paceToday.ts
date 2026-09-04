@@ -28,6 +28,30 @@ export interface PaceReplenishmentProposal {
   rows: PaceReplenishmentRow[];
 }
 
+export interface PaceTodayWebshopQueueRow {
+  id: string;
+  number: string;
+  fulfillmentStatus: string;
+  deliveryMode: string;
+  totalCents: number;
+  createdAt: string | null;
+}
+
+export interface PaceTodayServiceQueueRow {
+  id: string;
+  number: string;
+  assetType: string;
+  route: string;
+  substatus: string;
+  updatedAt: string | null;
+}
+
+export interface PaceTodayOperationalQueues {
+  basis: string | null;
+  webshopOrders: PaceTodayWebshopQueueRow[];
+  blockedServiceOrders: PaceTodayServiceQueueRow[];
+}
+
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
 
@@ -76,6 +100,30 @@ export const parsePaceReplenishmentRows = (value: unknown): PaceReplenishmentRow
       minStockQty: asNumber(row.minStockQty),
     }];
   });
+};
+
+export const emptyPaceTodayOperationalQueues = (): PaceTodayOperationalQueues => ({ basis: null, webshopOrders: [], blockedServiceOrders: [] });
+
+export const parsePaceTodayOperationalQueues = (value: unknown): PaceTodayOperationalQueues => {
+  const root = asRecord(value);
+  if (!root) return emptyPaceTodayOperationalQueues();
+  const webshopOrders = Array.isArray(root.webshopOrders) ? root.webshopOrders.flatMap((raw) => {
+    const row = asRecord(raw);
+    const id = row && asText(row.id);
+    const number = row && asText(row.number);
+    const totalCents = row && asNumber(row.totalCents);
+    if (!row || !id || !number || totalCents === null) return [];
+    return [{ id, number, totalCents, fulfillmentStatus: asText(row.fulfillmentStatus) ?? "", deliveryMode: asText(row.deliveryMode) ?? "", createdAt: asText(row.createdAt) }];
+  }) : [];
+  const blockedServiceOrders = Array.isArray(root.blockedServiceOrders) ? root.blockedServiceOrders.flatMap((raw) => {
+    const row = asRecord(raw);
+    const id = row && asText(row.id);
+    const number = row && asText(row.number);
+    const assetType = row && asText(row.assetType);
+    if (!row || !id || !number || !assetType) return [];
+    return [{ id, number, assetType, route: asText(row.route) ?? "", substatus: asText(row.substatus) ?? "", updatedAt: asText(row.updatedAt) }];
+  }) : [];
+  return { basis: asText(root.basis), webshopOrders, blockedServiceOrders };
 };
 
 /**
