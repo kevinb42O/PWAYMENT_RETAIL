@@ -17,6 +17,11 @@ describe("planPaceInventoryQuery", () => {
     expect(describePaceInventoryQuery(query!)).toBe("onder de minimumvoorraad");
   });
 
+  it("keeps equality when the owner explicitly says at or below minimum stock", () => {
+    expect(planPaceInventoryQuery("Welke artikelen staan op of onder de minimumvoorraad?"))
+      .toMatchObject({ minimumStock: "at_or_below" });
+  });
+
   it("does not reinterpret a general inventory ranking as a predicate", () => {
     expect(planPaceInventoryQuery("Welke producten hebben de hoogste voorraad?")).toBeNull();
   });

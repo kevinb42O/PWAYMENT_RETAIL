@@ -45,10 +45,10 @@ export const planPaceInventoryQuery = (rawQuestion: string): PaceInventoryQuery 
   const question = rawQuestion.trim().toLocaleLowerCase("nl-BE");
   if (!question || !/\b(producten?|artikelen?|voorraad|stock)\b/u.test(question)) return null;
   const stock = stockComparisonFromQuestion(question);
-  const minimumStock = /\b(?:onder|lager\s+dan)\s+(?:de\s+)?minimum(?:voorraad|stock)\b/u.test(question)
-    ? "below"
-    : /\b(?:op\s+of\s+onder|onder\s+of\s+gelijk\s+aan)\s+(?:de\s+)?minimum(?:voorraad|stock)\b/u.test(question)
-      ? "at_or_below"
+  const minimumStock = /\b(?:op\s+of\s+onder|onder\s+of\s+gelijk\s+aan)\s+(?:de\s+)?minimum(?:voorraad|stock)\b/u.test(question)
+    ? "at_or_below"
+    : /\b(?:onder|lager\s+dan)\s+(?:de\s+)?minimum(?:voorraad|stock)\b/u.test(question)
+      ? "below"
       : undefined;
   if (!stock && !minimumStock) return null;
   return { version: 1, target: "products", ...(stock ? { stock } : {}), ...(minimumStock ? { minimumStock } : {}), limit: 25 };
