@@ -89,6 +89,7 @@ describe("PACE Gemini question plan validation", () => {
     ["Hoeveel voorraad staat per locatie?", "inventory.location_stock", ""],
     ["Welke vaste klanten zijn afgehaakt?", "customer.margin_watch", ""],
     ["Waar geven we te veel korting weg?", "customer.margin_watch", ""],
+    ["Welke producten raken op vóór de volgende levering?", "predictive.replenishment", ""],
   ])("has a safe read-tool fallback for %s", (question, name, status) => {
     expect(planPaceReadTools(question)).toMatchObject([{ name, status }]);
   });

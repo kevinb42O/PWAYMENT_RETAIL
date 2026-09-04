@@ -7,7 +7,8 @@ export type PaceReadToolName =
   | "gift_cards.summary"
   | "workforce.leave_summary"
   | "inventory.location_stock"
-  | "customer.margin_watch";
+  | "customer.margin_watch"
+  | "predictive.replenishment";
 
 export interface PaceReadToolCall {
   name: PaceReadToolName;
@@ -53,6 +54,7 @@ const INTENTS = new Set<PaceQuestionPlan["intent"]>(["knowledge", "analytics", "
 const READ_TOOLS = new Set<PaceReadToolName>([
   "sales.vat_breakdown", "sales.tender_breakdown", "gift_cards.summary", "workforce.leave_summary", "inventory.location_stock",
   "customer.margin_watch",
+  "predictive.replenishment",
 ]);
 const ISO_DATE = /^20\d{2}-\d{2}-\d{2}$/;
 
@@ -177,6 +179,10 @@ export const planPaceReadTools = (rawQuestion: string): PaceReadToolCall[] => {
   if (/\b(vaste klanten?|loyale klanten?|afgehaakt|slapende klanten?|terugkerende klanten?|retentie|heractivatie|margelek|omzetlek|lage marge|te veel korting|refunds? vragen)\w*/.test(question)) {
     tools.push(tool("customer.margin_watch"));
   }
+  if (/\b(voorspellend(?:e)?|bestelrisico|raken?\s+op|opraakt?|lever(?:tijd|ing)|vraagtempo|days? of cover)\b/.test(question)
+    || /\b(welke producten?|artikelen?).*\b(voor volgende levering|bijbestellen)\b/.test(question)) {
+    tools.push(tool("predictive.replenishment"));
+  }
   return tools.slice(0, 5);
 };
 
@@ -202,6 +208,7 @@ Gespecialiseerde read-only tools:
 - workforce.leave_summary: verlofsaldo en aanvragen per medewerker/type; search bevat alleen een expliciete medewerkersnaam
 - inventory.location_stock: on-hand, gereserveerd en beschikbaar per voorraadlocatie en product
 - customer.margin_watch: owner/manager-only Customer Radar en Margin Watch; toont alleen onderbouwde klant- en financiële signalen plus datakwaliteit, nooit contactgegevens
+- predictive.replenishment: owner/manager-only voorspelde bestelrisico's op basis van finale verkoop, werkelijke leverancierlevertijd, open bestellingen en seizoenscontext
 Iedere tool heeft period, search, status en limit. Gebruik tools in plaats van een approximatieve gewone analyticsquery wanneer de vraag over deze gegevens gaat.
 
 inventoryAction is alleen voor concreet advies over trage voorraad, verkoopsstilstand, bundels of veilige korting.
