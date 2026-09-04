@@ -58,13 +58,16 @@ import {
 import {
   buildPaceReplenishmentProposal,
   emptyPaceCustomerMarginWatch,
+  emptyPacePredictiveReplenishment,
   emptyPaceTodayOperationalQueues,
   paceTodaySignalId,
   parsePaceCustomerMarginWatch,
+  parsePacePredictiveReplenishment,
   parsePaceReplenishmentRows,
   parsePaceTodayBriefing,
   parsePaceTodayOperationalQueues,
   type PaceCustomerMarginWatch,
+  type PacePredictiveReplenishment,
   type PaceTodayBriefing,
 } from "./paceToday";
 import { parsePaceReplenishmentActionResult, type PaceReplenishmentActionResult } from "./paceActions";
@@ -233,6 +236,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   const [replenishmentRows, setReplenishmentRows] = useState<ReturnType<typeof parsePaceReplenishmentRows>>([]);
   const [todayQueues, setTodayQueues] = useState(emptyPaceTodayOperationalQueues);
   const [customerMarginWatch, setCustomerMarginWatch] = useState<PaceCustomerMarginWatch>(emptyPaceCustomerMarginWatch);
+  const [predictiveReplenishment, setPredictiveReplenishment] = useState<PacePredictiveReplenishment>(emptyPacePredictiveReplenishment);
   const [replenishmentConfirmationOpen, setReplenishmentConfirmationOpen] = useState(false);
   const [replenishmentActionBusy, setReplenishmentActionBusy] = useState(false);
   const [replenishmentActionResult, setReplenishmentActionResult] = useState<PaceReplenishmentActionResult | null>(null);
@@ -334,6 +338,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
       setReplenishmentRows([]);
       setTodayQueues(emptyPaceTodayOperationalQueues());
       setCustomerMarginWatch(emptyPaceCustomerMarginWatch());
+      setPredictiveReplenishment(emptyPacePredictiveReplenishment());
       setTodayUnavailable(false);
       return;
     }
@@ -349,19 +354,22 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
         : Promise.resolve({ data: null, error: null });
       const queuesRequest = supabase.rpc("get_pace_today_operational_queues", { target_store_id: props.storeId! });
       const customerMarginRequest = supabase.rpc("get_pace_customer_margin_watch", { target_store_id: props.storeId! });
-      const [briefingResult, replenishmentResult, queuesResult, customerMarginResult] = await Promise.all([briefingRequest, replenishmentRequest, queuesRequest, customerMarginRequest]);
+      const predictiveRequest = supabase.rpc("get_pace_predictive_replenishment_context", { target_store_id: props.storeId! });
+      const [briefingResult, replenishmentResult, queuesResult, customerMarginResult, predictiveResult] = await Promise.all([briefingRequest, replenishmentRequest, queuesRequest, customerMarginRequest, predictiveRequest]);
       if (cancelled) return;
       if (briefingResult.error) {
         setTodayBriefing(null);
         setReplenishmentRows([]);
         setTodayQueues(emptyPaceTodayOperationalQueues());
         setCustomerMarginWatch(emptyPaceCustomerMarginWatch());
+        setPredictiveReplenishment(emptyPacePredictiveReplenishment());
         setTodayUnavailable(true);
       } else {
         setTodayBriefing(parsePaceTodayBriefing(briefingResult.data));
         setReplenishmentRows(replenishmentResult.error ? [] : parsePaceReplenishmentRows(replenishmentResult.data));
         setTodayQueues(queuesResult.error ? emptyPaceTodayOperationalQueues() : parsePaceTodayOperationalQueues(queuesResult.data));
         setCustomerMarginWatch(customerMarginResult.error ? emptyPaceCustomerMarginWatch() : parsePaceCustomerMarginWatch(customerMarginResult.data));
+        setPredictiveReplenishment(predictiveResult.error ? emptyPacePredictiveReplenishment() : parsePacePredictiveReplenishment(predictiveResult.data));
       }
       setTodayLoading(false);
     })();
@@ -771,6 +779,13 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                           {customerMarginWatch.marginSignals.length > 0 ? <><p>Signalen zijn berekend op finale verkopen van de voorbije 30 dagen, exclusief btw.</p><ul>{customerMarginWatch.marginSignals.slice(0, 3).map((signal) => <li key={`${signal.kind}:${signal.id}`}><b>{signal.name}</b><span>{signal.title} · {signal.detail}</span></li>)}</ul><footer><button type="button" className="is-primary" onClick={() => void runQuery(customerMarginWatch.marginSignals[0].nextQuestion)}>Onderzoek marge <ArrowRight size={13} /></button><button type="button" className="is-quiet" onClick={() => snoozeSignal(paceTodaySignalId("margin-watch"))}>4 uur later</button><button type="button" className="is-quiet" onClick={() => dismissSignal(paceTodaySignalId("margin-watch"))}>Negeer</button></footer></> : <p>Er worden nog geen definitieve margesignalen getoond, omdat de kostprijsdekking onvoldoende is.</p>}
                           <em>{customerMarginWatch.costCoveragePercent === null ? "Nog geen verkoopregels met kostprijs in de voorbije 30 dagen." : `${customerMarginWatch.costCoveragePercent}% van de netto-omzet heeft een historische kostprijs. ${customerMarginWatch.marginReady ? "Margebewaking is voldoende betrouwbaar." : "Pace wacht met definitieve margeclaims tot minstens 80% dekking."}`}</em>
                         </article>}
+                        {predictiveReplenishment.rows.length > 0 && !dismissedSignals.includes(paceTodaySignalId("predictive-replenishment")) && (snoozedSignals[paceTodaySignalId("predictive-replenishment")] ?? 0) <= Date.now() && <article className="pace-today-queue is-predictive-replenishment">
+                          <div><span><PackageCheck size={13} /> Predictive Replenishment</span><strong>{predictiveReplenishment.rows.length} bestelrisico{predictiveReplenishment.rows.length === 1 ? "" : "'s"}</strong></div>
+                          <p>Vraagtempo, werkelijke leverancierslevertijd, seizoenscontext en reeds open bestellingen bepalen dit voorstel.</p>
+                          <ul>{predictiveReplenishment.rows.slice(0, 3).map((row) => <li key={row.id}><b>{row.name}{row.variant ? ` · ${row.variant}` : ""}</b><span>{row.risk === "stockout_before_delivery" ? "dreigt op vóór levering" : "aanvullen"} · +{row.recommendedQty} · {row.confidence === "high" ? "hoge" : row.confidence === "medium" ? "gemiddelde" : "lage"} zekerheid</span></li>)}</ul>
+                          <footer><button type="button" className="is-primary" onClick={() => { props.onOpenCatalog({ productIds: predictiveReplenishment.rows.map((row) => row.id), label: "Pace · voorspellend bestelrisico" }); setOpen(false); }}>Controleer voorstel <ArrowRight size={13} /></button><button type="button" className="is-quiet" onClick={() => snoozeSignal(paceTodaySignalId("predictive-replenishment"))}>4 uur later</button><button type="button" className="is-quiet" onClick={() => dismissSignal(paceTodaySignalId("predictive-replenishment"))}>Negeer</button></footer>
+                          <em>Dit is een read-only voorspelling. Pace maakt nog geen voorspellend concept aan zolang je de berekening niet eerst zelf controleert.</em>
+                        </article>}
                         {preferences.actionProposalsEnabled && replenishmentProposal && !dismissedSignals.includes(paceTodaySignalId("replenishment-proposal")) && (snoozedSignals[paceTodaySignalId("replenishment-proposal")] ?? 0) <= Date.now() && <article className="pace-replenishment-proposal">
                           <div><span><PackageCheck size={13} /> Concept · voorraad</span><strong>Bestelcontrole voorbereiden</strong></div>
                           <p><b>{replenishmentProposal.productCount}</b> {replenishmentProposal.productCount === 1 ? "artikel staat" : "artikelen staan"} op of onder het ingestelde minimum. <b>{replenishmentProposal.quantityToMinimum}</b> {replenishmentProposal.quantityToMinimum === 1 ? "stuk" : "stuks"} brengt de voorraad minimaal terug tot die drempels.</p>
@@ -787,7 +802,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                           {replenishmentActionResult && <div className="pace-action-result"><Check size={13} /><span>{replenishmentActionResult.message}{replenishmentActionResult.skippedCount > 0 ? ` ${replenishmentActionResult.skippedCount} ${replenishmentActionResult.skippedCount === 1 ? "product werd" : "producten werden"} overgeslagen na de live hercontrole.` : ""}</span>{replenishmentActionResult.createdOrderCount > 0 && <button type="button" onClick={() => { props.onNavigate("inventory"); setOpen(false); }}>Open conceptorders <ArrowRight size={13} /></button>}</div>}
                           <em>Dit is geen bestelling: aantallen, leverancier en verzending worden niet gewijzigd tot jij verder werkt in Inkoop.</em>
                         </article>}
-                        {visibleTodayItems.length === 0 && todayQueues.webshopOrders.length === 0 && todayQueues.blockedServiceOrders.length === 0 && customerMarginWatch.customerSignals.length === 0 && customerMarginWatch.marginSignals.length === 0 && !replenishmentProposal && <p className="pace-today-status is-clear"><Check size={13} /> Geen open aandachtspunten in de huidige briefing.</p>}
+                        {visibleTodayItems.length === 0 && todayQueues.webshopOrders.length === 0 && todayQueues.blockedServiceOrders.length === 0 && customerMarginWatch.customerSignals.length === 0 && customerMarginWatch.marginSignals.length === 0 && predictiveReplenishment.rows.length === 0 && !replenishmentProposal && <p className="pace-today-status is-clear"><Check size={13} /> Geen open aandachtspunten in de huidige briefing.</p>}
                       </>}
                     </section>}
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPaceReplenishmentProposal, parsePaceCustomerMarginWatch, parsePaceTodayBriefing, parsePaceReplenishmentRows, parsePaceTodayOperationalQueues } from "./paceToday";
+import { buildPaceReplenishmentProposal, parsePaceCustomerMarginWatch, parsePacePredictiveReplenishment, parsePaceTodayBriefing, parsePaceReplenishmentRows, parsePaceTodayOperationalQueues } from "./paceToday";
 
 describe("Pace today briefing contracts", () => {
   it("accepts only safe, presentational briefing fields and orders by priority", () => {
@@ -56,5 +56,17 @@ describe("Pace today briefing contracts", () => {
       customerSignals: [{ kind: "lapsed_loyal", id: "customer-1", name: "An", title: "Niet gezien", detail: "3 bezoeken", visits: 3, totalSpendCents: 32000, daysSinceVisit: 72, nextQuestion: "Wie haakt af?", priority: 1 }],
       marginSignals: [{ kind: "low_margin_product", id: "product-1", name: "Artikel", title: "Lage marge", detail: "18%", amountCents: 12500, ratioPercent: 18, nextQuestion: "Welke marge?", priority: 1 }],
     });
+  });
+
+  it("accepts only bounded predictive replenishment facts", () => {
+    expect(parsePacePredictiveReplenishment({ rows: [{
+      id: "product-1", name: "Wielen", stockQty: 3, openOrderQty: 0, units30Days: 12,
+      leadTimeDays: 10, daysOfCover: 7, targetStockQty: 8, recommendedQty: 5,
+      confidence: "high", risk: "stockout_before_delivery", supplierTerms: "excluded",
+    }] })).toEqual({ basis: null, rows: [{
+      id: "product-1", name: "Wielen", variant: null, stockQty: 3, openOrderQty: 0, units30Days: 12,
+      leadTimeDays: 10, daysOfCover: 7, targetStockQty: 8, recommendedQty: 5,
+      confidence: "high", risk: "stockout_before_delivery",
+    }] });
   });
 });

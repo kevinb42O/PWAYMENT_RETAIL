@@ -86,6 +86,26 @@ export interface PaceCustomerMarginWatch {
   marginSignals: PaceMarginWatchRow[];
 }
 
+export interface PacePredictiveReplenishmentRow {
+  id: string;
+  name: string;
+  variant: string | null;
+  stockQty: number;
+  openOrderQty: number;
+  units30Days: number;
+  leadTimeDays: number;
+  daysOfCover: number | null;
+  targetStockQty: number;
+  recommendedQty: number;
+  confidence: "high" | "medium" | "low";
+  risk: "stockout_before_delivery" | "replenish";
+}
+
+export interface PacePredictiveReplenishment {
+  basis: string | null;
+  rows: PacePredictiveReplenishmentRow[];
+}
+
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
 
@@ -214,6 +234,29 @@ export const parsePaceCustomerMarginWatch = (value: unknown): PaceCustomerMargin
     customerSignals: customerSignals.sort((a, b) => a.priority - b.priority || b.totalSpendCents - a.totalSpendCents || a.name.localeCompare(b.name, "nl")),
     marginSignals: marginSignals.sort((a, b) => a.priority - b.priority || b.amountCents - a.amountCents || a.name.localeCompare(b.name, "nl")),
   };
+};
+
+export const emptyPacePredictiveReplenishment = (): PacePredictiveReplenishment => ({ basis: null, rows: [] });
+
+export const parsePacePredictiveReplenishment = (value: unknown): PacePredictiveReplenishment => {
+  const root = asRecord(value);
+  if (!root || !Array.isArray(root.rows)) return emptyPacePredictiveReplenishment();
+  const rows = root.rows.flatMap((raw) => {
+    const row = asRecord(raw);
+    const id = row && asText(row.id);
+    const name = row && asText(row.name);
+    const stockQty = row && asNumber(row.stockQty);
+    const openOrderQty = row && asNumber(row.openOrderQty);
+    const units30Days = row && asNumber(row.units30Days);
+    const leadTimeDays = row && asNumber(row.leadTimeDays);
+    const targetStockQty = row && asNumber(row.targetStockQty);
+    const recommendedQty = row && asNumber(row.recommendedQty);
+    const confidence = row && row.confidence;
+    const risk = row && row.risk;
+    if (!row || !id || !name || stockQty === null || openOrderQty === null || units30Days === null || leadTimeDays === null || targetStockQty === null || recommendedQty === null || (confidence !== "high" && confidence !== "medium" && confidence !== "low") || (risk !== "stockout_before_delivery" && risk !== "replenish")) return [];
+    return [{ id, name, variant: asText(row.variant), stockQty, openOrderQty, units30Days, leadTimeDays, daysOfCover: asNumber(row.daysOfCover), targetStockQty, recommendedQty, confidence, risk }];
+  });
+  return { basis: asText(root.basis), rows: rows.sort((a, b) => Number(a.risk !== "stockout_before_delivery") - Number(b.risk !== "stockout_before_delivery") || b.recommendedQty - a.recommendedQty || a.name.localeCompare(b.name, "nl")) };
 };
 
 /**
