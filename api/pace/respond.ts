@@ -406,9 +406,15 @@ const renderOwnerBriefing = (value: unknown): string | null => {
   const items = context.items.filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object" && !Array.isArray(item)));
   if (items.length === 0) return "## Vandaag in beeld\n\n- Geen open aandachtspunten gevonden in voorraad, orders of verkoopritme.";
   const lines = ["## Vandaag in beeld", "", `- ${items.length} ${items.length === 1 ? "punt vraagt" : "punten vragen"} aandacht.`, ""];
+  const formatCents = (raw: string) => {
+    const match = raw.match(/^Vandaag:\s*(-?\d+)\s+cent;\s*gisteren:\s*(-?\d+)\s+cent\.$/u);
+    if (!match) return raw;
+    const currency = new Intl.NumberFormat("nl-BE", { style: "currency", currency: "EUR" });
+    return `Vandaag: ${currency.format(Number(match[1]) / 100)}; gisteren: ${currency.format(Number(match[2]) / 100)}.`;
+  };
   for (const item of items) {
     const title = typeof item.title === "string" ? item.title : "Aandachtspunt";
-    const detail = typeof item.detail === "string" ? item.detail : "Controleer dit punt in de winkelgegevens.";
+    const detail = typeof item.detail === "string" ? formatCents(item.detail) : "Controleer dit punt in de winkelgegevens.";
     const nextQuestion = typeof item.nextQuestion === "string" ? item.nextQuestion : "";
     lines.push(`- **${title}** — ${detail}`);
     if (nextQuestion) lines.push(`  - Vraag Pace: “${nextQuestion}”`);
