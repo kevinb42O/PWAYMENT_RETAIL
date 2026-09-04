@@ -23,6 +23,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { supabase } from "../lib/supabase";
+import { syncStoreFromSupabase } from "../services/supabaseStoreSync";
 import type { MainView } from "../store/useStore";
 import {
   answerPaceQuery,
@@ -63,6 +64,7 @@ import {
   parsePaceTodayOperationalQueues,
   type PaceTodayBriefing,
 } from "./paceToday";
+import { parsePaceReplenishmentActionResult, type PaceReplenishmentActionResult } from "./paceActions";
 
 interface PaceAssistantProps extends PaceContext {
   userId: string | null;
@@ -227,6 +229,11 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   const [todayRefreshToken, setTodayRefreshToken] = useState(0);
   const [replenishmentRows, setReplenishmentRows] = useState<ReturnType<typeof parsePaceReplenishmentRows>>([]);
   const [todayQueues, setTodayQueues] = useState(emptyPaceTodayOperationalQueues);
+  const [replenishmentConfirmationOpen, setReplenishmentConfirmationOpen] = useState(false);
+  const [replenishmentActionBusy, setReplenishmentActionBusy] = useState(false);
+  const [replenishmentActionResult, setReplenishmentActionResult] = useState<PaceReplenishmentActionResult | null>(null);
+  const [replenishmentActionError, setReplenishmentActionError] = useState<string | null>(null);
+  const replenishmentActionKeyRef = useRef<string | null>(null);
   const { quota, hardLimited, load: loadBilling, recordQuota, markExceeded } = usePaceBilling();
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const queryRunRef = useRef(0);
@@ -581,6 +588,38 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
     if (action.kind !== "none") setOpen(false);
   };
 
+  const openReplenishmentConfirmation = () => {
+    replenishmentActionKeyRef.current = crypto.randomUUID();
+    setReplenishmentActionError(null);
+    setReplenishmentActionResult(null);
+    setReplenishmentConfirmationOpen(true);
+  };
+
+  const createReplenishmentDrafts = async () => {
+    if (!props.storeId || !replenishmentProposal || replenishmentActionBusy) return;
+    setReplenishmentActionBusy(true);
+    setReplenishmentActionError(null);
+    try {
+      const actionKey = replenishmentActionKeyRef.current ?? crypto.randomUUID();
+      replenishmentActionKeyRef.current = actionKey;
+      const { data, error } = await supabase.rpc("create_pace_replenishment_drafts", {
+        target_store_id: props.storeId,
+        action_idempotency_key: actionKey,
+        requested_items: replenishmentProposal.rows.map((row) => ({ productId: row.id })),
+      });
+      if (error) throw new Error(error.message.replace(/^pace-action:[a-z-]+:/, "").trim() || "Het concept kon niet veilig worden aangemaakt.");
+      const result = parsePaceReplenishmentActionResult(data);
+      if (!result) throw new Error("Pace kon het resultaat van deze actie niet betrouwbaar bevestigen.");
+      if (result.createdOrderCount > 0) await syncStoreFromSupabase(props.storeId);
+      setReplenishmentActionResult(result);
+      setReplenishmentConfirmationOpen(false);
+    } catch (error) {
+      setReplenishmentActionError(error instanceof Error ? error.message : "Het concept kon niet veilig worden aangemaakt.");
+    } finally {
+      setReplenishmentActionBusy(false);
+    }
+  };
+
   const giveCustomerFeedback = (insightId: string, disposition: "used" | "later" | "not-relevant") => {
     recordCustomerFeedback(insightId, disposition);
     setSessionDismissedSignals((current) => current.includes(`customer:${insightId}`) ? current : [...current, `customer:${insightId}`]);
@@ -716,8 +755,17 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                           <div><span><PackageCheck size={13} /> Concept · voorraad</span><strong>Bestelcontrole voorbereiden</strong></div>
                           <p><b>{replenishmentProposal.productCount}</b> {replenishmentProposal.productCount === 1 ? "artikel staat" : "artikelen staan"} op of onder het ingestelde minimum. <b>{replenishmentProposal.quantityToMinimum}</b> {replenishmentProposal.quantityToMinimum === 1 ? "stuk" : "stuks"} brengt de voorraad minimaal terug tot die drempels.</p>
                           <small>{replenishmentProposal.rows.slice(0, 3).map((row) => `${row.name}${row.variant ? ` · ${row.variant}` : ""} (${row.stockQty}/${row.minStockQty})`).join(" · ")}{replenishmentProposal.rows.length > 3 ? ` + ${replenishmentProposal.rows.length - 3} meer` : ""}</small>
-                          <footer><button type="button" className="is-primary" onClick={() => { props.onOpenCatalog({ productIds: replenishmentProposal.rows.map((row) => row.id), label: "Pace · voorraadcontrole" }); setOpen(false); }}>Controleer artikelen <ArrowRight size={13} /></button><button type="button" className="is-quiet" onClick={() => snoozeSignal(paceTodaySignalId("replenishment-proposal"))}>4 uur later</button><button type="button" className="is-quiet" onClick={() => dismissSignal(paceTodaySignalId("replenishment-proposal"))}>Negeer</button></footer>
-                          <em>Dit is geen bestelling: aantallen, leverancier en verzending worden niet gewijzigd.</em>
+                          <footer><button type="button" className="is-primary" onClick={() => { props.onOpenCatalog({ productIds: replenishmentProposal.rows.map((row) => row.id), label: "Pace · voorraadcontrole" }); setOpen(false); }}>Controleer artikelen <ArrowRight size={13} /></button><button type="button" className="is-confirm" onClick={openReplenishmentConfirmation}>Maak intern concept</button><button type="button" className="is-quiet" onClick={() => snoozeSignal(paceTodaySignalId("replenishment-proposal"))}>4 uur later</button><button type="button" className="is-quiet" onClick={() => dismissSignal(paceTodaySignalId("replenishment-proposal"))}>Negeer</button></footer>
+                          {replenishmentConfirmationOpen && <div className="pace-action-confirmation" role="alert">
+                            <strong>Maak je deze concept-inkooporders aan?</strong>
+                            <p>Pace hercontroleert eerst de actuele voorraad en minimumdrempel. Alleen producten met een bekende leverancier blijven over; per leverancier ontstaat één interne conceptorder.</p>
+                            <ul>{replenishmentProposal.rows.slice(0, 4).map((row) => <li key={row.id}>{row.name}{row.variant ? ` · ${row.variant}` : ""}<span>{Math.max(1, (row.minStockQty ?? 0) - row.stockQty)} stuks tot minimum</span></li>)}</ul>
+                            <small>Dit verzendt niets, boekt geen voorraad bij en markeert geen bestelling als geplaatst. De actie wordt gelogd in de audittrail.</small>
+                            {replenishmentActionError && <p className="is-error">{replenishmentActionError}</p>}
+                            <footer><button type="button" className="is-confirm" onClick={() => void createReplenishmentDrafts()} disabled={replenishmentActionBusy}>{replenishmentActionBusy ? "Concepten maken…" : "Bevestig: maak interne concepten"}</button><button type="button" className="is-quiet" disabled={replenishmentActionBusy} onClick={() => { setReplenishmentConfirmationOpen(false); setReplenishmentActionError(null); }}>Annuleer</button></footer>
+                          </div>}
+                          {replenishmentActionResult && <div className="pace-action-result"><Check size={13} /><span>{replenishmentActionResult.message}{replenishmentActionResult.skippedCount > 0 ? ` ${replenishmentActionResult.skippedCount} ${replenishmentActionResult.skippedCount === 1 ? "product werd" : "producten werden"} overgeslagen na de live hercontrole.` : ""}</span>{replenishmentActionResult.createdOrderCount > 0 && <button type="button" onClick={() => { props.onNavigate("inventory"); setOpen(false); }}>Open conceptorders <ArrowRight size={13} /></button>}</div>}
+                          <em>Dit is geen bestelling: aantallen, leverancier en verzending worden niet gewijzigd tot jij verder werkt in Inkoop.</em>
                         </article>}
                         {visibleTodayItems.length === 0 && todayQueues.webshopOrders.length === 0 && todayQueues.blockedServiceOrders.length === 0 && !replenishmentProposal && <p className="pace-today-status is-clear"><Check size={13} /> Geen open aandachtspunten in de huidige briefing.</p>}
                       </>}

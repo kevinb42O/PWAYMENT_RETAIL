@@ -1663,6 +1663,41 @@ export type Database = {
           },
         ]
       }
+      pace_action_executions: {
+        Row: {
+          action_type: string
+          actor_user_id: string
+          created_at: string
+          idempotency_key: string
+          result: Json
+          store_id: string
+        }
+        Insert: {
+          action_type: string
+          actor_user_id: string
+          created_at?: string
+          idempotency_key: string
+          result: Json
+          store_id: string
+        }
+        Update: {
+          action_type?: string
+          actor_user_id?: string
+          created_at?: string
+          idempotency_key?: string
+          result?: Json
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pace_action_executions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pace_user_preferences: {
         Row: {
           action_proposals_enabled: boolean
@@ -4214,6 +4249,14 @@ export type Database = {
       }
       get_pace_today_operational_queues: {
         Args: { target_store_id: string }
+        Returns: Json
+      }
+      create_pace_replenishment_drafts: {
+        Args: {
+          action_idempotency_key: string
+          requested_items: Json
+          target_store_id: string
+        }
         Returns: Json
       }
       get_pace_product_recommendations: {

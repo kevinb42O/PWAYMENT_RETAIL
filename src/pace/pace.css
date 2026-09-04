@@ -644,11 +644,29 @@
 .pace-replenishment-proposal footer .is-primary { background: #047857; }
 .pace-today-item footer .is-primary:hover { background: #155e75; }
 .pace-replenishment-proposal footer .is-primary:hover { background: #065f46; }
+.pace-replenishment-proposal footer .is-confirm, .pace-action-confirmation footer .is-confirm { background: #0f172a; color: #fff; }
+.pace-replenishment-proposal footer .is-confirm:hover, .pace-action-confirmation footer .is-confirm:hover { background: #334155; }
+.pace-replenishment-proposal footer .is-confirm:disabled, .pace-action-confirmation footer .is-confirm:disabled { opacity: 0.55; }
 .pace-today-item footer .is-evidence, .pace-today-item footer .is-quiet, .pace-replenishment-proposal footer .is-quiet { background: transparent; color: #64748b; }
 .pace-today-item footer .is-evidence:hover, .pace-today-item footer .is-quiet:hover, .pace-replenishment-proposal footer .is-quiet:hover { background: #f1f5f9; color: #334155; }
 .pace-today-evidence { display: flex; align-items: flex-start; gap: 0.3rem; margin-top: 0.45rem; border-radius: 0.55rem; background: #f0f9ff; padding: 0.42rem; color: #0c4a6e; font-size: 0.55rem; font-weight: 700; line-height: 1.4; }
 .pace-today-evidence svg { flex: none; margin-top: 0.06rem; }
 .pace-replenishment-proposal em { display: block; margin-top: 0.45rem; color: #4d7367; font-size: 0.52rem; font-style: normal; font-weight: 700; line-height: 1.4; }
+.pace-action-confirmation { margin-top: 0.55rem; border: 1px solid #bfdbfe; border-radius: 0.65rem; background: #eff6ff; padding: 0.55rem; }
+.pace-action-confirmation > strong { display: block; color: #0f172a; font-size: 0.63rem; font-weight: 900; }
+.pace-action-confirmation > p, .pace-action-confirmation > small { display: block; margin: 0.3rem 0 0; color: #475569; font-size: 0.56rem; font-weight: 650; line-height: 1.42; }
+.pace-action-confirmation ul { display: grid; gap: 0.2rem; margin: 0.45rem 0 0; padding: 0; list-style: none; }
+.pace-action-confirmation li { display: flex; justify-content: space-between; gap: 0.4rem; border-top: 1px solid #dbeafe; padding-top: 0.24rem; color: #334155; font-size: 0.55rem; font-weight: 800; }
+.pace-action-confirmation li span { flex: none; color: #0e7490; font-size: 0.53rem; }
+.pace-action-confirmation > p.is-error { border-radius: 0.45rem; background: #fff1f2; padding: 0.35rem; color: #be123c; }
+.pace-action-confirmation footer { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.5rem; }
+.pace-action-confirmation footer button { border: 0; border-radius: 0.5rem; padding: 0.3rem 0.4rem; font-size: 0.55rem; font-weight: 850; }
+.pace-action-confirmation footer .is-quiet { background: transparent; color: #64748b; }
+.pace-action-result { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin-top: 0.55rem; border-radius: 0.6rem; background: #ecfdf5; padding: 0.45rem; color: #047857; font-size: 0.56rem; font-weight: 800; line-height: 1.4; }
+.pace-action-result svg { flex: none; }
+.pace-action-result span { min-width: 0; flex: 1; }
+.pace-action-result button { display: inline-flex; align-items: center; gap: 0.2rem; border: 0; border-radius: 0.45rem; background: #d1fae5; padding: 0.28rem 0.35rem; color: #047857; font-size: 0.54rem; font-weight: 900; }
+.pace-action-result button:hover { background: #a7f3d0; }
 .pace-overview-window .pace-evidence-line { margin-top: 0.4rem; font-size: 0.56rem; }
 .pace-overview-window .pace-brief-actions { margin-top: 0.55rem; }
 .pace-overview-window .pace-brief-actions button { padding: 0.36rem 0.5rem; font-size: 0.6rem; }
