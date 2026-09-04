@@ -6,7 +6,8 @@ export type PaceReadToolName =
   | "sales.tender_breakdown"
   | "gift_cards.summary"
   | "workforce.leave_summary"
-  | "inventory.location_stock";
+  | "inventory.location_stock"
+  | "customer.margin_watch";
 
 export interface PaceReadToolCall {
   name: PaceReadToolName;
@@ -51,6 +52,7 @@ const RECORDS = new Set<PaceRecordEntity>([
 const INTENTS = new Set<PaceQuestionPlan["intent"]>(["knowledge", "analytics", "record", "inventory_action", "mixed", "clarify"]);
 const READ_TOOLS = new Set<PaceReadToolName>([
   "sales.vat_breakdown", "sales.tender_breakdown", "gift_cards.summary", "workforce.leave_summary", "inventory.location_stock",
+  "customer.margin_watch",
 ]);
 const ISO_DATE = /^20\d{2}-\d{2}-\d{2}$/;
 
@@ -172,6 +174,9 @@ export const planPaceReadTools = (rawQuestion: string): PaceReadToolCall[] => {
     const search = explicitSearchAfter(rawQuestion, /\b(?:locatie|magazijn|warehouse|backroom)\s+([\p{L}\d][\p{L}\d'’ _-]{0,80})/iu);
     tools.push(tool("inventory.location_stock", search));
   }
+  if (/\b(vaste klanten?|loyale klanten?|afgehaakt|slapende klanten?|terugkerende klanten?|retentie|heractivatie|margelek|omzetlek|lage marge|te veel korting|refunds? vragen)\w*/.test(question)) {
+    tools.push(tool("customer.margin_watch"));
+  }
   return tools.slice(0, 5);
 };
 
@@ -196,6 +201,7 @@ Gespecialiseerde read-only tools:
 - gift_cards.summary: actuele saldi, vervaldata en eventtypes; gebruik status=expiring voor vervallende kaarten
 - workforce.leave_summary: verlofsaldo en aanvragen per medewerker/type; search bevat alleen een expliciete medewerkersnaam
 - inventory.location_stock: on-hand, gereserveerd en beschikbaar per voorraadlocatie en product
+- customer.margin_watch: owner/manager-only Customer Radar en Margin Watch; toont alleen onderbouwde klant- en financiële signalen plus datakwaliteit, nooit contactgegevens
 Iedere tool heeft period, search, status en limit. Gebruik tools in plaats van een approximatieve gewone analyticsquery wanneer de vraag over deze gegevens gaat.
 
 inventoryAction is alleen voor concreet advies over trage voorraad, verkoopsstilstand, bundels of veilige korting.

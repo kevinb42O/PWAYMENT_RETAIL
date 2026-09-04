@@ -107,6 +107,39 @@ describe("Pace OpenAI endpoint", () => {
     expect(String(upstreamBody.input)).toContain('"productCount":0');
   });
 
+  it("retrieves Customer Radar and Margin Watch through its tenant-scoped RPC", async () => {
+    const storeId = "11111111-1111-4111-8111-111111111111";
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({ id: "user-watch-test" }))
+      .mockResolvedValueOnce(Response.json({ version: 1, domain: "customers", rows: [], dataQuality: {} }))
+      .mockResolvedValueOnce(Response.json({
+        version: 1,
+        dataQuality: { customerAttributionPercent: 50, costCoveragePercent: 90, marginReady: true },
+        customerSignals: [{ kind: "lapsed_loyal", id: "customer-1", name: "An", title: "Niet gezien", detail: "3 bezoeken", visits: 3, totalSpendCents: 25000, daysSinceVisit: 70, nextQuestion: "Wie haakt af?", priority: 1, email: "must-not-be-needed" }],
+        marginSignals: [],
+      }))
+      .mockResolvedValueOnce(Response.json({
+        id: "resp-watch",
+        output: [{ type: "message", content: [{ type: "output_text", text: "An is een onderbouwd retentiesignaal." }] }],
+        usage: { input_tokens: 20, output_tokens: 8 },
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handler.fetch(request({
+      question: "Welke vaste klanten zijn afgehaakt?",
+      context: { storeId, view: "customers", role: "owner", online: true },
+    }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ answer: "An is een onderbouwd retentiesignaal.", source: "openai" });
+    const watchCall = fetchMock.mock.calls.find(([url]) => String(url).includes("/rpc/get_pace_customer_margin_watch"));
+    expect(watchCall).toBeDefined();
+    expect(watchCall?.[1]).toMatchObject({
+      headers: expect.objectContaining({ apikey: "test-publishable-key", Authorization: "Bearer valid-token" }),
+      body: JSON.stringify({ target_store_id: storeId }),
+    });
+  });
+
   it("streams only public phases before the final answer payload", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(Response.json({ id: "user-stream-test" }))

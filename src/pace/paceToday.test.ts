@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPaceReplenishmentProposal, parsePaceTodayBriefing, parsePaceReplenishmentRows, parsePaceTodayOperationalQueues } from "./paceToday";
+import { buildPaceReplenishmentProposal, parsePaceCustomerMarginWatch, parsePaceTodayBriefing, parsePaceReplenishmentRows, parsePaceTodayOperationalQueues } from "./paceToday";
 
 describe("Pace today briefing contracts", () => {
   it("accepts only safe, presentational briefing fields and orders by priority", () => {
@@ -39,6 +39,22 @@ describe("Pace today briefing contracts", () => {
       basis: "bounded queues",
       webshopOrders: [{ id: "web-1", number: "WEB-1", fulfillmentStatus: "unfulfilled", deliveryMode: "pickup", totalCents: 4999, createdAt: null }],
       blockedServiceOrders: [{ id: "service-1", number: "SVC-1", assetType: "Telefoon", route: "external-repair", substatus: "Wacht op leverancier", updatedAt: null }],
+    });
+  });
+
+  it("keeps Customer Radar and Margin Watch presentational and drops contact data", () => {
+    expect(parsePaceCustomerMarginWatch({
+      basis: "finalized sales only",
+      dataQuality: { customerAttributionPercent: 62.5, costCoveragePercent: 84, marginReady: true },
+      customerSignals: [{ kind: "lapsed_loyal", id: "customer-1", name: "An", title: "Niet gezien", detail: "3 bezoeken", visits: 3, totalSpendCents: 32000, daysSinceVisit: 72, nextQuestion: "Wie haakt af?", priority: 1, email: "not-exposed@example.test" }],
+      marginSignals: [{ kind: "low_margin_product", id: "product-1", name: "Artikel", title: "Lage marge", detail: "18%", amountCents: 12500, ratioPercent: 18, nextQuestion: "Welke marge?", priority: 1, costPriceCents: 9999 }],
+    })).toEqual({
+      basis: "finalized sales only",
+      customerAttributionPercent: 62.5,
+      costCoveragePercent: 84,
+      marginReady: true,
+      customerSignals: [{ kind: "lapsed_loyal", id: "customer-1", name: "An", title: "Niet gezien", detail: "3 bezoeken", visits: 3, totalSpendCents: 32000, daysSinceVisit: 72, nextQuestion: "Wie haakt af?", priority: 1 }],
+      marginSignals: [{ kind: "low_margin_product", id: "product-1", name: "Artikel", title: "Lage marge", detail: "18%", amountCents: 12500, ratioPercent: 18, nextQuestion: "Welke marge?", priority: 1 }],
     });
   });
 });

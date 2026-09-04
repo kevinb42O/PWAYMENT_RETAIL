@@ -4235,6 +4235,10 @@ export type Database = {
         Args: { query_plan: Json; target_store_id: string }
         Returns: Json
       }
+      get_pace_customer_margin_watch: {
+        Args: { target_store_id: string }
+        Returns: Json
+      }
       get_pace_inventory_action_context: {
         Args: { target_store_id: string; user_query?: string }
         Returns: Json

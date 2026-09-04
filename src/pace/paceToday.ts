@@ -52,6 +52,40 @@ export interface PaceTodayOperationalQueues {
   blockedServiceOrders: PaceTodayServiceQueueRow[];
 }
 
+export interface PaceCustomerRadarRow {
+  kind: string;
+  id: string;
+  name: string;
+  title: string;
+  detail: string;
+  visits: number;
+  totalSpendCents: number;
+  daysSinceVisit: number | null;
+  nextQuestion: string;
+  priority: number;
+}
+
+export interface PaceMarginWatchRow {
+  kind: string;
+  id: string;
+  name: string;
+  title: string;
+  detail: string;
+  amountCents: number;
+  ratioPercent: number | null;
+  nextQuestion: string;
+  priority: number;
+}
+
+export interface PaceCustomerMarginWatch {
+  basis: string | null;
+  customerAttributionPercent: number | null;
+  costCoveragePercent: number | null;
+  marginReady: boolean;
+  customerSignals: PaceCustomerRadarRow[];
+  marginSignals: PaceMarginWatchRow[];
+}
+
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
 
@@ -124,6 +158,62 @@ export const parsePaceTodayOperationalQueues = (value: unknown): PaceTodayOperat
     return [{ id, number, assetType, route: asText(row.route) ?? "", substatus: asText(row.substatus) ?? "", updatedAt: asText(row.updatedAt) }];
   }) : [];
   return { basis: asText(root.basis), webshopOrders, blockedServiceOrders };
+};
+
+export const emptyPaceCustomerMarginWatch = (): PaceCustomerMarginWatch => ({
+  basis: null,
+  customerAttributionPercent: null,
+  costCoveragePercent: null,
+  marginReady: false,
+  customerSignals: [],
+  marginSignals: [],
+});
+
+export const parsePaceCustomerMarginWatch = (value: unknown): PaceCustomerMarginWatch => {
+  const root = asRecord(value);
+  if (!root) return emptyPaceCustomerMarginWatch();
+  const quality = asRecord(root.dataQuality);
+  const customerSignals = Array.isArray(root.customerSignals) ? root.customerSignals.flatMap((raw) => {
+    const row = asRecord(raw);
+    const kind = row && asText(row.kind);
+    const id = row && asText(row.id);
+    const name = row && asText(row.name);
+    const title = row && asText(row.title);
+    const detail = row && asText(row.detail);
+    const visits = row && asNumber(row.visits);
+    const totalSpendCents = row && asNumber(row.totalSpendCents);
+    if (!row || !kind || !id || !name || !title || !detail || visits === null || totalSpendCents === null) return [];
+    return [{
+      kind, id, name, title, detail, visits, totalSpendCents,
+      daysSinceVisit: asNumber(row.daysSinceVisit),
+      nextQuestion: asText(row.nextQuestion) ?? "",
+      priority: asNumber(row.priority) ?? 99,
+    }];
+  }) : [];
+  const marginSignals = Array.isArray(root.marginSignals) ? root.marginSignals.flatMap((raw) => {
+    const row = asRecord(raw);
+    const kind = row && asText(row.kind);
+    const id = row && asText(row.id);
+    const name = row && asText(row.name);
+    const title = row && asText(row.title);
+    const detail = row && asText(row.detail);
+    const amountCents = row && asNumber(row.amountCents);
+    if (!row || !kind || !id || !name || !title || !detail || amountCents === null) return [];
+    return [{
+      kind, id, name, title, detail, amountCents,
+      ratioPercent: asNumber(row.ratioPercent),
+      nextQuestion: asText(row.nextQuestion) ?? "",
+      priority: asNumber(row.priority) ?? 99,
+    }];
+  }) : [];
+  return {
+    basis: asText(root.basis),
+    customerAttributionPercent: quality && asNumber(quality.customerAttributionPercent),
+    costCoveragePercent: quality && asNumber(quality.costCoveragePercent),
+    marginReady: quality?.marginReady === true,
+    customerSignals: customerSignals.sort((a, b) => a.priority - b.priority || b.totalSpendCents - a.totalSpendCents || a.name.localeCompare(b.name, "nl")),
+    marginSignals: marginSignals.sort((a, b) => a.priority - b.priority || b.amountCents - a.amountCents || a.name.localeCompare(b.name, "nl")),
+  };
 };
 
 /**

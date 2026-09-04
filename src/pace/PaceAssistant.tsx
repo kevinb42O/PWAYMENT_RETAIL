@@ -57,11 +57,14 @@ import {
 } from "./paceExperience";
 import {
   buildPaceReplenishmentProposal,
+  emptyPaceCustomerMarginWatch,
   emptyPaceTodayOperationalQueues,
   paceTodaySignalId,
+  parsePaceCustomerMarginWatch,
   parsePaceReplenishmentRows,
   parsePaceTodayBriefing,
   parsePaceTodayOperationalQueues,
+  type PaceCustomerMarginWatch,
   type PaceTodayBriefing,
 } from "./paceToday";
 import { parsePaceReplenishmentActionResult, type PaceReplenishmentActionResult } from "./paceActions";
@@ -229,6 +232,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   const [todayRefreshToken, setTodayRefreshToken] = useState(0);
   const [replenishmentRows, setReplenishmentRows] = useState<ReturnType<typeof parsePaceReplenishmentRows>>([]);
   const [todayQueues, setTodayQueues] = useState(emptyPaceTodayOperationalQueues);
+  const [customerMarginWatch, setCustomerMarginWatch] = useState<PaceCustomerMarginWatch>(emptyPaceCustomerMarginWatch);
   const [replenishmentConfirmationOpen, setReplenishmentConfirmationOpen] = useState(false);
   const [replenishmentActionBusy, setReplenishmentActionBusy] = useState(false);
   const [replenishmentActionResult, setReplenishmentActionResult] = useState<PaceReplenishmentActionResult | null>(null);
@@ -329,6 +333,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
       setTodayBriefing(null);
       setReplenishmentRows([]);
       setTodayQueues(emptyPaceTodayOperationalQueues());
+      setCustomerMarginWatch(emptyPaceCustomerMarginWatch());
       setTodayUnavailable(false);
       return;
     }
@@ -343,17 +348,20 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
         })
         : Promise.resolve({ data: null, error: null });
       const queuesRequest = supabase.rpc("get_pace_today_operational_queues", { target_store_id: props.storeId! });
-      const [briefingResult, replenishmentResult, queuesResult] = await Promise.all([briefingRequest, replenishmentRequest, queuesRequest]);
+      const customerMarginRequest = supabase.rpc("get_pace_customer_margin_watch", { target_store_id: props.storeId! });
+      const [briefingResult, replenishmentResult, queuesResult, customerMarginResult] = await Promise.all([briefingRequest, replenishmentRequest, queuesRequest, customerMarginRequest]);
       if (cancelled) return;
       if (briefingResult.error) {
         setTodayBriefing(null);
         setReplenishmentRows([]);
         setTodayQueues(emptyPaceTodayOperationalQueues());
+        setCustomerMarginWatch(emptyPaceCustomerMarginWatch());
         setTodayUnavailable(true);
       } else {
         setTodayBriefing(parsePaceTodayBriefing(briefingResult.data));
         setReplenishmentRows(replenishmentResult.error ? [] : parsePaceReplenishmentRows(replenishmentResult.data));
         setTodayQueues(queuesResult.error ? emptyPaceTodayOperationalQueues() : parsePaceTodayOperationalQueues(queuesResult.data));
+        setCustomerMarginWatch(customerMarginResult.error ? emptyPaceCustomerMarginWatch() : parsePaceCustomerMarginWatch(customerMarginResult.data));
       }
       setTodayLoading(false);
     })();
@@ -751,6 +759,18 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                           <footer><button type="button" className="is-primary" onClick={() => { props.onNavigate("service"); setOpen(false); }}>Open herstellingen <ArrowRight size={13} /></button><button type="button" className="is-quiet" onClick={() => snoozeSignal(paceTodaySignalId("service-review"))}>4 uur later</button><button type="button" className="is-quiet" onClick={() => dismissSignal(paceTodaySignalId("service-review"))}>Negeer</button></footer>
                           <em>Alleen dossiernummer, toesteltype en blokkadestatus worden getoond. Contactgegevens en privé-dossierinhoud blijven uitgesloten.</em>
                         </article>}
+                        {customerMarginWatch.customerSignals.length > 0 && !dismissedSignals.includes(paceTodaySignalId("customer-radar")) && (snoozedSignals[paceTodaySignalId("customer-radar")] ?? 0) <= Date.now() && <article className="pace-today-queue is-customer-radar">
+                          <div><span><Sparkles size={13} /> Customer Radar</span><strong>{customerMarginWatch.customerSignals.length} {customerMarginWatch.customerSignals.length === 1 ? "klantsignaal" : "klantsignalen"}</strong></div>
+                          <p>Terugkerende klanten en aantoonbare afhakers op basis van gekoppelde, finale verkopen.</p>
+                          <ul>{customerMarginWatch.customerSignals.slice(0, 3).map((signal) => <li key={`${signal.kind}:${signal.id}`}><b>{signal.name}</b><span>{signal.title} · {signal.detail}</span></li>)}</ul>
+                          <footer><button type="button" className="is-primary" onClick={() => void runQuery(customerMarginWatch.customerSignals[0].nextQuestion)}>Onderzoek klanten <ArrowRight size={13} /></button><button type="button" className="is-quiet" onClick={() => snoozeSignal(paceTodaySignalId("customer-radar"))}>4 uur later</button><button type="button" className="is-quiet" onClick={() => dismissSignal(paceTodaySignalId("customer-radar"))}>Negeer</button></footer>
+                          <em>{customerMarginWatch.customerAttributionPercent === null ? "Nog geen klantgekoppelde verkoopdata in de voorbije 90 dagen." : `${customerMarginWatch.customerAttributionPercent}% van de verkopen in de voorbije 90 dagen is aan een klant gekoppeld.`} Geen e-mail, telefoon, adres of notities komen in Pace.</em>
+                        </article>}
+                        {(customerMarginWatch.marginSignals.length > 0 || customerMarginWatch.costCoveragePercent !== null) && !dismissedSignals.includes(paceTodaySignalId("margin-watch")) && (snoozedSignals[paceTodaySignalId("margin-watch")] ?? 0) <= Date.now() && <article className="pace-today-queue is-margin-watch">
+                          <div><span><Gauge size={13} /> Margin Watch</span><strong>{customerMarginWatch.marginSignals.length > 0 ? `${customerMarginWatch.marginSignals.length} ${customerMarginWatch.marginSignals.length === 1 ? "signaal" : "signalen"}` : "Datakwaliteit controleren"}</strong></div>
+                          {customerMarginWatch.marginSignals.length > 0 ? <><p>Signalen zijn berekend op finale verkopen van de voorbije 30 dagen, exclusief btw.</p><ul>{customerMarginWatch.marginSignals.slice(0, 3).map((signal) => <li key={`${signal.kind}:${signal.id}`}><b>{signal.name}</b><span>{signal.title} · {signal.detail}</span></li>)}</ul><footer><button type="button" className="is-primary" onClick={() => void runQuery(customerMarginWatch.marginSignals[0].nextQuestion)}>Onderzoek marge <ArrowRight size={13} /></button><button type="button" className="is-quiet" onClick={() => snoozeSignal(paceTodaySignalId("margin-watch"))}>4 uur later</button><button type="button" className="is-quiet" onClick={() => dismissSignal(paceTodaySignalId("margin-watch"))}>Negeer</button></footer></> : <p>Er worden nog geen definitieve margesignalen getoond, omdat de kostprijsdekking onvoldoende is.</p>}
+                          <em>{customerMarginWatch.costCoveragePercent === null ? "Nog geen verkoopregels met kostprijs in de voorbije 30 dagen." : `${customerMarginWatch.costCoveragePercent}% van de netto-omzet heeft een historische kostprijs. ${customerMarginWatch.marginReady ? "Margebewaking is voldoende betrouwbaar." : "Pace wacht met definitieve margeclaims tot minstens 80% dekking."}`}</em>
+                        </article>}
                         {preferences.actionProposalsEnabled && replenishmentProposal && !dismissedSignals.includes(paceTodaySignalId("replenishment-proposal")) && (snoozedSignals[paceTodaySignalId("replenishment-proposal")] ?? 0) <= Date.now() && <article className="pace-replenishment-proposal">
                           <div><span><PackageCheck size={13} /> Concept · voorraad</span><strong>Bestelcontrole voorbereiden</strong></div>
                           <p><b>{replenishmentProposal.productCount}</b> {replenishmentProposal.productCount === 1 ? "artikel staat" : "artikelen staan"} op of onder het ingestelde minimum. <b>{replenishmentProposal.quantityToMinimum}</b> {replenishmentProposal.quantityToMinimum === 1 ? "stuk" : "stuks"} brengt de voorraad minimaal terug tot die drempels.</p>
@@ -767,7 +787,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                           {replenishmentActionResult && <div className="pace-action-result"><Check size={13} /><span>{replenishmentActionResult.message}{replenishmentActionResult.skippedCount > 0 ? ` ${replenishmentActionResult.skippedCount} ${replenishmentActionResult.skippedCount === 1 ? "product werd" : "producten werden"} overgeslagen na de live hercontrole.` : ""}</span>{replenishmentActionResult.createdOrderCount > 0 && <button type="button" onClick={() => { props.onNavigate("inventory"); setOpen(false); }}>Open conceptorders <ArrowRight size={13} /></button>}</div>}
                           <em>Dit is geen bestelling: aantallen, leverancier en verzending worden niet gewijzigd tot jij verder werkt in Inkoop.</em>
                         </article>}
-                        {visibleTodayItems.length === 0 && todayQueues.webshopOrders.length === 0 && todayQueues.blockedServiceOrders.length === 0 && !replenishmentProposal && <p className="pace-today-status is-clear"><Check size={13} /> Geen open aandachtspunten in de huidige briefing.</p>}
+                        {visibleTodayItems.length === 0 && todayQueues.webshopOrders.length === 0 && todayQueues.blockedServiceOrders.length === 0 && customerMarginWatch.customerSignals.length === 0 && customerMarginWatch.marginSignals.length === 0 && !replenishmentProposal && <p className="pace-today-status is-clear"><Check size={13} /> Geen open aandachtspunten in de huidige briefing.</p>}
                       </>}
                     </section>}
 

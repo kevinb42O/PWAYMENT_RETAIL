@@ -528,10 +528,11 @@ const fetchReadToolContext = async (
   toolCall: PaceReadToolCall,
 ) => {
   if (!storeId) return null;
-  const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/rpc/get_pace_read_tool_context`, {
+  const isCustomerMarginWatch = toolCall.name === "customer.margin_watch";
+  const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/rpc/${isCustomerMarginWatch ? "get_pace_customer_margin_watch" : "get_pace_read_tool_context"}`, {
     method: "POST",
     headers: { apikey: publishableKey, Authorization: authorization, "Content-Type": "application/json" },
-    body: JSON.stringify({ target_store_id: storeId, tool_call: toolCall }),
+    body: JSON.stringify(isCustomerMarginWatch ? { target_store_id: storeId } : { target_store_id: storeId, tool_call: toolCall }),
     signal: AbortSignal.timeout(10_000),
   });
   if (response.status === 401 || response.status === 403) throw new TenantAccessError("Geen toegang tot deze gegevens.");

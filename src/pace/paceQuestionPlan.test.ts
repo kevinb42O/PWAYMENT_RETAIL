@@ -87,6 +87,8 @@ describe("PACE Gemini question plan validation", () => {
     ["Welke cadeaubonnen vervallen deze maand?", "gift_cards.summary", "expiring"],
     ["Wat is het verlofsaldo van Robin?", "workforce.leave_summary", ""],
     ["Hoeveel voorraad staat per locatie?", "inventory.location_stock", ""],
+    ["Welke vaste klanten zijn afgehaakt?", "customer.margin_watch", ""],
+    ["Waar geven we te veel korting weg?", "customer.margin_watch", ""],
   ])("has a safe read-tool fallback for %s", (question, name, status) => {
     expect(planPaceReadTools(question)).toMatchObject([{ name, status }]);
   });
