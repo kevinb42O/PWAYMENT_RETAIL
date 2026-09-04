@@ -326,6 +326,9 @@ const fetchTenantContext = async (
 const needsInventoryActionContext = (question: string) =>
   /\b(stof\s*happen|ouderdom|voorraadleeftijd|dagen\s+(?:op\s+)?voorraad|niet\s+verkocht|slow|stagnant|bundel)\b/i.test(question);
 
+const needsOwnerBriefing = (question: string) =>
+  /\b(?:wat\s+(?:vraagt|verdient|heeft)\s+(?:vandaag\s+)?aandacht|wat\s+moet\s+ik\s+vandaag\s+doen|dagelijkse?\s+briefing|ochtendbriefing|wat\s+is\s+(?:vandaag\s+)?belangrijk)\b/i.test(question);
+
 const fetchInventoryQueryContext = async (
   authorization: string,
   supabaseUrl: string,
@@ -371,6 +374,44 @@ const renderInventoryQueryAnswer = (value: unknown, query: PaceInventoryQuery): 
     lines.push(`- ${name}${variant}${sku}`);
     lines.push(`  - Voorraad: ${stock} ${stock === 1 ? "stuk" : "stuks"}`);
     if (typeof row.minStockQty === "number") lines.push(`  - Minimumvoorraad: ${row.minStockQty} ${row.minStockQty === 1 ? "stuk" : "stuks"}`);
+  }
+  return lines.join("\n");
+};
+
+const fetchOwnerBriefingContext = async (
+  authorization: string,
+  supabaseUrl: string,
+  publishableKey: string,
+  storeId: string | undefined,
+) => {
+  if (!storeId) return null;
+  const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/rpc/get_pace_owner_briefing`, {
+    method: "POST",
+    headers: { apikey: publishableKey, Authorization: authorization, "Content-Type": "application/json" },
+    body: JSON.stringify({ target_store_id: storeId }),
+    signal: AbortSignal.timeout(8_000),
+  });
+  if (response.status === 401 || response.status === 403) throw new TenantAccessError("Deze briefing vereist eigenaar- of managerrechten.");
+  if (!response.ok) {
+    console.warn("Pace owner briefing unavailable", { status: response.status });
+    return { unavailable: true };
+  }
+  return await response.json().catch(() => ({ unavailable: true }));
+};
+
+const renderOwnerBriefing = (value: unknown): string | null => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const context = value as Record<string, unknown>;
+  if (context.unavailable === true || !Array.isArray(context.items)) return null;
+  const items = context.items.filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object" && !Array.isArray(item)));
+  if (items.length === 0) return "## Vandaag in beeld\n\n- Geen open aandachtspunten gevonden in voorraad, orders of verkoopritme.";
+  const lines = ["## Vandaag in beeld", "", `- ${items.length} ${items.length === 1 ? "punt vraagt" : "punten vragen"} aandacht.`, ""];
+  for (const item of items) {
+    const title = typeof item.title === "string" ? item.title : "Aandachtspunt";
+    const detail = typeof item.detail === "string" ? item.detail : "Controleer dit punt in de winkelgegevens.";
+    const nextQuestion = typeof item.nextQuestion === "string" ? item.nextQuestion : "";
+    lines.push(`- **${title}** — ${detail}`);
+    if (nextQuestion) lines.push(`  - Vraag Pace: “${nextQuestion}”`);
   }
   return lines.join("\n");
 };
@@ -981,25 +1022,28 @@ const handlePaceRequest = async (request: Request, emitProgress: PaceProgressEmi
 
     const inventoryQuery = context.liveStoreContext ? planPaceInventoryQuery(question) : null;
     const forcedInventoryQuery = inventoryQuery !== null;
+    const ownerBriefingRequested = context.liveStoreContext && needsOwnerBriefing(question);
+    const forceFirstPartyAnswer = forcedInventoryQuery || ownerBriefingRequested;
     const fallbackInventoryAction = needsInventoryActionContext(question);
     const fallbackRecordPlan = fallbackInventoryAction ? null : planPaceRecordLookup(question);
     const fallbackAnalyticsPlans = fallbackInventoryAction || fallbackRecordPlan ? [] : planPaceAnalyticsQuestions(question);
     const fallbackReadToolCalls = planPaceReadTools(question);
-    const inventoryActionRequested = context.liveStoreContext && !forcedInventoryQuery && (questionPlan ? questionPlan.inventoryAction : fallbackInventoryAction);
-    const initialRecordPlan = context.liveStoreContext && !forcedInventoryQuery ? (questionPlan ? questionPlan.record : fallbackRecordPlan) : null;
-    const initialAnalyticsPlans = context.liveStoreContext && !forcedInventoryQuery ? (questionPlan ? questionPlan.analytics : fallbackAnalyticsPlans) : [];
-    const initialReadToolCalls = context.liveStoreContext && !forcedInventoryQuery ? (questionPlan ? questionPlan.tools : fallbackReadToolCalls) : [];
-    const inherited = forcedInventoryQuery ? { analytics: [], record: null, tools: [] } : inheritConversationPlan(question, serverConversationState, {
+    const inventoryActionRequested = context.liveStoreContext && !forceFirstPartyAnswer && (questionPlan ? questionPlan.inventoryAction : fallbackInventoryAction);
+    const initialRecordPlan = context.liveStoreContext && !forceFirstPartyAnswer ? (questionPlan ? questionPlan.record : fallbackRecordPlan) : null;
+    const initialAnalyticsPlans = context.liveStoreContext && !forceFirstPartyAnswer ? (questionPlan ? questionPlan.analytics : fallbackAnalyticsPlans) : [];
+    const initialReadToolCalls = context.liveStoreContext && !forceFirstPartyAnswer ? (questionPlan ? questionPlan.tools : fallbackReadToolCalls) : [];
+    const inherited = forceFirstPartyAnswer ? { analytics: [], record: null, tools: [] } : inheritConversationPlan(question, serverConversationState, {
       analytics: initialAnalyticsPlans, record: initialRecordPlan, tools: initialReadToolCalls,
     });
     const recordPlan = inherited.record;
     const rawAnalyticsPlans = inherited.analytics;
     const readToolCalls = inherited.tools;
     const analyticsPlans = expandPaceAnalyticsComparisons(rawAnalyticsPlans);
-    const needsBroadContext = context.liveStoreContext && !forcedInventoryQuery && (questionPlan
+    const needsBroadContext = context.liveStoreContext && !forceFirstPartyAnswer && (questionPlan
       ? questionPlan.broadContext
       : analyticsPlans.length === 0 && !inventoryActionRequested && !recordPlan && readToolCalls.length === 0);
     const selectedSourceCount = Number(forcedInventoryQuery)
+      + Number(ownerBriefingRequested)
       + Number(needsBroadContext)
       + Number(inventoryActionRequested)
       + analyticsPlans.length
@@ -1009,6 +1053,7 @@ const handlePaceRequest = async (request: Request, emitProgress: PaceProgressEmi
     const safetyIdentifier = createHash("sha256").update(`pace:${userId}`).digest("hex").slice(0, 48);
     let tenantContext: unknown = null;
     let inventoryQueryContext: unknown = null;
+    let ownerBriefingContext: unknown = null;
     let inventoryActionContext: unknown = null;
     let analyticsContexts: unknown[] = [];
     let recordContext: unknown = null;
@@ -1037,15 +1082,16 @@ const handlePaceRequest = async (request: Request, emitProgress: PaceProgressEmi
         sourceCount: selectedSourceCount,
       });
     }
-    const [inventoryQueryResult, tenantResult, inventoryResult, analyticsResult, recordResult, toolsResult] = await Promise.allSettled([
+    const [inventoryQueryResult, ownerBriefingResult, tenantResult, inventoryResult, analyticsResult, recordResult, toolsResult] = await Promise.allSettled([
       inventoryQuery ? trackSource(fetchInventoryQueryContext(authorization, supabaseUrl, publishableKey, context.storeId, inventoryQuery)) : Promise.resolve(null),
+      ownerBriefingRequested ? trackSource(fetchOwnerBriefingContext(authorization, supabaseUrl, publishableKey, context.storeId)) : Promise.resolve(null),
       needsBroadContext ? trackSource(fetchTenantContext(authorization, supabaseUrl, publishableKey, context.storeId, question)) : Promise.resolve(null),
       inventoryActionRequested ? trackSource(fetchInventoryActionContext(authorization, supabaseUrl, publishableKey, context.storeId, question)) : Promise.resolve(null),
       Promise.all(analyticsPlans.map((plan) => trackSource(fetchAnalyticsContext(authorization, supabaseUrl, publishableKey, context.storeId, plan)))),
       recordPlan ? trackSource(fetchRecordContext(authorization, supabaseUrl, publishableKey, context.storeId, recordPlan)) : Promise.resolve(null),
       Promise.all(readToolCalls.map((toolCall) => trackSource(fetchReadToolContext(authorization, supabaseUrl, publishableKey, context.storeId, toolCall)))),
     ]);
-    const accessDenied = [inventoryQueryResult, tenantResult, inventoryResult, analyticsResult, recordResult, toolsResult].some(
+    const accessDenied = [inventoryQueryResult, ownerBriefingResult, tenantResult, inventoryResult, analyticsResult, recordResult, toolsResult].some(
       (result) => result.status === "rejected" && result.reason instanceof TenantAccessError,
     );
     if (accessDenied) {
@@ -1056,6 +1102,9 @@ const handlePaceRequest = async (request: Request, emitProgress: PaceProgressEmi
     inventoryQueryContext = inventoryQueryResult.status === "fulfilled"
       ? inventoryQueryResult.value
       : inventoryQuery ? { unavailable: true, query: inventoryQuery } : null;
+    ownerBriefingContext = ownerBriefingResult.status === "fulfilled"
+      ? ownerBriefingResult.value
+      : ownerBriefingRequested ? { unavailable: true } : null;
     tenantContext = tenantResult.status === "fulfilled"
       ? tenantResult.value
       : { unavailable: true, reason: "context-fetch-failed" };
@@ -1074,6 +1123,7 @@ const handlePaceRequest = async (request: Request, emitProgress: PaceProgressEmi
 
     const evidence = buildPaceEvidence([
       ...(inventoryQuery ? [{ sourceKind: "aggregate" as const, sourceName: "inventory.query", label: "Voorraadquery", context: inventoryQueryContext }] : []),
+      ...(ownerBriefingRequested ? [{ sourceKind: "aggregate" as const, sourceName: "owner.briefing", label: "Dagbriefing", context: ownerBriefingContext }] : []),
       { sourceKind: "aggregate", sourceName: "tenant.context", label: "Winkelcontext", context: tenantContext },
       { sourceKind: "aggregate", sourceName: "inventory.action", label: "Voorraadanalyse", context: inventoryActionContext },
       ...analyticsContexts.map((item) => ({ sourceKind: "aggregate" as const, sourceName: "analytics.query", label: "Retailanalyse", context: item, freshness: "period" as const })),
@@ -1088,7 +1138,7 @@ const handlePaceRequest = async (request: Request, emitProgress: PaceProgressEmi
       const persistence = resolutionPersistence(entityResolutions);
       const state = {
         version: 1,
-        lastIntent: forcedInventoryQuery ? "inventory_query" : questionPlan?.intent ?? (recordPlan ? "record" : analyticsPlans.length ? "analytics" : "knowledge"),
+        lastIntent: ownerBriefingRequested ? "owner_briefing" : forcedInventoryQuery ? "inventory_query" : questionPlan?.intent ?? (recordPlan ? "record" : analyticsPlans.length ? "analytics" : "knowledge"),
         lastQueryFrame: { analytics: analyticsPlans, record: recordPlan, tools: readToolCalls, inventoryQuery },
         focusEntityIds: [],
         lastResultSet: [],
@@ -1113,7 +1163,25 @@ const handlePaceRequest = async (request: Request, emitProgress: PaceProgressEmi
     // This skips a model round-trip and prevents prose generation from changing
     // values, ranking or formatting. Free help and advisory questions continue
     // through the model below.
-    const needsMixedComposition = !forcedInventoryQuery && (questionPlan?.needsComposition === true || /\ben\s+(?:wat|hoe|waar|waarom)\b/i.test(question));
+    const needsMixedComposition = !forceFirstPartyAnswer && (questionPlan?.needsComposition === true || /\ben\s+(?:wat|hoe|waar|waarom)\b/i.test(question));
+    const deterministicOwnerBriefing = ownerBriefingRequested ? renderOwnerBriefing(ownerBriefingContext) : null;
+    if (ownerBriefingRequested && !deterministicOwnerBriefing) {
+      await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, { status: "failed", elapsedMs: Date.now() - startedAt, error: "OWNER_BRIEFING_UNAVAILABLE" });
+      if (begunTurn) await failTurn(rpcConfig, begunTurn.turnId, "OWNER_BRIEFING_UNAVAILABLE");
+      return json(503, { error: "OWNER_BRIEFING_UNAVAILABLE", fallback: "local" });
+    }
+    if (deterministicOwnerBriefing) {
+      emitProgress({ phase: "verifying", interaction: "none", severity: "neutral", sourceCount: selectedSourceCount });
+      await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, { status: "completed", elapsedMs: Date.now() - startedAt, model: "PWAYMENT Briefing" });
+      const completed = await finishServerTurn(deterministicOwnerBriefing, "briefing", "PWAYMENT Briefing");
+      if (completed && conversation) return json(200, {
+        version: 2,
+        conversation: { id: conversation.id, revision: completed.revision, title: completed.title, turnSequence: completed.sequence },
+        answer: deterministicOwnerBriefing, source: "briefing", model: "PWAYMENT Briefing",
+        entities: completed.entities, citations: publicCitations(evidence), quota,
+      }, quota ? quotaHeaders(quota) : {});
+      return json(200, { answer: deterministicOwnerBriefing, source: "briefing", model: "PWAYMENT Briefing", quota }, quota ? quotaHeaders(quota) : {});
+    }
     const deterministicInventoryQueryAnswer = inventoryQuery ? renderInventoryQueryAnswer(inventoryQueryContext, inventoryQuery) : null;
     if (inventoryQuery && !deterministicInventoryQueryAnswer) {
       await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, { status: "failed", elapsedMs: Date.now() - startedAt, error: "INVENTORY_QUERY_UNAVAILABLE" });

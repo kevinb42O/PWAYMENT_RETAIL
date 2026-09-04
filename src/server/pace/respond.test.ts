@@ -359,6 +359,33 @@ describe("Pace OpenAI endpoint", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("answers an owner briefing from the bounded first-party briefing source", async () => {
+    const storeId = "99999999-9999-4999-8999-999999999999";
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({ id: "user-briefing" }))
+      .mockResolvedValueOnce(Response.json({
+        version: 1,
+        items: [
+          { title: "2 producten onder minimumvoorraad", detail: "Twee actieve producten zitten onder hun ingestelde minimum.", nextQuestion: "Welke artikelen staan onder de minimumvoorraad?" },
+          { title: "1 webshoporder wacht op verwerking", detail: "Een betaalde webshoporder staat nog klaar voor verwerking.", nextQuestion: "Welke webshoporders staan open?" },
+        ],
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handler.fetch(request({
+      question: "Wat vraagt vandaag aandacht?",
+      context: { storeId, view: "insights", role: "owner" },
+    }));
+
+    expect(response.status).toBe(200);
+    const payload = await response.json() as { answer?: string; source?: string; model?: string };
+    expect(payload).toMatchObject({ source: "briefing", model: "PWAYMENT Briefing", answer: expect.stringContaining("2 producten onder minimumvoorraad") });
+    const [url, init] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(url).toContain("/rest/v1/rpc/get_pace_owner_briefing");
+    expect(JSON.parse(String(init.body))).toEqual({ target_store_id: storeId });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("does not serially retry every planner alias after a transport timeout", async () => {
     process.env.GEMINI_API_KEY = "test-gemini-key";
     process.env.PACE_GEMINI_PLANNER = "true";
