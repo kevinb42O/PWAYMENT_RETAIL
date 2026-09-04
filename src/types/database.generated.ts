@@ -1665,6 +1665,7 @@ export type Database = {
       }
       pace_user_preferences: {
         Row: {
+          action_proposals_enabled: boolean
           ai_enabled: boolean
           created_at: string
           customer_feedback: Json
@@ -1684,6 +1685,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          action_proposals_enabled?: boolean
           ai_enabled?: boolean
           created_at?: string
           customer_feedback?: Json
@@ -1703,6 +1705,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          action_proposals_enabled?: boolean
           ai_enabled?: boolean
           created_at?: string
           customer_feedback?: Json

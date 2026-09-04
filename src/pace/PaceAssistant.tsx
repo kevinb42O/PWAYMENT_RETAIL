@@ -148,12 +148,12 @@ export const composeStoredPaceResponse = (local: PaceQueryAnswer, answer: string
   followUps: undefined,
 });
 
-export type PaceResponseSource = "gemini" | "openai" | "analytics" | "records" | "local" | "history";
+export type PaceResponseSource = "gemini" | "openai" | "analytics" | "records" | "briefing" | "local" | "history";
 
 export const paceResponseSourceLabel = (source: PaceResponseSource) => {
   if (source === "gemini") return "GEMINI";
   if (source === "openai") return "OPENAI";
-  if (source === "analytics" || source === "records") return "LIVE GEGEVENS";
+  if (source === "analytics" || source === "records" || source === "briefing") return "LIVE GEGEVENS";
   if (source === "history") return "BEWAARD ANTWOORD";
   return "LOKALE KENNIS";
 };
@@ -422,6 +422,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
       const ai = await askPaceAi(question, context, conversation, local, {
         enabled: preferences.aiEnabled,
         includeLiveStoreContext: preferences.liveStoreContext,
+        actionProposalsEnabled: preferences.actionProposalsEnabled,
         conversation: {
           id: serverConversation?.id,
           revision: serverConversation?.revision,

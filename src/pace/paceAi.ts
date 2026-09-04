@@ -7,7 +7,7 @@ import { PACE_PROGRESS_CONTENT_TYPE, parsePaceStreamEvent, type PacePublicProgre
 export interface PaceAiAnswer {
   answer: string;
   model: string;
-  source: "gemini" | "openai" | "analytics" | "records" | "local";
+  source: "gemini" | "openai" | "analytics" | "records" | "briefing" | "local";
   quota?: PaceQuotaSnapshot;
   conversation?: PaceConversationResponse["conversation"];
   citations?: PaceCitation[];
@@ -31,7 +31,7 @@ export interface PaceConversationTurn {
   text: string;
 }
 
-type PaceApiPayload = Partial<PaceConversationResponse & PaceAiAnswer> & {
+type PaceApiPayload = Partial<Omit<PaceConversationResponse, "source"> & PaceAiAnswer> & {
   error?: string;
   remaining_credits?: number;
   reset_in_seconds?: number;
@@ -79,11 +79,12 @@ export const normalizePaceAiAnswer = (answer: string) => answer
   .replace(/\n{3,}/g, "\n\n")
   .trim();
 
-export const toPaceAiContext = (context: PaceContext, includeLiveStoreContext = true) => ({
+export const toPaceAiContext = (context: PaceContext, includeLiveStoreContext = true, actionProposalsEnabled = false) => ({
   // The store id is still required for tenant authorization and quota when the
   // user opts out of sending live store facts to the model.
   storeId: context.storeId,
   liveStoreContext: includeLiveStoreContext,
+  actionProposals: includeLiveStoreContext && actionProposalsEnabled,
   view: context.view,
   role: context.role,
   productCount: includeLiveStoreContext ? context.productCount : undefined,
@@ -118,6 +119,7 @@ export const askPaceAi = async (
   options: {
     enabled?: boolean;
     includeLiveStoreContext?: boolean;
+    actionProposalsEnabled?: boolean;
     conversation?: { id?: string; revision?: number; clientTurnId?: string };
     onProgress?: (event: PacePublicProgressEvent) => void;
   } = {},
@@ -138,7 +140,7 @@ export const askPaceAi = async (
   // Customer insight records are deliberately local-only. Keep this allow-list
   // on the client as well as on the API boundary so PII never leaves the till.
   const includeLiveStoreContext = options.includeLiveStoreContext !== false;
-  const safeContext = toPaceAiContext(context, includeLiveStoreContext);
+  const safeContext = toPaceAiContext(context, includeLiveStoreContext, options.actionProposalsEnabled === true);
 
   let response: Response;
   try {
@@ -180,7 +182,7 @@ export const askPaceAi = async (
   if (status === 429 && result?.error === "QUOTA_EXCEEDED") {
     throw new PaceQuotaExceededError({ tier: result.tier, remaining: 0, remaining_credits: result.remaining_credits ?? 0, reset_in_seconds: result.reset_in_seconds, reset_at: result.reset_at });
   }
-  if (status < 200 || status >= 300 || (result?.source !== "gemini" && result?.source !== "openai" && result?.source !== "analytics" && result?.source !== "records" && result?.source !== "local") || typeof result.answer !== "string") {
+  if (status < 200 || status >= 300 || (result?.source !== "gemini" && result?.source !== "openai" && result?.source !== "analytics" && result?.source !== "records" && result?.source !== "briefing" && result?.source !== "local") || typeof result.answer !== "string") {
     aiUnavailableUntil = Date.now() + (status === 429 || result?.error === "PACE_AI_QUOTA_EXHAUSTED" ? 60_000 : 15_000);
     throw new PaceAiUnavailableError(result?.error ?? "Pace AI is tijdelijk niet beschikbaar.");
   }
@@ -188,7 +190,7 @@ export const askPaceAi = async (
   return {
     answer: normalizePaceAiAnswer(result.answer),
     source: result.source,
-    model: typeof result.model === "string" ? result.model : result.source === "gemini" ? "Gemini" : result.source === "analytics" ? "PWAYMENT Analytics" : "OpenAI",
+    model: typeof result.model === "string" ? result.model : result.source === "gemini" ? "Gemini" : result.source === "briefing" ? "PWAYMENT Briefing" : result.source === "analytics" ? "PWAYMENT Analytics" : "OpenAI",
     quota: result.quota,
     conversation: result.conversation,
     citations: result.citations ?? [],

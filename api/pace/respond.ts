@@ -37,6 +37,7 @@ interface PaceRequestBody {
   context?: {
     storeId?: unknown;
     liveStoreContext?: unknown;
+    actionProposals?: unknown;
     view?: unknown;
     role?: unknown;
     productCount?: unknown;
@@ -212,6 +213,7 @@ const allowedContext = (body: PaceRequestBody) => {
       ? candidate.storeId
       : undefined,
     liveStoreContext: candidate.liveStoreContext !== false,
+    actionProposals: candidate.actionProposals === true,
     view,
     role,
     productCount: boundedInteger(candidate.productCount),
@@ -399,7 +401,7 @@ const fetchOwnerBriefingContext = async (
   return await response.json().catch(() => ({ unavailable: true }));
 };
 
-const renderOwnerBriefing = (value: unknown): string | null => {
+const renderOwnerBriefing = (value: unknown, includeActionProposals: boolean): string | null => {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const context = value as Record<string, unknown>;
   if (context.unavailable === true || !Array.isArray(context.items)) return null;
@@ -418,6 +420,26 @@ const renderOwnerBriefing = (value: unknown): string | null => {
     const nextQuestion = typeof item.nextQuestion === "string" ? item.nextQuestion : "";
     lines.push(`- **${title}** — ${detail}`);
     if (nextQuestion) lines.push(`  - Vraag Pace: “${nextQuestion}”`);
+  }
+  if (includeActionProposals) {
+    const proposalByItem: Record<string, { title: string; detail: string }> = {
+      "inventory.out_of_stock": { title: "Voorraadcontrole voorbereiden", detail: "Open eerst de productlijst met nul voorraad; bepaal daarna zelf of je bestelt, transfereert of de voorraad corrigeert." },
+      "inventory.at_or_below_minimum": { title: "Bestelvoorstel controleren", detail: "Gebruik Voorraad & inkoop om een bestaand bestelvoorstel per leverancier na te kijken. Er wordt niets besteld of aangemaakt door Pace." },
+      "webshop.paid_waiting": { title: "Orderverwerking voorbereiden", detail: "Open de wachtende betaalde orders en kies per order zelf afhaling, verzending of verdere opvolging." },
+      "service.blocked": { title: "Herstellingen opvolgen", detail: "Open de geblokkeerde dossiers en bepaal zelf welke klant-, leverancier- of interne stap nodig is." },
+      "purchasing.overdue": { title: "Leverancieropvolging voorbereiden", detail: "Open de openstaande inkooporders en controleer zelf de verwachte leverdatum en ontvangst." },
+      "sales.drop_today": { title: "Verkoopritme onderzoeken", detail: "Vergelijk eerst verkoopmomenten, producten en kortingen met gisteren voordat je een commerciële actie kiest." },
+    };
+    const proposals = items.flatMap((item) => {
+      const id = typeof item.id === "string" ? item.id : "";
+      const proposal = proposalByItem[id];
+      return proposal ? [proposal] : [];
+    });
+    if (proposals.length > 0) {
+      lines.push("", "## Veilige conceptacties", "");
+      for (const proposal of proposals.slice(0, 3)) lines.push(`- **Voorstel: ${proposal.title}** — ${proposal.detail}`);
+      lines.push("", "- Geen voorstel voert een bestelling, prijswijziging, bericht of financiële handeling uit.");
+    }
   }
   return lines.join("\n");
 };
@@ -1170,7 +1192,7 @@ const handlePaceRequest = async (request: Request, emitProgress: PaceProgressEmi
     // values, ranking or formatting. Free help and advisory questions continue
     // through the model below.
     const needsMixedComposition = !forceFirstPartyAnswer && (questionPlan?.needsComposition === true || /\ben\s+(?:wat|hoe|waar|waarom)\b/i.test(question));
-    const deterministicOwnerBriefing = ownerBriefingRequested ? renderOwnerBriefing(ownerBriefingContext) : null;
+    const deterministicOwnerBriefing = ownerBriefingRequested ? renderOwnerBriefing(ownerBriefingContext, context.actionProposals) : null;
     if (ownerBriefingRequested && !deterministicOwnerBriefing) {
       await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, { status: "failed", elapsedMs: Date.now() - startedAt, error: "OWNER_BRIEFING_UNAVAILABLE" });
       if (begunTurn) await failTurn(rpcConfig, begunTurn.turnId, "OWNER_BRIEFING_UNAVAILABLE");

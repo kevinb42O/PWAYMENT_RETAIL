@@ -17,6 +17,7 @@ export interface PacePreferences {
   operationalSignals: boolean;
   setupGuidance: boolean;
   insightGuidance: boolean;
+  actionProposalsEnabled: boolean;
   customerGuidance: boolean;
   expressiveMorphs: boolean;
 }
@@ -58,6 +59,7 @@ export const DEFAULT_PACE_PREFERENCES: PacePreferences = {
   operationalSignals: true,
   setupGuidance: true,
   insightGuidance: true,
+  actionProposalsEnabled: false,
   customerGuidance: true,
   expressiveMorphs: true,
 };
@@ -110,6 +112,7 @@ const queueRemoteSave = (scopeKey: string) => {
       operational_signals: preferences.operationalSignals,
       setup_guidance: preferences.setupGuidance,
       insight_guidance: preferences.insightGuidance,
+      action_proposals_enabled: preferences.actionProposalsEnabled,
       customer_guidance: preferences.customerGuidance,
       expressive_morphs: preferences.expressiveMorphs,
       dismissed_signals: snapshot.dismissedSignals,
@@ -159,6 +162,7 @@ export const usePace = create<PaceState>((set, get) => ({
         operationalSignals: data.operational_signals,
         setupGuidance: data.setup_guidance,
         insightGuidance: data.insight_guidance,
+        actionProposalsEnabled: data.action_proposals_enabled,
         customerGuidance: data.customer_guidance,
         expressiveMorphs: data.expressive_morphs,
       },
