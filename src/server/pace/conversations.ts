@@ -3,11 +3,13 @@ import { closeConversation, deleteConversation, getConversation, listConversatio
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const json = (status: number, body: Record<string, unknown>) => Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
-const authenticatedUser = async (authorization: string, config: Omit<PaceRpcConfig, "authorization">) => {
+const authenticatedUser = async (authorization: string, config: Pick<PaceRpcConfig, "supabaseUrl" | "publishableKey">) => {
   const response = await fetch(`${config.supabaseUrl.replace(/\/$/, "")}/auth/v1/user`, {
     headers: { apikey: config.publishableKey, Authorization: authorization },
   });
-  return response.ok;
+  if (!response.ok) return null;
+  const user = await response.json() as { id?: unknown };
+  return typeof user.id === "string" ? user.id : null;
 };
 
 export const handlePaceConversations = {
@@ -17,9 +19,11 @@ export const handlePaceConversations = {
     if (!authorization?.startsWith("Bearer ")) return json(401, { error: "AUTH_REQUIRED" });
     const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
     const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-    if (!supabaseUrl || !publishableKey) return json(503, { error: "PACE_CONVERSATION_UNAVAILABLE" });
-    if (!await authenticatedUser(authorization, { supabaseUrl, publishableKey })) return json(401, { error: "INVALID_SESSION" });
-    const config = { authorization, supabaseUrl, publishableKey };
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseUrl || !publishableKey || !serviceRoleKey) return json(503, { error: "PACE_CONVERSATION_UNAVAILABLE" });
+    const actorUserId = await authenticatedUser(authorization, { supabaseUrl, publishableKey });
+    if (!actorUserId) return json(401, { error: "INVALID_SESSION" });
+    const config: PaceRpcConfig = { supabaseUrl, publishableKey, serviceRoleKey, actorUserId };
     try {
       if (request.method === "GET") {
         const url = new URL(request.url);

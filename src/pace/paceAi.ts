@@ -16,6 +16,10 @@ export interface PaceAiAnswer {
 }
 
 export class PaceAiUnavailableError extends Error {}
+// Pace can gather several tenant-safe sources before the model composes its
+// answer. This remains bounded server-side, but must outlive that work and the
+// final streamed event; 22 seconds cut off healthy requests mid-stream.
+export const PACE_AI_REQUEST_TIMEOUT_MS = 40_000;
 export class PaceQuotaExceededError extends PaceAiUnavailableError {
   constructor(public readonly quota: Partial<PaceQuotaSnapshot>) {
     super("Je PACE-vragenbundel is opgebruikt.");
@@ -165,7 +169,7 @@ export const askPaceAi = async (
           limitation: localCandidate.limitation,
         } : undefined,
       }),
-      signal: AbortSignal.timeout(22_000),
+      signal: AbortSignal.timeout(PACE_AI_REQUEST_TIMEOUT_MS),
     });
   } catch {
     aiUnavailableUntil = Date.now() + 15_000;

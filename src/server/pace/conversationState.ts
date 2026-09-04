@@ -1,9 +1,10 @@
 import type { PaceConversationDetail, PaceConversationSummary } from "../../pace/conversation/types.js";
 
 export interface PaceRpcConfig {
-  authorization: string;
   supabaseUrl: string;
   publishableKey: string;
+  serviceRoleKey: string;
+  actorUserId: string;
 }
 
 export class PaceConversationError extends Error {
@@ -12,11 +13,18 @@ export class PaceConversationError extends Error {
   }
 }
 
-const rpc = async <T>(config: PaceRpcConfig, name: string, body: Record<string, unknown>): Promise<T> => {
-  const response = await fetch(`${config.supabaseUrl.replace(/\/$/, "")}/rest/v1/rpc/${name}`, {
+export const rpc = async <T>(config: PaceRpcConfig, name: string, body: Record<string, unknown>): Promise<T> => {
+  const response = await fetch(`${config.supabaseUrl.replace(/\/$/, "")}/rest/v1/rpc/pace_server_rpc`, {
     method: "POST",
-    headers: { apikey: config.publishableKey, Authorization: config.authorization, "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    // Conversation RPCs run only through the server broker. A browser holds
+    // a user session, never the service-role credential, so it cannot invoke
+    // mutating functions directly or create an unbounded retry loop.
+    headers: { apikey: config.serviceRoleKey, Authorization: `Bearer ${config.serviceRoleKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      target_actor_user_id: config.actorUserId,
+      operation: name,
+      rpc_payload: body,
+    }),
     signal: AbortSignal.timeout(8_000),
   });
   if (response.ok) return await response.json() as T;

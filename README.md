@@ -237,6 +237,8 @@ OPENAI_API_KEY="sk-project-secret"
 OPENAI_PACE_MODEL="gpt-5-nano"
 SUPABASE_URL="https://your-project-ref.supabase.co"
 SUPABASE_PUBLISHABLE_KEY="sb_publishable_your_key"
+# Vereist door de server-side Pace-conversatiebroker; nooit met VITE_ prefix.
+SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
 MOLLIE_API_KEY="test_your_mollie_api_key"
 MOLLIE_TERMINAL_ID="term_your_test_terminal_id"
 
@@ -265,6 +267,7 @@ VITE_ENABLE_PACE_AI=true
 | `OPENAI_PACE_MODEL` | `gpt-5-nano` | Optioneel OpenAI-model; alleen gebruikt wanneer Gemini niet geconfigureerd is |
 | `SUPABASE_URL` | — | Server-side Supabase-URL voor sessievalidatie van Pace-verzoeken |
 | `SUPABASE_PUBLISHABLE_KEY` | — | Publishable key waarmee de Pace-endpoint een gebruikerssessie bij Supabase valideert |
+| `SUPABASE_SERVICE_ROLE_KEY` | — | Verplichte server-only sleutel voor de Pace-conversatiebroker; nooit naar de browser sturen |
 | `MOLLIE_API_KEY` | — | Geheime server-side Mollie test- of livesleutel; nooit met `VITE_` prefix |
 | `MOLLIE_TERMINAL_ID` | automatische detectie | Optionele vaste terminal-ID die bij het API-profiel hoort |
 

@@ -101,6 +101,10 @@ const GEMINI_FALLBACK_MODELS = [
   "gemini-3.1-flash-lite",
   "gemini-flash-latest",
 ] as const;
+// Planning is a useful optimisation, not a prerequisite for a safe answer.
+// Keep it short so a slow provider cannot consume the browser's entire Pace
+// request budget before the deterministic router and answer call get a turn.
+const GEMINI_PLANNER_TIMEOUT_MS = 5_000;
 const rateWindows = new Map<string, { count: number; startedAt: number }>();
 
 const json = (status: number, body: Record<string, unknown>, extraHeaders: Record<string, string> = {}) =>
@@ -466,7 +470,7 @@ const callGeminiPlanner = async (
       }],
       generationConfig: { temperature: 0, maxOutputTokens: 900, responseMimeType: "application/json" },
     }),
-    signal: AbortSignal.timeout(12_000),
+    signal: AbortSignal.timeout(GEMINI_PLANNER_TIMEOUT_MS),
   });
   const result = await upstream.json().catch(() => ({})) as GeminiResponse;
   if (!upstream.ok) return null;
@@ -485,8 +489,10 @@ const callGeminiPlannerWithFallback = async (
       const plan = await callGeminiPlanner(apiKey, candidateModel, question, context, history);
       if (plan) return plan;
     } catch {
-      // Planning is an enhancement. The bounded deterministic router below is
-      // the safe availability fallback when Gemini or JSON planning fails.
+      // A transport timeout is not a model-specific failure. Retrying every
+      // alias serially would make a best-effort planner outlive the whole
+      // browser request. Continue with the deterministic router instead.
+      return null;
     }
   }
   return null;
@@ -727,7 +733,8 @@ const handlePaceRequest = async (request: Request, emitProgress: PaceProgressEmi
       : process.env.OPENAI_PACE_MODEL?.trim() || "gpt-5-nano";
     const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
     const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-    if ((!geminiKey && !openAiKey) || !supabaseUrl || !publishableKey) {
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if ((!geminiKey && !openAiKey) || !supabaseUrl || !publishableKey || !serviceRoleKey) {
       return json(503, { error: "PACE_AI_NOT_CONFIGURED", fallback: "local" });
     }
 
@@ -763,7 +770,7 @@ const handlePaceRequest = async (request: Request, emitProgress: PaceProgressEmi
     const localCandidate = allowedLocalCandidate(body);
     emitProgress({ phase: "planning", interaction: "none", severity: "neutral" });
     const usesServerConversation = body.version === 2;
-    const rpcConfig: PaceRpcConfig = { authorization, supabaseUrl, publishableKey };
+    const rpcConfig: PaceRpcConfig = { supabaseUrl, publishableKey, serviceRoleKey, actorUserId: userId };
     let conversation: { id: string; revision: number; title: string } | null = null;
     let begunTurn: BegunTurn | null = null;
     let entityResolutions: EntityResolution[] = [];
@@ -791,8 +798,10 @@ const handlePaceRequest = async (request: Request, emitProgress: PaceProgressEmi
           history = [];
           serverConversationState = null;
         }
-        const expectedRevision = typeof body.expectedRevision === "number" && Number.isInteger(body.expectedRevision)
-          ? body.expectedRevision : detail.revision;
+        // The API has just loaded the authoritative state. Never forward a
+        // revision supplied by a browser: an old tab can otherwise retry the
+        // same known-stale request forever.
+        const expectedRevision = detail.revision;
         begunTurn = await beginTurn(rpcConfig, {
           conversationId: detail.id, clientTurnId: body.clientTurnId, revision: expectedRevision,
           question, view: context.view,

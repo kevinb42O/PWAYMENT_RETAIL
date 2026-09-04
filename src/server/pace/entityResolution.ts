@@ -1,5 +1,5 @@
 import type { PaceEntityType } from "../../pace/conversation/types.js";
-import type { PaceRpcConfig } from "./conversationState.js";
+import { PaceConversationError, rpc, type PaceRpcConfig } from "./conversationState.js";
 
 export interface EntityCandidate {
   canonicalId: string;
@@ -34,15 +34,16 @@ const requestsFromQuestion = (question: string) => {
 export const resolveQuestionEntities = async (config: PaceRpcConfig, storeId: string, question: string): Promise<EntityResolution[]> => {
   const requests = requestsFromQuestion(question);
   if (!requests.length) return [];
-  const response = await fetch(`${config.supabaseUrl.replace(/\/$/, "")}/rest/v1/rpc/resolve_pace_entities`, {
-    method: "POST",
-    headers: { apikey: config.publishableKey, Authorization: config.authorization, "Content-Type": "application/json" },
-    body: JSON.stringify({ target_store_id: storeId, resolution_requests: requests }),
-    signal: AbortSignal.timeout(8_000),
-  });
-  if (response.status === 401 || response.status === 403) throw new Error("STORE_ACCESS_DENIED");
-  if (!response.ok) return [];
-  const rows = await response.json() as Array<Omit<EntityResolution, "status">>;
+  let rows: Array<Omit<EntityResolution, "status">>;
+  try {
+    rows = await rpc<Array<Omit<EntityResolution, "status">>>(config, "resolve_pace_entities", {
+      target_store_id: storeId,
+      resolution_requests: requests,
+    });
+  } catch (error) {
+    if (error instanceof PaceConversationError && error.code === "forbidden") throw new Error("STORE_ACCESS_DENIED");
+    return [];
+  }
   return rows.map((row) => {
     const candidates = Array.isArray(row.candidates) ? row.candidates.slice(0, 5) : [];
     const first = candidates[0];
