@@ -307,13 +307,13 @@ describe("Pace OpenAI endpoint", () => {
     expect(String(fetchMock.mock.calls[2][0])).toContain("gemini-3.5-flash-lite");
   });
 
-  it("answers an explicit low-stock threshold from the bounded live query, never a top-stock ranking", async () => {
+  it("answers an explicit low-stock threshold from the validated inventory query, never a top-stock ranking", async () => {
     const storeId = "99999999-9999-4999-8999-999999999999";
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(Response.json({ id: "user-low-stock" }))
       .mockResolvedValueOnce(Response.json({
         version: 1,
-        thresholdExclusive: 3,
+        query: { version: 1, target: "products", stock: { comparison: "lt", quantity: 3 }, limit: 25 },
         rows: [
           { name: "Deck 8.5", sku: "DECK-85", variant: "Zwart", stockQty: 0, minStockQty: 2 },
           { name: "Truck 149", sku: "TRUCK-149", variant: null, stockQty: 2, minStockQty: 3 },
@@ -334,9 +334,28 @@ describe("Pace OpenAI endpoint", () => {
       answer: expect.stringContaining("Deck 8.5"),
     });
     const [url, init] = fetchMock.mock.calls[1] as [string, RequestInit];
-    expect(url).toContain("/rest/v1/rpc/get_pace_low_stock_context");
-    expect(JSON.parse(String(init.body))).toEqual({ target_store_id: storeId, maximum_stock_exclusive: 3 });
+    expect(url).toContain("/rest/v1/rpc/get_pace_inventory_query_context");
+    expect(JSON.parse(String(init.body))).toEqual({
+      target_store_id: storeId,
+      query_spec: { version: 1, target: "products", stock: { comparison: "lt", quantity: 3 }, limit: 25 },
+    });
     expect(payload.answer).not.toContain("37");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not let a model improvise an answer when a verified inventory query is unavailable", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({ id: "user-inventory-unavailable" }))
+      .mockResolvedValueOnce(new Response("unavailable", { status: 503 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handler.fetch(request({
+      question: "Welke artikelen staan onder de minimumvoorraad?",
+      context: { storeId: "99999999-9999-4999-8999-999999999999", view: "inventory", role: "owner" },
+    }));
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({ error: "INVENTORY_QUERY_UNAVAILABLE", fallback: "local" });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 

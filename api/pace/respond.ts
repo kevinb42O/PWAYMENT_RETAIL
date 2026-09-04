@@ -4,6 +4,7 @@ import { expandPaceAnalyticsComparisons, planPaceAnalyticsQuestions, type PaceAn
 import { renderPaceAnalyticsAnswer } from "../../src/pace/paceAnalyticsAnswer.js";
 import { planPaceRecordLookup, type PaceRecordPlan } from "../../src/pace/paceRecordPlan.js";
 import { renderPaceRecordAnswer } from "../../src/pace/paceRecordAnswer.js";
+import { describePaceInventoryQuery, planPaceInventoryQuery, type PaceInventoryQuery } from "../../src/pace/paceInventoryQuery.js";
 import { PACE_PLANNER_INSTRUCTIONS, parsePaceQuestionPlan, planPaceReadTools, type PaceQuestionPlan, type PaceReadToolCall } from "../../src/pace/paceQuestionPlan.js";
 import { beginTurn, completeTurn, failTurn, getConversation, PaceConversationError, startConversation, type BegunTurn, type PaceRpcConfig } from "../../src/server/pace/conversationState.js";
 import { buildPaceEvidence, publicCitations, redactPaceSummary } from "../../src/server/pace/evidence.js";
@@ -325,54 +326,39 @@ const fetchTenantContext = async (
 const needsInventoryActionContext = (question: string) =>
   /\b(stof\s*happen|ouderdom|voorraadleeftijd|dagen\s+(?:op\s+)?voorraad|niet\s+verkocht|slow|stagnant|bundel)\b/i.test(question);
 
-const STOCK_NUMBER_WORDS: Record<string, number> = {
-  nul: 0, een: 1, twee: 2, drie: 3, vier: 4, vijf: 5, zes: 6,
-  zeven: 7, acht: 8, negen: 9, tien: 10, elf: 11, twaalf: 12,
-};
-
-// A stock threshold is a predicate, not a ranking. Keep it deterministic so
-// the model can never silently turn “minder dan drie” into a top-stock query.
-const lowStockThresholdFromQuestion = (rawQuestion: string): number | null => {
-  const question = rawQuestion.trim().toLocaleLowerCase("nl-BE");
-  const match = question.match(/\b(?:minder|lager|onder)\s+(?:dan\s+)?(?:(\d{1,4})|(nul|een|twee|drie|vier|vijf|zes|zeven|acht|negen|tien|elf|twaalf))\s*(?:stuks?|items?)?\s*(?:op\s+)?(?:voorraad|stock)\b/u);
-  if (!match) return null;
-  const threshold = match[1] ? Number(match[1]) : STOCK_NUMBER_WORDS[match[2]];
-  return Number.isInteger(threshold) && threshold >= 0 && threshold <= 10_000 ? threshold : null;
-};
-
-const fetchLowStockContext = async (
+const fetchInventoryQueryContext = async (
   authorization: string,
   supabaseUrl: string,
   publishableKey: string,
   storeId: string | undefined,
-  threshold: number | null,
+  query: PaceInventoryQuery | null,
 ) => {
-  if (!storeId || threshold === null) return null;
-  const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/rpc/get_pace_low_stock_context`, {
+  if (!storeId || !query) return null;
+  const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/rpc/get_pace_inventory_query_context`, {
     method: "POST",
     headers: { apikey: publishableKey, Authorization: authorization, "Content-Type": "application/json" },
-    body: JSON.stringify({ target_store_id: storeId, maximum_stock_exclusive: threshold }),
+    body: JSON.stringify({ target_store_id: storeId, query_spec: query }),
     signal: AbortSignal.timeout(8_000),
   });
   if (response.status === 401 || response.status === 403) throw new TenantAccessError("Geen toegang tot deze voorraad.");
   if (!response.ok) {
-    console.warn("Pace low-stock context unavailable", { status: response.status });
-    return { unavailable: true, thresholdExclusive: threshold };
+    console.warn("Pace inventory query unavailable", { status: response.status });
+    return { unavailable: true, query };
   }
-  return await response.json().catch(() => ({ unavailable: true, thresholdExclusive: threshold }));
+  return await response.json().catch(() => ({ unavailable: true, query }));
 };
 
-const renderLowStockAnswer = (value: unknown): string | null => {
+const renderInventoryQueryAnswer = (value: unknown, query: PaceInventoryQuery): string | null => {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const context = value as Record<string, unknown>;
-  if (context.unavailable === true || !Array.isArray(context.rows) || typeof context.thresholdExclusive !== "number") return null;
-  const threshold = context.thresholdExclusive;
+  if (context.unavailable === true || !Array.isArray(context.rows)) return null;
   const rows = context.rows.filter((row): row is Record<string, unknown> => Boolean(row && typeof row === "object" && !Array.isArray(row)));
-  if (rows.length === 0) return `## Antwoord\n\n- Geen actief product heeft minder dan ${threshold} stuks op voorraad.`;
+  const criteria = describePaceInventoryQuery(query);
+  if (rows.length === 0) return `## Antwoord\n\n- Geen actief product voldoet aan: ${criteria}.`;
   const lines = [
     "## Antwoord",
     "",
-    `- ${rows.length} actieve ${rows.length === 1 ? "product heeft" : "producten hebben"} minder dan ${threshold} stuks op voorraad.`,
+    `- ${rows.length} actieve ${rows.length === 1 ? "product voldoet" : "producten voldoen"} aan: ${criteria}.`,
     "",
     "## Producten",
     "",
@@ -993,27 +979,27 @@ const handlePaceRequest = async (request: Request, emitProgress: PaceProgressEmi
       }, quota ? quotaHeaders(quota) : {});
     }
 
-    const lowStockThreshold = context.liveStoreContext ? lowStockThresholdFromQuestion(question) : null;
-    const forcedLowStockLookup = lowStockThreshold !== null;
+    const inventoryQuery = context.liveStoreContext ? planPaceInventoryQuery(question) : null;
+    const forcedInventoryQuery = inventoryQuery !== null;
     const fallbackInventoryAction = needsInventoryActionContext(question);
     const fallbackRecordPlan = fallbackInventoryAction ? null : planPaceRecordLookup(question);
     const fallbackAnalyticsPlans = fallbackInventoryAction || fallbackRecordPlan ? [] : planPaceAnalyticsQuestions(question);
     const fallbackReadToolCalls = planPaceReadTools(question);
-    const inventoryActionRequested = context.liveStoreContext && !forcedLowStockLookup && (questionPlan ? questionPlan.inventoryAction : fallbackInventoryAction);
-    const initialRecordPlan = context.liveStoreContext && !forcedLowStockLookup ? (questionPlan ? questionPlan.record : fallbackRecordPlan) : null;
-    const initialAnalyticsPlans = context.liveStoreContext && !forcedLowStockLookup ? (questionPlan ? questionPlan.analytics : fallbackAnalyticsPlans) : [];
-    const initialReadToolCalls = context.liveStoreContext && !forcedLowStockLookup ? (questionPlan ? questionPlan.tools : fallbackReadToolCalls) : [];
-    const inherited = forcedLowStockLookup ? { analytics: [], record: null, tools: [] } : inheritConversationPlan(question, serverConversationState, {
+    const inventoryActionRequested = context.liveStoreContext && !forcedInventoryQuery && (questionPlan ? questionPlan.inventoryAction : fallbackInventoryAction);
+    const initialRecordPlan = context.liveStoreContext && !forcedInventoryQuery ? (questionPlan ? questionPlan.record : fallbackRecordPlan) : null;
+    const initialAnalyticsPlans = context.liveStoreContext && !forcedInventoryQuery ? (questionPlan ? questionPlan.analytics : fallbackAnalyticsPlans) : [];
+    const initialReadToolCalls = context.liveStoreContext && !forcedInventoryQuery ? (questionPlan ? questionPlan.tools : fallbackReadToolCalls) : [];
+    const inherited = forcedInventoryQuery ? { analytics: [], record: null, tools: [] } : inheritConversationPlan(question, serverConversationState, {
       analytics: initialAnalyticsPlans, record: initialRecordPlan, tools: initialReadToolCalls,
     });
     const recordPlan = inherited.record;
     const rawAnalyticsPlans = inherited.analytics;
     const readToolCalls = inherited.tools;
     const analyticsPlans = expandPaceAnalyticsComparisons(rawAnalyticsPlans);
-    const needsBroadContext = context.liveStoreContext && !forcedLowStockLookup && (questionPlan
+    const needsBroadContext = context.liveStoreContext && !forcedInventoryQuery && (questionPlan
       ? questionPlan.broadContext
       : analyticsPlans.length === 0 && !inventoryActionRequested && !recordPlan && readToolCalls.length === 0);
-    const selectedSourceCount = Number(lowStockThreshold !== null)
+    const selectedSourceCount = Number(forcedInventoryQuery)
       + Number(needsBroadContext)
       + Number(inventoryActionRequested)
       + analyticsPlans.length
@@ -1022,7 +1008,7 @@ const handlePaceRequest = async (request: Request, emitProgress: PaceProgressEmi
     emitProgress({ phase: "resolving", interaction: "none", severity: "neutral", sourceCount: selectedSourceCount });
     const safetyIdentifier = createHash("sha256").update(`pace:${userId}`).digest("hex").slice(0, 48);
     let tenantContext: unknown = null;
-    let lowStockContext: unknown = null;
+    let inventoryQueryContext: unknown = null;
     let inventoryActionContext: unknown = null;
     let analyticsContexts: unknown[] = [];
     let recordContext: unknown = null;
@@ -1051,15 +1037,15 @@ const handlePaceRequest = async (request: Request, emitProgress: PaceProgressEmi
         sourceCount: selectedSourceCount,
       });
     }
-    const [lowStockResult, tenantResult, inventoryResult, analyticsResult, recordResult, toolsResult] = await Promise.allSettled([
-      lowStockThreshold !== null ? trackSource(fetchLowStockContext(authorization, supabaseUrl, publishableKey, context.storeId, lowStockThreshold)) : Promise.resolve(null),
+    const [inventoryQueryResult, tenantResult, inventoryResult, analyticsResult, recordResult, toolsResult] = await Promise.allSettled([
+      inventoryQuery ? trackSource(fetchInventoryQueryContext(authorization, supabaseUrl, publishableKey, context.storeId, inventoryQuery)) : Promise.resolve(null),
       needsBroadContext ? trackSource(fetchTenantContext(authorization, supabaseUrl, publishableKey, context.storeId, question)) : Promise.resolve(null),
       inventoryActionRequested ? trackSource(fetchInventoryActionContext(authorization, supabaseUrl, publishableKey, context.storeId, question)) : Promise.resolve(null),
       Promise.all(analyticsPlans.map((plan) => trackSource(fetchAnalyticsContext(authorization, supabaseUrl, publishableKey, context.storeId, plan)))),
       recordPlan ? trackSource(fetchRecordContext(authorization, supabaseUrl, publishableKey, context.storeId, recordPlan)) : Promise.resolve(null),
       Promise.all(readToolCalls.map((toolCall) => trackSource(fetchReadToolContext(authorization, supabaseUrl, publishableKey, context.storeId, toolCall)))),
     ]);
-    const accessDenied = [lowStockResult, tenantResult, inventoryResult, analyticsResult, recordResult, toolsResult].some(
+    const accessDenied = [inventoryQueryResult, tenantResult, inventoryResult, analyticsResult, recordResult, toolsResult].some(
       (result) => result.status === "rejected" && result.reason instanceof TenantAccessError,
     );
     if (accessDenied) {
@@ -1067,9 +1053,9 @@ const handlePaceRequest = async (request: Request, emitProgress: PaceProgressEmi
       if (begunTurn) await failTurn(rpcConfig, begunTurn.turnId, "STORE_ACCESS_DENIED");
       return json(403, { error: "STORE_ACCESS_DENIED", fallback: "local" });
     }
-    lowStockContext = lowStockResult.status === "fulfilled"
-      ? lowStockResult.value
-      : lowStockThreshold !== null ? { unavailable: true, thresholdExclusive: lowStockThreshold } : null;
+    inventoryQueryContext = inventoryQueryResult.status === "fulfilled"
+      ? inventoryQueryResult.value
+      : inventoryQuery ? { unavailable: true, query: inventoryQuery } : null;
     tenantContext = tenantResult.status === "fulfilled"
       ? tenantResult.value
       : { unavailable: true, reason: "context-fetch-failed" };
@@ -1087,7 +1073,7 @@ const handlePaceRequest = async (request: Request, emitProgress: PaceProgressEmi
       : readToolCalls.map((tool) => ({ unavailable: true, tool }));
 
     const evidence = buildPaceEvidence([
-      ...(lowStockThreshold !== null ? [{ sourceKind: "aggregate" as const, sourceName: "inventory.low_stock", label: "Lage voorraad", context: lowStockContext }] : []),
+      ...(inventoryQuery ? [{ sourceKind: "aggregate" as const, sourceName: "inventory.query", label: "Voorraadquery", context: inventoryQueryContext }] : []),
       { sourceKind: "aggregate", sourceName: "tenant.context", label: "Winkelcontext", context: tenantContext },
       { sourceKind: "aggregate", sourceName: "inventory.action", label: "Voorraadanalyse", context: inventoryActionContext },
       ...analyticsContexts.map((item) => ({ sourceKind: "aggregate" as const, sourceName: "analytics.query", label: "Retailanalyse", context: item, freshness: "period" as const })),
@@ -1102,8 +1088,8 @@ const handlePaceRequest = async (request: Request, emitProgress: PaceProgressEmi
       const persistence = resolutionPersistence(entityResolutions);
       const state = {
         version: 1,
-        lastIntent: questionPlan?.intent ?? (recordPlan ? "record" : analyticsPlans.length ? "analytics" : "knowledge"),
-        lastQueryFrame: { analytics: analyticsPlans, record: recordPlan, tools: readToolCalls },
+        lastIntent: forcedInventoryQuery ? "inventory_query" : questionPlan?.intent ?? (recordPlan ? "record" : analyticsPlans.length ? "analytics" : "knowledge"),
+        lastQueryFrame: { analytics: analyticsPlans, record: recordPlan, tools: readToolCalls, inventoryQuery },
         focusEntityIds: [],
         lastResultSet: [],
         unresolvedMention: null,
@@ -1127,19 +1113,24 @@ const handlePaceRequest = async (request: Request, emitProgress: PaceProgressEmi
     // This skips a model round-trip and prevents prose generation from changing
     // values, ranking or formatting. Free help and advisory questions continue
     // through the model below.
-    const needsMixedComposition = !forcedLowStockLookup && (questionPlan?.needsComposition === true || /\ben\s+(?:wat|hoe|waar|waarom)\b/i.test(question));
-    const deterministicLowStockAnswer = needsMixedComposition ? null : renderLowStockAnswer(lowStockContext);
-    if (deterministicLowStockAnswer) {
+    const needsMixedComposition = !forcedInventoryQuery && (questionPlan?.needsComposition === true || /\ben\s+(?:wat|hoe|waar|waarom)\b/i.test(question));
+    const deterministicInventoryQueryAnswer = inventoryQuery ? renderInventoryQueryAnswer(inventoryQueryContext, inventoryQuery) : null;
+    if (inventoryQuery && !deterministicInventoryQueryAnswer) {
+      await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, { status: "failed", elapsedMs: Date.now() - startedAt, error: "INVENTORY_QUERY_UNAVAILABLE" });
+      if (begunTurn) await failTurn(rpcConfig, begunTurn.turnId, "INVENTORY_QUERY_UNAVAILABLE");
+      return json(503, { error: "INVENTORY_QUERY_UNAVAILABLE", fallback: "local" });
+    }
+    if (deterministicInventoryQueryAnswer) {
       emitProgress({ phase: "verifying", interaction: "none", severity: "neutral", sourceCount: selectedSourceCount });
       await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, { status: "completed", elapsedMs: Date.now() - startedAt, model: "PWAYMENT Inventory" });
-      const completed = await finishServerTurn(deterministicLowStockAnswer, "analytics", "PWAYMENT Inventory");
+      const completed = await finishServerTurn(deterministicInventoryQueryAnswer, "analytics", "PWAYMENT Inventory");
       if (completed && conversation) return json(200, {
         version: 2,
         conversation: { id: conversation.id, revision: completed.revision, title: completed.title, turnSequence: completed.sequence },
-        answer: deterministicLowStockAnswer, source: "analytics", model: "PWAYMENT Inventory",
+        answer: deterministicInventoryQueryAnswer, source: "analytics", model: "PWAYMENT Inventory",
         entities: completed.entities, citations: publicCitations(evidence), quota,
       }, quota ? quotaHeaders(quota) : {});
-      return json(200, { answer: deterministicLowStockAnswer, source: "analytics", model: "PWAYMENT Inventory", quota }, quota ? quotaHeaders(quota) : {});
+      return json(200, { answer: deterministicInventoryQueryAnswer, source: "analytics", model: "PWAYMENT Inventory", quota }, quota ? quotaHeaders(quota) : {});
     }
     const deterministicAnalyticsAnswer = needsMixedComposition ? null : renderPaceAnalyticsAnswer(analyticsContexts);
     if (deterministicAnalyticsAnswer) {
