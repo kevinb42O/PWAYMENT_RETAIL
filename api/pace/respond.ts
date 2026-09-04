@@ -107,6 +107,7 @@ const GEMINI_FALLBACK_MODELS = [
 // Keep it short so a slow provider cannot consume the browser's entire Pace
 // request budget before the deterministic router and answer call get a turn.
 const GEMINI_PLANNER_TIMEOUT_MS = 5_000;
+const GEMINI_ANSWER_TIMEOUT_MS = 25_000;
 const rateWindows = new Map<string, { count: number; startedAt: number }>();
 
 const json = (status: number, body: Record<string, unknown>, extraHeaders: Record<string, string> = {}) =>
@@ -750,7 +751,7 @@ const callGemini = async (
         maxOutputTokens: 480,
       },
     }),
-    signal: AbortSignal.timeout(15_000),
+    signal: AbortSignal.timeout(GEMINI_ANSWER_TIMEOUT_MS),
   });
   const result = await upstream.json().catch(() => ({})) as GeminiResponse;
   if (!upstream.ok) {
@@ -1280,7 +1281,15 @@ const handlePaceRequest = async (request: Request, emitProgress: PaceProgressEmi
       upstreamResult = provider === "gemini"
         ? await callGeminiWithFallback(geminiKey!, model, question, context, tenantContext, inventoryActionContext, analyticsContexts, recordContext, toolContexts, history, localCandidate)
         : await callOpenAi(openAiKey!, model, question, context, tenantContext, inventoryActionContext, analyticsContexts, recordContext, toolContexts, history, localCandidate, safetyIdentifier);
-    } catch {
+    } catch (error) {
+      // Keep the user-facing fallback generic, but retain a safe diagnostic
+      // fingerprint in production logs. Never log prompts, credentials or
+      // upstream response bodies here.
+      console.error("Pace AI transport failed", {
+        provider,
+        errorName: error instanceof Error ? error.name : "unknown",
+        errorMessage: error instanceof Error ? error.message.slice(0, 180) : "unknown",
+      });
       await finalizePaceLog(authorization, supabaseUrl, publishableKey, quota, { status: "failed", elapsedMs: Date.now() - startedAt, model, error: "PACE_AI_UNAVAILABLE" });
       if (begunTurn) await failTurn(rpcConfig, begunTurn.turnId, "PACE_AI_UNAVAILABLE");
       return json(503, { error: "PACE_AI_UNAVAILABLE", fallback: "local" });

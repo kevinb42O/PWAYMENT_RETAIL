@@ -557,7 +557,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
         ...local,
         title: preferences.aiEnabled ? "PACE AI kon deze vraag niet verwerken" : local.title,
         limitation: preferences.aiEnabled
-          ? `${error.message} Je vraag is daarom alleen met lokale productkennis beantwoord.`
+          ? `${error.message} Ik heb daarom alleen de lokale productkennis gebruikt.`
           : local.limitation,
       } : local);
       setResponseSource("local");

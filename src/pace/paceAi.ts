@@ -16,6 +16,11 @@ export interface PaceAiAnswer {
 }
 
 export class PaceAiUnavailableError extends Error {}
+const paceAiFailureMessage = (status: number, code?: string) => {
+  if (status === 503 || code === "PACE_AI_UNAVAILABLE" || code === "PACE_AI_NOT_CONFIGURED") return "Pace AI is tijdelijk niet bereikbaar.";
+  if (status === 502 || code === "PACE_AI_UPSTREAM_ERROR" || code === "PACE_AI_EMPTY_RESPONSE") return "De AI-provider gaf tijdelijk geen bruikbaar antwoord.";
+  return "Pace AI is tijdelijk niet beschikbaar.";
+};
 // Pace can gather several tenant-safe sources before the model composes its
 // answer. This remains bounded server-side, but must outlive that work and the
 // final streamed event; 22 seconds cut off healthy requests mid-stream.
@@ -184,7 +189,7 @@ export const askPaceAi = async (
   }
   if (status < 200 || status >= 300 || (result?.source !== "gemini" && result?.source !== "openai" && result?.source !== "analytics" && result?.source !== "records" && result?.source !== "briefing" && result?.source !== "local") || typeof result.answer !== "string") {
     aiUnavailableUntil = Date.now() + (status === 429 || result?.error === "PACE_AI_QUOTA_EXHAUSTED" ? 60_000 : 15_000);
-    throw new PaceAiUnavailableError(result?.error ?? "Pace AI is tijdelijk niet beschikbaar.");
+    throw new PaceAiUnavailableError(paceAiFailureMessage(status, result?.error));
   }
   aiUnavailableUntil = 0;
   return {
