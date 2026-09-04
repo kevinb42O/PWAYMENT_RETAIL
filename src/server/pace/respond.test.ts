@@ -307,6 +307,39 @@ describe("Pace OpenAI endpoint", () => {
     expect(String(fetchMock.mock.calls[2][0])).toContain("gemini-3.5-flash-lite");
   });
 
+  it("answers an explicit low-stock threshold from the bounded live query, never a top-stock ranking", async () => {
+    const storeId = "99999999-9999-4999-8999-999999999999";
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({ id: "user-low-stock" }))
+      .mockResolvedValueOnce(Response.json({
+        version: 1,
+        thresholdExclusive: 3,
+        rows: [
+          { name: "Deck 8.5", sku: "DECK-85", variant: "Zwart", stockQty: 0, minStockQty: 2 },
+          { name: "Truck 149", sku: "TRUCK-149", variant: null, stockQty: 2, minStockQty: 3 },
+        ],
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handler.fetch(request({
+      question: "Welke producten hebben minder dan drie stuks op voorraad?",
+      context: { storeId, view: "inventory", role: "owner" },
+    }));
+
+    expect(response.status).toBe(200);
+    const payload = await response.json() as { answer?: string };
+    expect(payload).toMatchObject({
+      source: "analytics",
+      model: "PWAYMENT Inventory",
+      answer: expect.stringContaining("Deck 8.5"),
+    });
+    const [url, init] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(url).toContain("/rest/v1/rpc/get_pace_low_stock_context");
+    expect(JSON.parse(String(init.body))).toEqual({ target_store_id: storeId, maximum_stock_exclusive: 3 });
+    expect(payload.answer).not.toContain("37");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("does not serially retry every planner alias after a transport timeout", async () => {
     process.env.GEMINI_API_KEY = "test-gemini-key";
     process.env.PACE_GEMINI_PLANNER = "true";
