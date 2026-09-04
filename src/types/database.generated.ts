@@ -1679,6 +1679,7 @@ export type Database = {
           operational_signals: boolean
           proactivity: string
           setup_guidance: boolean
+          snoozed_signals: Json
           store_id: string
           tone: string
           updated_at: string
@@ -1699,6 +1700,7 @@ export type Database = {
           operational_signals?: boolean
           proactivity?: string
           setup_guidance?: boolean
+          snoozed_signals?: Json
           store_id: string
           tone?: string
           updated_at?: string
@@ -1719,6 +1721,7 @@ export type Database = {
           operational_signals?: boolean
           proactivity?: string
           setup_guidance?: boolean
+          snoozed_signals?: Json
           store_id?: string
           tone?: string
           updated_at?: string
@@ -4199,6 +4202,14 @@ export type Database = {
       }
       get_pace_inventory_action_context: {
         Args: { target_store_id: string; user_query?: string }
+        Returns: Json
+      }
+      get_pace_inventory_query_context: {
+        Args: { query_spec: Json; target_store_id: string }
+        Returns: Json
+      }
+      get_pace_owner_briefing: {
+        Args: { target_store_id: string }
         Returns: Json
       }
       get_pace_product_recommendations: {

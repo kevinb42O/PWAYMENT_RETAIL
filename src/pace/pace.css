@@ -599,6 +599,36 @@
 .pace-overview-window .pace-live-brief { border-radius: 0.9rem; padding: 0.75rem; box-shadow: none; }
 .pace-overview-window .pace-live-brief h3 { margin-top: 0.4rem; font-size: 0.9rem; }
 .pace-overview-window .pace-live-brief p { margin-top: 0.3rem; font-size: 0.66rem; line-height: 1.45; }
+.pace-today { margin-bottom: 0.65rem; border: 1px solid #bde7f1; border-radius: 0.9rem; background: linear-gradient(145deg, #f0fdff, #fff); padding: 0.62rem; }
+.pace-today-heading { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; color: #0e7490; }
+.pace-today-heading > span { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.6rem; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; }
+.pace-today-heading > button { display: inline-flex; width: 1.75rem; height: 1.75rem; align-items: center; justify-content: center; border: 0; border-radius: 0.55rem; background: transparent; color: #0e7490; }
+.pace-today-heading > button:hover { background: #cffafe; }
+.pace-today-heading > button:disabled { opacity: 0.45; }
+.pace-today-status { margin: 0.55rem 0 0; color: #0c4a6e; font-size: 0.62rem; font-weight: 700; line-height: 1.45; }
+.pace-today-status.is-muted { color: #64748b; }
+.pace-today-status.is-clear { display: flex; align-items: center; gap: 0.35rem; color: #047857; }
+.pace-today-summary { display: flex; align-items: center; gap: 0.3rem; margin: 0.45rem 0 0; color: #0e7490; font-size: 0.59rem; font-weight: 800; line-height: 1.35; }
+.pace-today-item, .pace-replenishment-proposal { margin-top: 0.5rem; border: 1px solid #dbeaf0; border-radius: 0.72rem; background: rgba(255,255,255,0.88); padding: 0.58rem; }
+.pace-today-item > div:first-child, .pace-replenishment-proposal > div:first-child { display: flex; align-items: center; gap: 0.42rem; }
+.pace-today-item > div:first-child span, .pace-replenishment-proposal > div:first-child span { flex: none; color: #0e7490; font-size: 0.52rem; font-weight: 900; letter-spacing: 0.09em; text-transform: uppercase; }
+.pace-replenishment-proposal > div:first-child span { display: inline-flex; align-items: center; gap: 0.25rem; color: #047857; }
+.pace-today-item strong, .pace-replenishment-proposal strong { min-width: 0; color: #1e293b; font-size: 0.69rem; font-weight: 850; line-height: 1.25; }
+.pace-today-item p, .pace-replenishment-proposal p { margin: 0.33rem 0 0; color: #64748b; font-size: 0.61rem; font-weight: 620; line-height: 1.45; }
+.pace-replenishment-proposal { border-color: #a7f3d0; background: linear-gradient(145deg, #ecfdf5, #fff); }
+.pace-replenishment-proposal p b { color: #047857; font-weight: 900; }
+.pace-replenishment-proposal small { display: block; margin-top: 0.38rem; color: #4d7367; font-size: 0.56rem; font-weight: 700; line-height: 1.4; }
+.pace-today-item footer, .pace-replenishment-proposal footer { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin-top: 0.48rem; }
+.pace-today-item footer button, .pace-replenishment-proposal footer button { display: inline-flex; align-items: center; gap: 0.22rem; border: 0; border-radius: 0.5rem; padding: 0.29rem 0.38rem; font-size: 0.55rem; font-weight: 850; }
+.pace-today-item footer .is-primary, .pace-replenishment-proposal footer .is-primary { background: #0e7490; color: #fff; }
+.pace-replenishment-proposal footer .is-primary { background: #047857; }
+.pace-today-item footer .is-primary:hover { background: #155e75; }
+.pace-replenishment-proposal footer .is-primary:hover { background: #065f46; }
+.pace-today-item footer .is-evidence, .pace-today-item footer .is-quiet, .pace-replenishment-proposal footer .is-quiet { background: transparent; color: #64748b; }
+.pace-today-item footer .is-evidence:hover, .pace-today-item footer .is-quiet:hover, .pace-replenishment-proposal footer .is-quiet:hover { background: #f1f5f9; color: #334155; }
+.pace-today-evidence { display: flex; align-items: flex-start; gap: 0.3rem; margin-top: 0.45rem; border-radius: 0.55rem; background: #f0f9ff; padding: 0.42rem; color: #0c4a6e; font-size: 0.55rem; font-weight: 700; line-height: 1.4; }
+.pace-today-evidence svg { flex: none; margin-top: 0.06rem; }
+.pace-replenishment-proposal em { display: block; margin-top: 0.45rem; color: #4d7367; font-size: 0.52rem; font-style: normal; font-weight: 700; line-height: 1.4; }
 .pace-overview-window .pace-evidence-line { margin-top: 0.4rem; font-size: 0.56rem; }
 .pace-overview-window .pace-brief-actions { margin-top: 0.55rem; }
 .pace-overview-window .pace-brief-actions button { padding: 0.36rem 0.5rem; font-size: 0.6rem; }

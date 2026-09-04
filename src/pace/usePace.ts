@@ -33,6 +33,8 @@ export interface PaceCustomerFeedback {
 interface PaceStoredState {
   preferences: PacePreferences;
   dismissedSignals: string[];
+  /** Signal id -> UTC timestamp. Snoozes are intentionally short-lived and user scoped. */
+  snoozedSignals: Record<string, number>;
   customerFeedback: PaceCustomerFeedback[];
 }
 
@@ -45,6 +47,7 @@ interface PaceState extends PaceStoredState {
   hydrateScope: (storeId: string | null, userId: string | null) => Promise<void>;
   updatePreferences: (patch: Partial<PacePreferences>) => void;
   dismissSignal: (id: string) => void;
+  snoozeSignal: (id: string, durationMs?: number) => void;
   resetDismissedSignals: () => void;
   recordCustomerFeedback: (insightId: string, disposition: PaceCustomerFeedbackDisposition) => void;
 }
@@ -67,6 +70,7 @@ export const DEFAULT_PACE_PREFERENCES: PacePreferences = {
 const emptyStoredState = (): PaceStoredState => ({
   preferences: { ...DEFAULT_PACE_PREFERENCES },
   dismissedSignals: [],
+  snoozedSignals: {},
   customerFeedback: [],
 });
 
@@ -74,6 +78,9 @@ const storageKey = (scopeKey: string) => `pwayment:pace:v2:${scopeKey}`;
 const normalizeStored = (raw?: Partial<PaceStoredState> | null): PaceStoredState => ({
   preferences: { ...DEFAULT_PACE_PREFERENCES, ...(raw?.preferences ?? {}) },
   dismissedSignals: Array.isArray(raw?.dismissedSignals) ? raw.dismissedSignals.slice(-40) : [],
+  snoozedSignals: Object.fromEntries(Object.entries(raw?.snoozedSignals ?? {}).filter(([id, until]) =>
+    id.length <= 160 && typeof until === "number" && Number.isFinite(until) && until > Date.now() && until <= Date.now() + 30 * 24 * 60 * 60 * 1000,
+  )),
   customerFeedback: Array.isArray(raw?.customerFeedback) ? raw.customerFeedback.slice(-80) : [],
 });
 
@@ -116,6 +123,7 @@ const queueRemoteSave = (scopeKey: string) => {
       customer_guidance: preferences.customerGuidance,
       expressive_morphs: preferences.expressiveMorphs,
       dismissed_signals: snapshot.dismissedSignals,
+      snoozed_signals: snapshot.snoozedSignals as unknown as Json,
       customer_feedback: snapshot.customerFeedback as unknown as Json,
       updated_at: new Date().toISOString(),
     }, { onConflict: "store_id,user_id" });
@@ -125,7 +133,7 @@ const queueRemoteSave = (scopeKey: string) => {
 
 const persistCurrent = (state: PaceState) => {
   if (!state.scopeKey) return;
-  writeLocal(state.scopeKey, { preferences: state.preferences, dismissedSignals: state.dismissedSignals, customerFeedback: state.customerFeedback });
+  writeLocal(state.scopeKey, { preferences: state.preferences, dismissedSignals: state.dismissedSignals, snoozedSignals: state.snoozedSignals, customerFeedback: state.customerFeedback });
   usePace.setState({ syncState: navigator.onLine ? "idle" : "local" });
   if (navigator.onLine) queueRemoteSave(state.scopeKey);
 };
@@ -167,6 +175,7 @@ export const usePace = create<PaceState>((set, get) => ({
         expressiveMorphs: data.expressive_morphs,
       },
       dismissedSignals: data.dismissed_signals,
+      snoozedSignals: data.snoozed_signals as unknown as Record<string, number>,
       customerFeedback: data.customer_feedback as unknown as PaceCustomerFeedback[],
     });
     writeLocal(scopeKey, remote);
@@ -177,10 +186,18 @@ export const usePace = create<PaceState>((set, get) => ({
     persistCurrent(get());
   },
   dismissSignal: (id) => {
-    set((state) => ({ dismissedSignals: state.dismissedSignals.includes(id) ? state.dismissedSignals : [...state.dismissedSignals, id].slice(-40) }));
+    set((state) => ({
+      dismissedSignals: state.dismissedSignals.includes(id) ? state.dismissedSignals : [...state.dismissedSignals, id].slice(-40),
+      snoozedSignals: Object.fromEntries(Object.entries(state.snoozedSignals).filter(([signalId]) => signalId !== id)),
+    }));
     persistCurrent(get());
   },
-  resetDismissedSignals: () => { set({ dismissedSignals: [], customerFeedback: [] }); persistCurrent(get()); },
+  snoozeSignal: (id, durationMs = 4 * 60 * 60 * 1000) => {
+    const safeDuration = Math.min(Math.max(durationMs, 15 * 60 * 1000), 7 * 24 * 60 * 60 * 1000);
+    set((state) => ({ snoozedSignals: { ...state.snoozedSignals, [id]: Date.now() + safeDuration } }));
+    persistCurrent(get());
+  },
+  resetDismissedSignals: () => { set({ dismissedSignals: [], snoozedSignals: {}, customerFeedback: [] }); persistCurrent(get()); },
   recordCustomerFeedback: (insightId, disposition) => {
     set((state) => {
       const recordedAt = Date.now();
