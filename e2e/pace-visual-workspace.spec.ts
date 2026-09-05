@@ -66,14 +66,17 @@ test("Pace supports light and dark contrast and reduced motion", async ({ appPag
   await expect(panel.locator(".pace-mark-stage").first()).toHaveAttribute("data-motion", "off");
   for (const dark of [false, true]) {
     await appPage.evaluate((enabled) => document.documentElement.classList.toggle("theme-dark", enabled), dark);
+    const backgrounds = await panel.evaluate((element) => ({
+      panel: getComputedStyle(element).backgroundColor,
+      input: getComputedStyle(element.querySelector("textarea")!).backgroundColor,
+      header: getComputedStyle(element.querySelector(".pace-panel-header")!).backgroundColor,
+    }));
+    expect(backgrounds).toEqual(dark
+      ? { panel: "rgb(7, 17, 31)", input: "rgb(13, 30, 49)", header: "rgb(13, 30, 49)" }
+      : { panel: "rgb(248, 250, 252)", input: "rgb(255, 255, 255)", header: "rgb(255, 255, 255)" });
     const results = await new AxeBuilder({ page: appPage }).include(".pace-panel").withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
     expect(results.violations, `${dark ? "dark" : "light"} PACE accessibility`).toEqual([]);
   }
-  const backgrounds = await panel.evaluate((element) => ({
-    panel: getComputedStyle(element).backgroundColor,
-    input: getComputedStyle(element.querySelector("textarea")!).backgroundColor,
-  }));
-  expect(backgrounds).toEqual({ panel: "rgb(16, 35, 40)", input: "rgb(23, 46, 51)" });
   await panel.getByRole("textbox", { name: "Vraag Pace", exact: true }).fill("Hoe scan ik een product?");
   await panel.getByRole("button", { name: "Stuur vraag", exact: true }).click();
   await expect(panel.locator(".pace-response")).toBeVisible();

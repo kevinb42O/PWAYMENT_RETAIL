@@ -218,6 +218,14 @@ Open daarna:
 - account en POS: [http://localhost:3000/app](http://localhost:3000/app)
 - storefront: [http://localhost:3000/shop](http://localhost:3000/shop)
 
+De Vite-developmentserver voert `/api/pace/respond` lokaal uit met dezelfde
+beveiligde handler als productie, inclusief gespreksgeschiedenis en streaming.
+Zet de serverinstellingen in `.env.local`: `GEMINI_API_KEY` (of `OPENAI_API_KEY`),
+`SUPABASE_SERVICE_ROLE_KEY` en de Supabase-URL en publishable key (de bestaande
+`VITE_SUPABASE_*`-waarden worden hiervoor ook ondersteund). Herstart de server
+na wijzigingen. Geheime sleutels mogen nooit een `VITE_`-prefix krijgen.
+Fixturetoegang vervangt geen echte Supabase-sessie voor PACE-verzoeken.
+
 ### Fixtures
 
 Lokale fixtureaccounts bestaan uitsluitend in development-, presentatie- en

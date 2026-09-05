@@ -2,6 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import { askPaceAi, normalizePaceAiAnswer, readPaceApiResponse, toPaceAiContext } from "./paceAi";
 import type { PaceContext } from "./paceSignals";
 
+vi.mock("../lib/supabase", () => ({
+  supabase: { auth: { getSession: vi.fn().mockResolvedValue({ data: { session: { access_token: "test-token" } } }) } },
+}));
+
 describe("Pace AI privacy boundary", () => {
   it("removes model markdown before plain-text UI rendering", () => {
     expect(normalizePaceAiAnswer("## Resultaat\n- **Product A**\n  - Voorraad: `2`\n  - Stilstand: 80 dagen")).toBe(
@@ -105,5 +109,24 @@ describe("Pace AI privacy boundary", () => {
     await expect(readPaceApiResponse(new Response(stream, {
       headers: { "Content-Type": "application/x-ndjson" },
     }))).resolves.toEqual({ status: 502, result: { error: "PACE_STREAM_INCOMPLETE" } });
+  });
+
+  it("identifies missing server configuration and preserves the cause during cooldown", async () => {
+    vi.resetModules();
+    const { askPaceAi: askWithFreshState } = await import("./paceAi");
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({
+      error: "PACE_AI_NOT_CONFIGURED", fallback: "local",
+    }, { status: 503 }));
+    const context: PaceContext = {
+      view: "pos", role: "cashier", productCount: 0, cartCount: 0,
+      firstRunCompleted: true, online: true, pendingSync: 0, retryingSync: 0, failedSync: 0,
+    };
+    try {
+      await expect(askWithFreshState("Hoe werkt PACE?", context)).rejects.toThrow("niet volledig geconfigureerd op de server");
+      await expect(askWithFreshState("Waarom werkt dit niet?", context)).rejects.toThrow("niet volledig geconfigureerd op de server");
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      fetchSpy.mockRestore();
+    }
   });
 });

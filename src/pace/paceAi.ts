@@ -17,7 +17,8 @@ export interface PaceAiAnswer {
 
 export class PaceAiUnavailableError extends Error {}
 const paceAiFailureMessage = (status: number, code?: string) => {
-  if (status === 503 || code === "PACE_AI_UNAVAILABLE" || code === "PACE_AI_NOT_CONFIGURED") return "Pace AI is tijdelijk niet bereikbaar.";
+  if (code === "PACE_AI_NOT_CONFIGURED") return "Pace AI is niet volledig geconfigureerd op de server. Laat de beheerder de AI- en Supabase-serverinstellingen controleren.";
+  if (status === 503 || code === "PACE_AI_UNAVAILABLE") return "Pace AI is tijdelijk niet bereikbaar.";
   if (status === 502 || code === "PACE_AI_UPSTREAM_ERROR" || code === "PACE_AI_EMPTY_RESPONSE") return "De AI-provider gaf tijdelijk geen bruikbaar antwoord.";
   return "Pace AI is tijdelijk niet beschikbaar.";
 };
@@ -74,6 +75,7 @@ export const readPaceApiResponse = async (
 };
 
 let aiUnavailableUntil = 0;
+let aiUnavailableMessage = "Pace AI is tijdelijk niet bereikbaar.";
 
 export const normalizePaceAiAnswer = (answer: string) => answer
   .replace(/\r\n?/g, "\n")
@@ -136,7 +138,7 @@ export const askPaceAi = async (
     throw new PaceAiUnavailableError("Pace AI is niet ingeschakeld.");
   }
   if (Date.now() < aiUnavailableUntil) {
-    throw new PaceAiUnavailableError("Pace AI zit tijdelijk in lokale fallbackmodus.");
+    throw new PaceAiUnavailableError(aiUnavailableMessage);
   }
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
@@ -180,7 +182,8 @@ export const askPaceAi = async (
     });
   } catch {
     aiUnavailableUntil = Date.now() + 15_000;
-    throw new PaceAiUnavailableError("Pace AI is tijdelijk niet bereikbaar.");
+    aiUnavailableMessage = "Pace AI is tijdelijk niet bereikbaar.";
+    throw new PaceAiUnavailableError(aiUnavailableMessage);
   }
 
   const { status, result } = await readPaceApiResponse(response, options.onProgress);
@@ -189,7 +192,8 @@ export const askPaceAi = async (
   }
   if (status < 200 || status >= 300 || (result?.source !== "gemini" && result?.source !== "openai" && result?.source !== "analytics" && result?.source !== "records" && result?.source !== "briefing" && result?.source !== "local") || typeof result.answer !== "string") {
     aiUnavailableUntil = Date.now() + (status === 429 || result?.error === "PACE_AI_QUOTA_EXHAUSTED" ? 60_000 : 15_000);
-    throw new PaceAiUnavailableError(paceAiFailureMessage(status, result?.error));
+    aiUnavailableMessage = paceAiFailureMessage(status, result?.error);
+    throw new PaceAiUnavailableError(aiUnavailableMessage);
   }
   aiUnavailableUntil = 0;
   return {
