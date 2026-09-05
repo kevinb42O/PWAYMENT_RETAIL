@@ -1,6 +1,6 @@
 begin;
 
--- PACE conversation state must only be changed by our server API.  Browser
+-- PACE conversation state must only be changed by our server API. Browser
 -- sessions authenticate a user but are not an authorization boundary for
 -- invoking low-level state-machine RPCs directly.
 create or replace function public.pace_server_rpc(

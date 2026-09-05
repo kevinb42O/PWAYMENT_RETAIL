@@ -126,7 +126,8 @@ begin
       ) order by case when days_of_cover < lead_time_days then 0 else 1 end, confidence desc, (target_stock_qty - stock_qty - open_order_qty) desc, name)
       from (
         select * from recommendations
-        where target_stock_qty - stock_qty - open_order_qty > 0
+        where open_order_qty = 0
+          and target_stock_qty - stock_qty - open_order_qty > 0
         order by case when days_of_cover < lead_time_days then 0 else 1 end, confidence desc, (target_stock_qty - stock_qty - open_order_qty) desc, name
         limit 12
       ) bounded

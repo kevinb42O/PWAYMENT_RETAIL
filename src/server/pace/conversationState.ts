@@ -16,7 +16,7 @@ export class PaceConversationError extends Error {
 export const rpc = async <T>(config: PaceRpcConfig, name: string, body: Record<string, unknown>): Promise<T> => {
   const response = await fetch(`${config.supabaseUrl.replace(/\/$/, "")}/rest/v1/rpc/pace_server_rpc`, {
     method: "POST",
-    // Conversation RPCs run only through the server broker.  A browser holds
+    // Conversation RPCs run only through the server broker. A browser holds
     // a user session, never the service-role credential, so it cannot invoke
     // mutating functions directly or create an unbounded retry loop.
     headers: { apikey: config.serviceRoleKey, Authorization: `Bearer ${config.serviceRoleKey}`, "Content-Type": "application/json" },

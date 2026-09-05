@@ -1663,8 +1663,44 @@ export type Database = {
           },
         ]
       }
+      pace_action_executions: {
+        Row: {
+          action_type: string
+          actor_user_id: string
+          created_at: string
+          idempotency_key: string
+          result: Json
+          store_id: string
+        }
+        Insert: {
+          action_type: string
+          actor_user_id: string
+          created_at?: string
+          idempotency_key: string
+          result: Json
+          store_id: string
+        }
+        Update: {
+          action_type?: string
+          actor_user_id?: string
+          created_at?: string
+          idempotency_key?: string
+          result?: Json
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pace_action_executions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pace_user_preferences: {
         Row: {
+          action_proposals_enabled: boolean
           ai_enabled: boolean
           created_at: string
           customer_feedback: Json
@@ -1678,12 +1714,14 @@ export type Database = {
           operational_signals: boolean
           proactivity: string
           setup_guidance: boolean
+          snoozed_signals: Json
           store_id: string
           tone: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          action_proposals_enabled?: boolean
           ai_enabled?: boolean
           created_at?: string
           customer_feedback?: Json
@@ -1697,12 +1735,14 @@ export type Database = {
           operational_signals?: boolean
           proactivity?: string
           setup_guidance?: boolean
+          snoozed_signals?: Json
           store_id: string
           tone?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          action_proposals_enabled?: boolean
           ai_enabled?: boolean
           created_at?: string
           customer_feedback?: Json
@@ -1716,6 +1756,7 @@ export type Database = {
           operational_signals?: boolean
           proactivity?: string
           setup_guidance?: boolean
+          snoozed_signals?: Json
           store_id?: string
           tone?: string
           updated_at?: string
@@ -4194,8 +4235,36 @@ export type Database = {
         Args: { query_plan: Json; target_store_id: string }
         Returns: Json
       }
+      get_pace_customer_margin_watch: {
+        Args: { target_store_id: string }
+        Returns: Json
+      }
       get_pace_inventory_action_context: {
         Args: { target_store_id: string; user_query?: string }
+        Returns: Json
+      }
+      get_pace_inventory_query_context: {
+        Args: { query_spec: Json; target_store_id: string }
+        Returns: Json
+      }
+      get_pace_owner_briefing: {
+        Args: { target_store_id: string }
+        Returns: Json
+      }
+      get_pace_predictive_replenishment_context: {
+        Args: { target_store_id: string }
+        Returns: Json
+      }
+      get_pace_today_operational_queues: {
+        Args: { target_store_id: string }
+        Returns: Json
+      }
+      create_pace_replenishment_drafts: {
+        Args: {
+          action_idempotency_key: string
+          requested_items: Json
+          target_store_id: string
+        }
         Returns: Json
       }
       get_pace_product_recommendations: {
