@@ -1,5 +1,11 @@
 # POS Audit — Phase 1 & Phase 2 (A, B)
 
+> **Historisch document — niet gebruiken als actuele releasestatus.** Deze
+> audit beschrijft de browser-only fase van 8 augustus 2026, vóór de huidige
+> Supabase-architectuur en honderden latere tests. De statusvakjes hieronder
+> zijn alleen historisch. Gebruik [`PROJECT-CONTEXT.md`](PROJECT-CONTEXT.md)
+> voor de actuele, op commit `1273dad` afgebakende projectstatus.
+
 > Audit date: 2026-08-08 · Scope excludes auth, storage and backend security (demo build, local storage only, 0 backend).
 > Status legend: `[ ]` open · `[~]` in progress · `[x]` fixed & verified
 

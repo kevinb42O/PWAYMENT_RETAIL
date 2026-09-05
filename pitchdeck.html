@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="nl-BE">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PWAYMENT · Investor Pitchdeck</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: rgba(255, 255, 255, 0.04);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #06b6d4;
+      --accent-glow: rgba(6, 182, 212, 0.25);
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    #deck {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 3.5rem 5rem;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: scale(0.97) translateY(12px);
+      transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.35s;
+    }
+
+    .slide.active {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transform: scale(1) translateY(0);
+    }
+
+    .ambient-glow {
+      position: absolute;
+      top: -20%;
+      right: -10%;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, var(--accent-glow) 0%, rgba(6, 182, 212, 0) 70%);
+      filter: blur(80px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .slide-header {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 1rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-weight: 900;
+      font-size: 1.25rem;
+      letter-spacing: -0.04em;
+    }
+
+    .brand-mark {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, #06b6d4 0%, #0284c7 100%);
+      border-radius: 7px;
+      display: inline-block;
+      box-shadow: 0 0 16px rgba(6, 182, 212, 0.4);
+    }
+
+    .slide-tag {
+      font-size: 0.75rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      background: rgba(6, 182, 212, 0.1);
+      padding: 0.35rem 0.85rem;
+      border-radius: 9999px;
+      border: 1px solid rgba(6, 182, 212, 0.25);
+    }
+
+    .slide-body {
+      position: relative;
+      z-index: 10;
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 3.5rem;
+      align-items: center;
+      flex: 1;
+      padding: 2rem 0;
+    }
+
+    .slide-body.full-width {
+      grid-template-columns: 1fr;
+    }
+
+    .slide-title {
+      font-size: 2.85rem;
+      font-weight: 900;
+      line-height: 1.08;
+      letter-spacing: -0.045em;
+      margin-bottom: 1.75rem;
+    }
+
+    .slide-title span.highlight {
+      background: linear-gradient(135deg, #38bdf8 0%, #06b6d4 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .bullet-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .bullet-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      padding: 1.15rem 1.4rem;
+      border-radius: 1rem;
+      backdrop-filter: blur(12px);
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .bullet-item:hover {
+      border-color: rgba(6, 182, 212, 0.3);
+      transform: translateX(4px);
+    }
+
+    .bullet-icon {
+      font-size: 1.4rem;
+      flex-shrink: 0;
+      margin-top: 0.1rem;
+    }
+
+    .bullet-text strong {
+      display: block;
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 0.25rem;
+    }
+
+    .bullet-text p {
+      font-size: 0.92rem;
+      line-height: 1.5;
+      color: var(--text-muted);
+    }
+
+    .mockup-container {
+      position: relative;
+      border-radius: 1.25rem;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 40px rgba(6, 182, 212, 0.15);
+      background: #020617;
+    }
+
+    .mockup-container img {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 1.25rem;
+      object-fit: cover;
+    }
+
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+    }
+
+    .pricing-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 1.25rem;
+      padding: 2rem 1.75rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+    }
+
+    .pricing-card.featured {
+      border-color: var(--accent);
+      background: rgba(6, 182, 212, 0.06);
+      box-shadow: 0 0 35px rgba(6, 182, 212, 0.2);
+    }
+
+    .pricing-badge {
+      position: absolute;
+      top: -12px;
+      right: 1.5rem;
+      background: var(--accent);
+      color: #000;
+      font-size: 0.7rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+    }
+
+    .pricing-price {
+      font-size: 2.5rem;
+      font-weight: 900;
+      margin: 1rem 0;
+    }
+
+    .pricing-price span {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .slide-footer {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid var(--card-border);
+      padding-top: 1rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .footer-nav {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .nav-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 0.5rem 1rem;
+      border-radius: 0.65rem;
+      font-weight: 700;
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .nav-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    #notes-panel {
+      position: fixed;
+      bottom: 4.5rem;
+      left: 5rem;
+      right: 5rem;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid var(--accent);
+      border-radius: 1rem;
+      padding: 1.25rem 1.75rem;
+      color: #e2e8f0;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(16px);
+      display: none;
+      z-index: 100;
+    }
+
+    #notes-panel.visible {
+      display: block;
+    }
+
+    @media print {
+      body {
+        overflow: visible;
+        background: #fff;
+        color: #000;
+      }
+      .slide {
+        position: relative;
+        page-break-after: always;
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: none !important;
+        height: 100vh;
+        width: 100vw;
+      }
+      .ambient-glow, .slide-footer, #notes-panel {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="deck">
+    <div class="ambient-glow"></div>
+
+    <!-- SLIDE 1: Cover -->
+    <section class="slide active" data-notes="Opening: Welkom. Vandaag presenteer ik Pwayment: het slimme, cloud-based kassasysteem dat de traditionele retailkassa overbodig maakt door browser-native technologie en ingebouwde operationele AI.">
+      <header class="slide-header">
+        <div class="brand"><span class="brand-mark"></span> PWAYMENT</div>
+        <span class="slide-tag">01 · Elevator Pitch</span>
+      </header>
+      <main class="slide-body">
+        <div>
+          <h1 class="slide-title">Het intelligente kassasysteem voor de <span class="highlight">moderne retail</span>.</h1>
+          <div class="bullet-list">
+            <div class="bullet-item">
+              <span class="bullet-icon">⚡</span>
+              <div class="bullet-text">
+                <strong>Zero Friction & Hardware-Agonistisch</strong>
+                <p>Werkt direct in elke browser op iPad, tablet, laptop of smartphone zonder dure terminals.</p>
+              </div>
+            </div>
+            <div class="bullet-item">
+              <span class="bullet-icon">🧠</span>
+              <div class="bullet-text">
+                <strong>Ingebouwde AI-Copiloot (PACE)</strong>
+                <p>Eerste retailplatform met operationele AI voor proactief voorraadbeheer en besteladviezen.</p>
+              </div>
+            </div>
+            <div class="bullet-item">
+              <span class="bullet-icon">🇧🇪</span>
+              <div class="bullet-text">
+                <strong>100% Belgisch & Fiscaal Conform</strong>
+                <p>Volledige Z-rapporten, kasopmaak audits, meervoudige btw-tarieven en lokale betaalmethodes.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mockup-container">
+          <img src="/pitch/pwayment_pos_register_png_1788264606491.png" alt="Pwayment POS Kassa Interface" />
+        </div>
+      </main>
+      <footer class="slide-footer">
+        <span>www.pwayment.be · Kevin Demo</span>
+        <div class="footer-nav">
+          <button class="nav-btn" onclick="toggleNotes()">Notities (N)</button>
+          <button class="nav-btn" onclick="prevSlide()">← Vorige</button>
+          <button class="nav-btn" onclick="nextSlide()">Volgende →</button>
+        </div>
+      </footer>
+    </section>
+
+    <!-- SLIDE 2: Het Probleem -->
+    <section class="slide" data-notes="Probleem: Zelfstandige winkeliers zitten vast aan dure legacy hardware die puur reactief is. Ze hebben geen slimme inzichten en verliezen duizenden euro's aan dode voorraad.">
+      <header class="slide-header">
+        <div class="brand"><span class="brand-mark"></span> PWAYMENT</div>
+        <span class="slide-tag">02 · Het Probleem</span>
+      </header>
+      <main class="slide-body">
+        <div>
+          <h2 class="slide-title">Oude kassasystemen zijn <span class="highlight">log, duur en blind</span>.</h2>
+          <div class="bullet-list">
+            <div class="bullet-item">
+              <span class="bullet-icon">🔒</span>
+              <div class="bullet-text">
+                <strong>Dure Hardware Lock-In & Hoge Licenties</strong>
+                <p>Retailers betalen duizenden euro's voor verouderde kassa-terminals en starre licenties.</p>
+              </div>
+            </div>
+            <div class="bullet-item">
+              <span class="bullet-icon">📉</span>
+              <div class="bullet-text">
+                <strong>Geen Slimme Inzichten of Voorspellingen</strong>
+                <p>Kassa's registreren alleen transacties, maar waarschuwen nooit proactief voor dode voorraad.</p>
+              </div>
+            </div>
+            <div class="bullet-item">
+              <span class="bullet-icon">🔌</span>
+              <div class="bullet-text">
+                <strong>Complexe Installaties & Gevoelig voor Uitval</strong>
+                <p>Geen offline-werking en constante afhankelijkheid van externe installateurs bij storingen.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mockup-container">
+          <img src="/pitch/pwayment_inventory_insights_png_1788265005897.png" alt="Oude kassa's missen proactieve signalen" />
+        </div>
+      </main>
+      <footer class="slide-footer">
+        <span>Slide 2 / 8</span>
+        <div class="footer-nav">
+          <button class="nav-btn" onclick="prevSlide()">← Vorige</button>
+          <button class="nav-btn" onclick="nextSlide()">Volgende →</button>
+        </div>
+      </footer>
+    </section>
+
+    <!-- SLIDE 3: De Oplossing -->
+    <section class="slide" data-notes="Oplossing: Pwayment lost dit op met een Progressive Web App die binnen 10 seconden overal draait, naadloos koppelt met bestaande printers en scanners, en offline-first werkt.">
+      <header class="slide-header">
+        <div class="brand"><span class="brand-mark"></span> PWAYMENT</div>
+        <span class="slide-tag">03 · De Oplossing</span>
+      </header>
+      <main class="slide-body">
+        <div>
+          <h2 class="slide-title">Eén razendsnel platform dat <span class="highlight">overal werkt en meedenkt</span>.</h2>
+          <div class="bullet-list">
+            <div class="bullet-item">
+              <span class="bullet-icon">🚀</span>
+              <div class="bullet-text">
+                <strong>Progressive Web App (PWA)</strong>
+                <p>Binnen 10 seconden operationeel in elke browser zonder app store downloads of installatietrajecten.</p>
+              </div>
+            </div>
+            <div class="bullet-item">
+              <span class="bullet-icon">🖨️</span>
+              <div class="bullet-text">
+                <strong>Plug & Play met Bestaande Hardware</strong>
+                <p>Werkt met ESC/POS thermische bonprinters, bluetooth/USB scanners en realtime klantenschermen.</p>
+              </div>
+            </div>
+            <div class="bullet-item">
+              <span class="bullet-icon">🔄</span>
+              <div class="bullet-text">
+                <strong>Offline-First Betrouwbaarheid</strong>
+                <p>Draait door bij netwerkstoringen via IndexedDB en synchroniseert automatisch bij herstel.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mockup-container">
+          <img src="/pitch/pwayment_pos_register_png_1788264606491.png" alt="Pwayment Kassa Oplossing" />
+        </div>
+      </main>
+      <footer class="slide-footer">
+        <span>Slide 3 / 8</span>
+        <div class="footer-nav">
+          <button class="nav-btn" onclick="prevSlide()">← Vorige</button>
+          <button class="nav-btn" onclick="nextSlide()">Volgende →</button>
+        </div>
+      </footer>
+    </section>
+
+    <!-- SLIDE 4: Magic Sauce / PACE AI -->
+    <section class="slide" data-notes="Magic Sauce: PACE is onze AI-copiloot. PACE berekent exact welke voorraad stilvalt (€ 1.817 in deze demo) en welke 26 artikelen besteld moeten worden. De ondernemer vraagt simpelweg in natuurlijk Nederlands.">
+      <header class="slide-header">
+        <div class="brand"><span class="brand-mark"></span> PWAYMENT</div>
+        <span class="slide-tag">04 · De Magic Sauce</span>
+      </header>
+      <main class="slide-body">
+        <div>
+          <h2 class="slide-title">PACE: De ingebouwde <span class="highlight">AI-copiloot voor retail</span>.</h2>
+          <div class="bullet-list">
+            <div class="bullet-item">
+              <span class="bullet-icon">🤖</span>
+              <div class="bullet-text">
+                <strong>Proactieve Voorraad- & Besteladviezen</strong>
+                <p>Signaleert automatisch welke producten onder minimum raken en berekent niet-lopende voorraad (€ 1.817,50).</p>
+              </div>
+            </div>
+            <div class="bullet-item">
+              <span class="bullet-icon">💬</span>
+              <div class="bullet-text">
+                <strong>Natuurlijke Taal Retail Queries</strong>
+                <p>Vraag simpelweg: "Op welk uur verkoop ik het meeste?" en ontvang direct realtime antwoord met actieknoppen.</p>
+              </div>
+            </div>
+            <div class="bullet-item">
+              <span class="bullet-icon">🎯</span>
+              <div class="bullet-text">
+                <strong>Geïntegreerde CRM & Loyaliteit</strong>
+                <p>Klantkoppeling aan de kassa, aankoopgeschiedenis, cadeaubonsaldi en automatische upsell-suggesties.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mockup-container">
+          <img src="/pitch/pwayment_pace_ai_assistant_png_1788264938860.png" alt="PACE AI Copiloot" />
+        </div>
+      </main>
+      <footer class="slide-footer">
+        <span>Slide 4 / 8</span>
+        <div class="footer-nav">
+          <button class="nav-btn" onclick="prevSlide()">← Vorige</button>
+          <button class="nav-btn" onclick="nextSlide()">Volgende →</button>
+        </div>
+      </footer>
+    </section>
+
+    <!-- SLIDE 5: Businessmodel -->
+    <section class="slide" data-notes="Businessmodel: Schaalbare SaaS met extreem lage churn (kassasoftware blijft gemiddeld 5 tot 7 jaar staan), gecombineerd met transactie markups en starter kits.">
+      <header class="slide-header">
+        <div class="brand"><span class="brand-mark"></span> PWAYMENT</div>
+        <span class="slide-tag">05 · Businessmodel</span>
+      </header>
+      <main class="slide-body full-width">
+        <h2 class="slide-title" style="margin-bottom: 2rem;">Schaalbare <span class="highlight">SaaS licenties</span> + Transactie revenue-share.</h2>
+        <div class="pricing-grid">
+          <div class="pricing-card">
+            <div>
+              <h3>Basis</h3>
+              <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">Voor startende winkels</p>
+              <div class="pricing-price">€ 39 <span>/ mnd</span></div>
+              <p style="font-size: 0.9rem; line-height: 1.6; color: var(--text-muted);">
+                ✓ POS Kassa & Barcode Scanner<br/>
+                ✓ Fiscale Z- & X-rapporten<br/>
+                ✓ Lokale Hardware Ondersteuning
+              </p>
+            </div>
+          </div>
+          <div class="pricing-card featured">
+            <span class="pricing-badge">Meest Gekozen</span>
+            <div>
+              <h3>Pro (Powered by PACE)</h3>
+              <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">Voor actieve retailers</p>
+              <div class="pricing-price" style="color: var(--accent);">€ 69 <span>/ mnd</span></div>
+              <p style="font-size: 0.9rem; line-height: 1.6; color: var(--text-main);">
+                ✓ <strong>Alles in Basis</strong><br/>
+                ✓ <strong>PACE AI Copiloot & Besteladviezen</strong><br/>
+                ✓ <strong>Voorraadbeheer & Klanten CRM</strong><br/>
+                ✓ <strong>Omzet Heatmaps & Marges</strong>
+              </p>
+            </div>
+          </div>
+          <div class="pricing-card">
+            <div>
+              <h3>Enterprise</h3>
+              <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">Multi-filiaal & Webshop</p>
+              <div class="pricing-price">€ 119 <span>/ mnd</span></div>
+              <p style="font-size: 0.9rem; line-height: 1.6; color: var(--text-muted);">
+                ✓ Multi-Store Management<br/>
+                ✓ Live Webshop Synchronisatie<br/>
+                ✓ API Integraties & SLA Support
+              </p>
+            </div>
+          </div>
+        </div>
+      </main>
+      <footer class="slide-footer">
+        <span>Slide 5 / 8</span>
+        <div class="footer-nav">
+          <button class="nav-btn" onclick="prevSlide()">← Vorige</button>
+          <button class="nav-btn" onclick="nextSlide()">Volgende →</button>
+        </div>
+      </footer>
+    </section>
+
+    <!-- SLIDE 6: Tractie & Status -->
+    <section class="slide" data-notes="Tractie: Het platform is geen idee of mockup. Het staat 100% live in productie op www.pwayment.be, PACE is operationeel verbonden en de hardware-integraties zijn getest.">
+      <header class="slide-header">
+        <div class="brand"><span class="brand-mark"></span> PWAYMENT</div>
+        <span class="slide-tag">06 · Tractie & Status</span>
+      </header>
+      <main class="slide-body">
+        <div>
+          <h2 class="slide-title">Geen mockup — Een <span class="highlight">100% werkend platform</span>.</h2>
+          <div class="bullet-list">
+            <div class="bullet-item">
+              <span class="bullet-icon">🟢</span>
+              <div class="bullet-text">
+                <strong>Live in Productie op www.pwayment.be</strong>
+                <p>Volledige architectuur actief met realtime data-synchronisatie en multi-tenant beveiliging.</p>
+              </div>
+            </div>
+            <div class="bullet-item">
+              <span class="bullet-icon">🧠</span>
+              <div class="bullet-text">
+                <strong>PACE AI Volledig Getraind & Geïntegreerd</strong>
+                <p>Realtime gekoppeld aan verkooptransacties, catalogi en voorraadsignalen.</p>
+              </div>
+            </div>
+            <div class="bullet-item">
+              <span class="bullet-icon">🖨️</span>
+              <div class="bullet-text">
+                <strong>Hardware Integratietests Afgerond</strong>
+                <p>Getest en operationeel met thermische ESC/POS printers, scanners en dubbele klantenschermen.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mockup-container">
+          <img src="/pitch/pwayment_analytics_charts_1788265074470.png" alt="Live Analytics en Omzetgroei" />
+        </div>
+      </main>
+      <footer class="slide-footer">
+        <span>Slide 6 / 8</span>
+        <div class="footer-nav">
+          <button class="nav-btn" onclick="prevSlide()">← Vorige</button>
+          <button class="nav-btn" onclick="nextSlide()">Volgende →</button>
+        </div>
+      </footer>
+    </section>
+
+    <!-- SLIDE 7: Het Team -->
+    <section class="slide" data-notes="Team: Als solo full-stack developer heb ik de complete architectuur autonoom gebouwd met maximale snelheid en nul overhead. Voor de commerciële versnelling zoek ik de juiste partner.">
+      <header class="slide-header">
+        <div class="brand"><span class="brand-mark"></span> PWAYMENT</div>
+        <span class="slide-tag">07 · Het Team</span>
+      </header>
+      <main class="slide-body">
+        <div>
+          <h2 class="slide-title">Gebouwd door een <span class="highlight">full-stack software-architect</span>.</h2>
+          <div class="bullet-list">
+            <div class="bullet-item">
+              <span class="bullet-icon">🛠️</span>
+              <div class="bullet-text">
+                <strong>Solo Founder & Developer (Kevin)</strong>
+                <p>Autonoom de complete Pwayment stack ontworpen en gebouwd (React 19, Supabase, Dexie DB, PACE AI).</p>
+              </div>
+            </div>
+            <div class="bullet-item">
+              <span class="bullet-icon">⚡</span>
+              <div class="bullet-text">
+                <strong>Hoge Bouwsnelheid & Zero Overhead</strong>
+                <p>100% eigenaarschap over de codebase en enterprise-grade kwaliteit gerealiseerd met minimale burn-rate.</p>
+              </div>
+            </div>
+            <div class="bullet-item">
+              <span class="bullet-icon">🤝</span>
+              <div class="bullet-text">
+                <strong>Eerlijke Bouwersfocus</strong>
+                <p>"Mijn kracht ligt in het bouwen van superieure software; voor de sales en go-to-market zoek ik een sterke partner."</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mockup-container">
+          <img src="/pitch/pwayment_crm_customers_1788265107633.png" alt="Klantenbeheer en CRM" />
+        </div>
+      </main>
+      <footer class="slide-footer">
+        <span>Slide 7 / 8</span>
+        <div class="footer-nav">
+          <button class="nav-btn" onclick="prevSlide()">← Vorige</button>
+          <button class="nav-btn" onclick="nextSlide()">Volgende →</button>
+        </div>
+      </footer>
+    </section>
+
+    <!-- SLIDE 8: The Ask -->
+    <section class="slide" data-notes="The Ask: We zoeken € 150.000 om de eerste 50 winkels aan te sluiten en distributiekanalen op te zetten met accountants en hardwarepartners.">
+      <header class="slide-header">
+        <div class="brand"><span class="brand-mark"></span> PWAYMENT</div>
+        <span class="slide-tag">08 · The Ask</span>
+      </header>
+      <main class="slide-body">
+        <div>
+          <h2 class="slide-title"><span class="highlight">€ 150.000 Seed Kapitaal</span> voor Go-to-Market & Eerste 50 Winkels.</h2>
+          <div class="bullet-list">
+            <div class="bullet-item">
+              <span class="bullet-icon">🚀</span>
+              <div class="bullet-text">
+                <strong>Eerste 50 Retailers Aansluiten in 9 Maanden</strong>
+                <p>Opschalen naar € 42.000+ ARR en bewijzen van de schaalbare sales-funnel in Vlaanderen en Brussel.</p>
+              </div>
+            </div>
+            <div class="bullet-item">
+              <span class="bullet-icon">💼</span>
+              <div class="bullet-text">
+                <strong>Channel & Reseller Partnerships</strong>
+                <p>Samenwerkingen opzetten met accountants, winkelinrichters en kassa-installateurs.</p>
+              </div>
+            </div>
+            <div class="bullet-item">
+              <span class="bullet-icon">📦</span>
+              <div class="bullet-text">
+                <strong>PACE AI Auto-Ordering</strong>
+                <p>Rechtstreekse geautomatiseerde bestelorders naar leveranciers (EDI / e-mail inkooporders).</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bullet-item" style="flex-direction: column; align-items: stretch; gap: 1.5rem; padding: 2.5rem; background: rgba(6, 182, 212, 0.05); border-color: rgba(6, 182, 212, 0.3);">
+          <h3 style="font-size: 1.5rem; font-weight: 900; color: #fff;">Laten we samenwerken</h3>
+          <p style="color: var(--text-muted); font-size: 1rem; line-height: 1.6;">
+            De retailmarkt verandert in sneltempo. Pwayment en PACE geven zelfstandige retailers de AI-voorsprong die voorheen alleen voor grote ketens beschikbaar was.
+          </p>
+          <div style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.95rem;">
+            <div><strong>Oprichter:</strong> Kevin</div>
+            <div><strong>E-mail:</strong> <span style="color: var(--accent);">kevin@webaanzee.be</span></div>
+            <div><strong>Live Platform:</strong> <span style="color: var(--accent);">www.pwayment.be</span></div>
+          </div>
+        </div>
+      </main>
+      <footer class="slide-footer">
+        <span>Slide 8 / 8 · Einde Pitch</span>
+        <div class="footer-nav">
+          <button class="nav-btn" onclick="prevSlide()">← Vorige</button>
+          <button class="nav-btn" onclick="goToSlide(0)">Herstart ↺</button>
+        </div>
+      </footer>
+    </section>
+  </div>
+
+  <!-- Notes Panel -->
+  <div id="notes-panel"></div>
+
+  <script>
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    const notesPanel = document.getElementById('notes-panel');
+    let currentIndex = 0;
+
+    function showSlide(index) {
+      if (index < 0) index = 0;
+      if (index >= slides.length) index = slides.length - 1;
+      currentIndex = index;
+
+      slides.forEach((slide, i) => {
+        slide.classList.toggle('active', i === currentIndex);
+      });
+
+      updateNotes();
+    }
+
+    function nextSlide() {
+      showSlide(currentIndex + 1);
+    }
+
+    function prevSlide() {
+      showSlide(currentIndex - 1);
+    }
+
+    function goToSlide(i) {
+      showSlide(i);
+    }
+
+    function toggleNotes() {
+      notesPanel.classList.toggle('visible');
+    }
+
+    function updateNotes() {
+      const activeSlide = slides[currentIndex];
+      const note = activeSlide.getAttribute('data-notes') || 'Geen sprekersnotitie voor deze slide.';
+      notesPanel.innerHTML = '<strong>Sprekersnotitie:</strong> ' + note;
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        toggleNotes();
+      } else if (e.key.toLowerCase() === 'f') {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen();
+        } else {
+          document.exitFullscreen();
+        }
+      }
+    });
+
+    updateNotes();
+  </script>
+</body>
+</html>

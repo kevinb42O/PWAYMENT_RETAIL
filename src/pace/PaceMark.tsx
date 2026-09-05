@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from "motion/react";
-import { useId, type CSSProperties } from "react";
+import { useCallback, useId, type CSSProperties } from "react";
 import type { PaceSignalTone } from "./paceSignals";
 import { paceTonePalette } from "./pacePalette";
 import type { PaceMotion } from "./usePace";
@@ -16,7 +16,7 @@ export const resolvePaceMotion = ({ reducedMotion, motionMode, forceMotion = fal
   fullMotion: forceMotion || (!reducedMotion && motionMode === "full"),
 });
 
-const DEPTH_LAYERS = [-5, -4, -3, -2, -1] as const;
+const DEPTH_LAYERS = [-3, -2, -1] as const;
 
 const movementFor = (state: PaceEmotion, pose: PacePose, fullMotion: boolean) => {
   if (!fullMotion) return { rotateY: 0, rotateX: 0, rotateZ: 0, z: 0 };
@@ -26,11 +26,11 @@ const movementFor = (state: PaceEmotion, pose: PacePose, fullMotion: boolean) =>
   if (pose === "split") return { rotateY: [0, -5, 5, 0], rotateX: [0, 1.5, -1.5, 0], rotateZ: 0, z: [0, 1, 0] };
   switch (state) {
     case "thinking": return { rotateY: [0, -11, 8, 0], rotateX: [0, 3, -2, 0], rotateZ: [0, -1.2, 0.8, 0], z: [0, 2, 1, 0] };
-    case "guiding": return { rotateY: [0, -34, -8, 20, 0, 360], rotateX: [0, 7, -3, 0], rotateZ: [0, -4, 2, 0], z: [0, 7, 2, 0] };
-    case "celebrating": return { rotateY: [0, 190, 360], rotateX: [0, -16, 0], rotateZ: [0, -8, 5, 0], z: [0, 13, 0] };
-    case "attentive": return { rotateY: [0, -22, 14, 0, 0, 360], rotateX: [0, 5, -2, 0], rotateZ: [0, -2, 1, 0], z: [0, 4, 0] };
+    case "guiding": return { rotateY: [0, -8, 4, 0], rotateX: [0, 2, 0], rotateZ: [0, -2, 0], z: [0, 2, 0] };
+    case "celebrating": return { rotateY: [0, -12, 0], rotateX: [0, -4, 0], rotateZ: [0, -5, 2, 0], z: [0, 4, 0] };
+    case "attentive": return { rotateY: [0, -6, 4, 0], rotateX: [0, 2, 0], rotateZ: 0, z: 0 };
     case "sleeping": return { rotateY: 18, rotateX: 9, rotateZ: 3, z: -2 };
-    default: return { rotateY: [0, -12, 0, 10, 0, 0, 360], rotateX: [0, 3, 0, -2, 0], rotateZ: [0, -1, 0, 1, 0], z: [0, 2, 0] };
+    default: return { rotateY: 0, rotateX: 0, rotateZ: 0, z: 0 };
   }
 };
 
@@ -87,39 +87,48 @@ export const PaceMark = ({
   const bodyId = `${gradientId}-body`;
   const dotId = `${gradientId}-dot`;
   const reducedMotion = useReducedMotion();
-  const { canMove, fullMotion } = resolvePaceMotion({ reducedMotion: Boolean(reducedMotion), motionMode, forceMotion });
+  const motionPolicy = resolvePaceMotion({ reducedMotion: Boolean(reducedMotion), motionMode, forceMotion });
+  const canMove = motionPolicy.canMove && (forceMotion || energy !== "still");
+  const fullMotion = motionPolicy.fullMotion && canMove;
   const state: PaceEmotion = emotion ?? (thinking ? "thinking" : active ? "attentive" : "idle");
   const palette = paceTonePalette(tone);
   const pause = state === "celebrating" ? 1.8 : state === "thinking" ? 0 : 0.35;
-  const performanceActive = Boolean(expressive && performance && fullMotion);
-  // Semantic work poses own Pace's body language. The legacy punctuation/blob
-  // cycle is reserved for explicit expression previews and must never mask a
-  // truthful operational state.
-  const thinkingMorphActive = Boolean(expressive && !performance && state === "thinking" && pose === "rest" && fullMotion);
+  const greeting = active && state === "attentive" && tone === "flow" && (pose === "rest" || pose === "focus");
+  const performanceGlyph = performance ?? (active && (greeting || state === "celebrating" || pose === "settle")
+    ? "liquid" : active && state === "attentive" && tone === "attention" ? "exclamation" : null);
+  const performanceActive = Boolean(expressive && performanceGlyph && fullMotion);
+  // Morphing is Pace's character, not a fabricated processing status. Keep the
+  // real pose and accessible state while his ribbon flows through ? and liquid.
+  const thinkingMorphActive = Boolean(expressive && !performance && state === "thinking" && fullMotion);
   const morphActive = performanceActive || thinkingMorphActive;
-  const poseOwnsGlyph = pose === "focus" || pose === "gather" || pose === "split" || pose === "shield" || pose === "settle";
-  const glyph = poseOwnsGlyph ? "pace" : resolvePaceGlyph({ state, tone, active, performance, expressive });
+  const glyph = resolvePaceGlyph({ state, tone, active, performance, expressive });
   const bodySequence = thinkingMorphActive
     ? PACE_THINKING_GLYPH_SEQUENCE.map((step) => PACE_MORPH_BODY[step])
-    : performanceActive ? performanceSequence(glyph) : [PACE_MORPH_BODY.pace, PACE_MORPH_BODY[glyph]];
+    : performanceActive ? performanceSequence(performanceGlyph!) : [PACE_MORPH_BODY.pace, PACE_MORPH_BODY[glyph]];
   const dotSequenceValues = thinkingMorphActive
     ? PACE_THINKING_GLYPH_SEQUENCE.map((step) => PACE_MORPH_DOT[step])
-    : performanceActive ? dotSequence(glyph) : [PACE_MORPH_DOT.pace, PACE_MORPH_DOT[glyph]];
+    : performanceActive ? dotSequence(performanceGlyph!) : [PACE_MORPH_DOT.pace, PACE_MORPH_DOT[glyph]];
   const animateGlyph = morphActive || (canMove && glyph !== "pace");
-  const morphDuration = thinkingMorphActive ? 5.6 : performanceActive ? 2.8 : 0.72;
-  const morphTimes = thinkingMorphActive ? "0;0.14;0.3;0.48;0.67;0.84;1" : performanceActive ? "0;0.24;0.72;1" : "0;1";
+  const morphDuration = thinkingMorphActive ? 6.4 : performanceActive ? greeting && !performance ? 4.6 : 2.8 : 0.9;
+  const morphTimes = thinkingMorphActive ? "0;0.17;0.3;0.49;0.64;0.82;1" : performanceActive ? "0;0.32;0.58;1" : "0;1";
+  const morphSplines = bodySequence.slice(1).map(() => ".42 0 .2 1").join(";");
+  const morphKey = `${bodySequence.join(";")}-${morphDuration}`;
+  // Explicitly restart newly mounted SMIL animations on an already-running SVG
+  // timeline. Stable callback/keys prevent typing or stream updates restarting it.
+  const startMorph = useCallback((animation: SVGAnimateElement | null) => { animation?.beginElement(); }, []);
 
   return (
     <motion.span
       className={`pace-mark-stage is-${state} tone-${tone} pose-${pose} energy-${energy}${performanceActive ? " is-performing" : ""}${thinkingMorphActive ? " is-pondering" : ""}`}
       data-pace-pose={pose}
       data-pace-energy={energy}
+      data-motion={forceMotion ? "full" : canMove ? motionMode : "off"}
       style={{ width: size, height: size, perspective: Math.max(180, size * 5), "--pace-accent": palette.accent, "--pace-color-start": palette.start, "--pace-color-end": palette.end, "--pace-color-depth": palette.depth } as CSSProperties}
       role="img"
       aria-label={`Pace · ${stateLabel ?? state}`}
       initial={false}
-      animate={canMove ? { y: state === "sleeping" ? [0, 1, 0] : [0, -1.5, 0], scale: state === "celebrating" ? [1, 1.08, 1] : 1 } : undefined}
-      transition={canMove ? { duration: state === "celebrating" ? 1.35 : 3.8, repeat: Infinity, repeatDelay: pause, ease: "easeInOut" } : undefined}
+      animate={fullMotion && state !== "idle" && state !== "sleeping" ? { y: [0, -1, 0], scale: state === "celebrating" ? [1, 1.04, 1] : 1 } : { y: 0, scale: 1 }}
+      transition={{ duration: canMove ? state === "celebrating" ? 1.35 : 4.8 : 0, repeat: fullMotion && state !== "celebrating" ? Infinity : 0, repeatDelay: pause, ease: "easeInOut" }}
     >
       <span className="pace-mark-choreography" aria-hidden="true">
         <i className="pace-choreo-ring pace-choreo-ring-a" />
@@ -133,20 +142,21 @@ export const PaceMark = ({
         <svg className="pace-settle-trace" viewBox="0 0 100 100"><circle cx="50" cy="50" r="39" /><path d="m32 51 12 12 25-28" /></svg>
       </span>
       <motion.span
-        className={`pace-mark-morph${performanceActive ? ` is-${performance}` : ""}${thinkingMorphActive ? " is-pondering" : ""}`}
+        className={`pace-mark-morph${performanceActive ? ` is-${performanceGlyph}` : ""}${thinkingMorphActive ? " is-pondering" : ""}`}
         aria-hidden="true"
       >
         <motion.span
           className="pace-mark-rig"
           initial={false}
           animate={movementFor(state, pose, fullMotion && !morphActive)}
-          transition={{ duration: durationFor(state), repeat: canMove && !morphActive ? Infinity : 0, repeatDelay: pause, ease: state === "thinking" ? "linear" : [0.22, 1, 0.36, 1] }}
+          transition={{ duration: canMove ? durationFor(state) : 0, repeat: fullMotion && !morphActive && state !== "celebrating" ? Infinity : 0, repeatDelay: pause, ease: [0.22, 1, 0.36, 1] }}
         >
           <svg className="pace-mark-vector" viewBox="-7 -5 114 112" overflow="visible" shapeRendering="geometricPrecision">
             <defs>
               <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
                 <stop offset="0" stopColor="var(--pace-color-start)" />
-                <stop offset="0.76" stopColor="var(--pace-color-end)" />
+                <stop offset="0.42" stopColor="var(--pace-accent)" />
+                <stop offset="1" stopColor="var(--pace-color-end)" />
               </linearGradient>
               <linearGradient id={sheenId} x1="0" y1="0" x2="1" y2="1">
                 <stop offset="0.12" stopColor="white" stopOpacity="0" />
@@ -154,17 +164,17 @@ export const PaceMark = ({
                 <stop offset="0.7" stopColor="white" stopOpacity="0" />
               </linearGradient>
               <path id={bodyId} d={animateGlyph ? bodySequence[0] : PACE_MORPH_BODY[glyph]}>
-                {animateGlyph && <animate attributeName="d" values={bodySequence.join(";")} keyTimes={morphTimes} dur={`${morphDuration}s`} repeatCount={thinkingMorphActive ? "indefinite" : "1"} fill="freeze" />}
+                {animateGlyph && <animate key={morphKey} ref={startMorph} attributeName="d" values={bodySequence.join(";")} keyTimes={morphTimes} calcMode="spline" keySplines={morphSplines} dur={`${morphDuration}s`} repeatCount={thinkingMorphActive ? "indefinite" : "1"} fill="freeze" />}
               </path>
               <path id={dotId} d={animateGlyph ? dotSequenceValues[0] : PACE_MORPH_DOT[glyph]}>
-                {animateGlyph && <animate attributeName="d" values={dotSequenceValues.join(";")} keyTimes={morphTimes} dur={`${morphDuration}s`} repeatCount={thinkingMorphActive ? "indefinite" : "1"} fill="freeze" />}
+                {animateGlyph && <animate key={morphKey} ref={startMorph} attributeName="d" values={dotSequenceValues.join(";")} keyTimes={morphTimes} calcMode="spline" keySplines={morphSplines} dur={`${morphDuration}s`} repeatCount={thinkingMorphActive ? "indefinite" : "1"} fill="freeze" />}
               </path>
             </defs>
             {DEPTH_LAYERS.map((depth) => (
               <use key={depth} className="pace-mark-vector-depth" href={`#${bodyId}`} transform={`translate(${depth * 0.42} ${depth * -0.28})`} />
             ))}
             <use className="pace-mark-vector-front" href={`#${bodyId}`} fill={`url(#${gradientId})`} />
-            <motion.use className="pace-mark-vector-sheen" href={`#${bodyId}`} fill={`url(#${sheenId})`} animate={{ opacity: morphActive ? [0.26, 0.7, 0.4, 0.62, 0.26] : 0.38 }} transition={{ duration: thinkingMorphActive ? 5.6 : performanceActive ? 2.8 : 0.4, times: morphActive ? [0, 0.2, 0.4, 0.76, 1] : undefined, repeat: thinkingMorphActive ? Infinity : 0, ease: "easeInOut" }} />
+            <motion.use className="pace-mark-vector-sheen" href={`#${bodyId}`} fill={`url(#${sheenId})`} animate={{ opacity: morphActive ? [0.26, 0.7, 0.4, 0.62, 0.26] : 0.38 }} transition={{ duration: canMove ? morphActive ? morphDuration : 0.4 : 0, times: morphActive ? [0, 0.2, 0.4, 0.76, 1] : undefined, repeat: thinkingMorphActive ? Infinity : 0, ease: "easeInOut" }} />
             <use className="pace-mark-vector-rim" href={`#${bodyId}`} />
             <use className="pace-mark-vector-dot-depth" href={`#${dotId}`} transform="translate(-2 2)" />
             <use className="pace-mark-vector-dot" href={`#${dotId}`} fill={`url(#${gradientId})`} />

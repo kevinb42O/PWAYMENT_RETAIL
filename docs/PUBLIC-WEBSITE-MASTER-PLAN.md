@@ -1,5 +1,12 @@
 # PWAYMENT public website and customer platform — master plan
 
+> **Plan, geen actuele productclaim.** De oorspronkelijke aanname hieronder
+> behandelt alle gewenste mogelijkheden als launch capability. De audit van 31
+> augustus 2026 bevestigt die aanname niet: de live site heeft juridische
+> placeholders en enkele prijs-/featureclaims lopen voor op de operationele
+> implementatie. Publiceer alleen claims die volgens
+> [`../PROJECT-CONTEXT.md`](../PROJECT-CONTEXT.md) bewezen zijn.
+
 **Planning date:** 11 August 2026  
 **Scope:** The permanent, production-state public website, pricing and comparison, signup, account entry, acquisition funnels, onboarding, trust, content, documentation, and customer ecosystem.  
 **Recommended launch market:** Dutch-speaking Belgian independent retail first; French Belgium next; English after the Belgian proposition converts.

@@ -1,6 +1,14 @@
 # PWAYMENT compliance-readiness
 
-Status: technisch voorbereid op 30 augustus 2026. Dit document is een implementatiechecklist en geen formeel juridisch advies.
+**Statuscontrole:** 31 augustus 2026 — **niet vrijgegeven voor commerciële
+productie**. Dit document is een implementatiechecklist en geen formeel
+juridisch advies. Zie ook [`PROJECT-CONTEXT.md`](PROJECT-CONTEXT.md).
+
+Tijdens de audit waren de verplichte juridische waarden niet aanwezig in de
+gecontroleerde Vercel-productieconfiguratie en toonde de live site nog
+placeholders. `npm run check:compliance` faalt in die toestand terecht. De
+huidige GitHub quality-workflow roept deze controle nog niet aan; onderstaande
+releasegate is dus een vereiste doeltoestand en nog niet volledig afgedwongen.
 
 ## Voor productie nog door de eigenaar in te vullen
 
@@ -60,3 +68,7 @@ npm run check:site
 npm run check:security
 npm run check:supabase-release
 ```
+
+Voeg `npm run check:compliance` toe aan de GitHub quality-workflow en controleer
+dezelfde waarden opnieuw na deploy op de live juridische pagina's. Vul geen
+voorbeeldwaarden in om de gate alleen technisch groen te maken.

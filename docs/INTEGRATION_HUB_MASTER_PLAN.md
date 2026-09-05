@@ -1,5 +1,11 @@
 # Pwayment Integration Hub — master plan
 
+> **Actuele afbakening, 31 augustus 2026:** dit is een doelarchitectuur. De
+> huidige Hub-UI gebruikt gesimuleerde test- en synchronisatieruns en bewijst
+> geen echte providerverbinding, duurzame datarun of webhook/API-product.
+> Gebruik [`../PROJECT-CONTEXT.md`](../PROJECT-CONTEXT.md) voor wat vandaag
+> operationeel is.
+
 **Status:** proposed implementation plan
 **Product promise:** a merchant can bring an export or connection from any reasonable retail system into Pwayment and receive a working, tailored retail operation—not merely a product list—without retyping their business or reshaping a spreadsheet first. A technical partner can connect a system safely, predictably, and observably.
 

@@ -5,13 +5,9 @@
 </p>
 
 <p align="center">
-  Een offline-first retailplatform voor Belgische winkels: POS, voorraad, klanten,
-  cadeaubonnen, webshop, herstellingen, personeelsplanning en retail intelligence
-  in één operationele omgeving.
-</p>
-
-<p align="center">
-  <a href="https://github.com/kevinb42O/PWAYMENT_RETAIL/actions/workflows/ci.yml"><img src="https://github.com/kevinb42O/PWAYMENT_RETAIL/actions/workflows/ci.yml/badge.svg" alt="Quality gates" /></a>
+  Een offline-first retailplatform voor Belgische winkels, met een bewezen
+  operationele POS-kern en aanvullende modules in verschillende
+  gereedheidsfasen.
 </p>
 
 ![PWAYMENT POS](public/website/pwayment-pos-current.jpg)
@@ -31,25 +27,33 @@
 
 ## Platform
 
-PWAYMENT is een multi-tenant retailplatform. Elke winkel werkt met een eigen
-Supabase-account, tenant, medewerkers, registers, catalogus, transacties en
-operationele configuratie. De webapp wordt op Vercel aangeboden; Supabase vormt
-de centrale data- en autorisatielaag. Op elk register houdt de PWA een lokale,
-offline bruikbare operationele cache bij.
+> **Actuele status:** lees eerst [`PROJECT-CONTEXT.md`](PROJECT-CONTEXT.md).
+> Dat document is de canonieke momentopname van wat geverifieerd, gedeeltelijk,
+> gepland of nog niet productiegeschikt is. Een masterplan of zichtbare UI is
+> op zichzelf geen bewijs van een live integratie.
 
-De kernflows zijn niet afhankelijk van demo-data of browser-only gebruikers:
+PWAYMENT is een multi-tenant retailplatform. Elke winkel werkt met een eigen
+Supabase-tenant, catalogus, transacties en operationele configuratie. De webapp
+wordt op Vercel aangeboden; Supabase vormt de centrale data- en
+autorisatielaag. Op een register houdt de PWA een lokale, offline bruikbare
+operationele cache bij.
+
+De gecommitteerde productiekern bevat:
 
 - e-mail/wachtwoord-authenticatie via Supabase Auth, registratie,
-  e-mailbevestiging, uitnodiging en wachtwoordherstel;
-- winkelprovisioning bij registratie, profielen, winkel-lidmaatschappen en
-  owner-, manager- en cashierrollen;
+  e-mailbevestiging en wachtwoordherstel;
+- winkelprovisioning bij registratie, profielen en winkel-lidmaatschappen;
 - server-side tenantisolatie met RLS, policy's en gecontroleerde RPC-functies;
 - realtime updates tussen registers plus een duurzame synchronisatiewachtrij
-  voor lokaal ontstane wijzigingen;
+  voor de ondersteunde lokaal ontstane wijzigingen;
 - plan-, trial-, feature- en limietcontrole vanuit de centrale
   entitlementlaag;
 - een apart Platform Console-oppervlak voor operationeel beheer, releases,
   tenants, supporttoegang, integratieruns en incidenten.
+
+Veilige medewerkerstoegang op een gedeeld register is op de gecommitteerde basis
+nog niet volledig bewezen. In de huidige werkmap bestaat hiervoor
+niet-gecommitteerd werk; zie `PROJECT-CONTEXT.md` voor de exacte afbakening.
 
 ## Productiearchitectuur
 
@@ -78,9 +82,10 @@ herstelwachtrij van een register. Bij een geldige sessie hydrateert de app de
 actieve winkel vanuit Supabase, verwerkt zij realtime-wijzigingen en levert zij
 wachtende mutaties veilig af zodra een verbinding terug is.
 
-De repository bevat momenteel 72 versiebeheerde Supabase-migraties. De lokale
-migratiehistoriek is op **23 augustus 2026** gecontroleerd en komt volledig
-overeen met de gekoppelde remote database.
+Commit `1273dad` bevat **120** versiebeheerde Supabase-migraties; die
+migratiehistoriek kwam tijdens de audit overeen met de gekoppelde remote
+database. De huidige werkmap bevat daarnaast twee niet-gecommitteerde
+POS-operatormigraties. Die zijn geen onderdeel van deze geverifieerde basis.
 
 ## Modules
 
@@ -100,9 +105,10 @@ overeen met de gekoppelde remote database.
 - Dagafsluiting met kasreconciliatie, betaalmix, omzet, brutomarge,
   kortingen, BTW-uitsplitsing, controleerbare rapportdetails en hashketen.
 
-Mollie In-person Payments is de primaire kaartterminalintegratie. De POS maakt
-de betaling server-side aan, volgt de providerstatus en boekt de verkoop pas na
-`paid`. Cash, cadeaubonnen en gesplitste betalingen blijven ondersteund.
+Er is een Mollie In-person Payments-codepad. De POS kan een betaling server-side
+aanmaken, de providerstatus volgen en de verkoop pas na `paid` boeken. De
+fysieke terminalkoppeling en end-to-end hardwareacceptatie staan nog open en
+vallen daarom niet onder de bewezen productiestatus.
 
 ### Catalogus, voorraad en aankoop
 
@@ -136,6 +142,8 @@ de betaling server-side aan, volgt de providerstatus en boekt de verkoop pas na
   configuratie.
 - Server-side ordercreatie, voorraadreservering, orderregels en een
   verwerkingsflow voor bevestigen, verwerken, verzenden, afhalen en annuleren.
+- Ordermail en een volledige webshop-betaallifecycle zijn nog niet
+  productiegeconfigureerd.
 - Publieke product-, prijs-, sector-, resource-, contact- en demojourneys.
   Contact- en demoformulieren en publieke analytics worden centraal opgeslagen.
 
@@ -151,14 +159,20 @@ de betaling server-side aan, volgt de providerstatus en boekt de verkoop pas na
 - Verlofsoorten, saldi, aanvragen, intrekken, PIN-gecontroleerde goedkeuring,
   roosterpublicatie en bezettingscontrole.
 
+ServiceDesk heeft nog geen uniforme duurzame outbox voor alle mutaties en
+bijlagen worden niet als complete centrale productiestroom bewezen. Workforce
+en roosters zijn breder uitgewerkt dan de gecommitteerde loginflow voor meerdere
+operators op één kassa.
+
 ### Inzichten, integraties en platformbeheer
 
 - Verkoop-, marge-, product-, categorie-, voorraad-, klant-, medewerker-,
   kortings-, betaalmix-, uur-, weekdag- en seizoensanalyses.
 - Bewaarbare acties en aanbevelingen zonder automatische voorraad- of externe
   wijzigingen.
-- Integration Hub met configuratie, status, operationele logs,
-  deliverytimeline, test- en synchronisatieruns.
+- Integration Hub-UI met configuratie, status, logs, deliverytimeline en
+  gesimuleerde test- en synchronisatieruns. Er is nog geen bewezen echte
+  connector- of gegevenssynchronisatielaag.
 - Platform Console met tenantoverzicht, winkel- en abonnementbeheer,
   incidenten, releases, development updates, audits en tijdelijk,
   gelogd supportaccess.
@@ -180,7 +194,7 @@ client-routes de SPA-fallback.
 | `/service/*` | Publieke serviceopvolging |
 | `/customer-display` | Afzonderlijk klantenscherm |
 | `/admin` | Platform Console voor bevoegde platformgebruikers |
-| `/auth/set-password` | Uitnodigings- en password-recoveryflow |
+| `/auth/set-password` | Wachtwoord instellen en recoveryflow |
 
 ## Lokale ontwikkeling
 
@@ -229,6 +243,19 @@ VITE_SUPABASE_URL="https://your-project-ref.supabase.co"
 VITE_SUPABASE_PUBLISHABLE_KEY="sb_publishable_your_key"
 VITE_PUBLIC_WEBSHOP_IDENTIFIER="your-shop-subdomain"
 
+# Verplichte publieke ondernemingsgegevens voor commerciële productie.
+VITE_LEGAL_NAME="Exacte juridische naam"
+VITE_LEGAL_TRADE_NAME="Handelsnaam"
+VITE_LEGAL_FORM="Rechtsvorm"
+VITE_LEGAL_ADDRESS="Volledig adres"
+VITE_LEGAL_ENTERPRISE_NUMBER="KBO-nummer"
+VITE_LEGAL_VAT_NUMBER="Btw-nummer"
+VITE_LEGAL_RPR="Bevoegde RPR"
+VITE_LEGAL_EMAIL="Juridisch contactadres"
+VITE_PRIVACY_EMAIL="Privacycontact"
+VITE_SUPPORT_EMAIL="Supportcontact"
+VITE_LEGAL_PHONE="Telefoonnummer"
+
 # Alleen server-side instellen; nooit met VITE_ prefix.
 GEMINI_API_KEY="your-rotated-server-secret"
 GEMINI_PACE_MODEL="gemini-3.5-flash-lite"
@@ -237,12 +264,14 @@ OPENAI_API_KEY="sk-project-secret"
 OPENAI_PACE_MODEL="gpt-5-nano"
 SUPABASE_URL="https://your-project-ref.supabase.co"
 SUPABASE_PUBLISHABLE_KEY="sb_publishable_your_key"
+# Vereist door de server-side Pace-conversatiebroker; nooit met VITE_ prefix.
+SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
 MOLLIE_API_KEY="test_your_mollie_api_key"
 MOLLIE_TERMINAL_ID="term_your_test_terminal_id"
 
 VITE_SEED_DEMO_PRODUCTS=false
 VITE_AUTO_RESET_LEGACY_CATALOG=true
-VITE_ENABLE_GIFT_CARD_PAYMENT=true
+VITE_ENABLE_GIFT_CARD_PAYMENT=false
 VITE_ENABLE_CSV_IMPORT=false
 VITE_ENABLE_PACE_AI=true
 ```
@@ -252,9 +281,10 @@ VITE_ENABLE_PACE_AI=true
 | `VITE_SUPABASE_URL` | — | URL van de Supabase-omgeving |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | — | Publishable browser key; RLS beschermt de data |
 | `VITE_PUBLIC_WEBSHOP_IDENTIFIER` | — | Subdomein of store-id voor de publieke webshop |
+| `VITE_LEGAL_*`, `VITE_PRIVACY_EMAIL`, `VITE_SUPPORT_EMAIL` | — | Geverifieerde publieke ondernemings- en contactgegevens; verplicht vóór commerciële productie |
 | `VITE_SEED_DEMO_PRODUCTS` | `false` | Seed uitsluitend een expliciet gemarkeerde demowinkel |
 | `VITE_AUTO_RESET_LEGACY_CATALOG` | `true` | Herstel erkende legacycatalogus naar het actuele retailexemplaar |
-| `VITE_ENABLE_GIFT_CARD_PAYMENT` | `true` | Kill switch voor cadeaubonbetaling |
+| `VITE_ENABLE_GIFT_CARD_PAYMENT` | codefallback `true`; `.env.example` zet `false` | Kill switch voor cadeaubonbetaling; stel dit per omgeving bewust in |
 | `VITE_ENABLE_CSV_IMPORT` | `false` | Kill switch voor CSV-import; export blijft beschikbaar |
 | `VITE_ENABLE_PACE_AI` | `true` | Gebruikt de server-side AI-route voor contextuele antwoorden; zet op `false` voor volledig lokale werking |
 | `VITE_PRESENTATION_BUILD` | `false` | Schakelt alleen presentatie-unlock en viewlinks in |
@@ -265,6 +295,7 @@ VITE_ENABLE_PACE_AI=true
 | `OPENAI_PACE_MODEL` | `gpt-5-nano` | Optioneel OpenAI-model; alleen gebruikt wanneer Gemini niet geconfigureerd is |
 | `SUPABASE_URL` | — | Server-side Supabase-URL voor sessievalidatie van Pace-verzoeken |
 | `SUPABASE_PUBLISHABLE_KEY` | — | Publishable key waarmee de Pace-endpoint een gebruikerssessie bij Supabase valideert |
+| `SUPABASE_SERVICE_ROLE_KEY` | — | Verplichte server-only sleutel voor de Pace-conversatiebroker; nooit naar de browser sturen |
 | `MOLLIE_API_KEY` | — | Geheime server-side Mollie test- of livesleutel; nooit met `VITE_` prefix |
 | `MOLLIE_TERMINAL_ID` | automatische detectie | Optionele vaste terminal-ID die bij het API-profiel hoort |
 
@@ -278,10 +309,11 @@ VITE_ENABLE_PACE_AI=true
   dagafsluitingen en webshoporders worden door server-RPC's en tenantregels
   gevalideerd.
 - `clientRequestId`- en eventidentiteiten maken retries idempotent.
-- Een lokale actie schrijft atomair naar de relevante Dexie-tabellen en de
-  outbox. De worker levert FIFO af, gebruikt browser locks waar beschikbaar,
-  retryt tijdelijke fouten en houdt permanente fouten zichtbaar als
-  herstelwachtrij.
+- Ondersteunde financiële en operationele kernacties schrijven naar de
+  relevante Dexie-tabellen en outbox. De worker levert FIFO af, gebruikt
+  browser locks waar beschikbaar, retryt tijdelijke fouten en houdt permanente
+  fouten zichtbaar als herstelwachtrij. Niet ieder nevendomein heeft al
+  dezelfde outboxdekking.
 - Realtime-events actualiseren de lokale cache; een volledige tenant-hydratie
   beschermt tegen verouderde of onvolledige lokale context.
 - Dagafsluiting blokkeert wanneer financiële ledger-items niet veilig kunnen
@@ -315,21 +347,21 @@ VITE_ENABLE_PACE_AI=true
 | `npm run check:site` | Publieke routes en centrale prijscatalogus valideren |
 | `npm run check:bundle` | JavaScript-, CSS- en assetbudgetten bewaken |
 | `npm run check:security` | Falen vanaf high-severity dependencyrisico's |
+| `npm run check:compliance` | Verplichte juridische productievelden en placeholders controleren |
 | `npm run check:supabase-release` | Productie-frontend en gekoppelde Supabase-migraties vergelijken |
-| `npm run check` | Typecheck, coverage, productiebuild, site- en bundlegates combineren |
+| `npm run check` | Typecheck, coverage, productiebuild, site- en bundlegates combineren; compliance, security en Supabase-release zitten hier niet in |
 
 De testset dekt onder meer checkout en rollback, retouren, cadeaubonnen,
 cash rounding, BTW, voorraad, migraties, synchronisatie, realtime-mapping,
 webshoporders, workforce, klantenscherm, toegankelijkheid, mobile UX,
 authenticatie en kritieke kassaflows.
 
-### CI en Vercel
+### Vercel-deploy
 
-GitHub Actions voert op pull requests en pushes naar `main` de quality gates uit
-op Node 22.12 en 24, gevolgd door Chromium/Playwright. Een succesvolle
-`main`-run triggert de productie-workflow: die haalt de Vercel-
-productieconfiguratie op, controleert de Supabase-target en migratiehistoriek,
-bouwt het geverifieerde revision en publiceert precies dat prebuilt artifact.
+GitHub Actions is voor deze repository uitgeschakeld. Een push naar `main`
+publiceert rechtstreeks via de gekoppelde Vercel-integratie. Voer de
+kwaliteitscontroles daarom lokaal uit vóór je pusht, bijvoorbeeld met
+`npm run check` en waar relevant `npm run check:security`.
 
 De Vercel-configuratie bewaart de app shell, `index.html` en service worker
 zonder cache, en serveert gehashte assets immutable. De PWA-service worker is
@@ -348,6 +380,10 @@ testterminal toont de betaalmodal een link om `paid`, `canceled` of `failed` te
 simuleren. De kassa bewaart de Mollie-betalingsreferentie bij de lokale én
 centrale transactie en kan een reeds betaalde maar nog niet geboekte verkoop veilig
 opnieuw boeken met dezelfde checkout-idempotentiesleutel.
+
+Dit beschrijft het softwarepad. Een echte terminaltransactie, annulering,
+timeout, verbindingsverlies, recovery en dagafsluiting moeten nog op de gekozen
+hardware worden geaccepteerd.
 
 ### Scanner en printer
 
@@ -396,8 +432,10 @@ welkomststatus zonder kostprijzen, interne notities of klantdetails te delen.
 
 ## Aanvullende documentatie
 
+- [`PROJECT-CONTEXT.md`](PROJECT-CONTEXT.md) — canonieke actuele productstatus,
+  releasebeeld, afbakening van lopend werk en geordende eerstvolgende stappen.
 - [`COMPLIANCE-READINESS.md`](COMPLIANCE-READINESS.md) — juridische
   productievelden, retentie/offboarding, subverwerkers en de releasegate.
 - [`AUDIT.md`](AUDIT.md) — historische audit van een eerdere POS-fase. De
-  actuele implementatie, migraties en tests zijn de bron van waarheid voor de
-  huidige productiestatus.
+  actuele implementatie en `PROJECT-CONTEXT.md` zijn beslissend voor de huidige
+  productiestatus.

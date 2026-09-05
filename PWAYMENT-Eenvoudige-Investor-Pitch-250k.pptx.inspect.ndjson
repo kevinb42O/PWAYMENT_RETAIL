@@ -1,0 +1,167 @@
+{"kind":"deck","id":"pr/n2vojh","name":"Deck"}
+{"kind":"layout","layoutId":"/ppt/slideMasters/slideMaster1.xml","name":"Master","type":"master"}
+{"kind":"layout","layoutId":"/ppt/slideLayouts/slideLayout1.xml","name":"Title Slide","type":"title"}
+{"kind":"slide","id":"sl/y90nupkv","slide":1,"title":"PWAYMENT","textShapes":8}
+{"kind":"textbox","id":"sh/ul4vaxgb","slide":1,"text":"PWAYMENT","textPreview":"PWAYMENT","textChars":8,"textLines":1,"bbox":[42,36,300,24]}
+{"kind":"textbox","id":"sh/547294r6","slide":1,"text":"Alles wat een winkel nodig heeft.\nIn één systeem.","textPreview":"Alles wat een winkel nodig heeft. | In één systeem.","textChars":49,"textLines":2,"bbox":[42,158,592,172]}
+{"kind":"textbox","id":"sh/k3yl0zql","slide":1,"text":"Kassa, voorraad, klanten, webshop en slimme hulp voor de winkelier.","textPreview":"Kassa, voorraad, klanten, webshop en slimme hulp voor de winkelier.","textChars":67,"textLines":1,"bbox":[42,358,560,84]}
+{"kind":"shape","id":"sh/7qp4be9c","slide":1,"bbox":[42,500,332,34]}
+{"kind":"textbox","id":"sh/65g3298r","slide":1,"text":"GEZOCHTE INVESTERING · € 250.000","textPreview":"GEZOCHTE INVESTERING · € 250.000","textChars":32,"textLines":1,"bbox":[54,509,308,18]}
+{"kind":"textbox","id":"sh/ts7md4r2","slide":1,"text":"Met dat geld wil ik PWAYMENT afwerken en doorgroeien naar 100 betalende winkels.","textPreview":"Met dat geld wil ik PWAYMENT afwerken en doorgroeien naar 100 betalende winkels.","textChars":80,"textLines":1,"bbox":[42,556,560,48]}
+{"kind":"shape","id":"sh/sryl4zqx","slide":1,"bbox":[659,71,580,514]}
+{"kind":"textbox","id":"sh/utg3698n","slide":1,"text":"België · september 2026","textPreview":"België · september 2026","textChars":23,"textLines":1,"bbox":[42,642,500,24]}
+{"kind":"textbox","id":"sh/wn6dc7eh","slide":1,"text":"PWAYMENT · INVESTEERDERSPITCH","textPreview":"PWAYMENT · INVESTEERDERSPITCH","textChars":29,"textLines":1,"bbox":[42,680,700,18]}
+{"kind":"textbox","id":"sh/hofulsf2","slide":1,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[1176,680,62,18]}
+{"kind":"image","id":"im/kr6xgnu5","slide":1,"name":"","geometry":"roundRect","bbox":[660,72,578,512]}
+{"kind":"notes","id":"nt/y90nupkv","slide":1,"text":"Zeg gewoon: “PWAYMENT brengt alles wat een winkel dagelijks gebruikt samen in één systeem. Ik zoek €250.000 om het product verder af te werken en er een echt groeiend bedrijf van te maken.”\n\n[Sources]\n/Users/kevin/PROJECTS/pwayment RETAIL/README.md\n/Users/kevin/PROJECTS/pwayment RETAIL/public/website/pwayment-pos-current.jpg"}
+{"kind":"slide","id":"sl/hwbqtkby","slide":2,"title":"HET PROBLEEM","textShapes":17}
+{"kind":"textbox","id":"sh/s72xofmh","slide":2,"text":"HET PROBLEEM","textPreview":"HET PROBLEEM","textChars":12,"textLines":1,"bbox":[42,34,600,18]}
+{"kind":"textbox","id":"sh/9072xkry","slide":2,"text":"Winkeliers verliezen tijd omdat hun systemen niet samenwerken.","textPreview":"Winkeliers verliezen tijd omdat hun systemen niet samenwerken.","textChars":62,"textLines":1,"bbox":[42,63,1196,92]}
+{"kind":"textbox","id":"sh/ozy1ofad","slide":2,"text":"PWAYMENT · INVESTEERDERSPITCH · SEPTEMBER 2026","textPreview":"PWAYMENT · INVESTEERDERSPITCH · SEPTEMBER 2026","textChars":46,"textLines":1,"bbox":[42,680,700,18]}
+{"kind":"textbox","id":"sh/b29kza94","slide":2,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[1176,680,62,18]}
+{"kind":"textbox","id":"sh/a10jqpsj","slide":2,"text":"Wat er vandaag gebeurt","textPreview":"Wat er vandaag gebeurt","textChars":22,"textLines":1,"bbox":[42,178,370,30]}
+{"kind":"textbox","id":"sh/x4r21kru","slide":2,"text":"De kassa, voorraad, webshop en klantgegevens zitten vaak op verschillende plaatsen. Daardoor moet de winkelier hetzelfde werk meerdere keren doen.","textPreview":"De kassa, voorraad, webshop en klantgegevens zitten vaak op verschillende plaatsen. Daardoor moet de winkelier hetzelfde werk meerdere ke...","textChars":146,"textLines":1,"bbox":[42,232,520,126]}
+{"kind":"shape","id":"sh/w3i1sfa9","slide":2,"bbox":[42,420,520,142]}
+{"kind":"textbox","id":"sh/r65knqtk","slide":2,"text":"De eenvoudige vraag","textPreview":"De eenvoudige vraag","textChars":19,"textLines":1,"bbox":[68,448,200,22]}
+{"kind":"textbox","id":"sh/q5wjelsz","slide":2,"text":"“Kan dit niet allemaal in één duidelijk systeem?”","textPreview":"“Kan dit niet allemaal in één duidelijk systeem?”","textChars":49,"textLines":1,"bbox":[68,487,448,58]}
+{"kind":"textbox","id":"sh/ove9o7yd","slide":2,"text":"1","textPreview":"1","textChars":1,"textLines":1,"bbox":[664,174,48,48]}
+{"kind":"textbox","id":"sh/9wnqhczy","slide":2,"text":"Te veel programma’s","textPreview":"Te veel programma’s","textChars":19,"textLines":1,"bbox":[736,176,430,30]}
+{"kind":"textbox","id":"sh/mtwrmxg7","slide":2,"text":"De winkelier moet voortdurend wisselen tussen verschillende systemen.","textPreview":"De winkelier moet voortdurend wisselen tussen verschillende systemen.","textChars":69,"textLines":1,"bbox":[736,220,430,60]}
+{"kind":"shape","id":"sh/nu58f2hs","slide":2,"bbox":[664,296,544,1]}
+{"kind":"textbox","id":"sh/wjy9sry9","slide":2,"text":"2","textPreview":"2","textChars":1,"textLines":1,"bbox":[664,320,48,48]}
+{"kind":"textbox","id":"sh/xk7qlczu","slide":2,"text":"Werk wordt herhaald","textPreview":"Werk wordt herhaald","textChars":19,"textLines":1,"bbox":[736,322,430,30]}
+{"kind":"textbox","id":"sh/ahwrqhgj","slide":2,"text":"Producten, klanten en bestellingen worden meer dan één keer ingevoerd.","textPreview":"Producten, klanten en bestellingen worden meer dan één keer ingevoerd.","textChars":70,"textLines":1,"bbox":[736,366,430,60]}
+{"kind":"shape","id":"sh/bip8jmho","slide":2,"bbox":[664,442,544,1]}
+{"kind":"textbox","id":"sh/cnupgny5","slide":2,"text":"3","textPreview":"3","textChars":1,"textLines":1,"bbox":[664,466,48,48]}
+{"kind":"textbox","id":"sh/do3q9szq","slide":2,"text":"Te weinig overzicht","textPreview":"Te weinig overzicht","textChars":19,"textLines":1,"bbox":[736,468,430,30]}
+{"kind":"textbox","id":"sh/t8byxkn2","slide":2,"text":"De eigenaar ziet te laat wat goed gaat en waar geld verloren gaat.","textPreview":"De eigenaar ziet te laat wat goed gaat en waar geld verloren gaat.","textChars":66,"textLines":1,"bbox":[736,512,430,60]}
+{"kind":"notes","id":"nt/hwbqtkby","slide":2,"text":"Vertel één herkenbaar voorbeeld. Bijvoorbeeld: “Een winkel past een product aan in de kassa, daarna nog eens in de webshop en soms ook nog in een apart voorraadbestand.” Meer uitleg is niet nodig.\n\n[Sources]\nInterne PWAYMENT-informatie en eenvoudige managementdoelen."}
+{"kind":"slide","id":"sl/ofy9wn61","slide":3,"title":"DE OPLOSSING","textShapes":15}
+{"kind":"textbox","id":"sh/14ryd8fq","slide":3,"text":"DE OPLOSSING","textPreview":"DE OPLOSSING","textChars":12,"textLines":1,"bbox":[42,34,600,18]}
+{"kind":"textbox","id":"sh/cza94vmx","slide":3,"text":"PWAYMENT brengt de hele winkel samen.","textPreview":"PWAYMENT brengt de hele winkel samen.","textChars":37,"textLines":1,"bbox":[42,63,1196,92]}
+{"kind":"textbox","id":"sh/d0jax03i","slide":3,"text":"PWAYMENT · INVESTEERDERSPITCH · SEPTEMBER 2026","textPreview":"PWAYMENT · INVESTEERDERSPITCH · SEPTEMBER 2026","textChars":46,"textLines":1,"bbox":[42,680,700,18]}
+{"kind":"textbox","id":"sh/298ryl4v","slide":3,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[1176,680,62,18]}
+{"kind":"shape","id":"sh/3ah8rqlg","slide":3,"bbox":[41,167,718,450]}
+{"kind":"textbox","id":"sh/pcjqtg36","slide":3,"text":"Eén platform voor de hele winkel","textPreview":"Eén platform voor de hele winkel","textChars":32,"textLines":1,"bbox":[814,174,370,32]}
+{"kind":"shape","id":"sh/m5cra54z","slide":3,"bbox":[814,291,384,1]}
+{"kind":"textbox","id":"sh/n6ls3alk","slide":3,"text":"Kassa","textPreview":"Kassa","textChars":5,"textLines":1,"bbox":[814,236,124,24]}
+{"kind":"textbox","id":"sh/n2l4fq98","slide":3,"text":"Snel producten verkopen en betalen","textPreview":"Snel producten verkopen en betalen","textChars":34,"textLines":1,"bbox":[946,236,252,42]}
+{"kind":"shape","id":"sh/m1c3mlsn","slide":3,"bbox":[814,363,384,1]}
+{"kind":"textbox","id":"sh/943mhgre","slide":3,"text":"Voorraad","textPreview":"Voorraad","textChars":8,"textLines":1,"bbox":[814,308,124,24]}
+{"kind":"textbox","id":"sh/83ulovat","slide":3,"text":"Altijd weten wat er nog aanwezig is","textPreview":"Altijd weten wat er nog aanwezig is","textChars":35,"textLines":1,"bbox":[946,308,252,42]}
+{"kind":"shape","id":"sh/v6l4jq94","slide":3,"bbox":[814,435,384,1]}
+{"kind":"textbox","id":"sh/a5c3ql8z","slide":3,"text":"Klanten","textPreview":"Klanten","textChars":7,"textLines":1,"bbox":[814,380,124,24]}
+{"kind":"textbox","id":"sh/x8nml0ra","slide":3,"text":"Aankopen, loyaliteit en contactgegevens","textPreview":"Aankopen, loyaliteit en contactgegevens","textChars":39,"textLines":1,"bbox":[946,380,252,42]}
+{"kind":"shape","id":"sh/w7ulsvqp","slide":3,"bbox":[814,507,384,1]}
+{"kind":"textbox","id":"sh/ja54na9g","slide":3,"text":"Webshop","textPreview":"Webshop","textChars":7,"textLines":1,"bbox":[814,452,124,24]}
+{"kind":"textbox","id":"sh/i9w3u58v","slide":3,"text":"Dezelfde producten en voorraad online","textPreview":"Dezelfde producten en voorraad online","textChars":37,"textLines":1,"bbox":[946,452,252,42]}
+{"kind":"shape","id":"sh/e10f2twf","slide":3,"bbox":[814,579,384,1]}
+{"kind":"textbox","id":"sh/f29gbyx0","slide":3,"text":"Pace","textPreview":"Pace","textChars":4,"textLines":1,"bbox":[814,524,124,24]}
+{"kind":"textbox","id":"sh/03ix43e5","slide":3,"text":"Digitale assistent die acties voorstelt","textPreview":"Digitale assistent die acties voorstelt","textChars":39,"textLines":1,"bbox":[946,524,252,42]}
+{"kind":"image","id":"im/10bu183q","slide":3,"name":"","geometry":"roundRect","bbox":[42,190.62,716,402.75]}
+{"kind":"notes","id":"nt/ofy9wn61","slide":3,"text":"Laat het scherm zien en zeg: “Dit is het echte product. Links ziet u de verschillende onderdelen van de winkel. De gegevens worden maar één keer ingevoerd en daarna overal gebruikt.”\n\n[Sources]\n/Users/kevin/PROJECTS/pwayment RETAIL/README.md\n/Users/kevin/PROJECTS/pwayment RETAIL/public/website/pwayment-insights-current.jpg"}
+{"kind":"slide","id":"sl/jyx0ra1s","slide":4,"title":"WAT ER AL STAAT","textShapes":15}
+{"kind":"textbox","id":"sh/p0batw72","slide":4,"text":"WAT ER AL STAAT","textPreview":"WAT ER AL STAAT","textChars":15,"textLines":1,"bbox":[42,34,600,18]}
+{"kind":"textbox","id":"sh/1cj2d8b6","slide":4,"text":"We beginnen niet van nul: het product is al gebouwd.","textPreview":"We beginnen niet van nul: het product is al gebouwd.","textChars":52,"textLines":1,"bbox":[42,63,1196,92]}
+{"kind":"textbox","id":"sh/0ba143al","slide":4,"text":"PWAYMENT · INVESTEERDERSPITCH · SEPTEMBER 2026","textPreview":"PWAYMENT · INVESTEERDERSPITCH · SEPTEMBER 2026","textChars":46,"textLines":1,"bbox":[42,680,700,18]}
+{"kind":"textbox","id":"sh/rm1k7yt4","slide":4,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[1176,680,62,18]}
+{"kind":"textbox","id":"sh/ql8jytsj","slide":4,"text":"De belangrijkste onderdelen werken","textPreview":"De belangrijkste onderdelen werken","textChars":34,"textLines":1,"bbox":[42,170,580,30]}
+{"kind":"shape","id":"sh/doj29oba","slide":4,"bbox":[42,236,350,250]}
+{"kind":"textbox","id":"sh/sna103ap","slide":4,"text":"POS","textPreview":"POS","textChars":3,"textLines":1,"bbox":[66,266,300,62]}
+{"kind":"textbox","id":"sh/3ihk3et8","slide":4,"text":"De kassa werkt","textPreview":"De kassa werkt","textChars":14,"textLines":1,"bbox":[66,342,300,28]}
+{"kind":"textbox","id":"sh/ih8ju9sn","slide":4,"text":"Verkoop, betalingen, retouren, bonnen en dagafsluiting zijn aanwezig.","textPreview":"Verkoop, betalingen, retouren, bonnen en dagafsluiting zijn aanwezig.","textChars":69,"textLines":1,"bbox":[66,392,300,64]}
+{"kind":"shape","id":"sh/kbm987y5","slide":4,"bbox":[432,236,350,250]}
+{"kind":"textbox","id":"sh/5cva1cfq","slide":4,"text":"RETAIL","textPreview":"RETAIL","textChars":6,"textLines":1,"bbox":[456,266,300,62]}
+{"kind":"textbox","id":"sh/i94r6xgz","slide":4,"text":"De winkel wordt beheerd","textPreview":"De winkel wordt beheerd","textChars":23,"textLines":1,"bbox":[456,342,300,28]}
+{"kind":"textbox","id":"sh/jadsz2xk","slide":4,"text":"Producten, voorraad, klanten, webshop en rapporten zitten in het platform.","textPreview":"Producten, voorraad, klanten, webshop en rapporten zitten in het platform.","textChars":74,"textLines":1,"bbox":[456,392,300,64]}
+{"kind":"shape","id":"sh/w72947yt","slide":4,"bbox":[822,236,350,250]}
+{"kind":"textbox","id":"sh/x8vaxsfe","slide":4,"text":"ONLINE","textPreview":"ONLINE","textChars":6,"textLines":1,"bbox":[846,266,300,62]}
+{"kind":"textbox","id":"sh/a5kr2xg3","slide":4,"text":"De technische basis staat","textPreview":"De technische basis staat","textChars":25,"textLines":1,"bbox":[846,342,300,28]}
+{"kind":"textbox","id":"sh/v6tsv2xo","slide":4,"text":"Winkels, gebruikers, rechten, gegevens en synchronisatie zijn voorzien.","textPreview":"Winkels, gebruikers, rechten, gegevens en synchronisatie zijn voorzien.","textChars":71,"textLines":1,"bbox":[846,392,300,64]}
+{"kind":"shape","id":"sh/g36tgryd","slide":4,"bbox":[42,532,1130,72]}
+{"kind":"textbox","id":"sh/h4fa9wfy","slide":4,"text":"Het product staat er. De volgende opdracht is eenvoudig: betalende winkels vinden.","textPreview":"Het product staat er. De volgende opdracht is eenvoudig: betalende winkels vinden.","textChars":82,"textLines":1,"bbox":[68,554,1080,30]}
+{"kind":"notes","id":"nt/jyx0ra1s","slide":4,"text":"Dit is je geloofwaardigheidsslide. Zeg: “Ik vraag geen geld om eerst een idee uit te proberen. Het product bestaat. Het geld dient vooral om het verkoopbaar, betrouwbaar en bekend te maken.”\n\n[Sources]\n/Users/kevin/PROJECTS/pwayment RETAIL/README.md\n/Users/kevin/PROJECTS/pwayment RETAIL/FEATURE-AUDIT-2026-08-22.md"}
+{"kind":"slide","id":"sl/i107q5of","slide":5,"title":"HOE PWAYMENT GELD VERDIENT","textShapes":18}
+{"kind":"textbox","id":"sh/fe94nm1w","slide":5,"text":"HOE PWAYMENT GELD VERDIENT","textPreview":"HOE PWAYMENT GELD VERDIENT","textChars":26,"textLines":1,"bbox":[42,34,600,18]}
+{"kind":"textbox","id":"sh/dgbulwnm","slide":5,"text":"Winkels betalen elke maand voor PWAYMENT.","textPreview":"Winkels betalen elke maand voor PWAYMENT.","textChars":41,"textLines":1,"bbox":[42,63,1196,92]}
+{"kind":"textbox","id":"sh/cf2tcr61","slide":5,"text":"PWAYMENT · INVESTEERDERSPITCH · SEPTEMBER 2026","textPreview":"PWAYMENT · INVESTEERDERSPITCH · SEPTEMBER 2026","textChars":46,"textLines":1,"bbox":[42,680,700,18]}
+{"kind":"textbox","id":"sh/z2tcnm5s","slide":5,"text":"05","textPreview":"05","textChars":2,"textLines":1,"bbox":[1176,680,62,18]}
+{"kind":"shape","id":"sh/yhkbe1o7","slide":5,"bbox":[42,180,360,328]}
+{"kind":"textbox","id":"sh/l4bupwny","slide":5,"text":"GRATIS STARTEN","textPreview":"GRATIS STARTEN","textChars":14,"textLines":1,"bbox":[66,208,300,18]}
+{"kind":"textbox","id":"sh/032tgr6d","slide":5,"text":"Basis","textPreview":"Basis","textChars":5,"textLines":1,"bbox":[66,252,310,58]}
+{"kind":"textbox","id":"sh/n6dcr65o","slide":5,"text":"€ 0","textPreview":"€ 0","textChars":3,"textLines":1,"bbox":[66,330,310,46]}
+{"kind":"textbox","id":"sh/m5kbi1oj","slide":5,"text":"Voor kleine winkels die PWAYMENT eerst eenvoudig willen proberen.","textPreview":"Voor kleine winkels die PWAYMENT eerst eenvoudig willen proberen.","textChars":65,"textLines":1,"bbox":[66,406,310,66]}
+{"kind":"shape","id":"sh/w32dkbuh","slide":5,"bbox":[440,180,360,328]}
+{"kind":"textbox","id":"sh/x4vedgvm","slide":5,"text":"BELANGRIJKSTE FORMULE","textPreview":"BELANGRIJKSTE FORMULE","textChars":21,"textLines":1,"bbox":[464,208,300,18]}
+{"kind":"textbox","id":"sh/ahkvi1cb","slide":5,"text":"Professional","textPreview":"Professional","textChars":12,"textLines":1,"bbox":[464,252,310,58]}
+{"kind":"textbox","id":"sh/v2twb6dw","slide":5,"text":"€ 69 per maand","textPreview":"€ 69 per maand","textChars":14,"textLines":1,"bbox":[464,330,310,46]}
+{"kind":"textbox","id":"sh/k7mxovud","slide":5,"text":"Voor actieve winkels die voorraad, klanten en webshop samen willen beheren.","textPreview":"Voor actieve winkels die voorraad, klanten en webshop samen willen beheren.","textChars":75,"textLines":1,"bbox":[464,406,310,66]}
+{"kind":"shape","id":"sh/58vehgvy","slide":5,"bbox":[838,180,360,328]}
+{"kind":"textbox","id":"sh/i54fmlc7","slide":5,"text":"GROTERE WINKELS","textPreview":"GROTERE WINKELS","textChars":15,"textLines":1,"bbox":[862,208,300,18]}
+{"kind":"textbox","id":"sh/j6dwfqds","slide":5,"text":"Uitgebreid","textPreview":"Uitgebreid","textChars":10,"textLines":1,"bbox":[862,252,310,58]}
+{"kind":"textbox","id":"sh/sb6xsvu9","slide":5,"text":"vanaf € 149 per maand","textPreview":"vanaf € 149 per maand","textChars":21,"textLines":1,"bbox":[862,330,310,46]}
+{"kind":"textbox","id":"sh/tcfel0vu","slide":5,"text":"Voor meerdere vestigingen, grotere teams en extra koppelingen.","textPreview":"Voor meerdere vestigingen, grotere teams en extra koppelingen.","textChars":62,"textLines":1,"bbox":[862,406,310,66]}
+{"kind":"textbox","id":"sh/hgrmpwj2","slide":5,"text":"Een duidelijk doel","textPreview":"Een duidelijk doel","textChars":18,"textLines":1,"bbox":[42,554,220,28]}
+{"kind":"textbox","id":"sh/gfi5grih","slide":5,"text":"100 betalende winkels brengen samen ongeveer € 9.000 per maand op.","textPreview":"100 betalende winkels brengen samen ongeveer € 9.000 per maand op.","textChars":66,"textLines":1,"bbox":[270,554,920,42]}
+{"kind":"notes","id":"nt/i107q5of","slide":5,"text":"Leg het zonder formules uit: “Een actieve winkel betaalt meestal €69 per maand. Grotere winkels betalen meer. Met een mix van abonnementen brengen 100 betalende winkels ongeveer €9.000 per maand op.”\n\n[Sources]\n/Users/kevin/PROJECTS/pwayment RETAIL/src/billing/planCatalog.ts"}
+{"kind":"slide","id":"sl/x8f69ofe","slide":6,"title":"WAAR GAAT HET GELD NAARTOE?","textShapes":14}
+{"kind":"textbox","id":"sh/svmt4v6t","slide":6,"text":"WAAR GAAT HET GELD NAARTOE?","textPreview":"WAAR GAAT HET GELD NAARTOE?","textChars":27,"textLines":1,"bbox":[42,34,600,18]}
+{"kind":"textbox","id":"sh/yhg7epsj","slide":6,"text":"Zo gebruik ik de € 250.000.","textPreview":"Zo gebruik ik de € 250.000.","textChars":27,"textLines":1,"bbox":[42,63,1196,92]}
+{"kind":"textbox","id":"sh/zi98nu94","slide":6,"text":"PWAYMENT · INVESTEERDERSPITCH · SEPTEMBER 2026","textPreview":"PWAYMENT · INVESTEERDERSPITCH · SEPTEMBER 2026","textChars":46,"textLines":1,"bbox":[42,680,700,18]}
+{"kind":"textbox","id":"sh/87ipkzal","slide":6,"text":"06","textPreview":"06","textChars":2,"textLines":1,"bbox":[1176,680,62,18]}
+{"kind":"shape","id":"sh/ml07i9sv","slide":6,"bbox":[750,170,456,122]}
+{"kind":"textbox","id":"sh/7m98ru9g","slide":6,"text":"€ 90k","textPreview":"€ 90k","textChars":5,"textLines":1,"bbox":[774,192,104,42]}
+{"kind":"textbox","id":"sh/oryp8fah","slide":6,"text":"Product","textPreview":"Product","textChars":7,"textLines":1,"bbox":[894,190,270,28]}
+{"kind":"textbox","id":"sh/pc76hkr2","slide":6,"text":"Software afwerken, eenvoudiger maken en grondig testen.","textPreview":"Software afwerken, eenvoudiger maken en grondig testen.","textChars":55,"textLines":1,"bbox":[894,228,270,50]}
+{"kind":"shape","id":"sh/h4bupgn6","slide":6,"bbox":[750,316,456,122]}
+{"kind":"textbox","id":"sh/w32twb6l","slide":6,"text":"€ 60k","textPreview":"€ 60k","textChars":5,"textLines":1,"bbox":[774,338,104,42]}
+{"kind":"textbox","id":"sh/v2tcn650","slide":6,"text":"Verkoop","textPreview":"Verkoop","textChars":7,"textLines":1,"bbox":[894,336,270,28]}
+{"kind":"textbox","id":"sh/u1kbu1ov","slide":6,"text":"Winkels bereiken, demonstraties geven en de eerste klanten winnen.","textPreview":"Winkels bereiken, demonstraties geven en de eerste klanten winnen.","textChars":66,"textLines":1,"bbox":[894,374,270,50]}
+{"kind":"shape","id":"sh/5svutgni","slide":6,"bbox":[750,462,456,122]}
+{"kind":"textbox","id":"sh/47mt0b6x","slide":6,"text":"€ 20k","textPreview":"€ 20k","textChars":5,"textLines":1,"bbox":[774,484,104,42]}
+{"kind":"textbox","id":"sh/j6dcr65c","slide":6,"text":"Buffer","textPreview":"Buffer","textChars":6,"textLines":1,"bbox":[894,482,270,28]}
+{"kind":"textbox","id":"sh/i54bylor","slide":6,"text":"Reserve voor onverwachte kosten of een tragere verkoopstart.","textPreview":"Reserve voor onverwachte kosten of een tragere verkoopstart.","textChars":60,"textLines":1,"bbox":[894,520,270,50]}
+{"kind":"textbox","id":"sh/twfux0ne","slide":6,"text":"De overige € 80k gaat naar het opstarten van winkels, veilige koppelingen, hosting, materiaal en administratie.","textPreview":"De overige € 80k gaat naar het opstarten van winkels, veilige koppelingen, hosting, materiaal en administratie.","textChars":111,"textLines":1,"bbox":[750,600,456,44]}
+{"kind":"chart","id":"ch/szilwbyx","slide":6,"name":"Chart","chartType":"bar","bbox":[42,166,650,448]}
+{"kind":"notes","id":"nt/x8f69ofe","slide":6,"text":"Loop de bedragen rustig af. De kern: €90.000 voor het product, €60.000 om klanten te vinden, €35.000 om nieuwe winkels goed op te starten, €30.000 voor koppelingen en veiligheid, €15.000 voor gewone kosten en €20.000 reserve. Samen is dat exact €250.000.\n\n[Sources]\nInterne PWAYMENT-informatie en eenvoudige managementdoelen."}
+{"kind":"slide","id":"sl/gnmp4jqx","slide":7,"title":"WAT WE IN 18 MAANDEN BEREIKEN","textShapes":16}
+{"kind":"textbox","id":"sh/q143ylov","slide":7,"text":"WAT WE IN 18 MAANDEN BEREIKEN","textPreview":"WAT WE IN 18 MAANDEN BEREIKEN","textChars":29,"textLines":1,"bbox":[42,34,600,18]}
+{"kind":"textbox","id":"sh/cb2tkvap","slide":7,"text":"Na 18 maanden moet PWAYMENT een echt groeiend bedrijf zijn.","textPreview":"Na 18 maanden moet PWAYMENT een echt groeiend bedrijf zijn.","textChars":59,"textLines":1,"bbox":[42,63,1196,92]}
+{"kind":"textbox","id":"sh/dcbud0ra","slide":7,"text":"PWAYMENT · INVESTEERDERSPITCH · SEPTEMBER 2026","textPreview":"PWAYMENT · INVESTEERDERSPITCH · SEPTEMBER 2026","textChars":46,"textLines":1,"bbox":[42,680,700,18]}
+{"kind":"textbox","id":"sh/ydkbm5sv","slide":7,"text":"07","textPreview":"07","textChars":2,"textLines":1,"bbox":[1176,680,62,18]}
+{"kind":"shape","id":"sh/zedcfa9g","slide":7,"bbox":[42,350,1164,2]}
+{"kind":"textbox","id":"sh/kzmdova1","slide":7,"text":"Eerste 3 maanden","textPreview":"Eerste 3 maanden","textChars":16,"textLines":1,"bbox":[42,254,180,28]}
+{"kind":"shape","id":"sh/l0vuh0rm","slide":7,"bbox":[42,344,16,16]}
+{"kind":"textbox","id":"sh/eh0ba1sr","slide":7,"text":"Klaar voor verkoop","textPreview":"Klaar voor verkoop","textChars":18,"textLines":1,"bbox":[42,392,350,36]}
+{"kind":"textbox","id":"sh/fi9c369c","slide":7,"text":"Product afwerken\nBetalingen afronden\n10 testwinkels begeleiden","textPreview":"Product afwerken | Betalingen afronden | 10 testwinkels begeleiden","textChars":62,"textLines":3,"bbox":[42,448,330,82]}
+{"kind":"shape","id":"sh/baxkjqlk","slide":7,"bbox":[42,552,350,42]}
+{"kind":"textbox","id":"sh/a9ojq5kz","slide":7,"text":"Resultaat: een winkel kan vlot starten","textPreview":"Resultaat: een winkel kan vlot starten","textChars":38,"textLines":1,"bbox":[56,565,322,18]}
+{"kind":"textbox","id":"sh/xcz2l03q","slide":7,"text":"Maand 4 tot 9","textPreview":"Maand 4 tot 9","textChars":13,"textLines":1,"bbox":[444,254,180,28]}
+{"kind":"shape","id":"sh/cbq1sv25","slide":7,"bbox":[444,344,16,16]}
+{"kind":"textbox","id":"sh/n6x0fqlo","slide":7,"text":"Eerste groei","textPreview":"Eerste groei","textChars":12,"textLines":1,"bbox":[444,392,350,36]}
+{"kind":"textbox","id":"sh/25ojml43","slide":7,"text":"30 betalende winkels\nVaste manier van opstarten\nEerste succesverhalen","textPreview":"30 betalende winkels | Vaste manier van opstarten | Eerste succesverhalen","textChars":69,"textLines":3,"bbox":[444,448,330,82]}
+{"kind":"shape","id":"sh/p8fih03e","slide":7,"bbox":[444,552,350,42]}
+{"kind":"textbox","id":"sh/o761ov2t","slide":7,"text":"Resultaat: winkels willen ervoor betalen","textPreview":"Resultaat: winkels willen ervoor betalen","textChars":40,"textLines":1,"bbox":[458,565,322,18]}
+{"kind":"textbox","id":"sh/f2d0b6lc","slide":7,"text":"Maand 10 tot 18","textPreview":"Maand 10 tot 18","textChars":15,"textLines":1,"bbox":[846,254,180,28]}
+{"kind":"shape","id":"sh/eh4jil4r","slide":7,"bbox":[846,344,16,16]}
+{"kind":"textbox","id":"sh/id4ju1oz","slide":7,"text":"Groter worden","textPreview":"Groter worden","textChars":13,"textLines":1,"bbox":[846,392,350,36]}
+{"kind":"textbox","id":"sh/jedkn654","slide":7,"text":"100 betalende winkels\nPartners die klanten aanbrengen\nMinder handmatig werk","textPreview":"100 betalende winkels | Partners die klanten aanbrengen | Minder handmatig werk","textChars":75,"textLines":3,"bbox":[846,448,330,82]}
+{"kind":"shape","id":"sh/4fm1wb6p","slide":7,"bbox":[846,552,350,42]}
+{"kind":"textbox","id":"sh/50v2pgna","slide":7,"text":"Resultaat: een bedrijf dat verder kan groeien","textPreview":"Resultaat: een bedrijf dat verder kan groeien","textChars":45,"textLines":1,"bbox":[860,565,322,18]}
+{"kind":"notes","id":"nt/gnmp4jqx","slide":7,"text":"Zeg: “De eerste maanden maken we het product klaar voor een vlotte verkoop. Daarna bewijzen we dat winkels willen betalen. Tegen het einde willen we 100 betalende winkels en een manier van werken die we kunnen blijven herhalen.”\n\n[Sources]\nInterne PWAYMENT-informatie en eenvoudige managementdoelen."}
+{"kind":"slide","id":"sl/fu1gfa1s","slide":8,"title":"MIJN VOORSTEL","textShapes":11}
+{"kind":"textbox","id":"sh/1k7edwv2","slide":8,"text":"MIJN VOORSTEL","textPreview":"MIJN VOORSTEL","textChars":13,"textLines":1,"bbox":[42,38,400,22]}
+{"kind":"textbox","id":"sh/18byd4zy","slide":8,"text":"€ 250.000 voor 15% van PWAYMENT","textPreview":"€ 250.000 voor 15% van PWAYMENT","textChars":31,"textLines":1,"bbox":[42,144,740,80]}
+{"kind":"textbox","id":"sh/g72x4zyd","slide":8,"text":"De investeerder wordt voor 15% mede-eigenaar van het bedrijf. De precieze afspraken leggen we samen duidelijk vast.","textPreview":"De investeerder wordt voor 15% mede-eigenaar van het bedrijf. De precieze afspraken leggen we samen duidelijk vast.","textChars":115,"textLines":1,"bbox":[42,250,690,66]}
+{"kind":"shape","id":"sh/ri9g7uhw","slide":8,"bbox":[42,378,690,158]}
+{"kind":"textbox","id":"sh/6h0fypgb","slide":8,"text":"Wat ik beloof","textPreview":"Wat ik beloof","textChars":13,"textLines":1,"bbox":[68,406,300,24]}
+{"kind":"textbox","id":"sh/tkby9kzm","slide":8,"text":"Het geld wordt gebruikt zoals voorgesteld. U krijgt elke maand een duidelijke update over klanten, inkomsten en uitgaven.","textPreview":"Het geld wordt gebruikt zoals voorgesteld. U krijgt elke maand een duidelijke update over klanten, inkomsten en uitgaven.","textChars":121,"textLines":1,"bbox":[68,450,620,64]}
+{"kind":"shape","id":"sh/sjix0zy1","slide":8,"bbox":[814,126,392,432]}
+{"kind":"textbox","id":"sh/je9g3ahk","slide":8,"text":"De volgende stap","textPreview":"De volgende stap","textChars":16,"textLines":1,"bbox":[844,160,320,28]}
+{"kind":"textbox","id":"sh/id0fu50z","slide":8,"text":"Product en cijfers\nsamen bekijken.","textPreview":"Product en cijfers | samen bekijken.","textChars":34,"textLines":2,"bbox":[844,230,320,92]}
+{"kind":"shape","id":"sh/o7ydoret","slide":8,"bbox":[844,356,320,1]}
+{"kind":"textbox","id":"sh/98rehwve","slide":8,"text":"1.  Productdemonstratie\n2.  Cijfers en kosten controleren\n3.  Afspraken over prijs en aandelen","textPreview":"1.  Productdemonstratie | 2.  Cijfers en kosten controleren | 3.  Afspraken over prijs en aandelen","textChars":94,"textLines":3,"bbox":[844,392,320,100]}
+{"kind":"textbox","id":"sh/m5gvmhwn","slide":8,"text":"Ik heb het product gebouwd. Met de juiste investeerder kan ik nu het bedrijf bouwen.","textPreview":"Ik heb het product gebouwd. Met de juiste investeerder kan ik nu het bedrijf bouwen.","textChars":84,"textLines":1,"bbox":[42,600,1120,38]}
+{"kind":"textbox","id":"sh/n6pwfmd8","slide":8,"text":"PWAYMENT · INVESTEERDERSPITCH","textPreview":"PWAYMENT · INVESTEERDERSPITCH","textChars":29,"textLines":1,"bbox":[42,680,700,18]}
+{"kind":"textbox","id":"sh/0jydkreh","slide":8,"text":"08","textPreview":"08","textChars":2,"textLines":1,"bbox":[1176,680,62,18]}
+{"kind":"notes","id":"nt/fu1gfa1s","slide":8,"text":"Sluit af met: “Mijn voorstel is €250.000 voor 15% van PWAYMENT. Dat percentage is mijn vertrekpunt. Ik wil vooral dat de afspraken voor beide kanten eerlijk en duidelijk zijn. Als u interesse hebt, stel ik voor dat we nu een productdemo en een controle van de cijfers plannen.” Daarna stop je met praten.\n\n[Sources]\nInterne PWAYMENT-informatie en eenvoudige managementdoelen."}

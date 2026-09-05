@@ -1,5 +1,13 @@
 # PWAYMENT billing, entitlements en pricing — masterplan
 
+> **Statusverduidelijking, 31 augustus 2026:** de commerciële catalogus,
+> trial-/entitlementlogica en plansimulator zijn geïmplementeerd; een echte
+> SaaS-billinglifecycle is dat niet. Er is nog geen bewezen providercheckout,
+> abonnementswebhook, automatische facturatie, betaalreconciliatie of
+> opzeg-/mislukte-betalingflow. Statische factuurvoorbeelden en testmodus mogen
+> niet als echte billing worden voorgesteld. Zie
+> [`../PROJECT-CONTEXT.md`](../PROJECT-CONTEXT.md).
+
 Status: geïmplementeerd
 Datum: 14 augustus 2026
 Scope: publieke prijzen, interne billing-UI, trials, feature- en limietcontrole,

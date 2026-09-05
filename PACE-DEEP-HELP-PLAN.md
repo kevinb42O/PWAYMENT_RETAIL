@@ -1,5 +1,10 @@
 # Pace — diep plan voor contextuele hulp
 
+> **Ontwerp- en implementatieplan.** Gebruik
+> [`PROJECT-CONTEXT.md`](PROJECT-CONTEXT.md) voor de actuele algemene
+> product- en releasestatus; voltooiingsclaims in dit plan gelden alleen voor
+> de expliciet genoemde Pace-onderdelen en verificatiedatum.
+
 > **Architectuurnoot (26 augustus 2026):** sectie 4.6 beschrijft de oorspronkelijke lokale gesprekshistoriek. Voor de volgende fase is die vervangen door het ontwerp in [PACE-CONVERSATION-STATE-PLAN.md](./PACE-CONVERSATION-STATE-PLAN.md): servergebonden threads, tenantveilige entity resolution en evidence tracking.
 
 ## 1. Doel

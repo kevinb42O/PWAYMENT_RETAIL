@@ -1,5 +1,10 @@
 # PACE — servergebonden conversation state, entity resolution en evidence tracking
 
+> **Doelarchitectuur.** Dit document beschrijft de volgende Pace-fase en mag
+> niet als bewijs worden gelezen dat alle genoemde conversation-state-, entity-
+> en evidencefuncties live staan. Gebruik
+> [`PROJECT-CONTEXT.md`](PROJECT-CONTEXT.md) voor de actuele algemene status.
+
 ## 1. Uitkomst
 
 PACE evolueert van een losse vraag-antwoordfunctie naar een doorlopend, controleerbaar retailonderzoek. Een gebruiker kan in Verkoop starten met “Welke producten lopen achter?”, in Voorraad vragen “Hoeveel hebben we daarvan nog?” en in Inzichten vervolgen met “Vergelijk ze met vorige maand”, zonder het onderwerp opnieuw uit te leggen.

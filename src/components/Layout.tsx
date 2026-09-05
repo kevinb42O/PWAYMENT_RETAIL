@@ -37,6 +37,7 @@ import { validatePaceDestination, type PaceDestination, type PaceDestinationAcce
 import { playRegisterSound, unlockRegisterSounds } from "../sound/registerSounds";
 import { projectCart } from "../customer-display/cartProjection";
 import { formatEUR } from "../utils/money";
+import "../styles/pos-workspace.css";
 import {
   AlertCircle,
   CheckCircle2,
@@ -63,7 +64,6 @@ import {
   ShieldCheck,
   RotateCcw,
   PackageSearch,
-  PanelRightOpen,
   type LucideIcon,
 } from "lucide-react";
 
@@ -1493,7 +1493,7 @@ export const Layout: React.FC = () => {
         </React.Suspense>
 
         {mainView === "pos" && (
-          <div className="pos-workspace flex flex-col flex-1 overflow-hidden">
+          <div className="pos-workspace pos-workspace--refined flex flex-col flex-1 overflow-hidden">
             {/* Ruime, Ergonomische Barcode Command & Search Bar in POS-Modus */}
             <div className="pos-command-bar px-4 sm:px-6 py-2.5 print:hidden shrink-0">
               <div className="flex items-center">
@@ -1514,7 +1514,7 @@ export const Layout: React.FC = () => {
                       type="search"
                       value={productQuery}
                       onChange={(event) => setProductQuery(event.target.value)}
-                      placeholder="Scan barcode of zoek product op naam, SKU, categorie..."
+                      placeholder="Scan een barcode of zoek een product…"
                       aria-label="Scan barcode of zoek product"
                       className="pos-command-input w-full rounded-xl border pl-12 pr-24 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none font-semibold transition-all"
                     />
@@ -1656,21 +1656,17 @@ export const Layout: React.FC = () => {
                       aria-expanded={desktopCartVisible}
                       className="pos-cart-dock-button flex h-full w-full cursor-pointer flex-col items-center rounded-none px-2 py-3 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500 disabled:cursor-default"
                     >
-                      <span className="pos-cart-dock-summary flex w-full flex-col items-center rounded-2xl border px-1.5 py-3 shadow-sm">
+                      <span className="pos-cart-dock-summary flex w-full flex-col items-center">
                         <span
                           ref={desktopCartDockTargetRef}
-                          key={`arrival-${cartArrivalNonce}`}
-                          className={cartArrivalNonce > 0 ? "pos-cart-target-pop relative" : "relative"}
+                          className="pos-cart-dock-icon"
+                          aria-hidden="true"
                         >
-                          <ShoppingCart size={24} />
-                          {cartCount > 0 && (
-                            <span className="absolute -right-3 -top-3 min-w-5 rounded-full bg-sky-600 px-1.5 py-0.5 text-center text-[10px] font-black leading-4 text-white shadow-sm ring-2 ring-white">
-                              {cartCount > 99 ? "99+" : cartCount}
-                            </span>
-                          )}
+                          <ShoppingCart size={30} strokeWidth={1.6} />
                         </span>
-                        <span className="mt-3 text-[10px] font-black uppercase tracking-[0.08em]">
-                          {cartCount === 0 ? "Leeg" : `${cartCount > 99 ? "99+" : cartCount} ${cartCount === 1 ? "item" : "items"}`}
+                        <span className="pos-cart-dock-count">
+                          <span className="pos-cart-dock-quantity">{cartCount > 99 ? "99+" : cartCount}</span>{" "}
+                          <span className="pos-cart-dock-count-label">{cartCount === 1 ? "item" : "items"}</span>
                         </span>
                       </span>
 
@@ -1679,7 +1675,6 @@ export const Layout: React.FC = () => {
                         <span className="pos-cart-dock-total-value mt-1 max-w-full text-[13px] font-black tabular-nums tracking-tight">
                           {formatEUR(compactCartTotal)}
                         </span>
-                        <PanelRightOpen size={17} className="mt-2 text-sky-600" />
                       </span>
                     </button>
                   </aside>

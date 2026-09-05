@@ -1,5 +1,13 @@
 # PWAYMENT Retail — code-audit featurelijst
 
+> **Gedateerde auditmomentopname.** De verificatiecijfers, live datatotalen en
+> conclusies hieronder horen bij 22 augustus 2026 en zijn niet de huidige
+> releasebeslissing. Sindsdien bevat de gecommitteerde basis 120 migraties en gaf de
+> schone CI-equivalente controle op 31 augustus 2026 20 falende tests op 651.
+> De live juridische configuratie en publieke featureclaims hebben bovendien
+> openstaande releasepunten. Gebruik
+> [`PROJECT-CONTEXT.md`](PROJECT-CONTEXT.md) als actuele bron van waarheid.
+
 **Auditdatum:** 22 augustus 2026  
 **Geaudite basis:** actuele werkboom na de live retail-dieptemigratie; wijzigingen zijn nog niet als commit vastgelegd  
 **Repositoryversie:** `0.1.0`  

@@ -1,5 +1,12 @@
 # PWAYMENT website-featureaudit
 
+> **Historische copy-audit.** Dit document registreert welke productdiepte op
+> 12 augustus 2026 aan de websitecopy werd toegevoegd. Het bewijst niet dat
+> iedere genoemde commerciële capability volledig live is. De audit van 31
+> augustus vond juridische placeholders en te brede claims rond onder meer
+> integraties, billing, multi-store/API, Peppol en klantcommunicatie. Gebruik
+> [`../PROJECT-CONTEXT.md`](../PROJECT-CONTEXT.md) voor de actuele afbakening.
+
 **Datum:** 12 augustus 2026
 
 **Scope:** publieke website tegenover de aantoonbare productflows in deze repository

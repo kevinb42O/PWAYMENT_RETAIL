@@ -1,0 +1,12 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "PACE visual development",
+			"type": "shell",
+			"command": "VITE_E2E_BUILD=true VITE_SEED_DEMO_PRODUCTS=true npm run dev -- --host 127.0.0.1",
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}

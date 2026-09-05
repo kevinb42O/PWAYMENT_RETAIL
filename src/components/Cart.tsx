@@ -87,6 +87,7 @@ import {
   type MollieTerminalPayment,
 } from "../services/mollieTerminal";
 import { playRegisterSound } from "../sound/registerSounds";
+import "../styles/pos-cart-refinement.css";
 
 type CardCheckoutExtras = {
   tenderedCents?: number;
@@ -973,28 +974,30 @@ export const Cart: React.FC<CartProps> = ({
   };
 
   return (
-    <div className="pos-cart flex flex-col h-full">
+    <div className="pos-cart pos-cart--refined flex flex-col h-full">
       <div className="pos-cart-header px-4 py-4 border-b border-slate-200 flex justify-between items-start">
-        <div>
-          <div className="flex items-center gap-2">
-            <ShoppingCart size={18} className="pos-accent-text" />
-            <h2 className="pos-cart-title text-lg font-semibold leading-none">
-              Winkelwagen
-            </h2>
-            <span className="pos-cart-count rounded-full px-2 py-0.5 text-[11px] font-semibold">
-              {cart.orders.reduce((sum, order) => sum + order.quantity, 0)}
-            </span>
+        <div className="pos-cart-header-content">
+          <div className="pos-cart-heading">
+            <p className="pos-cart-eyebrow">Huidige verkoop</p>
+            <div className="flex items-center gap-2">
+              <h2 className="pos-cart-title text-lg font-semibold leading-none">
+                Winkelwagen
+              </h2>
+              <span className="pos-cart-count rounded-full px-2 py-0.5 text-[11px] font-semibold">
+                {cart.orders.reduce((sum, order) => sum + order.quantity, 0)}
+              </span>
+            </div>
           </div>
-          <div className="flex flex-col gap-1.5 mt-2.5">
+          <div className="pos-cart-customer-area flex flex-col gap-1.5 mt-2.5">
             <div className="flex items-center gap-2">
               {linkedCustomer ? (
                 <button
                   onClick={() => setLinkOpen(true)}
-                  className="pos-soft-accent flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-medium transition-colors"
+                  className="pos-cart-customer pos-cart-customer--linked pos-soft-accent flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-medium transition-colors"
                 >
-                  <User size={14} /> {linkedCustomer.name}
+                  <User size={14} /> <span className="pos-cart-customer-name">{linkedCustomer.name}</span>
                   {linkedCustomer.priceGroup && (
-                    <span className="rounded bg-sky-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-sky-800">
+                    <span className="pos-cart-price-group rounded bg-sky-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-sky-800">
                       {linkedCustomer.priceGroup}
                     </span>
                   )}
@@ -1003,7 +1006,7 @@ export const Cart: React.FC<CartProps> = ({
                 <button
                   type="button"
                   onClick={() => setLinkOpen(true)}
-                  className="pos-neutral-action flex items-center gap-1.5 px-2 py-1 rounded-md border border-zinc-200 bg-white text-zinc-500 text-xs font-medium transition-colors"
+                  className="pos-cart-customer pos-neutral-action flex items-center gap-1.5 px-2 py-1 rounded-md border border-zinc-200 bg-white text-zinc-500 text-xs font-medium transition-colors"
                 >
                   <User size={14} /> Klant koppelen
                 </button>
@@ -1013,15 +1016,15 @@ export const Cart: React.FC<CartProps> = ({
               <button
                 type="button"
                 onClick={() => setInvoiceCustomerOpen(true)}
-                className="w-fit rounded-md border border-sky-200 bg-sky-50 px-2 py-1 text-xs font-semibold text-sky-800 hover:border-sky-300"
+                className="pos-cart-invoice w-fit rounded-md border border-sky-200 bg-sky-50 px-2 py-1 text-xs font-semibold text-sky-800 hover:border-sky-300"
               >
                 <span className="inline-flex items-center gap-1"><FileText size={13} /> Factuur voor {linkedCustomer.name}</span>
               </button>
             )}
             {linkedCustomerGiftCardTotal > 0 && (
-              <div className="p-2 bg-emerald-950/40 border border-emerald-500/30 rounded-lg flex items-center justify-between gap-2 text-xs">
-                <div className="flex items-center gap-1.5 text-emerald-300 font-medium">
-                  <Gift size={14} className="text-emerald-400 shrink-0" />
+              <div className="pos-cart-customer-credit p-2 bg-emerald-950/40 border border-emerald-500/30 rounded-lg flex items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-1.5 font-medium">
+                  <Gift size={14} className="shrink-0" />
                   <span>
                     {linkedCustomerGiftCards.length === 1
                       ? `1 cadeaubon (${formatEUR(linkedCustomerGiftCardTotal)})`
@@ -1039,7 +1042,7 @@ export const Cart: React.FC<CartProps> = ({
             )}
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="pos-cart-header-controls flex shrink-0 items-center gap-1">
           {desktopPanelMode && onToggleDesktopPin && (
             <button
               type="button"
@@ -1089,7 +1092,7 @@ export const Cart: React.FC<CartProps> = ({
                 role="menuitem"
                 disabled={cart.orders.length === 0 || isProcessing}
                 onClick={holdCurrentCart}
-                className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-sky-800 transition-colors hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="pos-cart-action-row flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-sky-800 transition-colors hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Clock3 size={16} /> In wachtrij zetten
               </button>
@@ -1141,7 +1144,7 @@ export const Cart: React.FC<CartProps> = ({
                 disabled={cart.orders.length > 0 || isProcessing}
                 onClick={openGiftCardSale}
                 title={cart.orders.length > 0 ? "Werk cadeaubonnen als een aparte kassatransactie af." : "Nieuwe cadeaubon uitgeven of bestaande opladen"}
-                className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-sky-800 transition-colors hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="pos-cart-action-row flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-sky-800 transition-colors hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Gift size={16} /> Cadeaubon uitgeven of opladen
               </button>
@@ -1193,11 +1196,13 @@ export const Cart: React.FC<CartProps> = ({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+      <div className="pos-cart-items flex-1 overflow-y-auto p-3 space-y-2">
         {cart.orders.length === 0 ? (
-          <div className="flex h-full min-h-48 flex-col items-center justify-center px-6 text-center text-zinc-400">
-            <div className="pos-empty-cart-icon mb-4 grid h-16 w-16 place-items-center rounded-2xl">
-              <ShoppingCart size={27} className="text-cyan-300" />
+          <div className="pos-cart-empty flex h-full min-h-48 flex-col items-center justify-center px-6 text-center text-zinc-400">
+            <div className="pos-cart-empty-receipt pos-empty-cart-icon mb-4 grid h-16 w-16 place-items-center rounded-2xl" aria-hidden="true">
+              <span className="pos-cart-receipt-rule" />
+              <span className="pos-cart-receipt-rule" />
+              <span className="pos-cart-receipt-rule" />
             </div>
             <span className="pos-empty-cart-title text-sm font-semibold text-zinc-200">
               Klaar voor de eerste scan
@@ -1209,7 +1214,7 @@ export const Cart: React.FC<CartProps> = ({
               <button
                 type="button"
                 onClick={() => setQueueOpen(true)}
-                className="mt-4 inline-flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-bold text-sky-800 transition-colors hover:bg-sky-100"
+                className="pos-cart-empty-queue mt-4 inline-flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-bold text-sky-800 transition-colors hover:bg-sky-100"
               >
                 <Clock3 size={15} />
                 {queuedCartItems.length === 1
@@ -1230,10 +1235,10 @@ export const Cart: React.FC<CartProps> = ({
                 key={order.lineId}
                 className="pos-cart-line rounded-xl border p-3 shadow-sm transition-colors"
               >
-                <div className="flex items-center justify-between gap-2">
+                <div className="pos-cart-line-content flex items-center justify-between gap-2">
                   <button
                     onClick={() => setEditingLineId(order.lineId)}
-                    className="flex-1 text-left pr-2"
+                    className="pos-cart-line-edit flex-1 text-left pr-2"
                   >
                     <div className="pos-cart-line-title flex items-center gap-2 text-sm font-semibold leading-tight">
                       <span>{order.product.name}</span>
@@ -1268,7 +1273,7 @@ export const Cart: React.FC<CartProps> = ({
                       </div>
                     )}
                     {order.notes && (
-                      <div className="mt-1 flex items-start gap-1 text-[11px] text-amber-300">
+                      <div className="pos-cart-line-note mt-1 flex items-start gap-1 text-[11px] text-amber-300">
                         <StickyNote size={12} className="mt-px flex-shrink-0" />
                         <span className="italic">{order.notes}</span>
                       </div>
@@ -1349,7 +1354,7 @@ export const Cart: React.FC<CartProps> = ({
             </div>
           </div>
         )}
-        <div className="space-y-1.5 mb-4 text-sm">
+        <div className="pos-cart-summary space-y-1.5 mb-4 text-sm">
           <div className="pos-checkout-row pos-checkout-row--muted flex justify-between">
             <span>Subtotaal</span>
             <span className="tabular-nums">{formatEUR(totals.subtotal)}</span>
@@ -1405,7 +1410,7 @@ export const Cart: React.FC<CartProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="pos-cart-payment-options grid grid-cols-2 gap-2">
           <button
             onClick={() => handleCheckout("Cash")}
             disabled={checkoutBlocked}
@@ -1417,10 +1422,11 @@ export const Cart: React.FC<CartProps> = ({
           <button
             onClick={() => handleCheckout("PIN")}
             disabled={checkoutBlocked}
-            className="pos-primary-action flex flex-col items-center justify-center gap-1.5 py-3 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-semibold shadow-sm transition-colors"
+            className="pos-cart-pin-payment pos-primary-action flex flex-col items-center justify-center gap-1.5 py-3 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-semibold shadow-sm transition-colors"
           >
             <CreditCard size={24} />
             <span className="text-sm">Kaart</span>
+            <span className="pos-cart-pin-badge" aria-hidden="true">PIN</span>
           </button>
         </div>
         <button

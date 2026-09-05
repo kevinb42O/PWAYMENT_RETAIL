@@ -2,12 +2,15 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   ArrowLeft,
   ArrowRight,
+  ArrowUp,
+  ArrowUpRight,
   Check,
   Clock3,
   Command,
   Gauge,
   Plus,
-  Send,
+  Maximize2,
+  Minimize2,
   Settings2,
   ShieldCheck,
   Sparkles,
@@ -171,6 +174,36 @@ export const shouldShowPaceSetupProgress = ({
   ready: boolean;
 }) => (role === "owner" || role === "manager") && !ready;
 
+/** Shared composer keeps keyboard behavior identical in both reading modes. */
+const PaceQueryInput = ({ value, onChange, onSend, followUp }: {
+  value: string;
+  onChange: (value: string) => void;
+  onSend: () => void;
+  followUp: boolean;
+}) => {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const input = ref.current;
+    if (!input) return;
+    input.style.height = "auto";
+    input.style.height = `${Math.min(input.scrollHeight, 112)}px`;
+  }, [value]);
+  return <textarea
+    ref={ref}
+    className="pace-query-input"
+    rows={1}
+    value={value}
+    onChange={(event) => onChange(event.target.value)}
+    onKeyDown={(event) => {
+      if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
+      event.preventDefault();
+      onSend();
+    }}
+    placeholder={followUp ? "Wat wil je verder weten?" : "Wat wil je weten of doen?"}
+    aria-label={followUp ? "Vervolgvraag aan Pace" : "Vraag Pace"}
+  />;
+};
+
 export const PaceAssistant = (props: PaceAssistantProps) => {
   const {
     open,
@@ -185,6 +218,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
     hydrateScope,
   } = usePace();
   const prefersReducedMotion = useReducedMotion();
+  const [expanded, setExpanded] = useState(false);
   const [query, setQuery] = useState("");
   const [activeQuestion, setActiveQuestion] = useState<string | null>(null);
   const [response, setResponse] = useState<PaceQueryAnswer | null>(null);
@@ -201,6 +235,9 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   const [clarification, setClarification] = useState<PaceClarification | null>(null);
   const { quota, hardLimited, load: loadBilling, recordQuota, markExceeded } = usePaceBilling();
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const panelRef = useRef<HTMLElement | null>(null);
+  const focusComposerRef = useRef(false);
   const queryRunRef = useRef(0);
   const context: PaceContext = useMemo(() => ({
     storeId: props.storeId,
@@ -230,6 +267,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   const primary = signals[0] ?? buildPaceSignals(context, preferences).at(-1)!;
   const shouldBadge = primary.priority >= 70 && preferences.proactivity !== "quiet";
   const canAnimate = !prefersReducedMotion && preferences.motion !== "off";
+  const queryBlocked = thinking || (preferences.aiEnabled && hardLimited);
   const setupProgress = useMemo(() => paceSetupProgress(props.setupMilestones), [props.setupMilestones]);
   const unavailable = Boolean(props.suppressed || externalDialogOpen);
   const customerSignal = signals.find((signal) => signal.source === "Klantcontext");
@@ -356,9 +394,35 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
       }
     };
     document.addEventListener("keydown", onKeyDown);
-    window.requestAnimationFrame(() => closeButtonRef.current?.focus());
-    return () => document.removeEventListener("keydown", onKeyDown);
+    const frame = window.requestAnimationFrame(() => closeButtonRef.current?.focus());
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener("keydown", onKeyDown);
+      // Do not steal focus from a destination or another dialog.
+      if (panelRef.current?.contains(document.activeElement)) triggerRef.current?.focus();
+    };
   }, [open, setOpen]);
+
+  useEffect(() => {
+    if (!open) return;
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const updateViewport = () => {
+      const panel = panelRef.current;
+      if (!panel) return;
+      const zoom = Number.parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+      panel.style.setProperty("--pace-viewport-height", `${viewport.height / zoom}px`);
+      panel.style.setProperty("--pace-viewport-top", `${viewport.offsetTop / zoom}px`);
+      panel.dataset.compact = String(viewport.height / zoom <= 600);
+    };
+    updateViewport();
+    viewport.addEventListener("resize", updateViewport);
+    viewport.addEventListener("scroll", updateViewport);
+    return () => {
+      viewport.removeEventListener("resize", updateViewport);
+      viewport.removeEventListener("scroll", updateViewport);
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!thinking) {
@@ -380,6 +444,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   const runQuery = async (rawQuestion: string) => {
     const question = rawQuestion.trim();
     if (!question || thinking || (preferences.aiEnabled && hardLimited)) return;
+    focusComposerRef.current = Boolean(panelRef.current?.contains(document.activeElement) && document.activeElement?.tagName === "TEXTAREA");
     const runId = queryRunRef.current + 1;
     queryRunRef.current = runId;
     setActiveQuestion(question);
@@ -515,8 +580,10 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
   return (
     <>
       <button
+        ref={triggerRef}
         type="button"
         className={`pace-trigger ${open ? "is-open" : ""} ${!preferences.enabled ? "is-disabled" : ""} ${unavailable ? "is-unavailable" : ""}`}
+        data-motion={canAnimate ? preferences.motion : "off"}
         disabled={unavailable}
         onClick={() => {
           if (!preferences.enabled) {
@@ -532,12 +599,12 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
         aria-controls="pace-assistant-panel"
       >
         <span className="pace-trigger-mark" aria-hidden="true">
-          <PaceMark size={46} active={open || shouldBadge} emotion={expression.emotion} tone={expression.tone} performance={expression.performance} pose={expression.pose} energy={expression.energy} stateLabel={truthStateLabel} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
+          <PaceMark size={40} active={open || shouldBadge} emotion={expression.emotion} tone={expression.tone} performance={expression.performance} pose={expression.pose} energy={expression.energy} stateLabel={truthStateLabel} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
           {shouldBadge && !open && <span className={`pace-signal-dot is-${primary.tone}`} />}
         </span>
         <span className="pace-trigger-label" aria-hidden="true">
-          <span className="pace-trigger-brand">PWAYMENT</span>
-          <span className="pace-trigger-action">Vraag Pace</span>
+          <span className="pace-trigger-brand">PACE</span>
+          <span className="pace-trigger-action">Vraag maar</span>
         </span>
       </button>
 
@@ -557,34 +624,31 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
       {createPortal(<AnimatePresence>
         {open && !unavailable && (
           <>
-            <motion.button
-              type="button"
-              className="pace-backdrop"
-              aria-label="Sluit Pace"
-              onClick={() => setOpen(false)}
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            />
             <motion.aside
+              ref={panelRef}
               id="pace-assistant-panel"
-              className="pace-panel"
+              className={`pace-panel${expanded ? " is-expanded" : ""}`}
+              data-motion={canAnimate ? preferences.motion : "off"}
+              data-phase={truthState.phase}
               role="dialog"
               aria-modal="false"
               aria-label="Pace operationele assistent"
-              initial={canAnimate ? { opacity: 0, x: -28, scale: 0.985 } : false}
+              initial={canAnimate ? { opacity: 0, x: -16, scale: 0.99 } : false}
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={canAnimate ? { opacity: 0, x: -20, scale: 0.99 } : { opacity: 0 }}
-              transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: canAnimate ? 0.24 : 0, ease: [0.22, 1, 0.36, 1] }}
             >
               <header className="pace-panel-header">
                 <div className="pace-header-leading">
                   {conversationActive && <button type="button" className="pace-header-back" onClick={returnToOverview} aria-label="Terug naar Nu belangrijk" title="Terug naar Nu belangrijk"><ArrowLeft size={18} /></button>}
                   <div className="pace-identity">
-                  <PaceMark size={52} active emotion={expression.emotion} tone={expression.tone} performance={expression.performance} pose={expression.pose} energy={expression.energy} stateLabel={truthStateLabel} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
-                  <div><span>PWAYMENT · {modeLabel}</span><h2>Pace</h2></div>
+                  <PaceMark size={40} active emotion={expression.emotion} tone={expression.tone} performance={expression.performance} pose={expression.pose} energy={expression.energy} stateLabel={truthStateLabel} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
+                  <div><h2>Pace</h2><span>Je werkassistent</span></div>
                   </div>
                 </div>
                 <div className="pace-header-actions">
                   {conversationActive && <button type="button" onClick={() => {
+                    returnToOverview();
                     setServerConversation(null);
                     setConversation([]);
                     setCitations([]);
@@ -593,14 +657,23 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                     setResponse(null);
                     setQuery("");
                   }} aria-label="Start nieuw PACE-onderzoek" title="Nieuw onderzoek"><Plus size={17} /></button>}
+                  <button type="button" className="pace-expand-toggle" onClick={() => setExpanded((current) => !current)} aria-pressed={expanded} aria-label={expanded ? "Maak Pace compacter" : "Vergroot Pace"} title={expanded ? "Compacte weergave" : "Ruime leesweergave"}>{expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}</button>
                   <button type="button" onClick={() => { props.onOpenProfile("pace"); setOpen(false); }} aria-label="Open volledige Pace-instellingen" title="Pace-instellingen"><Settings2 size={17} /></button>
                   <button ref={closeButtonRef} type="button" onClick={() => setOpen(false)} aria-label="Sluit Pace"><X size={18} /></button>
                 </div>
               </header>
+              <div className="pace-context-bar">
+                <span className="pace-context-state"><i aria-hidden="true" />{truthStateLabel}</span>
+                <small>{modeLabel}</small>
+              </div>
 
               <AnimatePresence mode="wait" initial={false}>
-                {!conversationActive ? <motion.div className="pace-scroll pace-live-layout" key="overview" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}>
+                {!conversationActive ? <motion.div className="pace-scroll pace-live-layout" key="overview" initial={canAnimate ? { opacity: 0, x: -8 } : false} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={{ duration: canAnimate ? 0.16 : 0 }}>
                     <div className="pace-overview-window">
+                      <section className="pace-welcome" aria-label="Welkom bij Pace">
+                        <div><span className="pace-eyebrow">PACE / WINKELASSISTENT</span><h3>Meer overzicht.<br />Minder zoekwerk.</h3><p>Vraag, ontdek en zet de volgende stap.</p></div>
+                        <div className="pace-welcome-mark" aria-hidden="true"><PaceMark size={84} active emotion={expression.emotion} tone={expression.tone} pose={expression.pose} energy={expression.energy} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} /></div>
+                      </section>
                       <div className="pace-overview-heading"><span>Nu belangrijk</span><small>{signals.length} {signals.length === 1 ? "aandachtspunt" : "aandachtspunten"}</small></div>
 
                     <section className={`pace-live-brief is-${primary.tone}`}>
@@ -640,7 +713,7 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                       <section className="pace-signal-stack">
                         <div className="pace-stack-label"><Sparkles size={14} /> Daarna relevant</div>
                         {signals.slice(1, 3).map((signal) => (
-                          <button key={signal.id} type="button" onClick={() => signal.action.kind !== "none" ? runAction(signal.action, signal.customerInsightId) : undefined} className="pace-mini-signal">
+                          <button key={signal.id} type="button" disabled={signal.action.kind === "none"} onClick={() => runAction(signal.action, signal.customerInsightId)} className="pace-mini-signal">
                             <span className={`pace-mini-orb is-${signal.tone}`} />
                             <span><strong>{signal.title}</strong><small>{signal.compact}</small></span>
                             {signal.action.kind !== "none" && <ArrowRight size={14} />}
@@ -648,6 +721,10 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                         ))}
                       </section>
                     )}
+                    <section className="pace-starters" aria-label="Voorgestelde vragen">
+                      <div className="pace-stack-label">Waar wil je beginnen?</div>
+                      {queryHints.slice(0, 3).map((hint) => <button key={hint} type="button" disabled={queryBlocked} onClick={() => void runQuery(hint)}><span><strong>{hint}</strong></span><ArrowUpRight size={16} /></button>)}
+                    </section>
                     {recentConversations.length > 0 && <section className="pace-recent-conversations" aria-label="Recente PACE-onderzoeken">
                       <div className="pace-stack-label"><Clock3 size={14} /> Recente onderzoeken</div>
                       {recentConversations.slice(0, 4).map((item) => <div key={item.id} className="pace-recent-row">
@@ -661,26 +738,20 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
 
                     <section className="pace-conversation-window is-collapsed">
                       <section className="pace-command-zone">
-                        <div className="pace-conversation-heading"><span><Command size={14} /> Vraag Pace</span><small>{preferences.aiEnabled ? preferences.liveStoreContext ? "AI + winkelgegevens" : "AI zonder winkelgegevens" : "Lokale hulp"}</small></div>
-                        <form onSubmit={submit}>
-                          <input
-                            value={query}
-                            onChange={(event) => setQuery(event.target.value)}
-                            onKeyDown={(event) => {
-                              if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
-                              event.preventDefault();
-                              void runQuery(query);
-                            }}
-                            placeholder="Stel je vraag…"
-                            aria-label="Vraag Pace"
-                          />
-                          <button type="submit" disabled={!query.trim() || thinking || (preferences.aiEnabled && hardLimited)} aria-label="Stuur vraag"><Send size={16} /></button>
+                        <div className="pace-conversation-heading"><span><Command size={14} /> Vraag Pace</span><small>Enter ↵ · nieuwe regel met Shift</small></div>
+                        <form className="pace-composer-form" onSubmit={submit}>
+                          <PaceQueryInput value={query} onChange={setQuery} onSend={() => void runQuery(query)} followUp={false} />
+                          <button type="submit" disabled={!query.trim() || queryBlocked} aria-label="Stuur vraag"><ArrowUp size={19} /></button>
                         </form>
-                        {preferences.aiEnabled && <div className={`pace-quota-badge${usagePercent >= 80 ? " is-warning" : ""}`} aria-live="polite">{usagePercent >= 80 && !hardLimited ? "Bijna op · " : ""}{paceQuotaLabel(quota)}</div>}
+                        <div className="pace-composer-foot"><span className="pace-trust-line"><ShieldCheck size={13} /> Jij houdt de controle.</span>{preferences.aiEnabled && <div className={`pace-quota-badge${usagePercent >= 80 ? " is-warning" : ""}`} aria-live="polite">{usagePercent >= 80 && !hardLimited ? "Bijna op · " : ""}{paceQuotaLabel(quota)}</div>}</div>
                         {preferences.aiEnabled && hardLimited && <div className="pace-quota-wall" role="alert"><strong>Je bent door je vragen heen.</strong><span>Upgrade naar Pro of koop 50 losse credits voor €5.</span><button type="button" onClick={() => { props.onOpenProfile("pace"); setOpen(false); }}>Bekijk opties <ArrowRight size={14} /></button></div>}
                       </section>
                     </section>
-                </motion.div> : <motion.div className="pace-conversation-layout" key="conversation" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }} transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}>
+                </motion.div> : <motion.div className="pace-conversation-layout" key="conversation" initial={canAnimate ? { opacity: 0, x: 8 } : false} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={{ duration: canAnimate ? 0.16 : 0 }} onAnimationComplete={() => {
+                  if (!focusComposerRef.current) return;
+                  panelRef.current?.querySelector<HTMLTextAreaElement>("textarea")?.focus({ preventScroll: true });
+                  focusComposerRef.current = false;
+                }}>
                   <section className="pace-question-card" aria-label="Jouw vraag">
                     <span>Jouw vraag</span>
                     <h3>{activeQuestion}</h3>
@@ -689,15 +760,16 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                   <div className="pace-conversation-body" aria-live="polite" aria-busy={thinking}>
                     <AnimatePresence mode="wait">
                       {(thinking || response) && (
-                        <motion.section className="pace-response" key={thinking ? `thinking-${activeQuestion}` : `${activeQuestion}-${response?.title}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}>
+                        <motion.section className="pace-response" key={thinking ? `thinking-${activeQuestion}` : `${activeQuestion}-${response?.title}`} initial={canAnimate ? { opacity: 0, y: 6 } : false} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: canAnimate ? 0.18 : 0 }}>
                           {thinking ? <div className="pace-thinking-performance">
                             <PaceMark size={76} active emotion={expression.emotion} tone={expression.tone} performance={expression.performance} pose={expression.pose} energy={expression.energy} stateLabel={truthStateLabel} motionMode={preferences.motion} expressive={preferences.expressiveMorphs} />
                             <div className="pace-thinking-copy">
+                              <span className="pace-thinking-state">{truthStateLabel}</span>
                               <strong>{thinkingSlow ? "Pace werkt nog aan je vraag" : "Pace verwerkt je vraag"}</strong>
                               <span className="pace-thinking-status">{thinkingStatus}</span>
                             </div>
                           </div> : response && <>
-                            <div><Check size={14} /> PACE · {paceResponseSourceLabel(responseSource)}</div>
+                            <div className="pace-response-reply-heading"><Check size={14} /> PACE · {paceResponseSourceLabel(responseSource)}</div>
                             <h3>{response.title}</h3>
                             <div className="pace-response-content">
                               {parsePaceAnswer(response.answer).map((block, index) => {
@@ -727,27 +799,13 @@ export const PaceAssistant = (props: PaceAssistantProps) => {
                   </div>
 
                   <section className="pace-command-zone pace-conversation-composer">
-                    <div className="pace-conversation-heading"><span><Command size={14} /> Vervolgvraag</span><small>{preferences.aiEnabled ? preferences.liveStoreContext ? "AI + winkelgegevens" : "AI zonder winkelgegevens" : "Lokale hulp"}</small></div>
-                    <form onSubmit={submit}>
-                      <input
-                        value={query}
-                        onChange={(event) => setQuery(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
-                          event.preventDefault();
-                          void runQuery(query);
-                        }}
-                        placeholder="Stel een vervolgvraag…"
-                        aria-label="Vervolgvraag aan Pace"
-                      />
-                      <button type="submit" disabled={!query.trim() || thinking || (preferences.aiEnabled && hardLimited)} aria-label="Stuur vervolgvraag"><Send size={16} /></button>
+                    <div className="pace-conversation-heading"><span><Command size={14} /> Vervolgvraag</span><small>Enter ↵ · nieuwe regel met Shift</small></div>
+                    <form className="pace-composer-form" onSubmit={submit}>
+                      <PaceQueryInput value={query} onChange={setQuery} onSend={() => void runQuery(query)} followUp />
+                      <button type="submit" disabled={!query.trim() || queryBlocked} aria-label="Stuur vervolgvraag"><ArrowUp size={19} /></button>
                     </form>
-                    {preferences.aiEnabled && <div className={`pace-quota-badge${usagePercent >= 80 ? " is-warning" : ""}`} aria-live="polite">{usagePercent >= 80 && !hardLimited ? "Bijna op · " : ""}{paceQuotaLabel(quota)}</div>}
+                    <div className="pace-composer-foot"><span className="pace-trust-line"><ShieldCheck size={13} /> Pace voert geen financiële of gevoelige actie zelfstandig uit.</span>{preferences.aiEnabled && <div className={`pace-quota-badge${usagePercent >= 80 ? " is-warning" : ""}`} aria-live="polite">{usagePercent >= 80 && !hardLimited ? "Bijna op · " : ""}{paceQuotaLabel(quota)}</div>}</div>
                     {preferences.aiEnabled && hardLimited && <div className="pace-quota-wall" role="alert"><strong>Je bent door je vragen heen.</strong><span>Upgrade naar Pro of koop 50 losse credits voor €5.</span><button type="button" onClick={() => { props.onOpenProfile("pace"); setOpen(false); }}>Bekijk opties <ArrowRight size={14} /></button></div>}
-                    <div className="pace-query-hints">
-                      {queryHints.map((hint) => <button key={hint} type="button" onClick={() => void runQuery(hint)}>{hint}</button>)}
-                    </div>
-                    <footer className="pace-trust-line"><ShieldCheck size={14} /> Pace voert geen financiële of gevoelige actie zelfstandig uit.</footer>
                   </section>
                 </motion.div>}
               </AnimatePresence>

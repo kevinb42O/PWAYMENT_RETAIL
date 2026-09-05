@@ -1,0 +1,346 @@
+{"kind":"deck","id":"pr/nmqssc","name":"Deck"}
+{"kind":"layout","layoutId":"da06d5f2-d943-43e5-b1d1-9bbb0da5142d","name":"Master","type":"master"}
+{"kind":"layout","layoutId":"56ebf805-fec8-483a-9263-45e6d0f920e2","name":"Title Slide","type":"title"}
+{"kind":"slide","id":"sl/gql3ca","slide":1,"title":"PWAYMENT","textShapes":8}
+{"kind":"textbox","id":"sh/9sjm103m","slide":1,"text":"PWAYMENT","textPreview":"PWAYMENT","textChars":8,"textLines":1,"bbox":[42,36,300,24]}
+{"kind":"textbox","id":"sh/m5s36lkv","slide":1,"text":"De retailmotor voor\nde winkel van morgen.","textPreview":"De retailmotor voor | de winkel van morgen.","textChars":41,"textLines":2,"bbox":[42,158,592,172]}
+{"kind":"textbox","id":"sh/7q14zqlg","slide":1,"text":"Offline-first POS, voorraad, klanten, webshop en retail intelligence — in één platform.","textPreview":"Offline-first POS, voorraad, klanten, webshop en retail intelligence — in één platform.","textChars":87,"textLines":1,"bbox":[42,358,560,84]}
+{"kind":"shape","id":"sh/gvulcf2x","slide":1,"bbox":[42,500,332,34]}
+{"kind":"textbox","id":"sh/hw3m503i","slide":1,"text":"INVESTERINGSVRAAG · € 250.000","textPreview":"INVESTERINGSVRAAG · € 250.000","textChars":29,"textLines":1,"bbox":[54,509,308,18]}
+{"kind":"textbox","id":"sh/uts3a5kr","slide":1,"text":"Doel: 100 betalende locaties en € 9k MRR binnen 18 maanden.","textPreview":"Doel: 100 betalende locaties en € 9k MRR binnen 18 maanden.","textChars":59,"textLines":1,"bbox":[42,556,560,48]}
+{"kind":"shape","id":"sh/vul43alc","slide":1,"bbox":[659,71,580,514]}
+{"kind":"textbox","id":"sh/x0z2tg3e","slide":1,"text":"Pre-seed · België · september 2026","textPreview":"Pre-seed · België · september 2026","textChars":34,"textLines":1,"bbox":[42,642,500,24]}
+{"kind":"textbox","id":"sh/lwf2h4re","slide":1,"text":"PWAYMENT · CONFIDENTIAL INVESTOR DISCUSSION","textPreview":"PWAYMENT · CONFIDENTIAL INVESTOR DISCUSSION","textChars":43,"textLines":1,"bbox":[42,680,700,18]}
+{"kind":"textbox","id":"sh/kvml8zqt","slide":1,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[1176,680,62,18]}
+{"kind":"image","id":"im/hcn694j6","slide":1,"name":"","geometry":"roundRect","alt":"PWAYMENT kassascherm met productcatalogus en winkelmand","bbox":[660,72,578,512]}
+{"kind":"notes","id":"nt/gql3ca","slide":1,"text":"Open direct: “Ik vraag vandaag €250.000 om een gebouwd product om te zetten in een herhaalbaar retailbedrijf. Niet om nog achttien maanden features te bouwen.” Benoem de eindmijlpaal en ga dan naar het probleem.\n\n[Sources]\n/Users/kevin/PROJECTS/pwayment RETAIL/public/website/pwayment-pos-current.jpg\n/Users/kevin/PROJECTS/pwayment RETAIL/README.md"}
+{"kind":"slide","id":"sl/xepzun","slide":2,"title":"HET PROBLEEM","textShapes":17}
+{"kind":"textbox","id":"sh/s76pcvet","slide":2,"text":"HET PROBLEEM","textPreview":"HET PROBLEEM","textChars":12,"textLines":1,"bbox":[42,34,600,18]}
+{"kind":"textbox","id":"sh/r6do3qd8","slide":2,"text":"Een winkelier koopt software, maar beheert nog altijd losse eilanden.","textPreview":"Een winkelier koopt software, maar beheert nog altijd losse eilanden.","textChars":69,"textLines":1,"bbox":[42,63,1196,92]}
+{"kind":"textbox","id":"sh/q547a5wn","slide":2,"text":"PWAYMENT · INVESTOR PITCH · SEPTEMBER 2026","textPreview":"PWAYMENT · INVESTOR PITCH · SEPTEMBER 2026","textChars":42,"textLines":1,"bbox":[42,680,700,18]}
+{"kind":"textbox","id":"sh/54v610v2","slide":2,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[1176,680,62,18]}
+{"kind":"textbox","id":"sh/43mp8veh","slide":2,"text":"De dagelijkse werkelijkheid","textPreview":"De dagelijkse werkelijkheid","textChars":27,"textLines":1,"bbox":[42,178,370,30]}
+{"kind":"textbox","id":"sh/32dozqdc","slide":2,"text":"Kassa, voorraad, webshop, klanten, herstellingen, personeel en rapportering leven vaak naast elkaar. Elke overdracht kost tijd en creëert fouten.","textPreview":"Kassa, voorraad, webshop, klanten, herstellingen, personeel en rapportering leven vaak naast elkaar. Elke overdracht kost tijd en creëert...","textChars":145,"textLines":1,"bbox":[42,232,520,126]}
+{"kind":"shape","id":"sh/ih476lwr","slide":2,"bbox":[42,420,520,142]}
+{"kind":"textbox","id":"sh/p0zqdkvm","slide":2,"text":"De echte vraag","textPreview":"De echte vraag","textChars":14,"textLines":1,"bbox":[68,448,200,22]}
+{"kind":"textbox","id":"sh/ozqpkfe1","slide":2,"text":"“Wat moet ik vandaag doen om marge, voorraad en klanten te verbeteren?”","textPreview":"“Wat moet ik vandaag doen om marge, voorraad en klanten te verbeteren?”","textChars":71,"textLines":1,"bbox":[68,487,448,58]}
+{"kind":"textbox","id":"sh/idw7i9gv","slide":2,"text":"1","textPreview":"1","textChars":1,"textLines":1,"bbox":[664,174,48,48]}
+{"kind":"textbox","id":"sh/jep8buhg","slide":2,"text":"Dubbele invoer","textPreview":"Dubbele invoer","textChars":14,"textLines":1,"bbox":[736,176,430,30]}
+{"kind":"textbox","id":"sh/kfypkzy1","slide":2,"text":"Data wordt herhaald tussen kassa, webshop en boekhouding.","textPreview":"Data wordt herhaald tussen kassa, webshop en boekhouding.","textChars":57,"textLines":1,"bbox":[736,220,430,60]}
+{"kind":"shape","id":"sh/5g7qd4zm","slide":2,"bbox":[664,296,544,1]}
+{"kind":"textbox","id":"sh/a9w7epgz","slide":2,"text":"2","textPreview":"2","textChars":1,"textLines":1,"bbox":[664,320,48,48]}
+{"kind":"textbox","id":"sh/va587uhk","slide":2,"text":"Late signalen","textPreview":"Late signalen","textChars":13,"textLines":1,"bbox":[736,322,430,30]}
+{"kind":"textbox","id":"sh/wbepgzy5","slide":2,"text":"Voorraad- en margerisico’s worden pas na de feiten gezien.","textPreview":"Voorraad- en margerisico’s worden pas na de feiten gezien.","textChars":58,"textLines":1,"bbox":[736,366,430,60]}
+{"kind":"shape","id":"sh/xcnq94za","slide":2,"bbox":[664,442,544,1]}
+{"kind":"textbox","id":"sh/u5g7qtg3","slide":2,"text":"3","textPreview":"3","textChars":1,"textLines":1,"bbox":[664,466,48,48]}
+{"kind":"textbox","id":"sh/f698jeho","slide":2,"text":"Te veel tools","textPreview":"Te veel tools","textChars":13,"textLines":1,"bbox":[736,468,430,30]}
+{"kind":"textbox","id":"sh/rq14bqx0","slide":2,"text":"De eigenaar betaalt integratiekosten én operationele complexiteit.","textPreview":"De eigenaar betaalt integratiekosten én operationele complexiteit.","textChars":66,"textLines":1,"bbox":[736,512,430,60]}
+{"kind":"notes","id":"nt/xepzun","slide":2,"text":"Maak dit herkenbaar met één winkelverhaal uit je eigen ervaring. Vermijd een lange lijst concurrenten; de kern is operationele versnippering en het beslisprobleem.\n\n[Sources]\nManagement assumptions and internal PWAYMENT materials."}
+{"kind":"slide","id":"sl/nu2qs4","slide":3,"title":"DE OPLOSSING","textShapes":15}
+{"kind":"textbox","id":"sh/juxsr6x8","slide":3,"text":"DE OPLOSSING","textPreview":"DE OPLOSSING","textChars":12,"textLines":1,"bbox":[42,34,600,18]}
+{"kind":"textbox","id":"sh/kvq90bet","slide":3,"text":"PWAYMENT verbindt de transactie met de volgende beslissing.","textPreview":"PWAYMENT verbindt de transactie met de volgende beslissing.","textChars":59,"textLines":1,"bbox":[42,63,1196,92]}
+{"kind":"textbox","id":"sh/5wzatgfe","slide":3,"text":"PWAYMENT · INVESTOR PITCH · SEPTEMBER 2026","textPreview":"PWAYMENT · INVESTOR PITCH · SEPTEMBER 2026","textChars":42,"textLines":1,"bbox":[42,680,700,18]}
+{"kind":"textbox","id":"sh/aporu1wr","slide":3,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[1176,680,62,18]}
+{"kind":"shape","id":"sh/vqxsnmxc","slide":3,"bbox":[41,167,718,450]}
+{"kind":"textbox","id":"sh/xsfapwfi","slide":3,"text":"Eén operationele laag","textPreview":"Eén operationele laag","textChars":21,"textLines":1,"bbox":[814,174,370,32]}
+{"kind":"shape","id":"sh/ul8b6lwv","slide":3,"bbox":[814,291,384,1]}
+{"kind":"textbox","id":"sh/fmhszqxg","slide":3,"text":"POS","textPreview":"POS","textChars":3,"textLines":1,"bbox":[814,236,124,24]}
+{"kind":"textbox","id":"sh/nqx0vy10","slide":3,"text":"Offline bruikbaar, snel aan de kassa","textPreview":"Offline bruikbaar, snel aan de kassa","textChars":36,"textLines":1,"bbox":[946,236,252,42]}
+{"kind":"shape","id":"sh/m54z2t0f","slide":3,"bbox":[814,363,384,1]}
+{"kind":"textbox","id":"sh/9sfixojq","slide":3,"text":"Voorraad","textPreview":"Voorraad","textChars":8,"textLines":1,"bbox":[814,308,124,24]}
+{"kind":"textbox","id":"sh/or6h43i5","slide":3,"text":"Bewegingen, telling, besteladvies","textPreview":"Bewegingen, telling, besteladvies","textChars":33,"textLines":1,"bbox":[946,308,252,42]}
+{"kind":"shape","id":"sh/bux0zy1w","slide":3,"bbox":[814,435,384,1]}
+{"kind":"textbox","id":"sh/atoz6t0b","slide":3,"text":"Klanten","textPreview":"Klanten","textChars":7,"textLines":1,"bbox":[814,380,124,24]}
+{"kind":"textbox","id":"sh/xwfi18z2","slide":3,"text":"CRM, loyaliteit en aankoopcontext","textPreview":"CRM, loyaliteit en aankoopcontext","textChars":33,"textLines":1,"bbox":[946,380,252,42]}
+{"kind":"shape","id":"sh/wv6h83ih","slide":3,"bbox":[814,507,384,1]}
+{"kind":"textbox","id":"sh/jyh03ihs","slide":3,"text":"Webshop","textPreview":"Webshop","textChars":7,"textLines":1,"bbox":[814,452,124,24]}
+{"kind":"textbox","id":"sh/yxozad0n","slide":3,"text":"Gedeelde catalogus en live voorraad","textPreview":"Gedeelde catalogus en live voorraad","textChars":35,"textLines":1,"bbox":[946,452,252,42]}
+{"kind":"shape","id":"sh/u5cbi1or","slide":3,"bbox":[814,579,384,1]}
+{"kind":"textbox","id":"sh/f6lcr6pc","slide":3,"text":"Pace","textPreview":"Pace","textChars":4,"textLines":1,"bbox":[814,524,124,24]}
+{"kind":"textbox","id":"sh/grutkb6x","slide":3,"text":"Signalen vertalen naar concrete acties","textPreview":"Signalen vertalen naar concrete acties","textChars":38,"textLines":1,"bbox":[946,524,252,42]}
+{"kind":"image","id":"im/t0b6hkjm","slide":3,"name":"","geometry":"roundRect","alt":"PWAYMENT insights-scherm met concrete winkelacties","bbox":[42,168,716,448]}
+{"kind":"notes","id":"nt/nu2qs4","slide":3,"text":"Laat zien dat dit geen mock-up is. De wedge is niet “meer functies”; het is één datalaag die de eigenaar van registratie naar actie brengt. Geef hier maximaal 45 seconden productcontext.\n\n[Sources]\n/Users/kevin/PROJECTS/pwayment RETAIL/public/website/pwayment-insights-current.jpg\n/Users/kevin/PROJECTS/pwayment RETAIL/README.md"}
+{"kind":"slide","id":"sl/ljwjr4","slide":4,"title":"BEWIJS VANDAAG","textShapes":15}
+{"kind":"textbox","id":"sh/lgjy5cnq","slide":4,"text":"BEWIJS VANDAAG","textPreview":"BEWIJS VANDAAG","textChars":14,"textLines":1,"bbox":[42,34,600,18]}
+{"kind":"textbox","id":"sh/ydsfah4f","slide":4,"text":"Het productrisico is verlaagd; het commerciële risico is de volgende stap.","textPreview":"Het productrisico is verlaagd; het commerciële risico is de volgende stap.","textChars":74,"textLines":1,"bbox":[42,63,1196,92]}
+{"kind":"textbox","id":"sh/je1g3m50","slide":4,"text":"PWAYMENT · INVESTOR PITCH · SEPTEMBER 2026","textPreview":"PWAYMENT · INVESTOR PITCH · SEPTEMBER 2026","textChars":42,"textLines":1,"bbox":[42,680,700,18]}
+{"kind":"textbox","id":"sh/wrax87m9","slide":4,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[1176,680,62,18]}
+{"kind":"textbox","id":"sh/xcje1cnu","slide":4,"text":"Technische basis die al bestaat","textPreview":"Technische basis die al bestaat","textChars":31,"textLines":1,"bbox":[42,170,580,30]}
+{"kind":"shape","id":"sh/ap8f6x43","slide":4,"bbox":[42,236,350,250]}
+{"kind":"textbox","id":"sh/bqhwz25o","slide":4,"text":"72","textPreview":"72","textChars":2,"textLines":1,"bbox":[66,266,300,62]}
+{"kind":"textbox","id":"sh/onqx47md","slide":4,"text":"Supabase-migraties","textPreview":"Supabase-migraties","textChars":18,"textLines":1,"bbox":[66,342,300,28]}
+{"kind":"textbox","id":"sh/9ozexsni","slide":4,"text":"multi-tenant data, RLS en operationele workflows","textPreview":"multi-tenant data, RLS en operationele workflows","textChars":48,"textLines":1,"bbox":[66,392,300,64]}
+{"kind":"shape","id":"sh/l0beh4jm","slide":4,"bbox":[432,236,350,250]}
+{"kind":"textbox","id":"sh/kz2doz21","slide":4,"text":"308","textPreview":"308","textChars":3,"textLines":1,"bbox":[456,266,300,62]}
+{"kind":"textbox","id":"sh/zetwfu1g","slide":4,"text":"producten gevalideerd","textPreview":"producten gevalideerd","textChars":21,"textLines":1,"bbox":[456,342,300,28]}
+{"kind":"textbox","id":"sh/ydkvm9kv","slide":4,"text":"families, varianten, identifiers en voorraadprofielen","textPreview":"families, varianten, identifiers en voorraadprofielen","textChars":53,"textLines":1,"bbox":[456,392,300,64]}
+{"kind":"shape","id":"sh/xcred4jq","slide":4,"bbox":[822,236,350,250]}
+{"kind":"textbox","id":"sh/cbidkz25","slide":4,"text":"1.997","textPreview":"1.997","textChars":5,"textLines":1,"bbox":[846,266,300,62]}
+{"kind":"textbox","id":"sh/ba9wbulk","slide":4,"text":"historische transacties","textPreview":"historische transacties","textChars":23,"textLines":1,"bbox":[846,342,300,28]}
+{"kind":"textbox","id":"sh/a90vipkz","slide":4,"text":"bewaard met geldige fiscale snapshots","textPreview":"bewaard met geldige fiscale snapshots","textChars":37,"textLines":1,"bbox":[846,392,300,64]}
+{"kind":"shape","id":"sh/p8ru9k3e","slide":4,"bbox":[42,532,1130,72]}
+{"kind":"textbox","id":"sh/o7idgf2t","slide":4,"text":"Eerlijk uitgangspunt: dit is productbewijs, geen claim van bewezen paid traction.","textPreview":"Eerlijk uitgangspunt: dit is productbewijs, geen claim van bewezen paid traction.","textChars":81,"textLines":1,"bbox":[68,554,1080,30]}
+{"kind":"notes","id":"nt/ljwjr4","slide":4,"text":"Deze slide bouwt vertrouwen op door bewijs en beperking samen te tonen. Zeg letterlijk dat paid traction nog bewezen moet worden; precies daarom is dit een pre-seed-ronde.\n\n[Sources]\n/Users/kevin/PROJECTS/pwayment RETAIL/README.md\n/Users/kevin/PROJECTS/pwayment RETAIL/FEATURE-AUDIT-2026-08-22.md"}
+{"kind":"slide","id":"sl/l7ksl4","slide":5,"title":"VERDIENMODEL","textShapes":18}
+{"kind":"textbox","id":"sh/76ds32xw","slide":5,"text":"VERDIENMODEL","textPreview":"VERDIENMODEL","textChars":12,"textLines":1,"bbox":[42,34,600,18]}
+{"kind":"textbox","id":"sh/87m9c7eh","slide":5,"text":"Een eenvoudig abonnement — met ruimte om per locatie mee te groeien.","textPreview":"Een eenvoudig abonnement — met ruimte om per locatie mee te groeien.","textChars":68,"textLines":1,"bbox":[42,63,1196,92]}
+{"kind":"textbox","id":"sh/98fa5cf2","slide":5,"text":"PWAYMENT · INVESTOR PITCH · SEPTEMBER 2026","textPreview":"PWAYMENT · INVESTOR PITCH · SEPTEMBER 2026","textChars":42,"textLines":1,"bbox":[42,680,700,18]}
+{"kind":"textbox","id":"sh/u9orehwn","slide":5,"text":"05","textPreview":"05","textChars":2,"textLines":1,"bbox":[1176,680,62,18]}
+{"kind":"shape","id":"sh/vaxs7mx8","slide":5,"bbox":[42,180,360,328]}
+{"kind":"textbox","id":"sh/wb69gret","slide":5,"text":"ACQUISITIE","textPreview":"ACQUISITIE","textChars":10,"textLines":1,"bbox":[66,208,300,18]}
+{"kind":"textbox","id":"sh/hcfa9cfe","slide":5,"text":"Basis","textPreview":"Basis","textChars":5,"textLines":1,"bbox":[66,252,310,58]}
+{"kind":"textbox","id":"sh/qdkr2dgj","slide":5,"text":"€ 0","textPreview":"€ 0","textChars":3,"textLines":1,"bbox":[66,330,310,46]}
+{"kind":"textbox","id":"sh/bet8vix4","slide":5,"text":"1 locatie · 250 producten\nBasis POS en voorraad","textPreview":"1 locatie · 250 producten | Basis POS en voorraad","textChars":47,"textLines":2,"bbox":[66,406,310,66]}
+{"kind":"shape","id":"sh/rel0r2ds","slide":5,"bbox":[440,180,360,328]}
+{"kind":"textbox","id":"sh/qtcjixw7","slide":5,"text":"KERNPRODUCT","textPreview":"KERNPRODUCT","textChars":11,"textLines":1,"bbox":[464,208,300,18]}
+{"kind":"textbox","id":"sh/dg3itcvy","slide":5,"text":"Retail Professional","textPreview":"Retail Professional","textChars":19,"textLines":1,"bbox":[464,252,310,58]}
+{"kind":"textbox","id":"sh/cfu1k7ed","slide":5,"text":"€ 69/mnd","textPreview":"€ 69/mnd","textChars":8,"textLines":1,"bbox":[464,330,310,46]}
+{"kind":"textbox","id":"sh/3ql0n2dw","slide":5,"text":"Actieve winkels\nCRM · webshop · inzichten","textPreview":"Actieve winkels | CRM · webshop · inzichten","textChars":41,"textLines":2,"bbox":[464,406,310,66]}
+{"kind":"shape","id":"sh/2psjexwb","slide":5,"bbox":[838,180,360,328]}
+{"kind":"textbox","id":"sh/ps3ipsvm","slide":5,"text":"UITBREIDING","textPreview":"UITBREIDING","textChars":11,"textLines":1,"bbox":[862,208,300,18]}
+{"kind":"textbox","id":"sh/4ru1gneh","slide":5,"text":"Enterprise & ketens","textPreview":"Enterprise & ketens","textChars":19,"textLines":1,"bbox":[862,252,310,58]}
+{"kind":"textbox","id":"sh/fm10jidk","slide":5,"text":"vanaf € 149/mnd","textPreview":"vanaf € 149/mnd","textChars":15,"textLines":1,"bbox":[862,330,310,46]}
+{"kind":"textbox","id":"sh/ulsjadwz","slide":5,"text":"Multi-store · workforce\nAPI · audit · AI-forecast","textPreview":"Multi-store · workforce | API · audit · AI-forecast","textChars":49,"textLines":2,"bbox":[862,406,310,66]}
+{"kind":"textbox","id":"sh/ih8jmdg7","slide":5,"text":"Base-case model","textPreview":"Base-case model","textChars":15,"textLines":1,"bbox":[42,554,220,28]}
+{"kind":"textbox","id":"sh/jihkvixc","slide":5,"text":"Doel-ARPA € 90/mnd  ·  brutomarge > 80%  ·  jaarlijkse betaling verlaagt churn en financieringsdruk.","textPreview":"Doel-ARPA € 90/mnd  ·  brutomarge > 80%  ·  jaarlijkse betaling verlaagt churn en financieringsdruk.","textChars":100,"textLines":1,"bbox":[270,554,920,42]}
+{"kind":"notes","id":"nt/l7ksl4","slide":5,"text":"Leg uit dat Basis de drempel verlaagt, maar dat onboarding en activatie sturen naar Professional. De €90 blended ARPA is een modelaannname op basis van de huidige prijsstructuur en add-ons.\n\n[Sources]\n/Users/kevin/PROJECTS/pwayment RETAIL/src/billing/planCatalog.ts\n/Users/kevin/PROJECTS/pwayment RETAIL/docs/BILLING-ENTITLEMENTS-AND-PRICING-MASTER-PLAN.md"}
+{"kind":"slide","id":"sl/8bamyu","slide":6,"title":"MARKT","textShapes":18}
+{"kind":"textbox","id":"sh/sre1c3i9","slide":6,"text":"MARKT","textPreview":"MARKT","textChars":5,"textLines":1,"bbox":[42,34,600,18]}
+{"kind":"textbox","id":"sh/rq503y14","slide":6,"text":"De Belgische startmarkt is groot genoeg; focus maakt hem bereikbaar.","textPreview":"De Belgische startmarkt is groot genoeg; focus maakt hem bereikbaar.","textChars":68,"textLines":1,"bbox":[42,63,1196,92]}
+{"kind":"textbox","id":"sh/6pwjat0j","slide":6,"text":"PWAYMENT · INVESTOR PITCH · SEPTEMBER 2026","textPreview":"PWAYMENT · INVESTOR PITCH · SEPTEMBER 2026","textChars":42,"textLines":1,"bbox":[42,680,700,18]}
+{"kind":"textbox","id":"sh/5oni18jy","slide":6,"text":"06","textPreview":"06","textChars":2,"textLines":1,"bbox":[1176,680,62,18]}
+{"kind":"textbox","id":"sh/4nu183id","slide":6,"text":"187.082","textPreview":"187.082","textChars":7,"textLines":1,"bbox":[42,172,430,74]}
+{"kind":"textbox","id":"sh/jml0zy1s","slide":6,"text":"btw-geregistreerde ondernemingen in Belgische handel (2023)","textPreview":"btw-geregistreerde ondernemingen in Belgische handel (2023)","textChars":59,"textLines":1,"bbox":[42,252,480,54]}
+{"kind":"shape","id":"sh/ilcj6t07","slide":6,"bbox":[42,350,520,1]}
+{"kind":"textbox","id":"sh/pk72dsz2","slide":6,"text":"Wij starten niet bij “alle retail”.","textPreview":"Wij starten niet bij “alle retail”.","textChars":35,"textLines":1,"bbox":[42,386,480,32]}
+{"kind":"textbox","id":"sh/ojy1knih","slide":6,"text":"De eerste doelgroep is gespecialiseerde retail met voorraadcomplexiteit, service en loyale klanten: skate, bike, outdoor, fashion en vergelijkbare verticals.","textPreview":"De eerste doelgroep is gespecialiseerde retail met voorraadcomplexiteit, service en loyale klanten: skate, bike, outdoor, fashion en verg...","textChars":157,"textLines":1,"bbox":[42,440,500,118]}
+{"kind":"shape","id":"sh/upcrqhoz","slide":6,"bbox":[664,168,532,112]}
+{"kind":"textbox","id":"sh/fql8jmpk","slide":6,"text":"TAM","textPreview":"TAM","textChars":3,"textLines":1,"bbox":[690,190,90,20]}
+{"kind":"textbox","id":"sh/gre9sr65","slide":6,"text":"187k","textPreview":"187k","textChars":4,"textLines":1,"bbox":[790,184,150,42]}
+{"kind":"textbox","id":"sh/hsnqlw7q","slide":6,"text":"Belgische handel","textPreview":"Belgische handel","textChars":16,"textLines":1,"bbox":[946,192,210,48]}
+{"kind":"shape","id":"sh/61c7mxo3","slide":6,"bbox":[696,314,468,112]}
+{"kind":"textbox","id":"sh/7ml8f2po","slide":6,"text":"SAM","textPreview":"SAM","textChars":3,"textLines":1,"bbox":[722,336,90,20]}
+{"kind":"textbox","id":"sh/snu9o769","slide":6,"text":"20k","textPreview":"20k","textChars":3,"textLines":1,"bbox":[822,330,150,42]}
+{"kind":"textbox","id":"sh/to3qhc7u","slide":6,"text":"interne aanname: specialist retail","textPreview":"interne aanname: specialist retail","textChars":34,"textLines":1,"bbox":[962,338,194,48]}
+{"kind":"shape","id":"sh/qxwry1o7","slide":6,"bbox":[728,460,404,112]}
+{"kind":"textbox","id":"sh/bip8r6ps","slide":6,"text":"SOM","textPreview":"SOM","textChars":3,"textLines":1,"bbox":[754,482,90,20]}
+{"kind":"textbox","id":"sh/n2hojy54","slide":6,"text":"1.000","textPreview":"1.000","textChars":5,"textLines":1,"bbox":[854,476,150,42]}
+{"kind":"textbox","id":"sh/m18nqt4z","slide":6,"text":"5% van de SAM","textPreview":"5% van de SAM","textChars":13,"textLines":1,"bbox":[978,484,178,48]}
+{"kind":"textbox","id":"sh/94z6l8na","slide":6,"text":"1.000 locaties × € 90/mnd = € 1,08m ARR","textPreview":"1.000 locaties × € 90/mnd = € 1,08m ARR","textChars":39,"textLines":1,"bbox":[700,612,470,30]}
+{"kind":"notes","id":"nt/8bamyu","slide":6,"text":"Gebruik TAM alleen als context. De investeerbare logica zit in de bottom-up SOM: een scherpe niche, een herhaalbaar onboardingmodel en 1.000 locaties op langere termijn. Zeg expliciet dat 20.000 een managementaannname is.\n\n[Sources]\nhttps://statbel.fgov.be/en/news/114196-enterprises-created-2023\nhttps://statbel.fgov.be/nl/themas/ondernemingen/structurele-ondernemingsstatistieken"}
+{"kind":"slide","id":"sl/z9ykgp","slide":7,"title":"GO-TO-MARKET","textShapes":14}
+{"kind":"textbox","id":"sh/0by5k7ax","slide":7,"text":"GO-TO-MARKET","textPreview":"GO-TO-MARKET","textChars":12,"textLines":1,"bbox":[42,34,600,18]}
+{"kind":"textbox","id":"sh/fapob2tc","slide":7,"text":"Eerst één vertical domineren; daarna dezelfde motor herhalen.","textPreview":"Eerst één vertical domineren; daarna dezelfde motor herhalen.","textChars":61,"textLines":1,"bbox":[42,63,1196,92]}
+{"kind":"textbox","id":"sh/e9gnixsr","slide":7,"text":"PWAYMENT · INVESTOR PITCH · SEPTEMBER 2026","textPreview":"PWAYMENT · INVESTOR PITCH · SEPTEMBER 2026","textChars":42,"textLines":1,"bbox":[42,680,700,18]}
+{"kind":"textbox","id":"sh/d8769sb6","slide":7,"text":"07","textPreview":"07","textChars":2,"textLines":1,"bbox":[1176,680,62,18]}
+{"kind":"shape","id":"sh/s7y5gnal","slide":7,"bbox":[76,342,1060,2]}
+{"kind":"shape","id":"sh/r6po7it0","slide":7,"bbox":[42,222,360,300]}
+{"kind":"textbox","id":"sh/q5gnedsf","slide":7,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[66,246,80,28]}
+{"kind":"textbox","id":"sh/54n658ba","slide":7,"text":"Design partners","textPreview":"Design partners","textChars":15,"textLines":1,"bbox":[66,294,300,34]}
+{"kind":"shape","id":"sh/43e5cnap","slide":7,"bbox":[62,336,14,14]}
+{"kind":"textbox","id":"sh/ep0v254j","slide":7,"text":"10 winkels\nFounder-led interviews\nWekelijkse productfeedback","textPreview":"10 winkels | Founder-led interviews | Wekelijkse productfeedback","textChars":60,"textLines":3,"bbox":[66,382,300,100]}
+{"kind":"shape","id":"sh/zq9cva54","slide":7,"bbox":[444,222,360,300]}
+{"kind":"textbox","id":"sh/0rid4fmp","slide":7,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[468,246,80,28]}
+{"kind":"textbox","id":"sh/1sbuxkna","slide":7,"text":"Betaalde cohort","textPreview":"Betaalde cohort","textChars":15,"textLines":1,"bbox":[468,294,300,34]}
+{"kind":"shape","id":"sh/q10vy54n","slide":7,"bbox":[464,336,14,14]}
+{"kind":"textbox","id":"sh/r29cra5s","slide":7,"text":"30 locaties\nGestandaardiseerde migratie\nCases en referrals","textPreview":"30 locaties | Gestandaardiseerde migratie | Cases en referrals","textChars":58,"textLines":3,"bbox":[468,382,300,100]}
+{"kind":"shape","id":"sh/c3id0fmd","slide":7,"bbox":[846,222,360,300]}
+{"kind":"textbox","id":"sh/d4rutkny","slide":7,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[870,246,80,28]}
+{"kind":"textbox","id":"sh/2xgbulob","slide":7,"text":"Kanaalmodel","textPreview":"Kanaalmodel","textChars":11,"textLines":1,"bbox":[870,294,300,34]}
+{"kind":"shape","id":"sh/3ypcnq5w","slide":7,"bbox":[866,336,14,14]}
+{"kind":"textbox","id":"sh/725svmlo","slide":7,"text":"100 locaties\nHardware- en boekhoudpartners\nVertical playbook","textPreview":"100 locaties | Hardware- en boekhoudpartners | Vertical playbook","textChars":60,"textLines":3,"bbox":[870,382,300,100]}
+{"kind":"shape","id":"sh/61cr21k3","slide":7,"bbox":[42,566,1164,58]}
+{"kind":"textbox","id":"sh/t4naxw3u","slide":7,"text":"GTM-gates: CAC < € 800  ·  payback < 12 maanden  ·  70%+ activatie binnen 14 dagen  ·  churn gemeten per cohort","textPreview":"GTM-gates: CAC < € 800  ·  payback < 12 maanden  ·  70%+ activatie binnen 14 dagen  ·  churn gemeten per cohort","textChars":111,"textLines":1,"bbox":[66,585,1116,24]}
+{"kind":"notes","id":"nt/z9ykgp","slide":7,"text":"Vertel hoe jij persoonlijk de eerste tien winkels binnenhaalt. De investeerder moet geloven dat je niet meteen een duur salesteam bouwt. Partners komen pas nadat de onboarding en propositie aantoonbaar werken.\n\n[Sources]\nManagement assumptions and internal PWAYMENT materials."}
+{"kind":"slide","id":"sl/yansie","slide":8,"title":"POSITIONERING","textShapes":29}
+{"kind":"textbox","id":"sh/relsbuho","slide":8,"text":"POSITIONERING","textPreview":"POSITIONERING","textChars":13,"textLines":1,"bbox":[42,34,600,18]}
+{"kind":"textbox","id":"sh/sfu94zi9","slide":8,"text":"PWAYMENT wint niet op één feature, maar op samenhang en retailcontext.","textPreview":"PWAYMENT wint niet op één feature, maar op samenhang en retailcontext.","textChars":70,"textLines":1,"bbox":[42,63,1196,92]}
+{"kind":"textbox","id":"sh/tg3ad4zu","slide":8,"text":"PWAYMENT · INVESTOR PITCH · SEPTEMBER 2026","textPreview":"PWAYMENT · INVESTOR PITCH · SEPTEMBER 2026","textChars":42,"textLines":1,"bbox":[42,680,700,18]}
+{"kind":"textbox","id":"sh/ehcr6p0f","slide":8,"text":"08","textPreview":"08","textChars":2,"textLines":1,"bbox":[1176,680,62,18]}
+{"kind":"textbox","id":"sh/filsfuh0","slide":8,"text":"Wat telt voor de winkel","textPreview":"Wat telt voor de winkel","textChars":23,"textLines":1,"bbox":[42,174,330,28]}
+{"kind":"textbox","id":"sh/gju98zil","slide":8,"text":"Legacy POS","textPreview":"Legacy POS","textChars":10,"textLines":1,"bbox":[430,174,220,28]}
+{"kind":"textbox","id":"sh/1k3ah4zq","slide":8,"text":"Horizontale SaaS","textPreview":"Horizontale SaaS","textChars":16,"textLines":1,"bbox":[702,174,220,28]}
+{"kind":"textbox","id":"sh/2lwba9gb","slide":8,"text":"PWAYMENT","textPreview":"PWAYMENT","textChars":8,"textLines":1,"bbox":[974,174,220,28]}
+{"kind":"shape","id":"sh/3m5sjehw","slide":8,"bbox":[42,228,1164,58]}
+{"kind":"textbox","id":"sh/bq94zato","slide":8,"text":"Offline-first POS","textPreview":"Offline-first POS","textChars":17,"textLines":1,"bbox":[60,246,310,22]}
+{"kind":"textbox","id":"sh/ap0nq5c3","slide":8,"text":"Sterk","textPreview":"Sterk","textChars":5,"textLines":1,"bbox":[440,246,210,22]}
+{"kind":"textbox","id":"sh/xsrm1kbu","slide":8,"text":"Wisselend","textPreview":"Wisselend","textChars":9,"textLines":1,"bbox":[712,246,210,22]}
+{"kind":"textbox","id":"sh/cri5sfu9","slide":8,"text":"Sterk","textPreview":"Sterk","textChars":5,"textLines":1,"bbox":[984,246,210,22]}
+{"kind":"shape","id":"sh/nmp4vqts","slide":8,"bbox":[42,300,1164,58]}
+{"kind":"textbox","id":"sh/2lgnm5c7","slide":8,"text":"Voorraad + webshop + CRM","textPreview":"Voorraad + webshop + CRM","textChars":24,"textLines":1,"bbox":[60,318,310,22]}
+{"kind":"textbox","id":"sh/pormx0bi","slide":8,"text":"Add-ons","textPreview":"Add-ons","textChars":7,"textLines":1,"bbox":[440,318,210,22]}
+{"kind":"textbox","id":"sh/oni5ovux","slide":8,"text":"Losse tools","textPreview":"Losse tools","textChars":11,"textLines":1,"bbox":[712,318,210,22]}
+{"kind":"textbox","id":"sh/7ito7utw","slide":8,"text":"Eén datalaag","textPreview":"Eén datalaag","textChars":12,"textLines":1,"bbox":[984,318,210,22]}
+{"kind":"shape","id":"sh/6hknypcb","slide":8,"bbox":[42,372,1164,58]}
+{"kind":"textbox","id":"sh/ido7qtwj","slide":8,"text":"Belgische retailflows","textPreview":"Belgische retailflows","textChars":21,"textLines":1,"bbox":[60,390,310,22]}
+{"kind":"textbox","id":"sh/3ex8zyd4","slide":8,"text":"Wisselend","textPreview":"Wisselend","textChars":9,"textLines":1,"bbox":[440,390,210,22]}
+{"kind":"textbox","id":"sh/4f6ps3ep","slide":8,"text":"Beperkt","textPreview":"Beperkt","textChars":7,"textLines":1,"bbox":[712,390,210,22]}
+{"kind":"textbox","id":"sh/5gfq18va","slide":8,"text":"In de kern","textPreview":"In de kern","textChars":10,"textLines":1,"bbox":[984,390,210,22]}
+{"kind":"shape","id":"sh/qho7utwf","slide":8,"bbox":[42,444,1164,58]}
+{"kind":"textbox","id":"sh/rix83yd0","slide":8,"text":"Actiegerichte intelligence","textPreview":"Actiegerichte intelligence","textChars":26,"textLines":1,"bbox":[60,462,310,22]}
+{"kind":"textbox","id":"sh/sj6pw3el","slide":8,"text":"Rapporten","textPreview":"Rapporten","textChars":9,"textLines":1,"bbox":[440,462,210,22]}
+{"kind":"textbox","id":"sh/dkfq58v6","slide":8,"text":"Generiek","textPreview":"Generiek","textChars":8,"textLines":1,"bbox":[712,462,210,22]}
+{"kind":"textbox","id":"sh/6lk7i9wb","slide":8,"text":"Retailcontext","textPreview":"Retailcontext","textChars":13,"textLines":1,"bbox":[984,462,210,22]}
+{"kind":"shape","id":"sh/7md8redw","slide":8,"bbox":[42,516,1164,58]}
+{"kind":"textbox","id":"sh/9c32dgjq","slide":8,"text":"Implementatie voor specialist retail","textPreview":"Implementatie voor specialist retail","textChars":36,"textLines":1,"bbox":[60,534,310,22]}
+{"kind":"textbox","id":"sh/oru1kb25","slide":8,"text":"Projectmatig","textPreview":"Projectmatig","textChars":12,"textLines":1,"bbox":[440,534,210,22]}
+{"kind":"textbox","id":"sh/nqlkb61k","slide":8,"text":"Self-service","textPreview":"Self-service","textChars":12,"textLines":1,"bbox":[712,534,210,22]}
+{"kind":"textbox","id":"sh/mpsji1kz","slide":8,"text":"Vertical playbook","textPreview":"Vertical playbook","textChars":17,"textLines":1,"bbox":[984,534,210,22]}
+{"kind":"textbox","id":"sh/xg32hgjm","slide":8,"text":"Verdedigbare laag: transactiedata + operationele workflows + verticale implementatiekennis.","textPreview":"Verdedigbare laag: transactiedata + operationele workflows + verticale implementatiekennis.","textChars":91,"textLines":1,"bbox":[42,614,1100,28]}
+{"kind":"notes","id":"nt/yansie","slide":8,"text":"Vergelijk categorieën, geen merknamen. Dit voorkomt een oppervlakkige featurestrijd. Benadruk dat de moat groeit met implementatiekennis en workflows, niet alleen met code.\n\n[Sources]\nManagement assumptions and internal PWAYMENT materials."}
+{"kind":"slide","id":"sl/j6kl99","slide":9,"title":"USE OF FUNDS","textShapes":14}
+{"kind":"textbox","id":"sh/xc7itoj6","slide":9,"text":"USE OF FUNDS","textPreview":"USE OF FUNDS","textChars":12,"textLines":1,"bbox":[42,34,600,18]}
+{"kind":"textbox","id":"sh/a9wji90v","slide":9,"text":"€ 250.000 koopt 18 maanden focus — met een harde commerciële opdracht.","textPreview":"€ 250.000 koopt 18 maanden focus — met een harde commerciële opdracht.","textChars":70,"textLines":1,"bbox":[42,63,1196,92]}
+{"kind":"textbox","id":"sh/va50re10","slide":9,"text":"PWAYMENT · INVESTOR PITCH · SEPTEMBER 2026","textPreview":"PWAYMENT · INVESTOR PITCH · SEPTEMBER 2026","textChars":42,"textLines":1,"bbox":[42,680,700,18]}
+{"kind":"textbox","id":"sh/8ne1gzip","slide":9,"text":"09","textPreview":"09","textChars":2,"textLines":1,"bbox":[1176,680,62,18]}
+{"kind":"shape","id":"sh/mlwje90j","slide":9,"bbox":[750,170,456,122]}
+{"kind":"textbox","id":"sh/nm50nu14","slide":9,"text":"38%","textPreview":"38%","textChars":3,"textLines":1,"bbox":[774,192,104,42]}
+{"kind":"textbox","id":"sh/sji1s3it","slide":9,"text":"Product","textPreview":"Product","textChars":7,"textLines":1,"bbox":[894,190,270,28]}
+{"kind":"textbox","id":"sh/t4r218ze","slide":9,"text":"Senior engineeringcapaciteit, stabiliteit, billing en integraties.","textPreview":"Senior engineeringcapaciteit, stabiliteit, billing en integraties.","textChars":66,"textLines":1,"bbox":[894,228,270,50]}
+{"kind":"shape","id":"sh/98retcny","slide":9,"bbox":[750,316,456,122]}
+{"kind":"textbox","id":"sh/87id076d","slide":9,"text":"22%","textPreview":"22%","textChars":3,"textLines":1,"bbox":[774,338,104,42]}
+{"kind":"textbox","id":"sh/n6pwrm5s","slide":9,"text":"Verkoop","textPreview":"Verkoop","textChars":7,"textLines":1,"bbox":[894,336,270,28]}
+{"kind":"textbox","id":"sh/m5gvyho7","slide":9,"text":"Founder-led pipeline, vertical campagnes, events en partnerenablement.","textPreview":"Founder-led pipeline, vertical campagnes, events en partnerenablement.","textChars":70,"textLines":1,"bbox":[894,374,270,50]}
+{"kind":"shape","id":"sh/l47epcnm","slide":9,"bbox":[750,462,456,122]}
+{"kind":"textbox","id":"sh/03ydw761","slide":9,"text":"12%","textPreview":"12%","textChars":3,"textLines":1,"bbox":[774,484,104,42]}
+{"kind":"textbox","id":"sh/z2pwn25w","slide":9,"text":"Reserve","textPreview":"Reserve","textChars":7,"textLines":1,"bbox":[894,482,270,28]}
+{"kind":"textbox","id":"sh/y1gvuxob","slide":9,"text":"Buffer voor langere salescycli; alleen vrij bij gemiste/versnelde gates.","textPreview":"Buffer voor langere salescycli; alleen vrij bij gemiste/versnelde gates.","textChars":72,"textLines":1,"bbox":[894,520,270,50]}
+{"kind":"textbox","id":"sh/50be1wn6","slide":9,"text":"Gemiddelde netto burn: € 13,9k per maand. Omzet verlengt de runway; ze is niet nodig om de eerste 18 maanden te modelleren.","textPreview":"Gemiddelde netto burn: € 13,9k per maand. Omzet verlengt de runway; ze is niet nodig om de eerste 18 maanden te modelleren.","textChars":123,"textLines":1,"bbox":[750,600,456,44]}
+{"kind":"chart","id":"ch/tgj2hoza","slide":9,"name":"","chartType":"bar","bbox":[42,166,650,448]}
+{"kind":"notes","id":"nt/j6kl99","slide":9,"text":"Dit is het antwoord op “waar gaat het geld naartoe?”. Benadruk dat je geen volledig team van vijf mensen belooft voor €250k. De ronde financiert een lean kern, externe expertise en commerciële validatie.\n\n[Sources]\nManagement assumptions and internal PWAYMENT materials."}
+{"kind":"slide","id":"sl/g9120w","slide":10,"title":"18-MAANDENPLAN","textShapes":16}
+{"kind":"textbox","id":"sh/kjmlwrex","slide":10,"text":"18-MAANDENPLAN","textPreview":"18-MAANDENPLAN","textChars":14,"textLines":1,"bbox":[42,34,600,18]}
+{"kind":"textbox","id":"sh/jit4nmdc","slide":10,"text":"Elke tranche van tijd eindigt in bewijs, niet alleen in output.","textPreview":"Elke tranche van tijd eindigt in bewijs, niet alleen in output.","textChars":63,"textLines":1,"bbox":[42,63,1196,92]}
+{"kind":"textbox","id":"sh/ihk3uhwr","slide":10,"text":"PWAYMENT · INVESTOR PITCH · SEPTEMBER 2026","textPreview":"PWAYMENT · INVESTOR PITCH · SEPTEMBER 2026","textChars":42,"textLines":1,"bbox":[42,680,700,18]}
+{"kind":"textbox","id":"sh/tovmtwve","slide":10,"text":"10","textPreview":"10","textChars":2,"textLines":1,"bbox":[1176,680,62,18]}
+{"kind":"shape","id":"sh/snml0ret","slide":10,"bbox":[42,350,1164,2]}
+{"kind":"textbox","id":"sh/7md4rmd8","slide":10,"text":"M0–3","textPreview":"M0–3","textChars":4,"textLines":1,"bbox":[42,254,180,28]}
+{"kind":"shape","id":"sh/6l43y1wn","slide":10,"bbox":[42,344,16,16]}
+{"kind":"textbox","id":"sh/9sbmhcva","slide":10,"text":"Product verkoopbaar","textPreview":"Product verkoopbaar","textChars":19,"textLines":1,"bbox":[42,392,350,36]}
+{"kind":"textbox","id":"sh/8rilo7ep","slide":10,"text":"Billing live\nMigratie < 1 dag\n10 design partners","textPreview":"Billing live | Migratie < 1 dag | 10 design partners","textChars":48,"textLines":3,"bbox":[42,448,330,82]}
+{"kind":"shape","id":"sh/mtojepsb","slide":10,"bbox":[42,552,350,42]}
+{"kind":"textbox","id":"sh/nuxknu9g","slide":10,"text":"GO: 5 actief per week","textPreview":"GO: 5 actief per week","textChars":21,"textLines":1,"bbox":[56,565,322,18]}
+{"kind":"textbox","id":"sh/ov6lgza1","slide":10,"text":"M4–9","textPreview":"M4–9","textChars":4,"textLines":1,"bbox":[444,254,180,28]}
+{"kind":"shape","id":"sh/9wf2p4rm","slide":10,"bbox":[444,344,16,16]}
+{"kind":"textbox","id":"sh/axo3i9s7","slide":10,"text":"Cohort converteert","textPreview":"Cohort converteert","textChars":18,"textLines":1,"bbox":[444,392,350,36]}
+{"kind":"textbox","id":"sh/byhkre9s","slide":10,"text":"30 betalende locaties\n€ 2,7k MRR\nEerste 3 cases","textPreview":"30 betalende locaties | € 2,7k MRR | Eerste 3 cases","textChars":47,"textLines":3,"bbox":[444,448,330,82]}
+{"kind":"shape","id":"sh/wzqlkjad","slide":10,"bbox":[444,552,350,42]}
+{"kind":"textbox","id":"sh/x0z2t4ry","slide":10,"text":"GO: CAC < € 1.000","textPreview":"GO: CAC < € 1.000","textChars":17,"textLines":1,"bbox":[458,565,322,18]}
+{"kind":"textbox","id":"sh/y183m9sj","slide":10,"text":"M10–18","textPreview":"M10–18","textChars":6,"textLines":1,"bbox":[846,254,180,28]}
+{"kind":"shape","id":"sh/jmhkve9o","slide":10,"bbox":[846,344,16,16]}
+{"kind":"textbox","id":"sh/vq1kjepw","slide":10,"text":"Kanaal herhaalbaar","textPreview":"Kanaal herhaalbaar","textChars":18,"textLines":1,"bbox":[846,392,350,36]}
+{"kind":"textbox","id":"sh/upsjatob","slide":10,"text":"100 betalende locaties\n€ 9k MRR\nGM > 80%","textPreview":"100 betalende locaties | € 9k MRR | GM > 80%","textChars":40,"textLines":3,"bbox":[846,448,330,82]}
+{"kind":"shape","id":"sh/hsj2lo72","slide":10,"bbox":[846,552,350,42]}
+{"kind":"textbox","id":"sh/gra1cj6h","slide":10,"text":"GO: payback < 12 mnd","textPreview":"GO: payback < 12 mnd","textChars":20,"textLines":1,"bbox":[860,565,322,18]}
+{"kind":"notes","id":"nt/g9120w","slide":10,"text":"Pitch de gates als discipline: als activatie of CAC niet werkt, wordt het budget herschikt voordat je opschaalt. Vraag de investeerder welke rapportering hij maandelijks wil zien.\n\n[Sources]\nManagement assumptions and internal PWAYMENT materials."}
+{"kind":"slide","id":"sl/n4rnxb","slide":11,"title":"FINANCIEEL MODEL","textShapes":11}
+{"kind":"textbox","id":"sh/md8bu9sz","slide":11,"text":"FINANCIEEL MODEL","textPreview":"FINANCIEEL MODEL","textChars":16,"textLines":1,"bbox":[42,34,600,18]}
+{"kind":"textbox","id":"sh/9gzap4rq","slide":11,"text":"De base case bewijst repeatability; winstgevendheid volgt na de ronde.","textPreview":"De base case bewijst repeatability; winstgevendheid volgt na de ronde.","textChars":70,"textLines":1,"bbox":[42,63,1196,92]}
+{"kind":"textbox","id":"sh/8fqtwza5","slide":11,"text":"PWAYMENT · INVESTOR PITCH · SEPTEMBER 2026","textPreview":"PWAYMENT · INVESTOR PITCH · SEPTEMBER 2026","textChars":42,"textLines":1,"bbox":[42,680,700,18]}
+{"kind":"textbox","id":"sh/zqhsjut8","slide":11,"text":"11","textPreview":"11","textChars":2,"textLines":1,"bbox":[1176,680,62,18]}
+{"kind":"shape","id":"sh/lczal4be","slide":11,"bbox":[780,176,426,112]}
+{"kind":"textbox","id":"sh/0bqtszat","slide":11,"text":"€ 1,35k","textPreview":"€ 1,35k","textChars":7,"textLines":1,"bbox":[808,194,200,42]}
+{"kind":"textbox","id":"sh/bmxsfutc","slide":11,"text":"MRR maand 6","textPreview":"MRR maand 6","textChars":11,"textLines":1,"bbox":[1000,206,170,28]}
+{"kind":"shape","id":"sh/qlormpsr","slide":11,"bbox":[780,318,426,112]}
+{"kind":"textbox","id":"sh/0zm14zmt","slide":11,"text":"€ 4,5k","textPreview":"€ 4,5k","textChars":6,"textLines":1,"bbox":[808,336,200,42]}
+{"kind":"textbox","id":"sh/l0vixk3e","slide":11,"text":"MRR maand 12","textPreview":"MRR maand 12","textChars":12,"textLines":1,"bbox":[1000,348,170,28]}
+{"kind":"shape","id":"sh/ydkj2p43","slide":11,"bbox":[780,460,426,112]}
+{"kind":"textbox","id":"sh/zyt0vul8","slide":11,"text":"€ 9,0k","textPreview":"€ 9,0k","textChars":6,"textLines":1,"bbox":[808,478,200,42]}
+{"kind":"textbox","id":"sh/cb210fmx","slide":11,"text":"MRR maand 18","textPreview":"MRR maand 18","textChars":12,"textLines":1,"bbox":[1000,490,170,28]}
+{"kind":"textbox","id":"sh/dcbitk3i","slide":11,"text":"Aannames: € 90 blended ARPA · geen omzetclaim vandaag · volgende financieringsbeslissing rond maand 15 als groei kapitaal vraagt.","textPreview":"Aannames: € 90 blended ARPA · geen omzetclaim vandaag · volgende financieringsbeslissing rond maand 15 als groei kapitaal vraagt.","textChars":129,"textLines":1,"bbox":[780,610,426,42]}
+{"kind":"chart","id":"ch/ip87698v","slide":11,"name":"","chartType":"bar","bbox":[42,176,668,428]}
+{"kind":"notes","id":"nt/n4rnxb","slide":11,"text":"Zeg helder: deze ronde is niet ontworpen om gegarandeerd break-even te bereiken. Ze koopt bewijs dat 100 betalende locaties en gezonde unit economics haalbaar zijn. Toon ook dat je maand 15 als financieringsbeslissing plant, niet als verrassing.\n\n[Sources]\n/Users/kevin/PROJECTS/pwayment RETAIL/src/billing/planCatalog.ts"}
+{"kind":"slide","id":"sl/vaucp5","slide":12,"title":"INVESTERINGSLOGICA","textShapes":14}
+{"kind":"textbox","id":"sh/gv6dcbul","slide":12,"text":"INVESTERINGSLOGICA","textPreview":"INVESTERINGSLOGICA","textChars":18,"textLines":1,"bbox":[42,34,600,18]}
+{"kind":"textbox","id":"sh/faxc36t0","slide":12,"text":"Na 18 maanden zijn de drie grootste onzekerheden meetbaar kleiner.","textPreview":"Na 18 maanden zijn de drie grootste onzekerheden meetbaar kleiner.","textChars":66,"textLines":1,"bbox":[42,63,1196,92]}
+{"kind":"textbox","id":"sh/e9ova1cf","slide":12,"text":"PWAYMENT · INVESTOR PITCH · SEPTEMBER 2026","textPreview":"PWAYMENT · INVESTOR PITCH · SEPTEMBER 2026","textChars":42,"textLines":1,"bbox":[42,680,700,18]}
+{"kind":"textbox","id":"sh/p0ze90b2","slide":12,"text":"12","textPreview":"12","textChars":2,"textLines":1,"bbox":[1176,680,62,18]}
+{"kind":"shape","id":"sh/oz6dgvah","slide":12,"bbox":[42,190,360,354]}
+{"kind":"textbox","id":"sh/3yxw7qtw","slide":12,"text":"PRODUCT","textPreview":"PRODUCT","textChars":7,"textLines":1,"bbox":[66,218,300,20]}
+{"kind":"textbox","id":"sh/2xovelcb","slide":12,"text":"Kan een winkel zonder maatwerk live?","textPreview":"Kan een winkel zonder maatwerk live?","textChars":36,"textLines":1,"bbox":[66,270,300,68]}
+{"kind":"shape","id":"sh/54vudwby","slide":12,"bbox":[66,364,312,1]}
+{"kind":"textbox","id":"sh/43md4rud","slide":12,"text":"Migratie < 1 dag\nActivatie > 70%\nStabiele checkout","textPreview":"Migratie < 1 dag | Activatie > 70% | Stabiele checkout","textChars":50,"textLines":3,"bbox":[66,398,300,98]}
+{"kind":"shape","id":"sh/q9s32d8b","slide":12,"bbox":[440,190,360,354]}
+{"kind":"textbox","id":"sh/ralkbi9w","slide":12,"text":"DISTRIBUTIE","textPreview":"DISTRIBUTIE","textChars":11,"textLines":1,"bbox":[464,218,300,20]}
+{"kind":"textbox","id":"sh/cbul4nqh","slide":12,"text":"Kunnen we klanten voorspelbaar winnen?","textPreview":"Kunnen we klanten voorspelbaar winnen?","textChars":38,"textLines":1,"bbox":[464,270,300,68]}
+{"kind":"shape","id":"sh/dc32dsr2","slide":12,"bbox":[464,364,312,1]}
+{"kind":"textbox","id":"sh/edc36x87","slide":12,"text":"100 betalende locaties\n3 werkende kanalen\nCAC < € 800","textPreview":"100 betalende locaties | 3 werkende kanalen | CAC < € 800","textChars":53,"textLines":3,"bbox":[464,398,300,98]}
+{"kind":"shape","id":"sh/zel4f29s","slide":12,"bbox":[838,190,360,354]}
+{"kind":"textbox","id":"sh/0ful87qd","slide":12,"text":"ECONOMICS","textPreview":"ECONOMICS","textChars":9,"textLines":1,"bbox":[862,218,300,20]}
+{"kind":"textbox","id":"sh/1g3mhsry","slide":12,"text":"Kan groei waarde creëren?","textPreview":"Kan groei waarde creëren?","textChars":25,"textLines":1,"bbox":[862,270,300,68]}
+{"kind":"shape","id":"sh/mhc3ax8j","slide":12,"bbox":[862,364,312,1]}
+{"kind":"textbox","id":"sh/ni54j294","slide":12,"text":"ARPA ≈ € 90\nGM > 80%\nPayback < 12 mnd","textPreview":"ARPA ≈ € 90 | GM > 80% | Payback < 12 mnd","textChars":37,"textLines":3,"bbox":[862,398,300,98]}
+{"kind":"textbox","id":"sh/j65k72pw","slide":12,"text":"De volgende waardestap komt uit bewezen herhaalbaarheid — niet uit extra slides of features.","textPreview":"De volgende waardestap komt uit bewezen herhaalbaarheid — niet uit extra slides of features.","textChars":92,"textLines":1,"bbox":[42,594,1120,34]}
+{"kind":"notes","id":"nt/vaucp5","slide":12,"text":"Dit is de return-logica zonder exitfantasieën. De waardecreatie komt uit het verwijderen van product-, distributie- en unit-economicsrisico. Vermijd garanties over waardering of rendement.\n\n[Sources]\nManagement assumptions and internal PWAYMENT materials."}
+{"kind":"slide","id":"sl/cthwey","slide":13,"title":"RISICO & MITIGATIE","textShapes":22}
+{"kind":"textbox","id":"sh/aponih03","slide":13,"text":"RISICO & MITIGATIE","textPreview":"RISICO & MITIGATIE","textChars":18,"textLines":1,"bbox":[42,34,600,18]}
+{"kind":"textbox","id":"sh/xsf6tcze","slide":13,"text":"De risico’s zijn concreet — en dus bestuurbaar.","textPreview":"De risico’s zijn concreet — en dus bestuurbaar.","textChars":47,"textLines":1,"bbox":[42,63,1196,92]}
+{"kind":"textbox","id":"sh/wr65k7it","slide":13,"text":"PWAYMENT · INVESTOR PITCH · SEPTEMBER 2026","textPreview":"PWAYMENT · INVESTOR PITCH · SEPTEMBER 2026","textChars":42,"textLines":1,"bbox":[42,680,700,18]}
+{"kind":"textbox","id":"sh/jehovmhk","slide":13,"text":"13","textPreview":"13","textChars":2,"textLines":1,"bbox":[1176,680,62,18]}
+{"kind":"textbox","id":"sh/ytonmh0z","slide":13,"text":"Risico","textPreview":"Risico","textChars":6,"textLines":1,"bbox":[42,176,220,24]}
+{"kind":"textbox","id":"sh/lgz6xwzq","slide":13,"text":"Mitigatie","textPreview":"Mitigatie","textChars":9,"textLines":1,"bbox":[330,176,540,24]}
+{"kind":"textbox","id":"sh/kfqpori5","slide":13,"text":"Wat we maandelijks meten","textPreview":"Wat we maandelijks meten","textChars":24,"textLines":1,"bbox":[936,176,270,24]}
+{"kind":"shape","id":"sh/zidojihg","slide":13,"bbox":[42,220,1164,64]}
+{"kind":"textbox","id":"sh/ex4nax0v","slide":13,"text":"Lange salescyclus","textPreview":"Lange salescyclus","textChars":17,"textLines":1,"bbox":[58,238,250,28]}
+{"kind":"textbox","id":"sh/oz61wzql","slide":13,"text":"Focus op owner-led specialist retail; gratis proefperiode met vaste activatieflow.","textPreview":"Focus op owner-led specialist retail; gratis proefperiode met vaste activatieflow.","textChars":82,"textLines":1,"bbox":[330,234,560,38]}
+{"kind":"textbox","id":"sh/p0fi5476","slide":13,"text":"Leading: demo → activatie","textPreview":"Leading: demo → activatie","textChars":25,"textLines":1,"bbox":[936,238,250,28]}
+{"kind":"shape","id":"sh/2xojup8v","slide":13,"bbox":[42,298,1164,64]}
+{"kind":"textbox","id":"sh/nyx03up0","slide":13,"text":"Hardware & integraties","textPreview":"Hardware & integraties","textChars":22,"textLines":1,"bbox":[58,316,250,28]}
+{"kind":"textbox","id":"sh/c3610jqx","slide":13,"text":"Compatibiliteitsmatrix; gecertificeerde bundels; geen maatwerk vóór betaalde case.","textPreview":"Compatibiliteitsmatrix; gecertificeerde bundels; geen maatwerk vóór betaalde case.","textChars":82,"textLines":1,"bbox":[330,312,560,38]}
+{"kind":"textbox","id":"sh/x4f29o7i","slide":13,"text":"Leading: tijd tot live","textPreview":"Leading: tijd tot live","textChars":22,"textLines":1,"bbox":[936,316,250,28]}
+{"kind":"shape","id":"sh/a1ojy98r","slide":13,"bbox":[42,376,1164,64]}
+{"kind":"textbox","id":"sh/b2xk7epc","slide":13,"text":"Gratis plan kannibaliseert","textPreview":"Gratis plan kannibaliseert","textChars":26,"textLines":1,"bbox":[58,394,250,28]}
+{"kind":"textbox","id":"sh/s7m1ofqd","slide":13,"text":"Basis begrenzen; pro-waarde zichtbaar in CRM, webshop en insights.","textPreview":"Basis begrenzen; pro-waarde zichtbaar in CRM, webshop en insights.","textChars":66,"textLines":1,"bbox":[330,390,560,38]}
+{"kind":"textbox","id":"sh/d8vixkry","slide":13,"text":"Leading: free → paid","textPreview":"Leading: free → paid","textChars":20,"textLines":1,"bbox":[936,394,250,28]}
+{"kind":"shape","id":"sh/tonylgj2","slide":13,"bbox":[42,454,1164,64]}
+{"kind":"textbox","id":"sh/snehsbih","slide":13,"text":"Founder dependency","textPreview":"Founder dependency","textChars":18,"textLines":1,"bbox":[58,472,250,28]}
+{"kind":"textbox","id":"sh/7m5gj61w","slide":13,"text":"Documenteer onboarding, support en verkoop; contractor wordt proces-eigenaar.","textPreview":"Documenteer onboarding, support en verkoop; contractor wordt proces-eigenaar.","textChars":77,"textLines":1,"bbox":[330,468,560,38]}
+{"kind":"textbox","id":"sh/61czq10b","slide":13,"text":"Leading: uren per locatie","textPreview":"Leading: uren per locatie","textChars":25,"textLines":1,"bbox":[936,472,250,28]}
+{"kind":"shape","id":"sh/hsnypgjy","slide":13,"bbox":[42,532,1164,64]}
+{"kind":"textbox","id":"sh/grehwbid","slide":13,"text":"Kapitaal vóór break-even","textPreview":"Kapitaal vóór break-even","textChars":24,"textLines":1,"bbox":[58,550,250,28]}
+{"kind":"textbox","id":"sh/fq5gn61s","slide":13,"text":"Maand-15 beslismoment; reserve blijft gekoppeld aan commerciële gates.","textPreview":"Maand-15 beslismoment; reserve blijft gekoppeld aan commerciële gates.","textChars":70,"textLines":1,"bbox":[330,546,560,38]}
+{"kind":"textbox","id":"sh/upwzul07","slide":13,"text":"Leading: runway / MRR","textPreview":"Leading: runway / MRR","textChars":21,"textLines":1,"bbox":[936,550,250,28]}
+{"kind":"notes","id":"nt/cthwey","slide":13,"text":"Een goede investeerder zal risico’s testen. Neem ze zelf op tafel en koppel elk risico aan een leading indicator. Dat toont dat je bestuurt op bewijs.\n\n[Sources]\nManagement assumptions and internal PWAYMENT materials."}
+{"kind":"slide","id":"sl/2r5kne","slide":14,"title":"DE INVESTERINGSVRAAG","textShapes":11}
+{"kind":"textbox","id":"sh/dsnupgba","slide":14,"text":"DE INVESTERINGSVRAAG","textPreview":"DE INVESTERINGSVRAAG","textChars":20,"textLines":1,"bbox":[42,38,400,22]}
+{"kind":"textbox","id":"sh/qpwbe1cj","slide":14,"text":"€ 250.000 — 15% equity","textPreview":"€ 250.000 — 15% equity","textChars":22,"textLines":1,"bbox":[42,144,740,80]}
+{"kind":"textbox","id":"sh/bq5cn6t4","slide":14,"text":"Indicatieve equity-structuur: post-money € 1,67m. Definitief na due diligence en juridische documentatie.","textPreview":"Indicatieve equity-structuur: post-money € 1,67m. Definitief na due diligence en juridische documentatie.","textChars":105,"textLines":1,"bbox":[42,250,690,66]}
+{"kind":"shape","id":"sh/0vedkval","slide":14,"bbox":[42,378,690,158]}
+{"kind":"textbox","id":"sh/lw7utgb6","slide":14,"text":"Wat u daarvoor krijgt","textPreview":"Wat u daarvoor krijgt","textChars":21,"textLines":1,"bbox":[68,406,300,24]}
+{"kind":"textbox","id":"sh/ytwbilsv","slide":14,"text":"Maandelijkse KPI-rapportering · kwartaalboard · budgetgates · pro-rata recht bij een volgende ronde.","textPreview":"Maandelijkse KPI-rapportering · kwartaalboard · budgetgates · pro-rata recht bij een volgende ronde.","textChars":100,"textLines":1,"bbox":[68,450,620,64]}
+{"kind":"shape","id":"sh/zu5crqtg","slide":14,"bbox":[814,126,392,432]}
+{"kind":"textbox","id":"sh/8jydovax","slide":14,"text":"De beslissing","textPreview":"De beslissing","textChars":13,"textLines":1,"bbox":[844,160,320,28]}
+{"kind":"textbox","id":"sh/9k7ux0bi","slide":14,"text":"Start due diligence\nbinnen 7 dagen.","textPreview":"Start due diligence | binnen 7 dagen.","textChars":35,"textLines":2,"bbox":[844,230,320,92]}
+{"kind":"shape","id":"sh/pw76x0ba","slide":14,"bbox":[844,356,320,1]}
+{"kind":"textbox","id":"sh/ovypovu5","slide":14,"text":"Week 1  ·  data room + term sheet\nWeek 2  ·  product & financieel review\nWeek 3  ·  signing + eerste tranche","textPreview":"Week 1  ·  data room + term sheet | Week 2  ·  product & financieel review | Week 3  ·  signing + eerste tranche","textChars":108,"textLines":3,"bbox":[844,392,320,100]}
+{"kind":"textbox","id":"sh/3apovqtk","slide":14,"text":"Ik zoek niet alleen kapitaal. Ik zoek een investeerder die mee helpt om 100 winkels sneller en slimmer te laten draaien.","textPreview":"Ik zoek niet alleen kapitaal. Ik zoek een investeerder die mee helpt om 100 winkels sneller en slimmer te laten draaien.","textChars":120,"textLines":1,"bbox":[42,600,1120,38]}
+{"kind":"textbox","id":"sh/29g7mlcz","slide":14,"text":"PWAYMENT · CONFIDENTIAL · SUBJECT TO CONTRACT","textPreview":"PWAYMENT · CONFIDENTIAL · SUBJECT TO CONTRACT","textChars":45,"textLines":1,"bbox":[42,680,700,18]}
+{"kind":"textbox","id":"sh/d0r610bm","slide":14,"text":"14","textPreview":"14","textChars":2,"textLines":1,"bbox":[1176,680,62,18]}
+{"kind":"notes","id":"nt/2r5kne","slide":14,"text":"Sluit met stilte na de vraag. Zeg: “Als de richting klopt, stel ik voor dat we vandaag het due-diligencepad en de eigenaar van de term sheet vastleggen.” De 15% is een openingsvoorstel; geef geen ondergrens in de kamer zonder eerst voorwaarden en strategische waarde te begrijpen.\n\n[Sources]\nManagement assumptions and internal PWAYMENT materials."}
+{"kind":"slide","id":"sl/pw1j3d","slide":15,"title":"APPENDIX","textShapes":18}
+{"kind":"textbox","id":"sh/tkv2p8vq","slide":15,"text":"APPENDIX","textPreview":"APPENDIX","textChars":8,"textLines":1,"bbox":[42,34,600,18]}
+{"kind":"textbox","id":"sh/6hk3edwz","slide":15,"text":"Modelaannames die de investeerder mag challengen.","textPreview":"Modelaannames die de investeerder mag challengen.","textChars":49,"textLines":1,"bbox":[42,63,1196,92]}
+{"kind":"textbox","id":"sh/7itknidk","slide":15,"text":"PWAYMENT · INVESTOR PITCH · SEPTEMBER 2026","textPreview":"PWAYMENT · INVESTOR PITCH · SEPTEMBER 2026","textChars":42,"textLines":1,"bbox":[42,680,700,18]}
+{"kind":"textbox","id":"sh/g7mlkne1","slide":15,"text":"15","textPreview":"15","textChars":2,"textLines":1,"bbox":[1176,680,62,18]}
+{"kind":"shape","id":"sh/h8vmtsvm","slide":15,"bbox":[42,158,1164,52]}
+{"kind":"textbox","id":"sh/ul43idwb","slide":15,"text":"Ronde","textPreview":"Ronde","textChars":5,"textLines":1,"bbox":[60,174,230,22]}
+{"kind":"textbox","id":"sh/f6d4ridg","slide":15,"text":"€ 250k; 18 maanden; gemiddeld € 13,9k netto burn","textPreview":"€ 250k; 18 maanden; gemiddeld € 13,9k netto burn","textChars":48,"textLines":1,"bbox":[310,172,860,26]}
+{"kind":"shape","id":"sh/4bmloned","slide":15,"bbox":[42,224,1164,52]}
+{"kind":"textbox","id":"sh/pcfmxsvy","slide":15,"text":"Prijs","textPreview":"Prijs","textChars":5,"textLines":1,"bbox":[60,240,230,22]}
+{"kind":"textbox","id":"sh/1kve90v2","slide":15,"text":"Pro € 69/mnd; Enterprise vanaf € 149/mnd; blended target € 90","textPreview":"Pro € 69/mnd; Enterprise vanaf € 149/mnd; blended target € 90","textChars":61,"textLines":1,"bbox":[310,238,860,26]}
+{"kind":"shape","id":"sh/gjmd0fuh","slide":15,"bbox":[42,290,1164,52]}
+{"kind":"textbox","id":"sh/fidw7adc","slide":15,"text":"Groei","textPreview":"Groei","textChars":5,"textLines":1,"bbox":[60,306,230,22]}
+{"kind":"textbox","id":"sh/ehkvy5cr","slide":15,"text":"15 / 50 / 100 betalende locaties op maand 6 / 12 / 18","textPreview":"15 / 50 / 100 betalende locaties op maand 6 / 12 / 18","textChars":53,"textLines":1,"bbox":[310,304,860,26]}
+{"kind":"shape","id":"sh/p8vedkve","slide":15,"bbox":[42,356,1164,52]}
+{"kind":"textbox","id":"sh/onmx4fut","slide":15,"text":"Unit economics","textPreview":"Unit economics","textChars":14,"textLines":1,"bbox":[60,372,230,22]}
+{"kind":"textbox","id":"sh/3mdwbad8","slide":15,"text":"Brutomarge > 80%; CAC < € 800; payback < 12 maanden","textPreview":"Brutomarge > 80%; CAC < € 800; payback < 12 maanden","textChars":51,"textLines":1,"bbox":[310,370,860,26]}
+{"kind":"shape","id":"sh/2l4f25cn","slide":15,"bbox":[42,422,1164,52]}
+{"kind":"textbox","id":"sh/5sbe1gvu","slide":15,"text":"Markt","textPreview":"Markt","textChars":5,"textLines":1,"bbox":[60,438,230,22]}
+{"kind":"textbox","id":"sh/4r2dsbu9","slide":15,"text":"20k specialist-retail SAM is een managementaannname","textPreview":"20k specialist-retail SAM is een managementaannname","textChars":51,"textLines":1,"bbox":[310,436,860,26]}
+{"kind":"shape","id":"sh/wvmx8v25","slide":15,"bbox":[42,488,1164,52]}
+{"kind":"textbox","id":"sh/xwfeh03q","slide":15,"text":"Traction","textPreview":"Traction","textChars":8,"textLines":1,"bbox":[60,504,230,22]}
+{"kind":"textbox","id":"sh/at4v6l4f","slide":15,"text":"Productbewijs is aanwezig; paid ARR wordt niet geclaimd","textPreview":"Productbewijs is aanwezig; paid ARR wordt niet geclaimd","textChars":55,"textLines":1,"bbox":[310,502,860,26]}
+{"kind":"shape","id":"sh/vudwfql0","slide":15,"bbox":[42,554,1164,52]}
+{"kind":"textbox","id":"sh/kz6xcv2h","slide":15,"text":"Vervolgrond","textPreview":"Vervolgrond","textChars":11,"textLines":1,"bbox":[60,570,230,22]}
+{"kind":"textbox","id":"sh/50fel032","slide":15,"text":"Beslismoment rond maand 15 indien groei extra kapitaal vraagt","textPreview":"Beslismoment rond maand 15 indien groei extra kapitaal vraagt","textChars":61,"textLines":1,"bbox":[310,568,860,26]}
+{"kind":"notes","id":"nt/pw1j3d","slide":15,"text":"Gebruik deze slide alleen bij vragen over het model. Nodig de investeerder uit om drie aannames samen te testen: conversie, ARPA en CAC. Dat maakt het gesprek concreet.\n\n[Sources]\n/Users/kevin/PROJECTS/pwayment RETAIL/src/billing/planCatalog.ts\nhttps://statbel.fgov.be/en/news/114196-enterprises-created-2023"}

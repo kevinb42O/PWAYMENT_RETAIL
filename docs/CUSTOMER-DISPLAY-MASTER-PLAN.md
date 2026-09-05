@@ -1,5 +1,10 @@
 # PWAYMENT Customer Display — masterplan
 
+> **Afbakening:** de lokale MacBook/HDMI-MVP bestaat; veilige pairing met een
+> tweede toestel en echte winkel-/hardwareacceptatie blijven een latere fase.
+> Zie [`../PROJECT-CONTEXT.md`](../PROJECT-CONTEXT.md) voor de actuele algemene
+> status.
+
 Status: architectuur- en uitvoeringsplan
 Datum: 13 augustus 2026
 Scope: klantgericht transactiescherm, idle content, MacBook + HDMI-proef,

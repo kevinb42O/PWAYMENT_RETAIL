@@ -84,9 +84,10 @@ test("customer context stays inside Pace and never covers the cart", async ({ ap
   const geometry = await appPage.evaluate(() => {
     const panel = document.querySelector(".pace-panel")!.getBoundingClientRect();
     const cart = document.querySelector(".pos-cart")!.getBoundingClientRect();
+    const backdrop = document.querySelector(".pace-backdrop");
     return {
       overlaps: panel.left < cart.right && panel.right > cart.left && panel.top < cart.bottom && panel.bottom > cart.top,
-      backdropDisplay: getComputedStyle(document.querySelector(".pace-backdrop")!).display,
+      backdropDisplay: backdrop ? getComputedStyle(backdrop).display : "none",
     };
   });
   expect(geometry).toEqual({ overlaps: false, backdropDisplay: "none" });

@@ -1,5 +1,10 @@
 # Voorraadoperaties — P0/P1 masterplan
 
+> **Gedateerde domeinverificatie.** De status en 593 geslaagde tests hieronder
+> horen bij de voorraaduitrol van 27–28 augustus 2026. Ze blijven waardevol als
+> bewijs voor dat domein, maar vervangen de latere algemene releasecontrole
+> niet. Zie [`../PROJECT-CONTEXT.md`](../PROJECT-CONTEXT.md).
+
 Status: P0/P1 geïmplementeerd; productiedatabase gemigreerd en clientuitrol via de beveiligde productieflow
 Datum audit: 27 augustus 2026
 Scope: het volledige pad van voorraad zien, tellen, corrigeren, ontvangen, bestellen, importeren, synchroniseren en auditen

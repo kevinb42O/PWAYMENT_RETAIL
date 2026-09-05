@@ -1,5 +1,9 @@
 # Pace Settings — redesign- en implementatieplan
 
+> **Planstatus:** dit document beschrijft ontwerpbeslissingen en gerichte
+> implementatie, niet de algemene releasegereedheid van PWAYMENT. Zie
+> [`PROJECT-CONTEXT.md`](PROJECT-CONTEXT.md) voor de actuele projectstatus.
+
 ## 1. Doel
 
 De Pace-instellingen worden één actuele, begrijpelijke beheerplek voor drie verschillende zaken:

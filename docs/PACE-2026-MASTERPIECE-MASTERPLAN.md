@@ -1,5 +1,10 @@
 # Pace 2026 — intelligence, actions & experience masterplan
 
+> **Domeinplan:** de implementatiestatus hieronder geldt alleen voor de
+> expliciet benoemde Pace-foundations. Gebruik
+> [`../PROJECT-CONTEXT.md`](../PROJECT-CONTEXT.md) voor de algemene product- en
+> releasestatus.
+
 **Status:** code-audit en toekomstplan
 **Auditdatum:** 29 augustus 2026
 **Scope:** de actuele repository, met focus op `src/pace`, `src/server/pace`, `api/pace` en de Pace-koppeling in `Layout`

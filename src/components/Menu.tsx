@@ -7,7 +7,7 @@ import {
   matchesCatalogQuery,
   normalizeCatalogQuery,
 } from "../utils/productLookup";
-import { Box, Grid2X2, Layers3, FileSpreadsheet } from "lucide-react";
+import { Grid2X2, Layers3, FileSpreadsheet, List, Check, PackageCheck } from "lucide-react";
 import { isGiftCardProduct } from "../utils/financial";
 import { resolveProductCategoryPath } from "../catalog/categoryTaxonomy";
 import { categoryIcon } from "../catalog/categoryIcons";
@@ -16,13 +16,6 @@ const stockLabel = (stockQty?: number): string => {
   if (stockQty == null) return "Geen voorraadtracking";
   if (stockQty === 0) return "Uitverkocht";
   return `${stockQty} op voorraad`;
-};
-
-const categoryBadgeTone = (subCategory?: string): string => {
-  const normalized = subCategory?.toLocaleLowerCase("nl-BE") ?? "";
-  if (normalized.includes("cadeaubon")) return "pos-badge-gift";
-  if (normalized.includes("advies")) return "pos-badge-advice";
-  return "pos-badge-default";
 };
 
 interface MenuProps {
@@ -47,6 +40,7 @@ export const Menu: React.FC<MenuProps> = ({
   onProductSelected,
 }) => {
   const addOrderItem = useStore((s) => s.addOrderItem);
+  const cart = useStore((s) => s.cart);
   const findByScanCode = useProducts((s) => s.findByScanCode);
   const products = useProducts((s) => s.list);
   const hydrateProducts = useProducts((s) => s.hydrate);
@@ -59,6 +53,20 @@ export const Menu: React.FC<MenuProps> = ({
   );
   const [activeBrand, setActiveBrand] = useState<string | "all">("all");
   const [visibleProductCount, setVisibleProductCount] = useState(40);
+  const [catalogView, setCatalogView] = useState<"grid" | "list">(() => {
+    try { return localStorage.getItem("pwayment:catalog-view") === "list" ? "list" : "grid"; }
+    catch { return "grid"; }
+  });
+  const [inStockOnly, setInStockOnly] = useState(false);
+  const productGridRef = useRef<HTMLDivElement>(null);
+  const cartQuantities = useMemo(() => {
+    const quantities = new Map<string, number>();
+    for (const item of cart.orders) quantities.set(item.product.id, (quantities.get(item.product.id) ?? 0) + item.quantity);
+    return quantities;
+  }, [cart]);
+  useEffect(() => {
+    try { localStorage.setItem("pwayment:catalog-view", catalogView); } catch { /* Optional view preference. */ }
+  }, [catalogView]);
   const [recentlyAdded, setRecentlyAdded] = useState<{ productId: string; nonce: number } | null>(null);
   const addedFeedbackTimerRef = useRef<number | null>(null);
 
@@ -219,7 +227,7 @@ export const Menu: React.FC<MenuProps> = ({
             (product.brand ?? "Zonder merk") === activeBrand,
         );
 
-    return [...base].sort((a, b) => {
+    return base.filter((product) => !inStockOnly || product.stockQty == null || product.stockQty > 0).sort((a, b) => {
       const subCategoryCompare = (a.subCategory ?? "").localeCompare(
         b.subCategory ?? "",
       );
@@ -231,11 +239,12 @@ export const Menu: React.FC<MenuProps> = ({
         (a.variant ?? "").localeCompare(b.variant ?? "")
       );
     });
-  }, [activeBrand, activeProducts, categories, subCategoryProducts, term]);
+  }, [activeBrand, activeProducts, categories, subCategoryProducts, term, inStockOnly]);
 
   useEffect(() => {
     setVisibleProductCount(40);
-  }, [activeBrand, activeCategory, activeSubCategory, term]);
+    productGridRef.current?.scrollTo({ top: 0 });
+  }, [activeBrand, activeCategory, activeSubCategory, term, inStockOnly]);
 
   const visibleProducts = filteredProducts.slice(0, visibleProductCount);
 
@@ -246,27 +255,23 @@ export const Menu: React.FC<MenuProps> = ({
           ?.name ?? "Alle hoofdcategorieën");
   const activeSubCategoryName =
     activeSubCategory === "all" ? "Alle subcategorieën" : activeSubCategory;
-  const resultLabel =
-    filteredProducts.length === 1
-      ? "1 product"
-      : `${filteredProducts.length} producten`;
-
   const showSubCategory = activeCategory !== "all";
 
   return (
     <div
-      className={`pos-catalog grid h-full grid-cols-1 overflow-hidden ${showSubCategory ? "lg:grid-cols-[210px_230px_minmax(0,1fr)]" : "lg:grid-cols-[210px_minmax(0,1fr)]"}`}
+      className="pos-catalog pos-catalog-refined grid h-full grid-cols-1 overflow-hidden lg:grid-cols-[190px_minmax(0,1fr)]"
     >
       {/* Hoofdcategorieën kolom */}
       <div className="pos-category-rail overflow-y-auto border-b border-slate-200 lg:border-b-0 lg:border-r">
         <div className="pos-rail-heading sticky top-0 z-10 border-b border-slate-200/70 px-4 py-3.5 backdrop-blur-md">
           <div className="pos-rail-label flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider">
-            <Grid2X2 size={13} /> Hoofdcategorie
+            <Grid2X2 size={13} /> Collecties
           </div>
         </div>
 
         <div className="flex gap-1.5 overflow-x-auto p-2 lg:block lg:overflow-visible lg:p-0">
           <button
+            aria-pressed={activeCategory === "all" && !term}
             onClick={() => {
               setActiveCategory("all");
               setActiveSubCategory("all");
@@ -294,6 +299,7 @@ export const Menu: React.FC<MenuProps> = ({
             return (
               <button
                 key={category.id}
+                aria-pressed={isActive}
                 onClick={() => {
                   setActiveCategory(category.id);
                   setActiveSubCategory("all");
@@ -319,90 +325,22 @@ export const Menu: React.FC<MenuProps> = ({
         </div>
       </div>
 
-      {/* Subcategorieën kolom */}
-      {showSubCategory && (
-        <div className="pos-category-rail pos-category-rail--secondary overflow-y-auto border-b border-slate-200 lg:border-b-0 lg:border-r">
-          <div className="pos-rail-heading sticky top-0 z-10 border-b border-slate-200/70 px-4 py-3 backdrop-blur-md">
-          <div className="pos-rail-label flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider">
-              <Layers3 size={13} /> Subcategorie
-            </div>
-            <div className="pos-rail-context mt-0.5 truncate text-xs font-bold">
-              {activeCategoryName}
-            </div>
-          </div>
-
-          <div className="flex gap-1.5 overflow-x-auto p-2 lg:block lg:overflow-visible lg:p-0">
-            <button
-              onClick={() => {
-                setActiveSubCategory("all");
-                setActiveBrand("all");
-                onQueryChange("");
-              }}
-              className={`pos-rail-item min-w-[170px] border-l-4 px-4 py-3 text-left transition-all lg:w-full lg:min-w-0 ${
-                activeSubCategory === "all" && !term
-                  ? "pos-rail-active border-l-sky-600 font-bold"
-                  : "border-l-transparent hover:bg-white/60 font-medium"
-              }`}
-            >
-              <span className="block text-sm">Alle subcategorieën</span>
-              <span
-                className={`pos-rail-count mt-0.5 block text-xs ${activeSubCategory === "all" && !term ? "pos-rail-count--active font-semibold" : ""}`}
-              >
-                {categoryProducts.length} producten
-              </span>
-            </button>
-
-            {subCategoryItems.map((subCategory) => {
-              const isActive = activeSubCategory === subCategory.id && !term;
-              return (
-                <button
-                  key={subCategory.id}
-                  onClick={() => {
-                    setActiveSubCategory(subCategory.id);
-                    setActiveBrand("all");
-                    onQueryChange("");
-                  }}
-                  className={`pos-rail-item min-w-[180px] border-l-4 px-4 py-3 text-left transition-all lg:w-full lg:min-w-0 ${
-                    isActive
-                      ? "pos-rail-active border-l-sky-600 font-bold"
-                      : "border-l-transparent hover:bg-white/60 font-medium"
-                  }`}
-                >
-                  <span className="block text-sm leading-tight">
-                    {subCategory.name}
-                  </span>
-                  <span
-                    className={`pos-rail-count mt-0.5 block text-xs ${isActive ? "pos-rail-count--active font-semibold" : ""}`}
-                  >
-                    {subCategory.count} producten
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       {/* Producten raster area */}
       <div className="pos-product-stage flex min-w-0 flex-col overflow-hidden">
         <div className="pos-catalog-toolbar border-b border-slate-200/80 p-4">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+          <div className="pos-catalog-title-row flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <div className="pos-catalog-heading flex items-center gap-2 text-sm font-extrabold">
-                <Box size={16} className="pos-catalog-heading-icon" />
+              <h1 className="pos-catalog-heading">
                 {term
                   ? "Zoekresultaten"
-                  : `${activeCategoryName} / ${activeSubCategoryName}`}
-              </div>
-              <div className="pos-catalog-summary mt-1 text-xs">
-                {term
-                  ? exactCodeMatch
-                    ? `${resultLabel}. Exacte ${exactCodeMatch.matchedOn === "barcode" ? "barcode" : exactCodeMatch.matchedOn === "identifier" ? "productidentificatie" : "SKU"}-match voor ${exactCodeMatch.product.name}.`
-                    : `${resultLabel}. Zoek op barcode, SKU, product, merk of subcategorie.`
-                  : `${resultLabel}. Filter verder op merk of kies een product.`}
-              </div>
+                  : activeCategory === "all" ? "Alle producten" : activeSubCategory === "all" ? activeCategoryName : activeSubCategoryName}
+                <span className="pos-result-count">{filteredProducts.length}</span>
+              </h1>
             </div>
-
+            <div className="pos-catalog-view-switch" role="group" aria-label="Productweergave">
+              <button type="button" aria-label="Rasterweergave" aria-pressed={catalogView === "grid"} onClick={() => setCatalogView("grid")} title="Rasterweergave"><Grid2X2 size={17} /></button>
+              <button type="button" aria-label="Lijstweergave" aria-pressed={catalogView === "list"} onClick={() => setCatalogView("list")} title="Lijstweergave"><List size={18} /></button>
+            </div>
             {term && (
               <button
                 onClick={() => onQueryChange("")}
@@ -413,9 +351,31 @@ export const Menu: React.FC<MenuProps> = ({
             )}
           </div>
 
+          {term && exactCodeMatch && (
+            <p className="pos-catalog-summary" role="status">
+              Exacte {exactCodeMatch.matchedOn === "barcode" ? "barcode" : exactCodeMatch.matchedOn === "identifier" ? "productidentificatie" : "SKU"}-match: {exactCodeMatch.product.name}.
+            </p>
+          )}
+          {showSubCategory && !term && (
+            <div className="pos-subcategory-strip" role="group" aria-label="Subcategorieën">
+              <button type="button" aria-pressed={activeSubCategory === "all"} onClick={() => { setActiveSubCategory("all"); setActiveBrand("all"); }}>
+                Alle subcategorieën <span>{categoryProducts.length}</span>
+              </button>
+              {subCategoryItems.map((subCategory) => (
+                <button type="button" key={subCategory.id} aria-pressed={activeSubCategory === subCategory.id} onClick={() => { setActiveSubCategory(subCategory.id); setActiveBrand("all"); }}>
+                  {subCategory.name} <span>{subCategory.count}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="pos-catalog-filter-row">
+            <button type="button" className="pos-stock-filter" title="Verberg uitverkochte artikelen. Producten zonder voorraadtracking blijven zichtbaar." aria-pressed={inStockOnly} onClick={() => setInStockOnly((value) => !value)}>
+              <PackageCheck size={15} /> Op voorraad {inStockOnly && <Check size={13} />}
+            </button>
           {!term && brandItems.length > 1 && (
-            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+            <div className="pos-brand-strip flex gap-2 overflow-x-auto" role="group" aria-label="Merken">
               <button
+                aria-pressed={activeBrand === "all"}
                 onClick={() => setActiveBrand("all")}
                 className={`whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all ${
                   activeBrand === "all"
@@ -428,6 +388,7 @@ export const Menu: React.FC<MenuProps> = ({
               {brandItems.map((brand) => (
                 <button
                   key={brand.id}
+                  aria-pressed={activeBrand === brand.id}
                   onClick={() => setActiveBrand(brand.id)}
                   className={`whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all ${
                     activeBrand === brand.id
@@ -440,12 +401,15 @@ export const Menu: React.FC<MenuProps> = ({
               ))}
             </div>
           )}
+          </div>
         </div>
 
         {/* Product grid */}
-        <div className="pos-product-grid flex-1 overflow-y-auto p-4 lg:p-5">
-          <div className="pos-product-grid-layout grid gap-3">
+        <div ref={productGridRef} className="pos-product-grid flex-1 overflow-y-auto p-4 lg:p-5">
+          <div className={`pos-product-grid-layout grid gap-3 ${catalogView === "list" ? "pos-product-grid-layout--list" : ""}`}>
             {visibleProducts.map((product) => {
+              const categoryPath = resolveProductCategoryPath(product, categories);
+              const quantityInCart = cartQuantities.get(product.id) ?? 0;
               const outOfStock =
                 product.stockQty != null && product.stockQty <= 0;
               const lowStock =
@@ -471,6 +435,7 @@ export const Menu: React.FC<MenuProps> = ({
                     });
                   }}
                   disabled={outOfStock}
+                  data-in-cart={quantityInCart > 0 || undefined}
                   className={`pos-product-card relative flex min-h-[146px] flex-col justify-between overflow-hidden rounded-xl border p-4 text-left transition-colors ${
                     outOfStock
                       ? "cursor-not-allowed opacity-50 bg-slate-50"
@@ -480,26 +445,16 @@ export const Menu: React.FC<MenuProps> = ({
                   {recentlyAdded?.productId === product.id && (
                     <span key={recentlyAdded.nonce} className="pos-product-added-feedback" aria-hidden="true">+1</span>
                   )}
-                  <div className="relative z-10 space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="pos-product-category-badge rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
-                        {resolveProductCategoryPath(product, categories)?.leaf?.name
-                          ?? resolveProductCategoryPath(product, categories)?.root.name
+                  <div className="pos-product-details relative z-10">
+                    <span className="pos-product-context">
+                      <span className="pos-product-category-badge">
+                        {categoryPath?.leaf?.name
+                          ?? categoryPath?.root.name
                           ?? product.subCategory
                           ?? product.category}
                       </span>
-                      {(outOfStock || lowStock) && (
-                        <span
-                          className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                            outOfStock
-                              ? "bg-red-50 text-red-700 border border-red-200"
-                              : "bg-amber-50 text-amber-700 border border-amber-200"
-                          }`}
-                        >
-                          {outOfStock ? "Uitverkocht" : "Lage stock"}
-                        </span>
-                      )}
-                    </div>
+                      {quantityInCart > 0 && <span className="pos-product-in-cart">{quantityInCart} in mandje</span>}
+                    </span>
                     <span className="pos-product-title block text-sm font-bold leading-snug">
                       {product.name}
                     </span>
@@ -514,8 +469,8 @@ export const Menu: React.FC<MenuProps> = ({
                     <span className="pos-product-price text-base font-extrabold tracking-tight">
                       {formatEUR(product.priceCents)}
                     </span>
-                    <span className="pos-product-stock max-w-28 text-right text-[10px] font-semibold leading-tight">
-                      {stockLabel(product.stockQty)}
+                    <span className={`pos-product-stock max-w-28 text-right text-[10px] font-semibold leading-tight ${outOfStock ? "pos-product-stock--out" : lowStock ? "pos-product-stock--low" : ""}`}>
+                      {stockLabel(product.stockQty)}{lowStock ? " · laag" : ""}
                     </span>
                   </div>
                 </button>
@@ -544,7 +499,10 @@ export const Menu: React.FC<MenuProps> = ({
                   </div>
                 </section>
               ) : (
-                <div className="pos-catalog-empty col-span-full py-12 text-center font-medium">Geen producten in deze selectie.</div>
+                <div className="pos-catalog-empty col-span-full py-12 text-center font-medium">
+                  <p>Geen producten in deze selectie.</p>
+                  <button type="button" className="pos-filter-reset mt-4 rounded-lg px-4 py-2 text-xs" onClick={() => { setInStockOnly(false); setActiveCategory("all"); setActiveSubCategory("all"); setActiveBrand("all"); }}>Wis filters</button>
+                </div>
               )
             )}
             {filteredProducts.length > visibleProducts.length && (

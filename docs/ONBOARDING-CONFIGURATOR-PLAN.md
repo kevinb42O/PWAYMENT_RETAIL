@@ -1,5 +1,10 @@
 # PWAYMENT onboardingconfigurator
 
+> **Domeinplan:** dit document beschrijft de onboardingconfigurator. Het is
+> geen bewijs dat gedeelde POS-operatorauthenticatie of alle aanbevolen modules
+> volledig productiegeschikt zijn. Zie
+> [`../PROJECT-CONTEXT.md`](../PROJECT-CONTEXT.md).
+
 ## Doel
 
 Nieuwe winkeleigenaars moeten in ongeveer twee tot drie minuten een bruikbare PWAYMENT-werkruimte krijgen. De configurator vraagt alleen informatie die een concrete standaard, modulekeuze of eerstvolgende actie beïnvloedt. Abonnementsrechten blijven volledig gescheiden van voorkeuren: een module kiezen maakt ze zichtbaar en relevant, maar omzeilt nooit een plan- of featuregate.

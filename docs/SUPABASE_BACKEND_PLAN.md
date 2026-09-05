@@ -1,5 +1,12 @@
 # Supabase backend implementation plan
 
+> **Historisch en grotendeels vervangen.** Dit plan is opgesteld vóór de
+> huidige Supabase-backend. Uitspraken hieronder zoals "offline-only", "0
+> backend" of "remote link blocked" beschrijven de toenmalige beginsituatie,
+> niet de huidige repository. Raadpleeg
+> [`../PROJECT-CONTEXT.md`](../PROJECT-CONTEXT.md) voor de actuele status. Dit
+> bestand blijft bewaard als architectuur- en migratiegeschiedenis.
+
 Status: local CLI initialized; remote link blocked by Supabase project permissions.
 
 Target hosted project: `kkedepbyrarsewofmoao`

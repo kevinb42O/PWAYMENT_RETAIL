@@ -28,6 +28,11 @@ describe("Pace motion resolution", () => {
     expect(paceTonePalette("attention")).toEqual({ accent: "#ff6b00", start: "#ffbd18", end: "#f04400", depth: "#8f1f00" });
   });
 
+  it("keeps the Pace character blue after a successful action", () => {
+    expect(paceTonePalette("success")).toEqual(paceTonePalette("flow"));
+    expect(paceTonePalette("success")).toEqual({ accent: "#0088ff", start: "#00f0ff", end: "#0055ff", depth: "#003399" });
+  });
+
   it("keeps every Pace silhouette topologically compatible for real path morphing", () => {
     const bodies = Object.values(PACE_MORPH_BODY);
     const dots = Object.values(PACE_MORPH_DOT);
@@ -61,27 +66,67 @@ describe("Pace motion resolution", () => {
     expect(markup).toContain("pace-shield-trace");
   });
 
-  it("does not let the legacy punctuation morph mask semantic work poses", () => {
+  it("has no icon frame and keeps all motion off for still energy", () => {
+    const markup = renderToStaticMarkup(createElement(PaceMark, {
+      emotion: "thinking", pose: "gather", energy: "still", motionMode: "full",
+    }));
+    expect(markup).not.toContain("pace-mark-shell");
+    expect(markup).toContain('data-motion="off"');
+    expect(markup).not.toContain("<animate");
+  });
+
+  it("morphs during real work while preserving its semantic pose and truthful label", () => {
     const focus = renderToStaticMarkup(createElement(PaceMark, {
       emotion: "thinking",
       pose: "focus",
       energy: "medium",
       motionMode: "full",
-      forceMotion: true,
+      stateLabel: "antwoord wordt samengesteld",
     }));
     const gather = renderToStaticMarkup(createElement(PaceMark, {
       emotion: "thinking",
       pose: "gather",
       energy: "medium",
       motionMode: "full",
-      forceMotion: true,
+      stateLabel: "toegestane gegevens worden opgehaald",
     }));
 
-    expect(focus).not.toContain("is-pondering");
-    expect(gather).not.toContain("is-pondering");
-    expect(focus).not.toContain(PACE_MORPH_BODY.question);
-    expect(focus).not.toContain(PACE_MORPH_BODY.liquid);
+    expect(focus).toContain("is-pondering");
+    expect(gather).toContain("is-pondering");
+    expect(focus).toContain(PACE_MORPH_BODY.question);
+    expect(focus).toContain(PACE_MORPH_BODY.liquid);
+    expect(focus).toContain('calcMode="spline"');
+    expect(focus).toContain('repeatCount="indefinite"');
     expect(focus).toContain('data-pace-pose="focus"');
     expect(gather).toContain('data-pace-pose="gather"');
+    expect(focus).toContain('aria-label="Pace · antwoord wordt samengesteld"');
+    expect(gather).toContain('aria-label="Pace · toegestane gegevens worden opgehaald"');
+  });
+
+  it("welcomes and settles with a one-shot liquid morph that returns to the ribbon", () => {
+    for (const props of [
+      { tone: "flow" as const, pose: "focus" as const },
+      { tone: "success" as const, pose: "settle" as const },
+    ]) {
+      const markup = renderToStaticMarkup(createElement(PaceMark, { ...props, active: true, emotion: "attentive", motionMode: "full" }));
+      expect(markup).toContain("is-performing");
+      expect(markup).toContain(PACE_MORPH_BODY.liquid);
+      expect(markup).toContain(`${PACE_MORPH_BODY.liquid};${PACE_MORPH_BODY.pace}`);
+      expect(markup).toContain('repeatCount="1"');
+      expect(markup).not.toContain('repeatCount="indefinite"');
+    }
+  });
+
+  it("does not run expressive loops with subtle, disabled or non-expressive preferences", () => {
+    for (const props of [
+      { motionMode: "subtle" as const },
+      { motionMode: "off" as const },
+      { motionMode: "full" as const, expressive: false },
+    ]) {
+      const markup = renderToStaticMarkup(createElement(PaceMark, { ...props, active: true, emotion: "thinking", pose: "gather" }));
+      expect(markup).not.toContain("is-pondering");
+      expect(markup).not.toContain(PACE_MORPH_BODY.liquid);
+      expect(markup).not.toContain('repeatCount="indefinite"');
+    }
   });
 });

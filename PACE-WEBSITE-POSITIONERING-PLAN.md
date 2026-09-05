@@ -1,5 +1,10 @@
 # Pace op de publieke website — onderzoeks- en positioneringsplan
 
+> **Copy- en positioneringsplan.** Publieke Pace-claims moeten aan actuele
+> uitvoerbare code en productieconfiguratie worden getoetst. Zie
+> [`PROJECT-CONTEXT.md`](PROJECT-CONTEXT.md); testtotalen hieronder zijn een
+> gedateerde deelverificatie en geen algemene releasegate.
+
 **Datum:** 25 augustus 2026  
 **Scope:** homepageblok, `/pace`, publieke claims en bewijsvoering  
 **Doel:** Pace positioneren als de geïntegreerde intelligentielaag van PWAYMENT, zonder aantoonbare productgrenzen of privacykeuzes mooier voor te stellen dan ze zijn.
@@ -331,4 +336,3 @@ Externe primaire bronnen voor de marktclaim:
 - Shopify Help Center — Sidekick: https://help.shopify.com/en/manual/ai-powered-tools/sidekick
 - Square — Square AI voor retail: https://squareup.com/us/en/releases/retail
 - Lightspeed — introductie Lightspeed AI: https://www.lightspeedhq.com/news/lightspeed-commerce-launches-lightspeed-ai-a-new-ai-powered-intelligence-layer-for-retail-and-hospitality/
-

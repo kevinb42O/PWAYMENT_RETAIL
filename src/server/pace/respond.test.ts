@@ -18,6 +18,10 @@ describe("Pace OpenAI endpoint", () => {
     process.env.OPENAI_PACE_MODEL = "gpt-5-nano";
     process.env.SUPABASE_URL = "https://supabase.test";
     process.env.SUPABASE_PUBLISHABLE_KEY = "test-publishable-key";
+    // Conversation state now runs through the server-only RPC broker. Keep a
+    // non-secret fixture value here so endpoint tests exercise the request
+    // flow rather than failing at configuration validation.
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key";
   });
 
   afterEach(() => {
@@ -160,11 +164,22 @@ describe("Pace OpenAI endpoint", () => {
       answer: "Je winkelcontext is beschikbaar.",
       citations: [expect.objectContaining({ key: "E1", label: "Winkelcontext" })],
     });
-    expect(String(fetchMock.mock.calls[2][0])).toContain("get_pace_conversation");
-    expect(String(fetchMock.mock.calls[3][0])).toContain("begin_pace_turn");
-    expect(String(fetchMock.mock.calls[6][0])).toContain("complete_pace_turn");
-    const completion = JSON.parse(String((fetchMock.mock.calls[6][1] as RequestInit).body));
-    expect(completion.evidence_items).toEqual([expect.objectContaining({ key: "E1", sourceName: "tenant.context" })]);
+    const brokerCall = (index: number) => {
+      const [url, init] = fetchMock.mock.calls[index] as [string, RequestInit];
+      expect(url).toContain("/rest/v1/rpc/pace_server_rpc");
+      expect(init.headers).toEqual(expect.objectContaining({
+        apikey: "test-service-role-key",
+        Authorization: "Bearer test-service-role-key",
+      }));
+      return JSON.parse(String(init.body)) as Record<string, unknown>;
+    };
+    expect(brokerCall(2)).toMatchObject({ operation: "get_pace_conversation", target_actor_user_id: "user-v2" });
+    expect(brokerCall(3)).toMatchObject({ operation: "begin_pace_turn", target_actor_user_id: "user-v2" });
+    const completion = brokerCall(6);
+    expect(completion).toMatchObject({ operation: "complete_pace_turn", target_actor_user_id: "user-v2" });
+    expect((completion.rpc_payload as Record<string, unknown>).evidence_items).toEqual([
+      expect.objectContaining({ key: "E1", sourceName: "tenant.context" }),
+    ]);
   });
 
   it("reports a recovered failed retry as failed instead of still processing", async () => {
@@ -290,6 +305,26 @@ describe("Pace OpenAI endpoint", () => {
     });
     expect(String(fetchMock.mock.calls[1][0])).toContain("gemini-flash-latest");
     expect(String(fetchMock.mock.calls[2][0])).toContain("gemini-3.5-flash-lite");
+  });
+
+  it("does not serially retry every planner alias after a transport timeout", async () => {
+    process.env.GEMINI_API_KEY = "test-gemini-key";
+    process.env.PACE_GEMINI_PLANNER = "true";
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({ id: "user-planner-timeout" }))
+      .mockRejectedValueOnce(new Error("planner transport timed out"))
+      .mockResolvedValueOnce(Response.json({
+        candidates: [{ content: { parts: [{ text: "Ik help je graag verder." }] } }],
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handler.fetch(request({ question: "Waar beheer ik mijn artikelen?", context: { view: "profile", role: "owner" } }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ answer: "Ik help je graag verder.", source: "gemini" });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(String(fetchMock.mock.calls[1][0])).toContain("generativelanguage.googleapis.com");
+    expect(String(fetchMock.mock.calls[2][0])).toContain("generativelanguage.googleapis.com");
   });
 
   it("combines selective analytics with product knowledge for a mixed question", async () => {
